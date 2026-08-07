@@ -1,0 +1,29 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments / caches
+.venv
+.uv-cache
+
+# Data & experiment outputs (large / regenerable)
+data/raw/
+data/splits/
+outputs/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Secrets
+.kaggle/
+**/kaggle.json
+.env
+.env.*
+
+# OS / editor
+.DS_Store
+*.swp
