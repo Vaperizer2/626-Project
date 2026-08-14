@@ -14,6 +14,9 @@ wheels/
 data/raw/
 data/splits/
 outputs/
+**/data/raw/
+**/data/splits/
+**/outputs/
 
 # Jupyter
 .ipynb_checkpoints/
