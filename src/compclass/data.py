@@ -52,10 +52,10 @@ class Manifest:
 
 
 def compute_fingerprint(rows: list[Row]) -> str:
-    """sha256 over the sorted ``(id, label, split, fold)`` tuples, serialised as compact JSON; 16 hex."""
-    keys = sorted([r["id"], r["label"], r["split"], r["fold"]] for r in rows)
-    blob = json.dumps(keys, separators=(",", ":"), ensure_ascii=False).encode()
-    return hashlib.sha256(blob).hexdigest()[:16]
+    """Split fingerprint, identical to tools/build_dataset_v2.py: lines ``id\\tlabel\\tsplit\\tfold`` (fold ``""``
+    for test), sorted, joined with ``\\n``, UTF-8, SHA-256, first 16 hex chars."""
+    lines = sorted(f"{r['id']}\t{r['label']}\t{r['split']}\t{'' if r['fold'] is None else r['fold']}" for r in rows)
+    return hashlib.sha256("\n".join(lines).encode("utf-8")).hexdigest()[:16]
 
 
 def load_manifest(path: str | Path, verify: bool = True) -> Manifest:
