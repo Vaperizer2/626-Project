@@ -62,8 +62,15 @@ def _timm(name: str, num_classes: int, pretrained: bool, input_size: int | None 
     import timm
 
     if input_size is not None:
-        kw["img_size"] = input_size  # ViTs resample their position embeddings to the new grid
-    model = timm.create_model(name, pretrained=pretrained, num_classes=num_classes, **kw)
+        # Transformers have a fixed token grid, so they must be told the new size (timm resamples the position
+        # embeddings). CNNs are size-agnostic and their constructors reject ``img_size``: only the
+        # preprocessing changes for them.
+        try:
+            model = timm.create_model(name, pretrained=pretrained, num_classes=num_classes, img_size=input_size, **kw)
+        except TypeError:
+            model = timm.create_model(name, pretrained=pretrained, num_classes=num_classes, **kw)
+    else:
+        model = timm.create_model(name, pretrained=pretrained, num_classes=num_classes, **kw)
     cfg = timm.data.resolve_model_data_config(model)
     spec = PreprocessSpec(input_size=input_size or cfg["input_size"][-1], mean=tuple(cfg["mean"]),
                           std=tuple(cfg["std"]), interpolation=cfg["interpolation"],

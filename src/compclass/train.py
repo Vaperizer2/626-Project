@@ -60,13 +60,23 @@ def make_optimizer(model: nn.Module, t: dict[str, Any]) -> torch.optim.Optimizer
     return opt
 
 
-def warmup_cosine(opt: torch.optim.Optimizer, warmup: int, total: int) -> torch.optim.lr_scheduler.LambdaLR:
-    """LR multiplier: linear 0->1 over ``warmup`` steps, then cosine 1->0 at ``total``."""
+def warmup_cosine(opt: torch.optim.Optimizer, warmup: int, total: int,
+                  frozen: int = 0) -> torch.optim.lr_scheduler.LambdaLR:
+    """LR multiplier: linear 0->1 over ``warmup`` steps, then cosine 1->0 at ``total``.
+
+    If the backbone is frozen for the first ``frozen`` steps (head-only warm-up), the head ramps up during
+    that phase and the warm-up restarts when the backbone unfreezes. Otherwise the freshly unfrozen
+    pretrained layers would receive the full peak LR on their very first update, which can wreck the
+    pretrained features they were chosen for.
+    """
 
     def f(step: int) -> float:
-        if step < warmup:
-            return (step + 1) / warmup
-        return 0.5 * (1 + math.cos(math.pi * min(1.0, (step - warmup) / max(1, total - warmup))))
+        if step < frozen:
+            return (step + 1) / frozen
+        s = step - frozen
+        if s < warmup:
+            return (s + 1) / warmup
+        return 0.5 * (1 + math.cos(math.pi * min(1.0, (s - warmup) / max(1, total - frozen - warmup))))
 
     return torch.optim.lr_scheduler.LambdaLR(opt, f)
 
@@ -144,7 +154,8 @@ def run(cfg: Config, fold: int) -> dict[str, Any]:
     set_backbone_trainable(model, True, frozen)  # timm's optimizer skips requires_grad=False params
     n_trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     opt = make_optimizer(model, t)
-    sched = warmup_cosine(opt, int(t.get("warmup_epochs", 0) * opt_steps), t["epochs"] * opt_steps)
+    sched = warmup_cosine(opt, int(t.get("warmup_epochs", 0) * opt_steps), t["epochs"] * opt_steps,
+                          frozen=int(t.get("freeze_epochs", 0) * opt_steps))
     scaler = torch.amp.GradScaler(device.type, enabled=amp_dtype == torch.float16)
 
     if device.type == "cuda":
@@ -152,8 +163,13 @@ def run(cfg: Config, fold: int) -> dict[str, Any]:
     best_f1, best_epoch, bad, history = -1.0, -1, 0, []
     n_seen, train_time = 0, 0.0
     for epoch in range(t["epochs"]):
-        set_backbone_trainable(model, epoch >= t.get("freeze_epochs", 0), frozen)
+        backbone_on = epoch >= t.get("freeze_epochs", 0)
+        set_backbone_trainable(model, backbone_on, frozen)
         model.train()
+        if not backbone_on:  # a frozen CNN backbone should not keep updating its BatchNorm running statistics
+            for mod in model.modules():
+                if isinstance(mod, nn.modules.batchnorm._BatchNorm):
+                    mod.eval()
         t0, loss_sum = time.perf_counter(), 0.0
         opt.zero_grad(set_to_none=True)
         for step, (x, y) in enumerate(train_dl):

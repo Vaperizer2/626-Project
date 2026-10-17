@@ -21,6 +21,8 @@ Repo doubles as a learning resource (`docs/LEARNING_PATH.md`). uv for all envs. 
       Label audit: 69 confident issues (`results/phase1/label_issues_v2.*`); dropping OOD rows from training
       HURT (in-scope 86.1 -> 85.2), dropping issues +0.2 (noise) -> keep v2.0 training data unchanged.
 - [~] Phase 2 — fine-tune benchmark, folds 0-2, running on the PC (jobs below).
+      21:11 SAST: So400m partial FT fold0 = 0.7948 acc / 0.7936 F1 (probe fold0 = 0.8048 / 0.8041); ~25 min/fold,
+      ~1.7 min/epoch, 137M trainable params, 4.3 GB peak VRAM. ETA: 2A ~22:50, 2B ~01:00-01:30 SAST.
 - [x] Phase 2 docs — `docs/` (paper citations still to verify).
 - [ ] Phase 2 ablations; Phase 3 final model + ONNX export; Phase 4 OpenCV demo + report.
 
