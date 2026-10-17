@@ -1,0 +1,4 @@
+base: base.yaml
+# ViTs fine-tune best with a low LR + layer-wise decay; 16 x 2 accumulation = effective batch 32 in 8 GB.
+model: {key: vit_b16, kwargs: {drop_path_rate: 0.1}}
+train: {batch_size: 16, accum_steps: 2, lr: 1.0e-4, layer_decay: 0.75, freeze_epochs: 1}

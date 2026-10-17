@@ -1,0 +1,4 @@
+base: base.yaml
+# ~300M params: gradient checkpointing + batch 8 x 4 accumulation to fit 8 GB.
+model: {key: clip_vitl14, kwargs: {drop_path_rate: 0.1}}
+train: {batch_size: 8, accum_steps: 4, lr: 2.0e-5, layer_decay: 0.75, freeze_epochs: 2, weight_decay: 0.1, grad_checkpointing: true}

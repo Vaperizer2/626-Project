@@ -1,0 +1,3 @@
+base: base.yaml
+model: {key: resnet50}
+train: {lr: 1.0e-3, weight_decay: 0.02, freeze_epochs: 1}

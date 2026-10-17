@@ -1,0 +1,5 @@
+base: base.yaml
+# From-scratch CNN: no pretrained features, so it needs many epochs, a high LR and strong augmentation.
+model: {key: scratch_cnn, pretrained: false, kwargs: {width: 32, dropout: 0.3}}
+train: {epochs: 120, batch_size: 64, lr: 2.0e-3, weight_decay: 0.05, warmup_epochs: 5, patience: 25}
+aug: {rrc_scale: [0.35, 1.0], color_jitter: 0.2}

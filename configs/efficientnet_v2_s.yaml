@@ -1,0 +1,4 @@
+base: base.yaml
+# Native 300 px input; drop_path is stochastic depth (randomly skips residual blocks while training).
+model: {key: efficientnet_v2_s, kwargs: {drop_path_rate: 0.2}}
+train: {batch_size: 24, lr: 5.0e-4, freeze_epochs: 1}

@@ -1,0 +1,43 @@
+# Defaults shared by every family. A family file sets `base: base.yaml` and overrides only what differs.
+# Any key can be overridden on the command line: --set train.lr=1e-4 aug.mixup=0.2
+
+data:
+  manifest: data/v2/manifest.json
+  num_workers: 6            # DataLoader worker processes (JPEG decode + augmentation)
+
+model:
+  key: resnet50             # registry key, see `python -c "from compclass.models import describe; print(describe())"`
+  pretrained: true
+  kwargs: {}                # passed to timm.create_model, e.g. {drop_path_rate: 0.1}
+
+train:
+  epochs: 30
+  batch_size: 32
+  accum_steps: 1            # effective batch = batch_size * accum_steps
+  lr: 3.0e-4                # peak LR after warm-up (for the head / last layer when layer_decay is set)
+  weight_decay: 0.05
+  warmup_epochs: 2
+  layer_decay: null         # e.g. 0.75: layer i from the top gets lr * 0.75**i (timm models only)
+  freeze_epochs: 0          # train only the new head for the first N epochs
+  label_smoothing: 0.1
+  amp: fp16                 # fp16 | bf16 | none  (Ada GPUs support both; fp16 uses a GradScaler)
+  grad_clip: 1.0
+  grad_checkpointing: false # trade ~30% speed for much less activation memory
+  patience: 8               # early stopping on validation macro-F1
+  seed: 0
+  max_steps_per_epoch: null # cap for smoke tests
+
+aug:
+  rrc_scale: [0.5, 1.0]     # RandomResizedCrop area range
+  rrc_ratio: [0.75, 1.3333]
+  hflip: 0.5
+  vflip: 0.0
+  randaugment: {n: 2, m: 9} # set to null to disable
+  color_jitter: 0.0
+  random_erasing: 0.0
+  mixup: 0.0                # alpha; >0 enables mixup (soft targets)
+  cutmix: 0.0
+
+output:
+  runs_dir: runs
+  results: results/runs.jsonl

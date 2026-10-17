@@ -1,0 +1,4 @@
+base: base.yaml
+# CLIP towers are easy to "forget": low LR, strong layer decay, head warm-up first.
+model: {key: clip_vitb16, kwargs: {drop_path_rate: 0.1}}
+train: {batch_size: 16, accum_steps: 2, lr: 3.0e-5, layer_decay: 0.65, freeze_epochs: 2, weight_decay: 0.1}

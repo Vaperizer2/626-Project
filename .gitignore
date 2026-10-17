@@ -18,6 +18,17 @@ outputs/
 **/data/splits/
 **/outputs/
 
+# Data v2: images/tarballs/arrays are regenerable; manifest.json and
+# leakage_report.json stay tracked.
+data/v2/images/
+data/v2/*.tar
+data/v2/*.npy
+
+# Run outputs (results/runs.jsonl is tracked, caches are not)
+runs/
+results/cache/
+*.onnx
+
 # Jupyter
 .ipynb_checkpoints/
 

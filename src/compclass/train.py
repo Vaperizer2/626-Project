@@ -1,0 +1,203 @@
+"""Generic fine-tuning loop shared by every family.
+
+    uv run python -m compclass.train --config configs/convnext_tiny.yaml --fold 0
+    uv run python -m compclass.train --config configs/vit_b16.yaml --fold 0 1 2 3 4 --set train.lr=5e-5
+
+Recipe (each knob lives in the YAML ``train:`` / ``aug:`` sections, documented in configs/base.yaml):
+
+* AdamW, no weight decay on norms/biases; optional **layer-wise LR decay** (early layers learn slower --
+  they hold the most general features) via timm's parameter grouping.
+* Linear warm-up, then cosine decay, stepped per optimiser step.
+* Optional **frozen-backbone warm-up**: the first ``freeze_epochs`` train only the new head, so random head
+  gradients do not wreck the pretrained features.
+* Label smoothing, or Mixup/CutMix (soft targets) when enabled.
+* Mixed precision (``amp: fp16|bf16|none``) and **gradient accumulation** (effective batch =
+  ``batch_size * accum_steps``) so ViT-B fits in 8 GB.
+* Validation every epoch; the best macro-F1 checkpoint is kept, training stops after ``patience`` epochs
+  without improvement. One line per run is appended to ``results/runs.jsonl``.
+"""
+
+from __future__ import annotations
+
+import argparse
+import math
+import os
+import random
+import time
+from pathlib import Path
+from typing import Any
+
+import numpy as np
+import torch
+from torch import nn
+from torch.utils.data import DataLoader
+
+from .config import Config, config_hash, load_config
+from .data import ImageDataset, build_mixup, build_transforms, get_fold, load_manifest
+from .evaluate import compute_metrics, log_run, predict
+from .models import build_model
+
+AMP = {"fp16": torch.float16, "bf16": torch.bfloat16, "none": None, None: None}
+
+
+def seed_everything(seed: int) -> None:
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+
+
+def make_optimizer(model: nn.Module, t: dict[str, Any]) -> torch.optim.Optimizer:
+    """AdamW with timm's parameter groups (no decay on 1-D params; per-layer LR scale if ``layer_decay``)."""
+    from timm.optim import create_optimizer_v2
+
+    layer_decay = t.get("layer_decay") if hasattr(model, "group_matcher") else None
+    opt = create_optimizer_v2(model, opt="adamw", lr=t["lr"], weight_decay=t["weight_decay"],
+                              layer_decay=layer_decay)
+    for g in opt.param_groups:  # bake timm's per-group scale into lr so a plain LambdaLR respects it
+        g["lr"] = g["lr"] * g.pop("lr_scale", 1.0)
+    return opt
+
+
+def warmup_cosine(opt: torch.optim.Optimizer, warmup: int, total: int) -> torch.optim.lr_scheduler.LambdaLR:
+    """LR multiplier: linear 0->1 over ``warmup`` steps, then cosine 1->0 at ``total``."""
+
+    def f(step: int) -> float:
+        if step < warmup:
+            return (step + 1) / warmup
+        return 0.5 * (1 + math.cos(math.pi * min(1.0, (step - warmup) / max(1, total - warmup))))
+
+    return torch.optim.lr_scheduler.LambdaLR(opt, f)
+
+
+def set_backbone_trainable(model: nn.Module, trainable: bool) -> None:
+    """Freeze/unfreeze everything except the classifier head (``get_classifier()``, as in timm)."""
+    head = {id(p) for p in model.get_classifier().parameters()}
+    for p in model.parameters():
+        p.requires_grad_(trainable or id(p) in head)
+
+
+def run(cfg: Config, fold: int) -> dict[str, Any]:
+    """Train one model on one CV fold; returns the record appended to the run log."""
+    d, t, a = cfg["data"], cfg["train"], cfg.get("aug", {})
+    seed_everything(t.get("seed", 0))
+    device = torch.device(cfg.get("device") or ("cuda" if torch.cuda.is_available() else "cpu"))
+    if device.type == "cpu":
+        torch.set_num_threads(t.get("cpu_threads", min(8, os.cpu_count() or 1)))
+    torch.backends.cudnn.benchmark = True
+    amp_dtype = AMP[t.get("amp", "fp16")] if device.type == "cuda" else None
+
+    m = load_manifest(d["manifest"])
+    train_rows, val_rows = get_fold(m, fold)
+    h = config_hash(cfg)
+    run_dir = Path(cfg["output"]["runs_dir"]) / f"{cfg['name']}-{h}" / f"fold{fold}"
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    mc = cfg["model"]
+    model, spec = build_model(mc["key"], len(m.classes), mc.get("pretrained", True), **mc.get("kwargs", {}))
+    if t.get("grad_checkpointing") and hasattr(model, "set_grad_checkpointing"):
+        model.set_grad_checkpointing(True)  # recompute activations in backward: less VRAM, ~30% slower
+    model.to(device)
+    n_params = sum(p.numel() for p in model.parameters())
+
+    nw = d.get("num_workers", 4)
+    common = dict(num_workers=nw, pin_memory=device.type == "cuda", persistent_workers=nw > 0)
+    train_dl = DataLoader(ImageDataset(train_rows, m.root, m.class_to_idx, build_transforms(spec, a, True)),
+                          batch_size=t["batch_size"], shuffle=True, drop_last=True, **common)
+    val_dl = DataLoader(ImageDataset(val_rows, m.root, m.class_to_idx, build_transforms(spec, a, False)),
+                        batch_size=t.get("eval_batch_size", 2 * t["batch_size"]), **common)
+
+    mixup = build_mixup(a, len(m.classes), t.get("label_smoothing", 0.0))
+    if mixup is not None:
+        from timm.loss import SoftTargetCrossEntropy
+
+        criterion: nn.Module = SoftTargetCrossEntropy()  # mixup already produced smoothed soft targets
+    else:
+        criterion = nn.CrossEntropyLoss(label_smoothing=t.get("label_smoothing", 0.0))
+
+    accum = t.get("accum_steps", 1)
+    steps_per_epoch = min(len(train_dl), t.get("max_steps_per_epoch") or len(train_dl))
+    opt_steps = math.ceil(steps_per_epoch / accum)
+    opt = make_optimizer(model, t)
+    sched = warmup_cosine(opt, int(t.get("warmup_epochs", 0) * opt_steps), t["epochs"] * opt_steps)
+    scaler = torch.amp.GradScaler(device.type, enabled=amp_dtype == torch.float16)
+
+    if device.type == "cuda":
+        torch.cuda.reset_peak_memory_stats()
+    best_f1, best_epoch, bad, history = -1.0, -1, 0, []
+    n_seen, train_time = 0, 0.0
+    for epoch in range(t["epochs"]):
+        set_backbone_trainable(model, epoch >= t.get("freeze_epochs", 0))
+        model.train()
+        t0, loss_sum = time.perf_counter(), 0.0
+        opt.zero_grad(set_to_none=True)
+        for step, (x, y) in enumerate(train_dl):
+            if step >= steps_per_epoch:
+                break
+            x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
+            if mixup is not None:
+                x, y = mixup(x, y)
+            with torch.autocast(device.type, dtype=amp_dtype, enabled=amp_dtype is not None):
+                loss = criterion(model(x), y) / accum
+            scaler.scale(loss).backward()
+            if (step + 1) % accum == 0 or step + 1 == steps_per_epoch:
+                scaler.unscale_(opt)  # so clipping sees true gradient magnitudes
+                if t.get("grad_clip"):
+                    nn.utils.clip_grad_norm_(model.parameters(), t["grad_clip"])
+                scaler.step(opt)
+                scaler.update()
+                opt.zero_grad(set_to_none=True)
+                sched.step()
+            loss_sum += loss.item() * accum
+            n_seen += x.shape[0]
+        if device.type == "cuda":
+            torch.cuda.synchronize()
+        train_time += time.perf_counter() - t0
+
+        probs, y_val = predict(model, val_dl, device, amp_dtype)
+        f1 = compute_metrics(y_val, probs.argmax(1), m.classes)["macro_f1"]
+        history.append({"epoch": epoch, "train_loss": loss_sum / steps_per_epoch, "val_macro_f1": f1,
+                        "lr": opt.param_groups[-1]["lr"]})
+        print(f"[{cfg['name']} f{fold}] epoch {epoch:3d}  loss {loss_sum / steps_per_epoch:.4f}  "
+              f"val macro-F1 {f1:.4f}", flush=True)
+        if f1 > best_f1:
+            best_f1, best_epoch, bad = f1, epoch, 0
+            torch.save({"model": model.state_dict(), "config": cfg, "config_hash": h, "fold": fold,
+                        "classes": m.classes, "preprocess": spec.to_dict(), "manifest_fingerprint": m.fingerprint,
+                        "epoch": epoch, "val_macro_f1": f1}, run_dir / "best.pt")
+        else:
+            bad += 1
+            if bad >= t.get("patience", 10):
+                print(f"early stop: no improvement for {bad} epochs", flush=True)
+                break
+
+    # Final numbers always come from the best checkpoint, not the last epoch.
+    model.load_state_dict(torch.load(run_dir / "best.pt", map_location=device, weights_only=False)["model"])
+    probs, y_val = predict(model, val_dl, device, amp_dtype)
+    metrics = compute_metrics(y_val, probs.argmax(1), m.classes)
+    np.savez_compressed(run_dir / "val_preds.npz", ids=np.array([r["id"] for r in val_rows]), y=y_val, probs=probs)
+    record = {"method": "finetune", "name": cfg["name"], "model": mc["key"], "config_hash": h, "fold": fold,
+              "manifest": m.fingerprint, "params": n_params, "input_size": spec.input_size,
+              "epochs_run": len(history), "best_epoch": best_epoch, "train_time_s": round(train_time, 1),
+              "train_img_per_s": round(n_seen / max(train_time, 1e-9), 1),
+              "peak_vram_mb": round(torch.cuda.max_memory_allocated() / 2**20) if device.type == "cuda" else None,
+              "effective_batch": t["batch_size"] * accum, "amp": t.get("amp") if amp_dtype else "none",
+              "run_dir": str(run_dir), "history": history, "config": cfg, **metrics}
+    log_run(record, cfg["output"]["results"])
+    print(f"[{cfg['name']} f{fold}] best epoch {best_epoch}: acc {metrics['accuracy']:.4f}  "
+          f"macro-F1 {metrics['macro_f1']:.4f}  -> {run_dir}", flush=True)
+    return record
+
+
+def main(argv: list[str] | None = None) -> None:
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--config", required=True)
+    ap.add_argument("--fold", type=int, nargs="+", required=True, help="one or more CV folds")
+    ap.add_argument("--set", nargs="*", default=[], metavar="KEY=VALUE", help="config overrides")
+    args = ap.parse_args(argv)
+    cfg = load_config(args.config, args.set)
+    for k in args.fold:
+        run(cfg, k)
+
+
+if __name__ == "__main__":
+    main()

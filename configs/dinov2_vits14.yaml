@@ -1,0 +1,3 @@
+base: base.yaml
+model: {key: dinov2_vits14, kwargs: {drop_path_rate: 0.1}}
+train: {lr: 1.0e-4, layer_decay: 0.75, freeze_epochs: 2}

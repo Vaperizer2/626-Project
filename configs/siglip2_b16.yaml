@@ -1,0 +1,2 @@
+base: siglip_b16.yaml
+model: {key: siglip2_b16}
