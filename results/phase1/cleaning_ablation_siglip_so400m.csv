@@ -1,0 +1,5 @@
+variant,all_acc,all_f1,in_acc,in_f1
+keep_all,0.8252,0.8244,0.8612,0.857
+drop_issues,0.8276,0.8266,0.8628,0.8588
+drop_ood,0.7922,0.7903,0.8523,0.8471
+drop_ood+issues,0.7954,0.7938,0.8529,0.847

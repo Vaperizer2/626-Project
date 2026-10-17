@@ -1,0 +1,70 @@
+id,label,pred,self_conf,alt_conf,issue,ood,path
+7a2440a759a4755f,diode,inductor coil,0.0003,0.9957,True,False,images/diode/7a2440a759a4755f.jpg
+2caa0ddedc5e1914,heat sink,connector,0.0009,0.9429,True,False,images/heat sink/2caa0ddedc5e1914.jpg
+80218d0938b71043,heat sink,connector,0.0009,0.9402,True,False,images/heat sink/80218d0938b71043.jpg
+48b9d42ad16607c5,heat sink,connector,0.0009,0.8986,True,False,images/heat sink/48b9d42ad16607c5.jpg
+37e228fa2cab390e,crystal oscillator,heat sink,0.0013,0.937,True,False,images/crystal oscillator/37e228fa2cab390e.jpg
+589cd27c755b4d1a,crystal oscillator,microcontroller board,0.0015,0.9467,True,True,images/crystal oscillator/589cd27c755b4d1a.jpg
+fea30e40b4c687b9,diode,connector,0.002,0.8805,True,False,images/diode/fea30e40b4c687b9.jpg
+fbf10d692ef3b637,inductor coil,resistor,0.0023,0.952,True,False,images/inductor coil/fbf10d692ef3b637.jpg
+c6db4e0810833126,resistor,potentiometer,0.0034,0.9569,True,False,images/resistor/c6db4e0810833126.jpg
+78a33b9e822658d7,microcontroller board,power supply module,0.0037,0.6962,True,False,images/microcontroller board/78a33b9e822658d7.jpg
+9a404050793e2489,heat sink,led,0.004,0.716,True,False,images/heat sink/9a404050793e2489.jpg
+c7daac1fa30d21a4,connector,relay,0.0045,0.8875,True,False,images/connector/c7daac1fa30d21a4.jpg
+05a2f7d22803c7d1,inductor coil,power supply module,0.0047,0.9189,True,False,images/inductor coil/05a2f7d22803c7d1.jpg
+ddfa4249b3f35bd6,microcontroller board,transistor,0.0052,0.7214,True,False,images/microcontroller board/ddfa4249b3f35bd6.jpg
+4ba7238dc3c4b396,resistor,inductor coil,0.0058,0.7942,True,False,images/resistor/4ba7238dc3c4b396.jpg
+750e82a881bc2dbd,connector,battery holder,0.0074,0.7839,True,False,images/connector/750e82a881bc2dbd.jpg
+bfa2a1a808e40027,transformer,heat sink,0.0074,0.9858,True,False,images/transformer/bfa2a1a808e40027.jpg
+b6f1e792c7e26347,inductor coil,crystal oscillator,0.0077,0.7741,True,True,images/inductor coil/b6f1e792c7e26347.jpg
+cab69555795552a6,diode,resistor,0.0079,0.6885,True,False,images/diode/cab69555795552a6.jpg
+81fcc6d67a532ca7,diode,led,0.0085,0.9476,True,False,images/diode/81fcc6d67a532ca7.jpg
+67012695d6f65378,transformer,inductor coil,0.0088,0.9631,True,False,images/transformer/67012695d6f65378.jpg
+0d3f1f7bf564fd24,microcontroller board,ic chip,0.0101,0.9641,True,False,images/microcontroller board/0d3f1f7bf564fd24.jpg
+e68d58da34fd47d8,transformer,power supply module,0.0102,0.7144,True,False,images/transformer/e68d58da34fd47d8.jpg
+2db0df0c2c58587e,resistor,ic chip,0.0106,0.832,True,False,images/resistor/2db0df0c2c58587e.jpg
+8d15c503e0722fec,capacitor,transformer,0.011,0.8448,True,False,images/capacitor/8d15c503e0722fec.jpg
+f65e3b8e4b300168,inductor coil,power supply module,0.0112,0.9471,True,False,images/inductor coil/f65e3b8e4b300168.jpg
+b0a6c8bf5899d4f7,capacitor,transistor,0.0124,0.5244,True,False,images/capacitor/b0a6c8bf5899d4f7.jpg
+d52e68726de85ddc,diode,transistor,0.013,0.5236,True,True,images/diode/d52e68726de85ddc.jpg
+84664aa452f2e2c2,transistor,microcontroller board,0.0138,0.7619,True,False,images/transistor/84664aa452f2e2c2.jpg
+3ba9b4a30733863c,diode,relay,0.014,0.7508,True,False,images/diode/3ba9b4a30733863c.jpg
+4d45e37f9fa282c8,transistor,ic chip,0.0154,0.9412,True,False,images/transistor/4d45e37f9fa282c8.jpg
+465516db84a7dd4a,connector,fuse,0.0156,0.9028,True,False,images/connector/465516db84a7dd4a.jpg
+44250fecc87cd852,switch,connector,0.0158,0.681,True,False,images/switch/44250fecc87cd852.jpg
+be09f0419a0a925e,microcontroller board,ic chip,0.0179,0.949,True,False,images/microcontroller board/be09f0419a0a925e.jpg
+3bf7b1adab7479bd,switch,potentiometer,0.02,0.8693,True,False,images/switch/3bf7b1adab7479bd.jpg
+4b74efe57f8a4d26,diode,led,0.0211,0.7795,True,True,images/diode/4b74efe57f8a4d26.jpg
+3955904d11431ebe,diode,transistor,0.0267,0.5586,True,False,images/diode/3955904d11431ebe.jpg
+ad2535c5ed7ef88e,relay,fuse,0.0291,0.7769,True,True,images/relay/ad2535c5ed7ef88e.jpg
+f2d0a4b83492ff49,ic chip,power supply module,0.0365,0.7092,True,False,images/ic chip/f2d0a4b83492ff49.jpg
+2050bf049df6caec,diode,led,0.0404,0.8809,True,False,images/diode/2050bf049df6caec.jpg
+21a3c3a8c4b090c1,transformer,relay,0.0406,0.6142,True,True,images/transformer/21a3c3a8c4b090c1.jpg
+c55e1f06890a3d48,jumper wire,breadboard,0.0478,0.9497,True,False,images/jumper wire/c55e1f06890a3d48.jpg
+ef7df50596f6899e,microcontroller board,crystal oscillator,0.0481,0.8914,True,False,images/microcontroller board/ef7df50596f6899e.jpg
+cd11d023c5a8445e,jumper wire,breadboard,0.0489,0.8782,True,False,images/jumper wire/cd11d023c5a8445e.jpg
+8335ca63be7854e1,microcontroller board,ic chip,0.0513,0.8247,True,False,images/microcontroller board/8335ca63be7854e1.jpg
+be3e52860e2a23aa,jumper wire,connector,0.0573,0.9015,True,False,images/jumper wire/be3e52860e2a23aa.jpg
+9c115f62e634ca00,capacitor,crystal oscillator,0.0592,0.6405,True,False,images/capacitor/9c115f62e634ca00.jpg
+7532366c7309bdec,jumper wire,breadboard,0.0596,0.9244,True,False,images/jumper wire/7532366c7309bdec.jpg
+3dd58d0c08d1669e,jumper wire,breadboard,0.0656,0.8712,True,False,images/jumper wire/3dd58d0c08d1669e.jpg
+e10165a8d5166f04,power supply module,breadboard,0.0717,0.737,True,False,images/power supply module/e10165a8d5166f04.jpg
+653e63b06f4619dd,inductor coil,resistor,0.0789,0.8637,True,False,images/inductor coil/653e63b06f4619dd.jpg
+7e383dc17057d827,transistor,breadboard,0.0831,0.7097,True,False,images/transistor/7e383dc17057d827.jpg
+b19757c2cf1cc14c,transistor,diode,0.0845,0.7534,True,False,images/transistor/b19757c2cf1cc14c.jpg
+2bedb6814373468c,transistor,breadboard,0.0871,0.8143,True,False,images/transistor/2bedb6814373468c.jpg
+d7275118822fb137,resistor,heat sink,0.0892,0.7627,True,False,images/resistor/d7275118822fb137.jpg
+9b8f18c63e084043,transformer,heat sink,0.0947,0.7372,True,False,images/transformer/9b8f18c63e084043.jpg
+c014dff87226839a,resistor,potentiometer,0.0952,0.7681,True,False,images/resistor/c014dff87226839a.jpg
+67a3da1ef2658343,diode,transistor,0.0973,0.8166,True,False,images/diode/67a3da1ef2658343.jpg
+d0bdd153dbc5c8af,battery holder,led,0.1145,0.6891,True,False,images/battery holder/d0bdd153dbc5c8af.jpg
+8f088f958bebc785,microcontroller board,ic chip,0.1325,0.7926,True,False,images/microcontroller board/8f088f958bebc785.jpg
+88d5f269623b5d71,resistor,transistor,0.1444,0.6271,True,False,images/resistor/88d5f269623b5d71.jpg
+6f1efb8ed663f372,jumper wire,inductor coil,0.1656,0.7496,True,False,images/jumper wire/6f1efb8ed663f372.jpg
+461b62cf20f9bf04,power supply module,relay,0.1908,0.6261,True,True,images/power supply module/461b62cf20f9bf04.jpg
+d46801c95d638775,transistor,crystal oscillator,0.2071,0.6468,True,True,images/transistor/d46801c95d638775.jpg
+5775c449b32a5f7b,transistor,crystal oscillator,0.2152,0.6765,True,False,images/transistor/5775c449b32a5f7b.jpg
+75775c96107d90c9,diode,transistor,0.2191,0.64,True,True,images/diode/75775c96107d90c9.jpg
+8261cdea62cba19a,breadboard,jumper wire,0.2275,0.756,True,False,images/breadboard/8261cdea62cba19a.jpg
+6e0df521ad0fd349,transistor,diode,0.3468,0.6019,True,True,images/transistor/6e0df521ad0fd349.jpg
+f20a3d0d3681b537,crystal oscillator,transistor,0.3488,0.5457,True,True,images/crystal oscillator/f20a3d0d3681b537.jpg
