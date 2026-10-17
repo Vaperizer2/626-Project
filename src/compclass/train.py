@@ -71,11 +71,32 @@ def warmup_cosine(opt: torch.optim.Optimizer, warmup: int, total: int) -> torch.
     return torch.optim.lr_scheduler.LambdaLR(opt, f)
 
 
-def set_backbone_trainable(model: nn.Module, trainable: bool) -> None:
-    """Freeze/unfreeze everything except the classifier head (``get_classifier()``, as in timm)."""
+def permanently_frozen(model: nn.Module, trainable_blocks: int | None) -> set[int]:
+    """Parameter ids that stay frozen for the whole run ("partial fine-tuning").
+
+    With ``trainable_blocks = N`` on a transformer that has a ``blocks`` list (timm ViT / DINOv2 / CLIP /
+    SigLIP), only the last N blocks plus everything after them (final norm, attention-pool, head) are
+    trained; the patch embedding, position embedding and earlier blocks keep their pretrained values. Frozen
+    parameters get no gradients and no AdamW state, which is what lets a 400M-parameter model fit in 8 GB.
+    """
+    if not trainable_blocks or not hasattr(model, "blocks"):
+        return set()
+    n = len(model.blocks)
+    keep = {id(p) for b in list(model.blocks)[max(0, n - trainable_blocks):] for p in b.parameters()}
+    early = {id(p) for b in list(model.blocks)[: max(0, n - trainable_blocks)] for p in b.parameters()}
+    stem = {id(p) for name, p in model.named_parameters()
+            if name.split(".")[0] in {"patch_embed", "pos_embed", "cls_token", "reg_token", "norm_pre"}}
+    return (early | stem) - keep
+
+
+def set_backbone_trainable(model: nn.Module, trainable: bool, frozen: set[int] = frozenset()) -> None:
+    """Freeze/unfreeze everything except the classifier head (``get_classifier()``, as in timm).
+
+    Parameters in ``frozen`` stay frozen regardless (see ``permanently_frozen``).
+    """
     head = {id(p) for p in model.get_classifier().parameters()}
     for p in model.parameters():
-        p.requires_grad_(trainable or id(p) in head)
+        p.requires_grad_((trainable or id(p) in head) and id(p) not in frozen)
 
 
 def run(cfg: Config, fold: int) -> dict[str, Any]:
@@ -119,6 +140,9 @@ def run(cfg: Config, fold: int) -> dict[str, Any]:
     accum = t.get("accum_steps", 1)
     steps_per_epoch = min(len(train_dl), t.get("max_steps_per_epoch") or len(train_dl))
     opt_steps = math.ceil(steps_per_epoch / accum)
+    frozen = permanently_frozen(model, t.get("trainable_blocks"))
+    set_backbone_trainable(model, True, frozen)  # timm's optimizer skips requires_grad=False params
+    n_trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     opt = make_optimizer(model, t)
     sched = warmup_cosine(opt, int(t.get("warmup_epochs", 0) * opt_steps), t["epochs"] * opt_steps)
     scaler = torch.amp.GradScaler(device.type, enabled=amp_dtype == torch.float16)
@@ -128,7 +152,7 @@ def run(cfg: Config, fold: int) -> dict[str, Any]:
     best_f1, best_epoch, bad, history = -1.0, -1, 0, []
     n_seen, train_time = 0, 0.0
     for epoch in range(t["epochs"]):
-        set_backbone_trainable(model, epoch >= t.get("freeze_epochs", 0))
+        set_backbone_trainable(model, epoch >= t.get("freeze_epochs", 0), frozen)
         model.train()
         t0, loss_sum = time.perf_counter(), 0.0
         opt.zero_grad(set_to_none=True)
@@ -178,7 +202,8 @@ def run(cfg: Config, fold: int) -> dict[str, Any]:
     metrics = compute_metrics(y_val, probs.argmax(1), m.classes)
     np.savez_compressed(run_dir / "val_preds.npz", ids=np.array([r["id"] for r in val_rows]), y=y_val, probs=probs)
     record = {"method": "finetune", "name": cfg["name"], "model": mc["key"], "config_hash": h, "fold": fold,
-              "manifest": m.fingerprint, "params": n_params, "input_size": spec.input_size,
+              "manifest": m.fingerprint, "params": n_params, "trainable_params": n_trainable,
+              "input_size": spec.input_size,
               "epochs_run": len(history), "best_epoch": best_epoch, "train_time_s": round(train_time, 1),
               "train_img_per_s": round(n_seen / max(train_time, 1e-9), 1),
               "peak_vram_mb": round(torch.cuda.max_memory_allocated() / 2**20) if device.type == "cuda" else None,

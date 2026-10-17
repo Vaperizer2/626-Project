@@ -1,0 +1,10 @@
+# Partial fine-tune of SigLIP So400m/14 @384 (428M params) on an 8 GB GPU.
+# Only the last `trainable_blocks` of 27 transformer blocks + attention-pool + head are trained; the rest keep
+# their web-pretrained weights (no gradients, no optimizer state). This sits between a linear probe
+# (trainable_blocks: 0 and head only) and a full fine-tune. Gradient checkpointing keeps activations small.
+base: base.yaml
+name: siglip_so400m_384_partial
+model: {key: siglip_so400m_384, kwargs: {drop_path_rate: 0.1}}
+train: {epochs: 15, patience: 5, batch_size: 8, accum_steps: 4, lr: 5.0e-5, layer_decay: 0.8, warmup_epochs: 1,
+        freeze_epochs: 1, trainable_blocks: 8, grad_checkpointing: true, weight_decay: 0.05}
+aug: {randaugment: {n: 2, m: 7}}
