@@ -41,7 +41,7 @@ Collect: `host.compute.create('ssh:carlpc2-science').attach_job('<id>').result()
 
 ## Findings since Phase 1
 - Probe + zero-shot logit fusion (same SigLIP So400m tower): logp_probe + 0.25*log_softmax(50*cos_sim) gives
-  OOF 83.4% acc / 83.2% F1 (vs 82.5/82.4), in-scope 86.7%; 4/5 folds improve. Weight picked on OOF -> fix
+  OOF 83.4% acc / 83.2% F1 (vs 82.5/82.4), in-scope 86.7%; all 5/5 folds improve (fold acc 0.805/0.829/0.835/0.833/0.824 -> 0.807/0.841/0.837/0.845/0.838). Weight picked on OOF -> fix
   T=50, w=0.25 a priori and confirm on sealed test. Final export = image tower + 2 linear heads in one ONNX.
 - Web-holdout sub-agent (Wikimedia, data/web_holdout_v1) was still running when the laptop went off; check
   whether data/web_holdout_v1/manifest.json exists, else re-dispatch (task text is in the session archive).
