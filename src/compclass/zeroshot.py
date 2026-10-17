@@ -66,17 +66,19 @@ def run_zeroshot(manifest_path: str, key: str, folds: list[int], results: str = 
     tokenizer = open_clip.get_tokenizer(arch)
     m = load_manifest(manifest_path)
     W = text_classifier(model, tokenizer, m.classes, device)
-    records = []
+    records, all_ids, all_y, all_s = [], [], [], []
     for k in folds:
         _, va = get_fold(m, k)
         dl = DataLoader(ImageDataset(va, m.root, m.class_to_idx, preprocess), batch_size=batch_size,
                         num_workers=num_workers)
-        preds, ys = [], []
+        preds, ys, scores = [], [], []
         with torch.no_grad():
             for x, y in dl:
                 with torch.autocast(device.type, dtype=torch.float16, enabled=device.type == "cuda"):
                     f = model.encode_image(x.to(device)).float()
-                preds.append(((f / f.norm(dim=-1, keepdim=True)) @ W.T).argmax(1).cpu())
+                sim = (f / f.norm(dim=-1, keepdim=True)) @ W.T  # cosine similarity to each class prompt
+                scores.append(sim.cpu())
+                preds.append(sim.argmax(1).cpu())
                 ys.append(y)
         metrics = compute_metrics(torch.cat(ys).numpy(), torch.cat(preds).numpy(), m.classes)
         rec = {"method": "zeroshot", "name": f"zeroshot_{key}", "model": key, "fold": k, "manifest": m.fingerprint,
@@ -84,6 +86,13 @@ def run_zeroshot(manifest_path: str, key: str, folds: list[int], results: str = 
         log_run(rec, results)
         print(f"[zeroshot {key} f{k}] acc {metrics['accuracy']:.4f}  macro-F1 {metrics['macro_f1']:.4f}")
         records.append(rec)
+        all_ids += [r["id"] for r in va]; all_y.append(torch.cat(ys)); all_s.append(torch.cat(scores))
+    import numpy as np
+    from pathlib import Path
+    out = Path(results).parent / "oof" / f"zeroshot_{key}.npz"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    np.savez(out, ids=np.array(all_ids), y=torch.cat(all_y).numpy(), sim=torch.cat(all_s).numpy(),
+             classes=np.array(m.classes))
     return records
 
 

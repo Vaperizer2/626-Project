@@ -171,6 +171,8 @@ def _swin(num_classes: int, pretrained: bool, name: str = "swin_tiny_patch4_wind
 
 
 # ---------------------------------------------------------------------------------- 3. self-supervised
+@_register("dinov2_vitl14", "DINOv2 (self-supervised ViT)", "vit_large_patch14_dinov2.lvd142m",
+           name="vit_large_patch14_dinov2.lvd142m", input_size=224)
 @_register("dinov2_vitb14", "DINOv2 (self-supervised ViT)", "vit_base_patch14_dinov2.lvd142m",
            name="vit_base_patch14_dinov2.lvd142m", input_size=224)
 @_register("dinov2_vits14", "DINOv2 (self-supervised ViT)", "vit_small_patch14_dinov2.lvd142m", input_size=224)
@@ -187,6 +189,8 @@ def _dinov2(num_classes: int, pretrained: bool, name: str = "vit_small_patch14_d
 
 
 # ---------------------------------------------------------------------------------- 4. vision-language
+@_register("clip_vitl14_336", "CLIP (contrastive image-text)", "vit_large_patch14_clip_quickgelu_336.openai",
+           zeroshot=("ViT-L-14-336", "openai"), name="vit_large_patch14_clip_quickgelu_336.openai")
 @_register("clip_vitl14", "CLIP (contrastive image-text)", "vit_large_patch14_clip_quickgelu_224.openai",
            zeroshot=("ViT-L-14", "openai"), name="vit_large_patch14_clip_quickgelu_224.openai")
 @_register("clip_vitb16", "CLIP (contrastive image-text)", "vit_base_patch16_clip_quickgelu_224.openai",
@@ -204,6 +208,10 @@ def _clip(num_classes: int, pretrained: bool, name: str = "vit_base_patch16_clip
     return _timm(name, num_classes, pretrained, **kw)
 
 
+@_register("siglip2_so400m_384", "SigLIP (sigmoid image-text)", "vit_so400m_patch16_siglip_384.v2_webli",
+           zeroshot=("ViT-SO400M-16-SigLIP2-384", "webli"), name="vit_so400m_patch16_siglip_384.v2_webli")
+@_register("siglip_so400m_384", "SigLIP (sigmoid image-text)", "vit_so400m_patch14_siglip_384.webli",
+           zeroshot=("ViT-SO400M-14-SigLIP-384", "webli"), name="vit_so400m_patch14_siglip_384.webli")
 @_register("siglip2_b16", "SigLIP (sigmoid image-text)", "vit_base_patch16_siglip_224.v2_webli",
            zeroshot=("ViT-B-16-SigLIP2", "webli"), name="vit_base_patch16_siglip_224.v2_webli")
 @_register("siglip_b16", "SigLIP (sigmoid image-text)", "vit_base_patch16_siglip_224.webli",

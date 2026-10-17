@@ -69,6 +69,9 @@ def run_probe(manifest_path: str, key: str, folds: list[int], results: str = "re
     X = extract_features(key, dev, m, pretrained=pretrained, **kw)
     extract_s = time.perf_counter() - t0
     pos = {r["id"]: i for i, r in enumerate(dev)}
+    # Out-of-fold class probabilities (each dev row scored by the probe that did not train on it);
+    # used for label-noise auditing and ensembling.
+    oof = np.full((len(dev), len(m.classes)), np.nan, dtype=np.float32)
     records = []
     for k in folds:
         tr, va = get_fold(m, k)
@@ -76,6 +79,7 @@ def run_probe(manifest_path: str, key: str, folds: list[int], results: str = "re
         ytr = np.array([m.class_to_idx[r["label"]] for r in tr])
         yva = np.array([m.class_to_idx[r["label"]] for r in va])
         search = fit_probe(X[itr], ytr, np.array([r["cluster"] for r in tr]))
+        oof[iva] = search.predict_proba(X[iva])
         metrics = compute_metrics(yva, search.predict(X[iva]), m.classes)
         rec = {"method": "linear_probe", "name": f"probe_{key}", "model": key, "fold": k, "manifest": m.fingerprint,
                "feature_dim": int(X.shape[1]), "best_C": search.best_params_["logisticregression__C"],
@@ -83,6 +87,10 @@ def run_probe(manifest_path: str, key: str, folds: list[int], results: str = "re
         log_run(rec, results)
         print(f"[probe {key} f{k}] C={rec['best_C']}  acc {metrics['accuracy']:.4f}  macro-F1 {metrics['macro_f1']:.4f}")
         records.append(rec)
+    out = Path(results).parent / "oof" / f"probe_{key}.npz"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    np.savez(out, ids=np.array([r["id"] for r in dev]), y=np.array([m.class_to_idx[r["label"]] for r in dev]),
+             proba=oof, classes=np.array(m.classes))
     return records
 
 
