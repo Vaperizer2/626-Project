@@ -31,8 +31,13 @@ Repo doubles as a learning resource (`docs/LEARNING_PATH.md`). uv for all envs. 
 |---|---|---|---|
 | 2A | 36b782da-2c70-4ef0-ab86-a6d2a45eefc0 | siglip_so400m_384_partial, siglip2_b16, clip_vitb16 | `~/Projects/626-Project/results/phase2/runs_A.jsonl` |
 | 2B | f527a56f-0fe9-401c-973f-0aaabe4248e7 | dinov2_vitb14 vit_b16 convnext_tiny swin_t efficientnet_v2_s resnet50 mobilenetv3_large scratch_cnn | `.../results/phase2/runs_B.jsonl` |
-| C (overnight) | b32ad78a-0ef8-44bb-b9e1-f4acb56b5c1a | So400m + So400m2 probe with hflip TTA; So400m partial FT v2 (4 blocks, lr 2e-5, fixed schedule) folds 0-2; folds 3-4 for siglip2_b16 clip_vitb16 convnext_tiny vit_b16 dinov2_vitb14 | `.../results/phase1b/runs.jsonl`, `.../results/phase2/runs_C.jsonl`, `runs_C3.jsonl` |
-Note: 2A/2B ran with the OLD LR schedule (warm-up not restarted at unfreeze); C uses the fixed one (commit d6d4e09+).
+| ~~C~~ | b32ad78a-… | CANCELLED (would have mixed old/new schedule across folds) | — |
+| C2 (overnight, MAIN benchmark) | c00df89a-332a-4b75-bfc6-976b25aae7e1 | FIXED schedule, 5 folds: siglip2_b16 clip_vitb16 vit_b16 dinov2_vitb14 convnext_tiny swin_t efficientnet_v2_s resnet50 mobilenetv3_large; So400m/So400m2 TTA probes; So400m partial v2 folds 0-2; scratch_cnn 5 folds | `~/Projects/626-Project/results/phase2/runs_fixed.jsonl`, `runs_v2/*/fold*/val_preds.npz`, `results/phase1b/runs.jsonl` |
+Note: 2A/2B ran with the OLD LR schedule (warm-up not restarted at unfreeze) -> report them as the schedule-bug
+ablation; C2 (fixed schedule, all 5 folds) is the main fine-tune table.
+2A result (folds 0-2, old schedule; results/phase2/raw_oldschedule/): So400m partial FT 0.8216 acc/0.8206 F1
+(probe 0.8229/0.8216, 23 min/fold); SigLIP2-B full FT 0.7201/0.7199 (< its probe 0.7533/0.7518!); CLIP-B FT
+0.6956/0.6908 (> probe 0.6665/0.6598).
 If job order on the lock differs (C before B), that's fine — each job extracts its own code tarball.
 Per-fold predictions: `~/Projects/626-Project/runs/<name>-<hash>/fold<k>/val_preds.npz` (best.pt checkpoints also there).
 Collect: `host.compute.create('ssh:carlpc2-science').attach_job('<id>').result()` (repl), or
