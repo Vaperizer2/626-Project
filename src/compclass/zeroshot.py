@@ -59,7 +59,9 @@ def run_zeroshot(manifest_path: str, key: str, folds: list[int], results: str = 
                          f"{[k for k, e in REGISTRY.items() if e.zeroshot]}")
     arch, tag = entry.zeroshot
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    model, _, preprocess = open_clip.create_model_and_transforms(arch, pretrained=tag, device=device)
+    # OpenAI CLIP was trained with QuickGELU; open_clip's plain arch names default to GELU.
+    model, _, preprocess = open_clip.create_model_and_transforms(arch, pretrained=tag, device=device,
+                                                                 force_quick_gelu=tag == "openai")
     model.eval()
     tokenizer = open_clip.get_tokenizer(arch)
     m = load_manifest(manifest_path)

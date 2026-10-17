@@ -37,6 +37,8 @@ from .data import ImageDataset, build_mixup, build_transforms, get_fold, load_ma
 from .evaluate import compute_metrics, log_run, predict
 from .models import build_model
 
+# Fewer fragmentation OOMs on 8 GB cards (must be set before CUDA initialises).
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 AMP = {"fp16": torch.float16, "bf16": torch.bfloat16, "none": None, None: None}
 
 

@@ -4,7 +4,8 @@
 
 For each model: download pretrained weights (into $HF_HOME), then time fp16-AMP training steps
 (forward + backward + AdamW step) at batch 16 and the model's native input size, recording parameters,
-peak VRAM and steps/s; plus fp16 inference throughput. On OOM it retries with gradient checkpointing.
+peak VRAM and steps/s; plus fp16 inference throughput. On OOM it retries with gradient checkpointing, then half the batch;
+each model runs in a fresh subprocess so VRAM numbers are not polluted by the previous model.
 Then it exercises the other entry points end-to-end on a synthetic manifest: 1-epoch fine-tunes through
 the real ``compclass.train`` CLI, ONNX export + parity, zero-shot (also caches the text towers), the linear
 probe and the classical baseline. Everything lands in one JSON file.
@@ -15,16 +16,18 @@ from __future__ import annotations
 import argparse
 import glob
 import json
+import os
 import subprocess
 import sys
 import time
 import traceback
 from pathlib import Path
 
-import torch
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+import torch  # noqa: E402
 
-from compclass.data import make_synthetic_manifest
-from compclass.models import REGISTRY, build_model
+from compclass.data import make_synthetic_manifest  # noqa: E402
+from compclass.models import REGISTRY, build_model  # noqa: E402
 
 
 def bench(model: torch.nn.Module, size: int, batch: int = 16, warm: int = 3, iters: int = 10) -> dict:
@@ -61,34 +64,36 @@ def bench(model: torch.nn.Module, size: int, batch: int = 16, warm: int = 3, ite
             "infer_img_s": round(iters * batch / (time.perf_counter() - t0), 1)}
 
 
+def bench_one(key: str, batch: int, grad_ckpt: bool) -> dict:
+    """Build + benchmark one model (run in its own process so every model starts with a clean GPU)."""
+    entry = REGISTRY[key]
+    t0 = time.perf_counter()
+    model, spec = build_model(key, 20, pretrained=entry.timm_name is not None)
+    rec = {"build_s": round(time.perf_counter() - t0, 1), "input_size": spec.input_size,
+           "params_m": round(sum(p.numel() for p in model.parameters()) / 1e6, 2)}
+    if grad_ckpt:
+        model.set_grad_checkpointing(True)
+    return {**rec, **bench(model, spec.input_size, batch)}
+
+
 def witness_models(batch: int) -> list[dict]:
+    """Per model: try batch B, then B + gradient checkpointing, then B/2 + checkpointing (OOM ladder)."""
     out = []
     for key, entry in REGISTRY.items():
-        rec: dict = {"key": key, "family": entry.family, "timm_name": entry.timm_name, "batch": batch}
-        try:
-            t0 = time.perf_counter()
-            model, spec = build_model(key, 20, pretrained=entry.timm_name is not None)
-            rec.update(build_s=round(time.perf_counter() - t0, 1), input_size=spec.input_size,
-                       params_m=round(sum(p.numel() for p in model.parameters()) / 1e6, 2))
-            try:
-                rec.update(bench(model, spec.input_size, batch))
-                rec["grad_checkpointing"] = False
-            except torch.cuda.OutOfMemoryError:
-                import gc
-
-                model.zero_grad(set_to_none=True)
-                gc.collect()
-                torch.cuda.empty_cache()
-                model.set_grad_checkpointing(True)
-                rec.update(bench(model, spec.input_size, batch))
-                rec["grad_checkpointing"] = True
-            rec["ok"] = True
-        except Exception as e:  # record and continue: one broken model must not hide the others
-            rec.update(ok=False, error=f"{type(e).__name__}: {e}", trace=traceback.format_exc()[-1500:])
+        rec: dict = {"key": key, "family": entry.family, "timm_name": entry.timm_name, "ok": False}
+        for b, ckpt in [(batch, False), (batch, True), (batch // 2, True)]:
+            p = subprocess.run([sys.executable, __file__, "--one", key, "--batch", str(b)] + ["--grad-ckpt"] * ckpt,
+                               capture_output=True, text=True)
+            if p.returncode == 0:
+                rec.update(json.loads(p.stdout.strip().splitlines()[-1]), ok=True, batch=b, grad_checkpointing=ckpt)
+                break
+            rec["error"] = p.stderr.strip().splitlines()[-1][:400] if p.stderr.strip() else f"exit {p.returncode}"
+            if "OutOfMemoryError" not in p.stderr:
+                rec["trace"] = p.stderr[-1500:]
+                break  # not a memory problem: retrying with less memory will not help
+            rec.setdefault("oom_at", []).append({"batch": b, "grad_checkpointing": ckpt})
         print(json.dumps({k: v for k, v in rec.items() if k != "trace"}), flush=True)
         out.append(rec)
-        model = None
-        torch.cuda.empty_cache()
     return out
 
 
@@ -112,10 +117,17 @@ def main() -> None:
     ap.add_argument("--out", default="results/gpu_witness.json")
     ap.add_argument("--work", default="results/cache/witness")
     ap.add_argument("--batch", type=int, default=16)
+    ap.add_argument("--one", help="internal: benchmark a single model key and print one JSON line")
+    ap.add_argument("--grad-ckpt", action="store_true")
+    ap.add_argument("--skip-models", action="store_true", help="only run the end-to-end CLI steps")
     args = ap.parse_args()
+    if args.one:
+        print(json.dumps(bench_one(args.one, args.batch, args.grad_ckpt)))
+        return
     work = Path(args.work)
     report = {"torch": torch.__version__, "cuda": torch.version.cuda, "gpu": torch.cuda.get_device_name(),
-              "capability": torch.cuda.get_device_capability(), "models": witness_models(args.batch)}
+              "capability": torch.cuda.get_device_capability(),
+              "models": [] if args.skip_models else witness_models(args.batch)}
 
     synth = make_synthetic_manifest(work / "synth", n_classes=3, per_class=40, test_per_class=4)
     common = [f"data.manifest={synth}", "train.epochs=1", "train.warmup_epochs=0", "train.freeze_epochs=0",

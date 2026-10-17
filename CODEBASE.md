@@ -35,7 +35,7 @@ legacy/              pre-v2 notebooks and docs (numbers invalid: duplicate leaka
 | vit_b16 | ViT | vit_base_patch16_224.augreg_in21k_ft_in1k | 224 | |
 | swin_t | Swin | swin_tiny_patch4_window7_224.ms_in22k_ft_in1k | 224 | |
 | dinov2_vits14 / dinov2_vitb14 | DINOv2 | vit_{small,base}_patch14_dinov2.lvd142m | 224 (native 518) | |
-| clip_vitb16 / clip_vitl14 | CLIP | vit_{base_patch16,large_patch14}_clip_224.openai | 224 | ViT-B-16 / ViT-L-14 openai |
+| clip_vitb16 / clip_vitl14 | CLIP | vit_{base_patch16,large_patch14}_clip_quickgelu_224.openai | 224 | ViT-B-16 / ViT-L-14 openai |
 | siglip_b16 / siglip2_b16 | SigLIP / SigLIP 2 | vit_base_patch16_siglip_224.{webli,v2_webli} | 224 | ViT-B-16-SigLIP(2) webli |
 
 Add a family by writing one decorated builder in `registry.py` (with an explainer docstring) and one YAML file.

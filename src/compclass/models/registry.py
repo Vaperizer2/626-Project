@@ -187,17 +187,19 @@ def _dinov2(num_classes: int, pretrained: bool, name: str = "vit_small_patch14_d
 
 
 # ---------------------------------------------------------------------------------- 4. vision-language
-@_register("clip_vitl14", "CLIP (contrastive image-text)", "vit_large_patch14_clip_224.openai",
-           zeroshot=("ViT-L-14", "openai"), name="vit_large_patch14_clip_224.openai")
-@_register("clip_vitb16", "CLIP (contrastive image-text)", "vit_base_patch16_clip_224.openai",
+@_register("clip_vitl14", "CLIP (contrastive image-text)", "vit_large_patch14_clip_quickgelu_224.openai",
+           zeroshot=("ViT-L-14", "openai"), name="vit_large_patch14_clip_quickgelu_224.openai")
+@_register("clip_vitb16", "CLIP (contrastive image-text)", "vit_base_patch16_clip_quickgelu_224.openai",
            zeroshot=("ViT-B-16", "openai"))
-def _clip(num_classes: int, pretrained: bool, name: str = "vit_base_patch16_clip_224.openai", **kw):
+def _clip(num_classes: int, pretrained: bool, name: str = "vit_base_patch16_clip_quickgelu_224.openai", **kw):
     """CLIP (Radford et al., 2021): an image ViT and a text Transformer trained so matching pairs align.
 
     400M web (image, caption) pairs; a softmax contrastive loss pulls each image towards its own caption and
     away from the other captions in the batch. The image tower alone is a strong general feature extractor
     (fine-tune or linear probe); with the text tower it classifies *zero-shot* by comparing the image with
-    prompts like "a photo of a resistor" (see zeroshot.py). Uses CLIP's own normalisation constants.
+    prompts like "a photo of a resistor" (see zeroshot.py). Uses CLIP's own normalisation constants. OpenAI's
+    weights were trained with the QuickGELU activation (x * sigmoid(1.702x)), so we use timm's ``_quickgelu``
+    variants -- plain GELU silently degrades them.
     """
     return _timm(name, num_classes, pretrained, **kw)
 
