@@ -1,0 +1,5 @@
+# Ablation of siglip_so400m_384_partial: fewer trainable blocks (4 of 27), lower LR, and the fixed schedule
+# (warm-up restarts when the backbone unfreezes). Question: can any fine-tune beat the frozen linear probe?
+base: siglip_so400m_384_partial.yaml
+name: siglip_so400m_384_partial_v2
+train: {lr: 2.0e-5, trainable_blocks: 4, warmup_epochs: 2, freeze_epochs: 2, epochs: 15, patience: 5}

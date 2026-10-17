@@ -32,10 +32,15 @@ from .models import build_model
 
 @torch.no_grad()
 def extract_features(key: str, rows: list[Row], m: Manifest, cache_dir: str | Path = "results/cache/features",
-                     batch_size: int = 64, num_workers: int = 4, pretrained: bool = True) -> np.ndarray:
-    """Pooled backbone features [N, D] for ``rows`` (eval preprocessing), cached by model + row ids."""
+                     batch_size: int = 64, num_workers: int = 4, pretrained: bool = True,
+                     tta: bool = False) -> np.ndarray:
+    """Pooled backbone features [N, D] for ``rows`` (eval preprocessing), cached by model + row ids.
+
+    ``tta=True`` averages the features of the image and its horizontal mirror (test-time augmentation).
+    """
     ids_hash = hashlib.sha256("".join(r["id"] for r in rows).encode()).hexdigest()[:12]
-    cache = Path(cache_dir) / f"{key}-{m.fingerprint}-{ids_hash}.npy"
+    tag = ("-tta" if tta else "") + ("" if pretrained else "-random")
+    cache = Path(cache_dir) / f"{key}-{m.fingerprint}-{ids_hash}{tag}.npy"
     if cache.exists():
         return np.load(cache)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -46,14 +51,18 @@ def extract_features(key: str, rows: list[Row], m: Manifest, cache_dir: str | Pa
     feats = []
     for x, _ in dl:
         with torch.autocast(device.type, dtype=torch.float16, enabled=device.type == "cuda"):
-            feats.append(model(x.to(device)).float().cpu())
+            x = x.to(device)
+            f = model(x).float()
+            if tta:
+                f = 0.5 * (f + model(torch.flip(x, dims=[3])).float())
+            feats.append(f.cpu())
     out = torch.cat(feats).numpy()
     cache.parent.mkdir(parents=True, exist_ok=True)
     np.save(cache, out)
     return out
 
 
-def fit_probe(X: np.ndarray, y: np.ndarray, groups: np.ndarray, Cs=(0.01, 0.1, 1.0, 10.0)) -> GridSearchCV:
+def fit_probe(X: np.ndarray, y: np.ndarray, groups: np.ndarray, Cs=(0.001, 0.003, 0.01, 0.1, 1.0)) -> GridSearchCV:
     """Standardise -> multinomial logistic regression; C chosen by grouped 3-fold CV on the training rows."""
     pipe = make_pipeline(StandardScaler(), LogisticRegression(max_iter=3000))
     search = GridSearchCV(pipe, {"logisticregression__C": list(Cs)}, cv=GroupKFold(3), scoring="f1_macro",
@@ -65,6 +74,7 @@ def run_probe(manifest_path: str, key: str, folds: list[int], results: str = "re
               pretrained: bool = True, **kw) -> list[dict]:
     m = load_manifest(manifest_path)
     dev = get_dev(m)
+    suffix = "_tta" if kw.get("tta") else ""
     t0 = time.perf_counter()
     X = extract_features(key, dev, m, pretrained=pretrained, **kw)
     extract_s = time.perf_counter() - t0
@@ -81,13 +91,13 @@ def run_probe(manifest_path: str, key: str, folds: list[int], results: str = "re
         search = fit_probe(X[itr], ytr, np.array([r["cluster"] for r in tr]))
         oof[iva] = search.predict_proba(X[iva])
         metrics = compute_metrics(yva, search.predict(X[iva]), m.classes)
-        rec = {"method": "linear_probe", "name": f"probe_{key}", "model": key, "fold": k, "manifest": m.fingerprint,
+        rec = {"method": "linear_probe", "name": f"probe_{key}{suffix}", "model": key, "fold": k, "manifest": m.fingerprint,
                "feature_dim": int(X.shape[1]), "best_C": search.best_params_["logisticregression__C"],
                "extract_time_s": round(extract_s, 1), **metrics}
         log_run(rec, results)
         print(f"[probe {key} f{k}] C={rec['best_C']}  acc {metrics['accuracy']:.4f}  macro-F1 {metrics['macro_f1']:.4f}")
         records.append(rec)
-    out = Path(results).parent / "oof" / f"probe_{key}.npz"
+    out = Path(results).parent / "oof" / f"probe_{key}{suffix}.npz"
     out.parent.mkdir(parents=True, exist_ok=True)
     np.savez(out, ids=np.array([r["id"] for r in dev]), y=np.array([m.class_to_idx[r["label"]] for r in dev]),
              proba=oof, classes=np.array(m.classes))
@@ -100,8 +110,9 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--model", required=True)
     ap.add_argument("--folds", type=int, nargs="+", default=[0, 1, 2, 3, 4])
     ap.add_argument("--results", default="results/runs.jsonl")
+    ap.add_argument("--tta", action="store_true", help="average features of image + horizontal flip")
     args = ap.parse_args(argv)
-    run_probe(args.manifest, args.model, args.folds, args.results)
+    run_probe(args.manifest, args.model, args.folds, args.results, tta=args.tta)
 
 
 if __name__ == "__main__":
