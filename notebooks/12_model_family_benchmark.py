@@ -51,6 +51,9 @@ MODEL_SETTINGS = {
     "convnext_base": {"family": "convnext", "backbone": "convnext_base", "lr": 3e-4, "weight_decay": 1e-4, "freeze_backbone_epochs": 1},
     "efficientnet_v2_m": {"family": "efficientnet_v2", "backbone": "efficientnet_v2_m", "lr": 6e-4, "weight_decay": 1e-4, "freeze_backbone_epochs": 1},
     "swin_b": {"family": "swin", "backbone": "swin_b", "lr": 4e-4, "weight_decay": 1e-4, "freeze_backbone_epochs": 1},
+    # Keep the naive baseline out of DEFAULT_MODELS so the registered 14-model
+    # benchmark order and its deterministic seed offsets remain unchanged.
+    "resnet18": {"family": "resnet", "backbone": "resnet18", "lr": 1e-3, "weight_decay": 1e-4, "freeze_backbone_epochs": 1},
 }
 
 
