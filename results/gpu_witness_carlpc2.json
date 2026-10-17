@@ -1,0 +1,318 @@
+{
+ "torch": "2.11.0+cu128",
+ "cuda": "12.8",
+ "gpu": "NVIDIA GeForce RTX 4060 Ti",
+ "capability": [
+  8,
+  9
+ ],
+ "models": [
+  {
+   "key": "scratch_cnn",
+   "family": "Scratch CNN",
+   "timm_name": null,
+   "ok": true,
+   "build_s": 0.0,
+   "input_size": 160,
+   "params_m": 1.19,
+   "train_it_s": 282.52,
+   "train_img_s": 4520.2,
+   "peak_vram_mb": 117,
+   "infer_img_s": 19870.3,
+   "batch": 16,
+   "grad_checkpointing": false
+  },
+  {
+   "key": "resnet50",
+   "family": "ResNet (residual CNN)",
+   "timm_name": "resnet50.a1_in1k",
+   "ok": true,
+   "build_s": 0.7,
+   "input_size": 224,
+   "params_m": 23.55,
+   "train_it_s": 25.91,
+   "train_img_s": 414.6,
+   "peak_vram_mb": 1027,
+   "infer_img_s": 1679.4,
+   "batch": 16,
+   "grad_checkpointing": false
+  },
+  {
+   "key": "efficientnet_v2_s",
+   "family": "EfficientNet (scaled CNN)",
+   "timm_name": "tf_efficientnetv2_s.in21k_ft_in1k",
+   "ok": true,
+   "build_s": 0.6,
+   "input_size": 300,
+   "params_m": 20.2,
+   "train_it_s": 13.49,
+   "train_img_s": 215.9,
+   "peak_vram_mb": 2527,
+   "infer_img_s": 997.2,
+   "batch": 16,
+   "grad_checkpointing": false
+  },
+  {
+   "key": "mobilenetv3_large",
+   "family": "MobileNet (mobile CNN)",
+   "timm_name": "mobilenetv3_large_100.ra_in1k",
+   "ok": true,
+   "build_s": 0.5,
+   "input_size": 224,
+   "params_m": 4.23,
+   "train_it_s": 72.1,
+   "train_img_s": 1153.5,
+   "peak_vram_mb": 497,
+   "infer_img_s": 6841.0,
+   "batch": 16,
+   "grad_checkpointing": false
+  },
+  {
+   "key": "convnext_tiny",
+   "family": "ConvNeXt (modernised CNN)",
+   "timm_name": "convnext_tiny.fb_in22k_ft_in1k",
+   "ok": true,
+   "build_s": 0.6,
+   "input_size": 224,
+   "params_m": 27.84,
+   "train_it_s": 22.1,
+   "train_img_s": 353.6,
+   "peak_vram_mb": 1348,
+   "infer_img_s": 1449.0,
+   "batch": 16,
+   "grad_checkpointing": false
+  },
+  {
+   "key": "vit_b16",
+   "family": "ViT (vision transformer)",
+   "timm_name": "vit_base_patch16_224.augreg_in21k_ft_in1k",
+   "ok": true,
+   "build_s": 0.9,
+   "input_size": 224,
+   "params_m": 85.81,
+   "train_it_s": 11.05,
+   "train_img_s": 176.8,
+   "peak_vram_mb": 2232,
+   "infer_img_s": 908.5,
+   "batch": 16,
+   "grad_checkpointing": false
+  },
+  {
+   "key": "swin_t",
+   "family": "Swin (hierarchical transformer)",
+   "timm_name": "swin_tiny_patch4_window7_224.ms_in22k_ft_in1k",
+   "ok": true,
+   "build_s": 0.6,
+   "input_size": 224,
+   "params_m": 27.53,
+   "train_it_s": 19.04,
+   "train_img_s": 304.6,
+   "peak_vram_mb": 1466,
+   "infer_img_s": 1093.4,
+   "batch": 16,
+   "grad_checkpointing": false
+  },
+  {
+   "key": "dinov2_vits14",
+   "family": "DINOv2 (self-supervised ViT)",
+   "timm_name": "vit_small_patch14_dinov2.lvd142m",
+   "ok": true,
+   "build_s": 0.6,
+   "input_size": 224,
+   "params_m": 21.64,
+   "train_it_s": 25.91,
+   "train_img_s": 414.6,
+   "peak_vram_mb": 1076,
+   "infer_img_s": 1936.1,
+   "batch": 16,
+   "grad_checkpointing": false
+  },
+  {
+   "key": "dinov2_vitb14",
+   "family": "DINOv2 (self-supervised ViT)",
+   "timm_name": "vit_base_patch14_dinov2.lvd142m",
+   "ok": true,
+   "build_s": 0.9,
+   "input_size": 224,
+   "params_m": 85.74,
+   "train_it_s": 8.95,
+   "train_img_s": 143.1,
+   "peak_vram_mb": 2689,
+   "infer_img_s": 657.5,
+   "batch": 16,
+   "grad_checkpointing": false
+  },
+  {
+   "key": "clip_vitb16",
+   "family": "CLIP (contrastive image-text)",
+   "timm_name": "vit_base_patch16_clip_quickgelu_224.openai",
+   "ok": true,
+   "build_s": 1.3,
+   "input_size": 224,
+   "params_m": 85.81,
+   "train_it_s": 10.06,
+   "train_img_s": 160.9,
+   "peak_vram_mb": 2462,
+   "infer_img_s": 768.9,
+   "batch": 16,
+   "grad_checkpointing": false
+  },
+  {
+   "key": "clip_vitl14",
+   "family": "CLIP (contrastive image-text)",
+   "timm_name": "vit_large_patch14_clip_quickgelu_224.openai",
+   "ok": true,
+   "error": "torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 26.00 MiB. GPU 0 has a total capacity of 7.70 GiB of which 24.88 MiB is free. Process 1055 has 15.29 MiB memory in use. Including non-PyTorch memory, this process has 7.40 GiB memory in use. Of the allocated memory 7.21 GiB is allocated by PyTorch, and 28.27 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory ",
+   "oom_at": [
+    {
+     "batch": 16,
+     "grad_checkpointing": false
+    }
+   ],
+   "build_s": 2.7,
+   "input_size": 224,
+   "params_m": 303.2,
+   "train_it_s": 1.98,
+   "train_img_s": 31.6,
+   "peak_vram_mb": 5811,
+   "infer_img_s": 173.9,
+   "batch": 16,
+   "grad_checkpointing": true
+  },
+  {
+   "key": "siglip_b16",
+   "family": "SigLIP (sigmoid image-text)",
+   "timm_name": "vit_base_patch16_siglip_224.webli",
+   "ok": true,
+   "build_s": 1.1,
+   "input_size": 224,
+   "params_m": 92.9,
+   "train_it_s": 10.72,
+   "train_img_s": 171.6,
+   "peak_vram_mb": 2334,
+   "infer_img_s": 806.7,
+   "batch": 16,
+   "grad_checkpointing": false
+  },
+  {
+   "key": "siglip2_b16",
+   "family": "SigLIP (sigmoid image-text)",
+   "timm_name": "vit_base_patch16_siglip_224.v2_webli",
+   "ok": true,
+   "build_s": 0.9,
+   "input_size": 224,
+   "params_m": 92.9,
+   "train_it_s": 10.4,
+   "train_img_s": 166.4,
+   "peak_vram_mb": 2334,
+   "infer_img_s": 807.1,
+   "batch": 16,
+   "grad_checkpointing": false
+  }
+ ],
+ "steps": [
+  {
+   "step": "train_cli_scratch_cnn",
+   "ok": true,
+   "result": {
+    "cmd": "compclass.train --config configs/scratch_cnn.yaml --fold 0 --set data.manifest=results/cache/witness/synth/manifest.json train.epochs=1 train.warmup_epochs=0 train.freeze_epochs=0 output.runs_dir=results/cache/witness/runs output.results=results/cache/witness/runs.jsonl data.num_workers=4 train.batch_size=16",
+    "stdout_tail": "[scratch_cnn f0] epoch   0  loss 1.1991  val macro-F1 0.2461\n[scratch_cnn f0] best epoch 0: acc 0.3750  macro-F1 0.2461  -> results/cache/witness/runs/scratch_cnn-3e6c764c28f0/fold0\n"
+   },
+   "seconds": 9.8
+  },
+  {
+   "step": "train_cli_convnext_tiny",
+   "ok": true,
+   "result": {
+    "cmd": "compclass.train --config configs/convnext_tiny.yaml --fold 0 --set data.manifest=results/cache/witness/synth/manifest.json train.epochs=1 train.warmup_epochs=0 train.freeze_epochs=0 output.runs_dir=results/cache/witness/runs output.results=results/cache/witness/runs.jsonl data.num_workers=4 train.batch_size=16",
+    "stdout_tail": "[convnext_tiny f0] epoch   0  loss 1.2520  val macro-F1 0.4539\n[convnext_tiny f0] best epoch 0: acc 0.5417  macro-F1 0.4539  -> results/cache/witness/runs/convnext_tiny-6098e01a84df/fold0\n"
+   },
+   "seconds": 19.5
+  },
+  {
+   "step": "train_cli_vit_b16",
+   "ok": true,
+   "result": {
+    "cmd": "compclass.train --config configs/vit_b16.yaml --fold 0 --set data.manifest=results/cache/witness/synth/manifest.json train.epochs=1 train.warmup_epochs=0 train.freeze_epochs=0 output.runs_dir=results/cache/witness/runs output.results=results/cache/witness/runs.jsonl data.num_workers=4 train.batch_size=16",
+    "stdout_tail": "[vit_b16 f0] epoch   0  loss 1.9414  val macro-F1 0.4672\n[vit_b16 f0] best epoch 0: acc 0.5833  macro-F1 0.4672  -> results/cache/witness/runs/vit_b16-690fdf9949ed/fold0\n"
+   },
+   "seconds": 4.8
+  },
+  {
+   "step": "export_onnx_convnext_tiny",
+   "ok": true,
+   "result": {
+    "onnx": "results/cache/witness/export_convnext_tiny/model.onnx",
+    "max_abs_logit_diff": 1.8775463104248047e-06,
+    "argmax_agree": true,
+    "parity_ok": true
+   },
+   "seconds": 2.6
+  },
+  {
+   "step": "zeroshot_clip_vitb16",
+   "ok": true,
+   "result": 0.3333333333333333,
+   "seconds": 2.5
+  },
+  {
+   "step": "zeroshot_clip_vitl14",
+   "ok": true,
+   "result": 0.3333333333333333,
+   "seconds": 2.1
+  },
+  {
+   "step": "zeroshot_siglip_b16",
+   "ok": true,
+   "result": 0.3333333333333333,
+   "seconds": 4.5
+  },
+  {
+   "step": "zeroshot_siglip2_b16",
+   "ok": true,
+   "result": 0.3333333333333333,
+   "seconds": 10.6
+  },
+  {
+   "step": "linear_probe_dinov2_vits14",
+   "ok": true,
+   "result": 1.0,
+   "seconds": 3.0
+  },
+  {
+   "step": "classical",
+   "ok": true,
+   "result": 0.7083333333333334,
+   "seconds": 0.1
+  }
+ ],
+ "train_runs": [
+  {
+   "name": "scratch_cnn",
+   "params": 1183267,
+   "train_time_s": 5.1,
+   "train_img_per_s": 18.8,
+   "peak_vram_mb": 132,
+   "accuracy": 0.375,
+   "macro_f1": 0.24611708482676223
+  },
+  {
+   "name": "convnext_tiny",
+   "params": 27822435,
+   "train_time_s": 12.7,
+   "train_img_per_s": 7.6,
+   "peak_vram_mb": 1350,
+   "accuracy": 0.5416666666666666,
+   "macro_f1": 0.45394112060778724
+  },
+  {
+   "name": "vit_b16",
+   "params": 85800963,
+   "train_time_s": 0.9,
+   "train_img_per_s": 112.0,
+   "peak_vram_mb": 1904,
+   "accuracy": 0.5833333333333334,
+   "macro_f1": 0.46717817561807334
+  }
+ ]
+}

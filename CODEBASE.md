@@ -65,6 +65,14 @@ uv run python scripts/gpu_witness.py --out results/gpu_witness.json
 
 Reading results: `pandas.read_json("results/runs.jsonl", lines=True)` then group by `name`/`method` over `fold`.
 
+## Hardware witness
+
+`results/gpu_witness_carlpc2.json` (RTX 4060 Ti 8 GB, torch 2.11.0+cu128, 2026-10-17): all 13 registry models download,
+build and run fp16-AMP train steps (forward + backward + AdamW) at batch 16 and native input size. Peak VRAM ranges
+from 0.1 GB (scratch_cnn) to 2.7 GB (dinov2_vitb14) for the base-size models; clip_vitl14 OOMs at batch 16 and needs
+gradient checkpointing (5.8 GB, ~32 img/s). The witness also runs 1-epoch synthetic fine-tunes through the CLI, ONNX
+export + onnxruntime parity, all four zero-shot models, the linear probe and the classical baseline.
+
 ## Gotchas
 
 * PyYAML reads `1e-3` as a string; write `1.0e-3` in YAML (CLI `--set` values are coerced for you).
