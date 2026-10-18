@@ -213,7 +213,7 @@ def make_synthetic_manifest(out_dir: str | Path, n_classes: int = 3, per_class: 
             is_test = j >= per_class
             rows.append({"id": sha[:16], "path": rel, "label": name, "cluster": f"c{len(rows):05d}",
                          "split": "test" if is_test else "dev", "fold": None if is_test else j % n_folds,
-                         "sha256": sha, "src_paths": [], "orig_format": "PNG", "orig_width": size,
+                         "sha256": sha, "src_paths": [], "orig_format": "JPEG", "orig_width": size,
                          "orig_height": size, "legacy_split": None, "flags": []})
     manifest = {"version": "v2.0", "created_utc": "synthetic", "classes": classes, "images_root": "images",
                 "split_policy": {"seed": seed, "test_fraction": test_per_class / (per_class + test_per_class),
