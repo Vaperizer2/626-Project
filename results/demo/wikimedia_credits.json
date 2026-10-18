@@ -1,0 +1,133 @@
+{
+ "in_scope": [
+  {
+   "file": "wiki_resistor.jpg",
+   "expected": "resistor",
+   "title": "File:Resistor 1.0 MOhm 0.167 Watt PTH.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Resistor_1.0_MOhm_0.167_Watt_PTH.jpg",
+   "url": "https://upload.wikimedia.org/wikipedia/commons/c/ce/Resistor_1.0_MOhm_0.167_Watt_PTH.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=original",
+   "license": "CC BY 2.0",
+   "author": "SparkFun Electronics from Boulder, USA",
+   "size": [
+    600,
+    600
+   ],
+   "sha256": "448cf58fb6c41c61"
+  },
+  {
+   "file": "wiki_resistor_power_hard.jpg",
+   "expected": "resistor",
+   "title": "File:Resistor (4540999005).jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Resistor_(4540999005).jpg",
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/e/e3/Resistor_%284540999005%29.jpg/1280px-Resistor_%284540999005%29.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "license": "CC BY 2.0",
+   "author": "bengt-re from Sweden",
+   "size": [
+    1280,
+    798
+   ],
+   "sha256": "830f52a422be2e6d",
+   "note": "hard case: aluminium-housed wirewound power resistor with fins"
+  },
+  {
+   "file": "wiki_capacitor.jpg",
+   "expected": "capacitor",
+   "title": "File:Electrolytic capacitors-P1090328.JPG",
+   "page": "https://commons.wikimedia.org/wiki/File:Electrolytic_capacitors-P1090328.JPG",
+   "url": "https://upload.wikimedia.org/wikipedia/commons/f/f6/Electrolytic_capacitors-P1090328.JPG?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail_unscaled",
+   "license": "CC0",
+   "author": "Elcap",
+   "size": [
+    1158,
+    674
+   ],
+   "sha256": "2a63878f1ac1f847"
+  },
+  {
+   "file": "wiki_led.jpg",
+   "expected": "led",
+   "title": "File:5mm Red LED.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:5mm_Red_LED.jpg",
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/c/c8/5mm_Red_LED.jpg/1280px-5mm_Red_LED.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "license": "CC BY-SA 2.0",
+   "author": "oomlout",
+   "size": [
+    1280,
+    853
+   ],
+   "sha256": "75c9339e269b67a6"
+  },
+  {
+   "file": "wiki_arduino.jpg",
+   "expected": "microcontroller board",
+   "title": "File:Arduino Uno board.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Arduino_Uno_board.jpg",
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/d/de/Arduino_Uno_board.jpg/1280px-Arduino_Uno_board.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "license": "CC0",
+   "author": "JrawX",
+   "size": [
+    1280,
+    963
+   ],
+   "sha256": "ad42919b6dc21d86"
+  },
+  {
+   "file": "wiki_breadboard.jpg",
+   "expected": "breadboard",
+   "title": "File:400 points breadboard.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:400_points_breadboard.jpg",
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/7/73/400_points_breadboard.jpg/1280px-400_points_breadboard.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "license": "CC BY-SA 2.0",
+   "author": "oomlout",
+   "size": [
+    1280,
+    854
+   ],
+   "sha256": "0b1e0a0efddc303c"
+  },
+  {
+   "file": "wiki_relay.jpg",
+   "expected": "relay",
+   "title": "File:SRD-05VDC-SL-C 5V one-channel relay module.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:SRD-05VDC-SL-C_5V_one-channel_relay_module.jpg",
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/56/SRD-05VDC-SL-C_5V_one-channel_relay_module.jpg/1280px-SRD-05VDC-SL-C_5V_one-channel_relay_module.jpg?utm_source=commons.wikimedia.org&utm_campaign=imageinfo&utm_content=thumbnail",
+   "license": "CC BY-SA 4.0",
+   "author": "Suyash Dwivedi",
+   "size": [
+    1280,
+    854
+   ],
+   "sha256": "3b7e57b8e6bcb42b"
+  }
+ ],
+ "out_of_scope": [
+  {
+   "file": "oos_multimeter.jpg",
+   "expected": "out of scope (multimeter)",
+   "title": "File:Digital Multimeter Aka.jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Digital_Multimeter_Aka.jpg",
+   "url": "https://upload.wikimedia.org/wikipedia/commons/a/a6/Digital_Multimeter_Aka.jpg",
+   "license": "CC BY-SA 2.5",
+   "author": "Andr\u00e9 Karwath aka Aka",
+   "size": [
+    672,
+    800
+   ],
+   "sha256": "18f9d3ffe1273f02"
+  },
+  {
+   "file": "oos_soldering_iron.jpg",
+   "expected": "out of scope (soldering iron)",
+   "title": "File:Soldering iron (UK Plug).jpg",
+   "page": "https://commons.wikimedia.org/wiki/File:Soldering_iron_(UK_Plug).jpg",
+   "url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/b/bf/Soldering_iron_%28UK_Plug%29.jpg/1280px-Soldering_iron_%28UK_Plug%29.jpg",
+   "license": "CC BY-SA 2.0",
+   "author": "Soldering_iron_and_accessories.jpg: oomlout derivative work:",
+   "size": [
+    1280,
+    919
+   ],
+   "sha256": "6332ab90becd0215"
+  }
+ ]
+}

@@ -178,7 +178,14 @@ def cmd_export(manifest: str, n_check: int = 32, force: bool = False) -> dict:
     x0 = torch.randn(1, 3, size, size)
     dyn = ({0: torch.export.Dim("batch", min=1, max=64)},)
     external = (OUT / "model.onnx.data").exists()
-    if force or not onnx_path.exists():
+    # The head (probe weights, temperature, threshold) is baked into the ONNX graph. Record which head.npz an
+    # export was built from, and re-export whenever it changed, so model.onnx and preprocess.json never disagree.
+    import hashlib
+
+    head_sha = hashlib.sha256((OUT / "head.npz").read_bytes()).hexdigest()
+    stamp = OUT / "model.onnx.head_sha256"
+    stale = not stamp.exists() or stamp.read_text().strip() != head_sha
+    if force or not onnx_path.exists() or stale:
         kw = dict(input_names=["input"], output_names=["logits", "probs"], opset_version=18, dynamo=True,
                   dynamic_shapes=dyn)
         try:
@@ -188,8 +195,9 @@ def cmd_export(manifest: str, n_check: int = 32, force: bool = False) -> dict:
             print("single-file export failed, using external data:", repr(e)[:200])
             torch.onnx.export(model, (x0,), onnx_path, external_data=True, **kw)
             external = True
+        stamp.write_text(head_sha)
     else:
-        print("reusing existing", onnx_path)
+        print("reusing existing", onnx_path, "(built from the current head.npz)")
     (OUT / "labels.json").write_text(json.dumps(m.classes, indent=1))
     head = dict(np.load(OUT / "head.npz"))
     pre = {**spec.to_dict(), "color_order": "RGB", "layout": "NCHW", "scale": 1 / 255,
@@ -275,7 +283,7 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--manifest", default="data/v2/manifest.json")
     ap.add_argument("--confirm", action="store_true", help="test only: acknowledge spending the sealed-test look")
     ap.add_argument("--tag", default=None)
-    ap.add_argument("--force", action="store_true", help="export: re-export even if model.onnx exists")
+    ap.add_argument("--force", action="store_true", help="export: re-export even if model.onnx matches head.npz")
     a = ap.parse_args(argv)
     {"fit": lambda: cmd_fit(a.manifest), "export": lambda: cmd_export(a.manifest, force=a.force),
      "test": lambda: cmd_test(a.manifest, a.confirm, a.tag)}[a.cmd]()

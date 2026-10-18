@@ -28,6 +28,7 @@ data/v2/*.npy
 runs/
 results/cache/
 *.onnx
+*.onnx.data
 
 # Jupyter
 .ipynb_checkpoints/
