@@ -1,4 +1,4 @@
-# STATUS — resume checkpoint (updated 2026-10-18 ~11:30 SAST)
+# STATUS — resume checkpoint (updated 2026-10-18 ~12:45 SAST)
 
 If an assistant session dies, a new one should read this file first, then `CODEBASE.md` and `EXPERIMENT_LOG.md`.
 
@@ -31,10 +31,16 @@ Repo doubles as a learning resource (`docs/LEARNING_PATH.md`). uv for all envs. 
       SEALED TEST USED (once, 2026-10-18): 83.7% acc / 83.4% macro-F1; in-scope 86.9%; 87.1% coverage @ 90.9% accepted acc
       (abstain < 0.5); ECE 0.034. Probe-only 84.4% (fusion gain ~0 with deployable preprocessing). ONNX on PC only
       (1.64 GB, batch 1): ORT parity 6e-6, 892 ms/img CPU; OpenCV DNN segfaults on this graph.
-- [~] Phase 4 — sub-agents running: Demo b7690ee5-9b8f-4b59-8751-24a296aca0f3 (src/compclass/demo.py, docs/DEMO.md),
-      Report becf6e88-1518-4dd1-98f9-5e01867757a3 (docs/report/REPORT.md, figures, README, EXPERIMENT_LOG).
-      Web holdout agent decc9afc-dbca-4d62-968b-b038543aee95 still downloading (data/web_holdout_v1); evaluate ONCE with
-      `uv run python -m compclass.final test --manifest data/web_holdout_v1/manifest.json --confirm` when ready.
+- [x] Phase 4 Report — docs/report/REPORT.md (+ figures/tables via scripts/make_report_figures.py; analysis CSVs via
+      scripts/analysis_tables.py, byte-identical reproduction). README + EXPERIMENT_LOG rewritten. 54 arXiv refs checked.
+- [x] Phase 4 Demo — `uv run python -m compclass.demo --source <file|folder|URL|webcam>` (docs/DEMO.md). Parity 64/64,
+      0.9 s/img CPU, 67 ms/img onnxruntime-gpu (PC). Webcam/window modes untested (no camera/display available).
+- [~] Web holdout — agent decc9afc-dbca-4d62-968b-b038543aee95 still downloading (Wikimedia 429 rate limits); told to exclude
+      the 9 demo photos (results/demo/wikimedia_credits.json) and to make the manifest load_manifest()-valid. Then evaluate ONCE:
+      `uv run python -m compclass.final test --manifest data/web_holdout_v1/manifest.json --confirm` on the PC and fill
+      REPORT.md section 8 + DEMO.md placeholder.
+- Corrections recorded by the report agent: probe>=fine-tune holds for SIGLIP only (CLIP-B/DINOv2-B/ConvNeXt-T/ResNet-50
+  fine-tunes beat their probes 5/5 folds); schedule ablation confounded with BN freezing; hflip TTA mixed.
 
 ## Running PC jobs (Claude Science job ids; they run detached, serialised by flock ~/.gpu.lock)
 | job | id | what | outputs on PC |
