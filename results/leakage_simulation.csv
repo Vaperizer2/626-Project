@@ -1,0 +1,4 @@
+model,legacy_style_acc,legacy_eval_rows,leaked_rows,acc_on_leaked,acc_on_clean,grouped_cv_acc,inflation_pts
+siglip_so400m_384,0.8804,853,198,0.9495,0.8595,0.8252,5.5192
+convnext_tiny,0.7081,853,198,0.9646,0.6305,0.5983,10.9759
+resnet50,0.6577,853,198,0.9949,0.5557,0.5215,13.6173
