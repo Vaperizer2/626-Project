@@ -33,9 +33,10 @@ Fine-tuning beats the frozen probe for ImageNet, DINOv2 and CLIP-B backbones (+3
 not for SigLIP. The final model is a calibrated, abstaining SigLIP So400m probe fused with the model's own
 zero-shot head. It was evaluated once on a 418-image sealed test split: accuracy 0.837 (95 % CI 0.799–0.870), macro-F1
 0.834, in-scope accuracy 0.869, ECE 0.034. Abstaining below confidence 0.5 answers 87 % of images at 90.9 %
-accuracy. The zero-shot fusion adds nothing measurable with the deployable preprocessing. Fusion, the
-learning-rate-schedule fix, flip test-time augmentation and training-data cleaning all have effects inside the
-noise floor of this data size.
+accuracy. On a separately collected, sealed set of 407 Wikimedia Commons photos the same model reaches accuracy
+0.821 (95 % CI 0.780–0.855) and macro-F1 0.816. In-distribution the zero-shot fusion adds nothing measurable, but on
+these out-of-source photos it lifts accuracy from 0.779 (probe alone) to 0.821. The learning-rate-schedule fix,
+flip test-time augmentation and training-data cleaning all have effects inside the noise floor of this data size.
 
 # Introduction and goal
 
@@ -303,7 +304,7 @@ changed in-scope accuracy by +0.16 points (0.8612 → 0.8628), which is noise. D
 evidently still carry useful class signal, or match the flagged test images. The training data were left
 unchanged (v2.0).
 
-## Zero-shot fusion (null result with the deployable pipeline)
+## Zero-shot fusion (null in-distribution; helps out-of-source, Section 8)
 
 An exploratory analysis in Phase 1 suggested that adding the backbone's zero-shot log-probabilities to the probe
 (log p_probe + 0.25 · log softmax(50 · cos)) helped. Fusion weight and temperature were fixed a priori at
@@ -312,8 +313,9 @@ w = 0.25, T_zs = 50. Re-measured with the single preprocessing pipeline that the
 points; `exports/final/fit_report.json`). On the sealed test the fused model scores 0.8373 and the probe alone
 0.8445 (−0.72 points; `results/final/final_test_v2.json`), a tie within the ±1.8-point SE. Fusion is kept in
 the exported graph because it is free at inference (one extra 1152 × 20 matrix product). We do not claim it
-improves accuracy. Per-image probe-only test predictions were not saved, so no paired (McNemar) test is
-possible.
+improves in-distribution accuracy. Per-image probe-only test predictions were not saved, so no paired (McNemar)
+test is possible. On the out-of-source web holdout, however, the fused model beats the probe by 4.2 points
+(Section 8).
 
 Table: Ablation summary (`docs/report/tables/ablations.csv`). Probe/TTA rows: macro-F1; cleaning and fusion rows: accuracy.
 
@@ -393,20 +395,51 @@ The exported graph is exact in onnxruntime, but it is large: 1.6 GB, with about 
 the OpenCV demo (`docs/DEMO.md`) uses OpenCV for capture and drawing and onnxruntime for inference. Real-time
 webcam use on CPU would need a smaller student model (Section 10).
 
-# Web holdout (PLACEHOLDER — not yet evaluated)
+# Web holdout: out-of-source evaluation
 
-> **Status: not evaluated.** A second sealed set of Wikimedia Commons photographs (`data/web_holdout_v1/`) is
-> being assembled to measure out-of-source generalisation. It has **not** been evaluated, and no number in this report
-> comes from it. When it is ready it will be evaluated once with
-> `uv run python -m compclass.final test --manifest data/web_holdout_v1/manifest.json --confirm`, and this section
-> will report accuracy, macro-F1, coverage / accepted accuracy, ECE and per-class recall, with the same caveats
-> on sample size.
+A second sealed set, `data/web_holdout_v1/` (fingerprint `5458af44e043b3aa`), contains 407 Wikimedia Commons
+photographs (CC/PD licensed; credits in `data/web_holdout_v1/ATTRIBUTION.md`), 15–25 per class. It was built after
+the final model was frozen: category listing, exact dedup, a CLIP ViT-B/32 leakage gate against every v2 image
+(cosine ≥ 0.92 dropped; maximum kept similarity 0.903), exclusion of the nine photos already used in the demo, and a
+strict manual visual review that kept only photos in which one component of the labelled class is dominant
+(`data/web_holdout_v1/dropped.csv`; `tools/build_web_holdout.py`). It was evaluated **once**
+(`results/final/final_test_web_holdout_v1.json`).
+
+Table: Final model on the two sealed sets.
+
+| Metric | Kaggle sealed test (n = 418) | Web holdout (n = 407) |
+|---|---:|---:|
+| Accuracy (95 % Wilson CI) | 0.837 (0.799–0.870) | 0.821 (0.780–0.855) |
+| Macro-F1 | 0.834 | 0.816 |
+| Probe-only accuracy (no zero-shot head) | 0.845 | 0.779 |
+| Coverage at threshold 0.5 | 0.871 | 0.853 |
+| Accuracy on accepted images | 0.909 | 0.891 |
+| ECE | 0.034 | 0.050 |
+
+Three observations.
+
+1. **Out-of-source accuracy is close to in-distribution accuracy** (0.821 vs 0.837; the CIs overlap heavily), so
+   the model is not tied to the Kaggle scrape's search-engine style.
+2. **The zero-shot head pays off under distribution shift.** In-distribution the fusion was a null result
+   (Section 6), but on the web holdout the fused model is correct on 334 images versus 317 for the probe alone
+   (+4.2 points). This is consistent with reports that keeping a vision-language model's text classifier preserves
+   robustness lost by a purely task-trained head (e.g. WiSE-FT). Per-image probe-only predictions were not saved,
+   so a paired significance test is not available; the comparison is on the same 407 images.
+3. **The weakest classes mirror training-data contamination.** Recall is lowest for *led* (0.47; 7 of its errors
+   are predicted *diode*), *switch* (0.52; real toggle, slide and DIP switches are predicted *ic chip* 6 times, and
+   the training *switch* class is dominated by Nintendo Switch images, Section 2) and *transformer* (0.67; 5 errors
+   to *inductor coil*). *Crystal oscillator* (precision 0.60) and *diode* (precision 0.58) absorb these errors.
+
+Caveats: the holdout is easier than an unbiased web sample by construction (one reviewer kept only clear,
+single-component photos and dropped ambiguous ones), five classes have only 15 images, 144 of 984 selected candidates
+were never downloaded because of Wikimedia rate limits, and the review decisions were made by an automated agent
+looking at thumbnails, without a second annotator.
 
 # Limitations and threats to validity
 
 * **Single source dataset.** All train, CV and test images come from one Kaggle scrape with shared search-engine
-  biases. The sealed test is in-distribution, so generalisation to camera photos of real benches is untested until
-  the web holdout and target-domain data are evaluated.
+  biases. The sealed test is in-distribution; the web holdout (Section 8) tests other internet photos, but
+  generalisation to camera photos of real benches remains untested until target-domain data are collected.
 * **Automated OOD flags.** The 27.8 % out-of-scope estimate and every "in-scope" number rest on an unverified CLIP
   screen with a hand-set threshold (0.25). It has false positives (e.g. resistor schematics) and surely misses some cases.
   The 69 label issues are likewise model-flagged and unreviewed.
@@ -432,7 +465,7 @@ webcam use on CPU would need a smaller student model (Section 10).
 1. **Distil to a small CNN** (MobileNetV3 / EfficientNet-B0 class) using the SigLIP model's soft labels on the dev
    images plus unlabelled component photos. The goals are graphs that `cv2.dnn` can load and real-time CPU inference.
 2. **Target-domain data.** Collect and label camera photos of physical components (the legacy camera-collection
-   guide is in `legacy/docs/CAMERA_DATA_COLLECTION_GUIDE.md`), and evaluate the web holdout.
+   guide is in `legacy/docs/CAMERA_DATA_COLLECTION_GUIDE.md`).
 3. **Human relabelling** of the 69 audited label issues and review of the 816 OOD flags. This would turn the in-scope
    subset into a verified benchmark and allow a clean retraining comparison.
 4. **Fairer fine-tuning budgets:** a small per-family LR/epoch search with nested CV and several seeds, and full

@@ -42,3 +42,4 @@ results/cache/
 # OS / editor
 .DS_Store
 *.swp
+data/web_holdout_v1/images/

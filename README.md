@@ -42,7 +42,8 @@ Caveats, all detailed in the report:
   gains 3.6–6.5 points.
 * The 1.6 GB ONNX graph runs exactly in onnxruntime (max |Δp| 6e-6, ~0.9 s/image on CPU), but OpenCV's DNN importer
   segfaults on it, so the demo uses onnxruntime for inference.
-* A Wikimedia web holdout (`data/web_holdout_v1/`) has **not** been evaluated yet.
+* On 407 fresh Wikimedia Commons photos (`data/web_holdout_v1/`, evaluated once) the final model scores
+  **0.821 accuracy / 0.816 macro-F1**; here the zero-shot head helps (+4.2 points over the probe alone).
 * The old notebooks' 0.71–0.76 accuracies (`legacy/`) were inflated by duplicate leakage (+5.5 to +13.6 points in a
   replay; report §3.3).
 
@@ -111,7 +112,7 @@ uv run python -m compclass.train --config configs/siglip_so400m_384_partial_v2.y
 uv run python -m compclass.final fit
 uv run python -m compclass.final export
 uv run python -m compclass.final test --confirm         # already spent: results/final/final_test_v2.json
-uv run python -m compclass.final test --manifest data/web_holdout_v1/manifest.json --confirm   # web holdout (pending)
+uv run python -m compclass.final test --manifest data/web_holdout_v1/manifest.json --confirm   # web holdout (done once)
 
 # Phase 4 — demo and report
 uv run python -m compclass.demo --source <file|folder|url|webcam-index>

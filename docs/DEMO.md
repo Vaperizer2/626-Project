@@ -262,13 +262,20 @@ the exact reference array for any image, which you can save with `numpy.save`. T
 the demo's `--json` output (expect differences around 1e-5). The `ort` crate needs the onnxruntime shared library
 (its `download-binaries` feature or a system install), and its CUDA execution provider is optional.
 
-## 9. Web holdout results — placeholder
+## 9. Web holdout results
 
-> **Not evaluated yet.** `data/web_holdout_v1/` (a second sealed set of Wikimedia Commons photos) is still being
-> built. When it is ready it will be evaluated **once** with
-> `uv run python -m compclass.final test --manifest data/web_holdout_v1/manifest.json --confirm`, and the numbers
-> go here. The nine Commons photos above are a demo, not that holdout. Check them for overlap with the holdout
-> (by Commons file title or sha256 in `results/demo/wikimedia_credits.json`) before using the holdout.
+The final model was evaluated once on `data/web_holdout_v1/`: 407 Wikimedia Commons photos collected after the
+model was frozen, excluding the nine demo photos above and any image too similar to the training data
+(`results/final/final_test_web_holdout_v1.json`):
+
+| | Web holdout (n = 407) |
+|---|---:|
+| Accuracy | 0.821 (95 % CI 0.780–0.855) |
+| Macro-F1 | 0.816 |
+| Answered (not UNSURE) at threshold 0.5 | 85.3 % of images, 89.1 % of them correct |
+
+Expect it to be weakest on real toggle/slide switches (often called *ic chip*), LEDs (often called *diode*) and
+mains transformers (often called *inductor coil*); see `docs/report/REPORT.md` Section 8.
 
 ## Credits (Wikimedia Commons images used in the demo)
 
