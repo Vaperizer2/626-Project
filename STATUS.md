@@ -1,4 +1,4 @@
-# STATUS — resume checkpoint (updated 2026-10-18 ~12:45 SAST)
+# STATUS — resume checkpoint (updated 2026-10-18 ~14:45 SAST) — ALL PLANNED PHASES COMPLETE
 
 If an assistant session dies, a new one should read this file first, then `CODEBASE.md` and `EXPERIMENT_LOG.md`.
 
@@ -35,10 +35,9 @@ Repo doubles as a learning resource (`docs/LEARNING_PATH.md`). uv for all envs. 
       scripts/analysis_tables.py, byte-identical reproduction). README + EXPERIMENT_LOG rewritten. 54 arXiv refs checked.
 - [x] Phase 4 Demo — `uv run python -m compclass.demo --source <file|folder|URL|webcam>` (docs/DEMO.md). Parity 64/64,
       0.9 s/img CPU, 67 ms/img onnxruntime-gpu (PC). Webcam/window modes untested (no camera/display available).
-- [~] Web holdout — agent decc9afc-dbca-4d62-968b-b038543aee95 still downloading (Wikimedia 429 rate limits); told to exclude
-      the 9 demo photos (results/demo/wikimedia_credits.json) and to make the manifest load_manifest()-valid. Then evaluate ONCE:
-      `uv run python -m compclass.final test --manifest data/web_holdout_v1/manifest.json --confirm` on the PC and fill
-      REPORT.md section 8 + DEMO.md placeholder.
+- [x] Web holdout — data/web_holdout_v1 (407 Wikimedia photos, images gitignored; rebuild with tools/build_web_holdout.py
+      from the cached tar artifact) evaluated ONCE: 0.821 acc (95% CI 0.780-0.855) / 0.816 macro-F1; probe-only 0.779 ->
+      zero-shot head +4.2 pts out-of-source. Weak: led (->diode), switch (->ic chip), transformer (->inductor coil).
 - Corrections recorded by the report agent: probe>=fine-tune holds for SIGLIP only (CLIP-B/DINOv2-B/ConvNeXt-T/ResNet-50
   fine-tunes beat their probes 5/5 folds); schedule ablation confounded with BN freezing; hflip TTA mixed.
 
@@ -78,3 +77,9 @@ Collect: `host.compute.create('ssh:carlpc2-science').attach_job('<id>').result()
 3. Final model: likely SigLIP So400m (probe or partial FT); calibrate + abstain threshold; consider distilling to
    a small CNN for real-time OpenCV; export ONNX + parity check; evaluate sealed test + web holdout once.
 4. OpenCV demo app (file/folder/URL/webcam) and comparative report.
+
+## Open items (user's call)
+- Switch the PC login shell back: `chsh -s /bin/fish carl` (temporarily bash for job submission).
+- Optional next work: relabel the 69 audited issues + rebuild "switch" (Nintendo contamination); distil the model into
+  a small CNN for pure OpenCV-DNN/real-time CPU use; collect target-domain camera photos; test webcam/window demo
+  modes and onnxruntime-gpu on the RTX 3060 laptop (untested).
