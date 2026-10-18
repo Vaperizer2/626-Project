@@ -210,19 +210,27 @@ def cmd_export(manifest: str, n_check: int = 32, force: bool = False) -> dict:
            "onnx_mb": round(sum(p.stat().st_size for p in OUT.glob("model.onnx*")) / 2**20, 1),
            "ort_max_abs_prob_diff": float(np.abs(ref - got).max()),
            "ort_argmax_agree": float((ref.argmax(1) == got.argmax(1)).mean()), "ort_cpu_ms_per_image": round(ort_ms, 1)}
-    try:
-        import cv2
+    (OUT / "export_report.json").write_text(json.dumps(rep, indent=1))  # save before the riskier OpenCV check
+    # OpenCV DNN runs in a child process: its ONNX importer is native code and can crash (segfault) on large
+    # transformer graphs; a crash there must not take the export down with it.
+    import subprocess
+    import sys
 
-        net = cv2.dnn.readNetFromONNX(str(onnx_path))
-        cvp = []
-        for i in range(len(X)):
-            net.setInput(X[i:i + 1].numpy())
-            cvp.append(net.forward("probs"))
-        cvp = np.concatenate(cvp)
-        rep.update(cv2_version=cv2.__version__, cv2_max_abs_prob_diff=float(np.abs(ref - cvp).max()),
-                   cv2_argmax_agree=float((ref.argmax(1) == cvp.argmax(1)).mean()))
-    except Exception as e:
-        rep.update(cv2_error=repr(e)[:400])
+    np.save(OUT / "_parity_x.npy", X.numpy())
+    np.save(OUT / "_parity_ref.npy", ref)
+    code = (
+        "import json,sys,numpy as np,cv2;"
+        f"X=np.load({str(OUT / '_parity_x.npy')!r});ref=np.load({str(OUT / '_parity_ref.npy')!r});"
+        f"net=cv2.dnn.readNetFromONNX({str(onnx_path)!r});out=[]\n"
+        "for i in range(len(X)):\n net.setInput(X[i:i+1]); out.append(net.forward('probs'))\n"
+        "p=np.concatenate(out);print(json.dumps({'cv2_version':cv2.__version__,"
+        "'cv2_max_abs_prob_diff':float(np.abs(ref-p).max()),'cv2_argmax_agree':float((ref.argmax(1)==p.argmax(1)).mean())}))"
+    )
+    r = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, timeout=1800)
+    if r.returncode == 0:
+        rep.update(json.loads(r.stdout.strip().splitlines()[-1]))
+    else:
+        rep.update(cv2_error=f"exit {r.returncode}: {(r.stderr or '')[-300:]}")
     (OUT / "export_report.json").write_text(json.dumps(rep, indent=1))
     print(json.dumps(rep, indent=1))
     return rep
