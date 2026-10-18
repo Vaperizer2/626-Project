@@ -1,0 +1,187 @@
+{
+ "ood_overall_pct": {
+  "value": 27.8,
+  "source": "data/v2/manifest.json (flags)"
+ },
+ "ood_per_class": {
+  "value": {
+   "potentiometer": "14/147",
+   "ic chip": "15/157",
+   "connector": "11/110",
+   "heat sink": "19/160",
+   "microcontroller board": "20/154",
+   "capacitor": "16/116",
+   "power supply module": "23/154",
+   "inductor coil": "26/161",
+   "breadboard": "22/131",
+   "battery holder": "31/155",
+   "resistor": "43/153",
+   "fuse": "46/142",
+   "crystal oscillator": "50/151",
+   "jumper wire": "62/163",
+   "diode": "56/145",
+   "relay": "61/156",
+   "transistor": "61/146",
+   "led": "55/124",
+   "transformer": "64/128",
+   "switch": "121/177"
+  },
+  "source": "data/v2/manifest.json"
+ },
+ "benchmark_rows_drawn": {
+  "value": 31,
+  "source": "results/benchmark.csv (fixed schedule, TTA rows omitted)"
+ },
+ "probe_vs_ft": {
+  "value": {
+   "siglip2_b16": {
+    "delta_pts": -2.52,
+    "wins": "0/5"
+   },
+   "siglip_so400m_384": {
+    "delta_pts": -0.92,
+    "wins": "1/3"
+   },
+   "dinov2_vitb14": {
+    "delta_pts": 3.57,
+    "wins": "5/5"
+   },
+   "clip_vitb16": {
+    "delta_pts": 3.99,
+    "wins": "5/5"
+   },
+   "convnext_tiny": {
+    "delta_pts": 4.78,
+    "wins": "5/5"
+   },
+   "resnet50": {
+    "delta_pts": 6.52,
+    "wins": "5/5"
+   }
+  },
+  "source": "results/phase1/raw/runs.jsonl + results/phase2/runs_fixed.jsonl"
+ },
+ "test_ece": {
+  "value": 0.0343,
+  "source": "results/final/final_test_v2_preds.npz"
+ },
+ "threshold_0.5": {
+  "value": {
+   "oof_cov": 0.8455,
+   "oof_acc": 0.9091,
+   "test_cov": 0.8708,
+   "test_acc": 0.9093
+  },
+  "source": "exports/final/fit_report.json + results/final/final_test_v2_preds.npz"
+ },
+ "gen::Sealed sets, final model::Kaggle sealed test": {
+  "value": {
+   "acc": 0.8373,
+   "n": 418,
+   "wilson95": [
+    0.7989,
+    0.8696
+   ]
+  },
+  "source": "results/final/final_test_v2.json"
+ },
+ "gen::Sealed sets, final model::Web holdout (Wikimedia)": {
+  "value": {
+   "acc": 0.8206,
+   "n": 407,
+   "wilson95": [
+    0.7804,
+    0.8549
+   ]
+  },
+  "source": "results/final/final_test_web_holdout_v1.json"
+ },
+ "gen::Sealed sets, final model::Web holdout, probe only": {
+  "value": {
+   "acc": 0.7789,
+   "n": 407,
+   "wilson95": [
+    0.736,
+    0.8165
+   ]
+  },
+  "source": "results/final/final_test_web_holdout_v1.json"
+ },
+ "gen::Original Kaggle files, v2 split::Never seen (test rows)": {
+  "value": {
+   "acc": 0.8296,
+   "n": 493,
+   "wilson95": [
+    0.7939,
+    0.8602
+   ]
+  },
+  "source": "results/kaggle_original/summary.json"
+ },
+ "gen::Original Kaggle files, v2 split::Seen in head fit (dev rows)": {
+  "value": {
+   "acc": 0.9811,
+   "n": 3010,
+   "wilson95": [
+    0.9755,
+    0.9854
+   ]
+  },
+  "source": "results/kaggle_original/summary.json"
+ },
+ "gen::Original Kaggle files, v2 split::Conflicting-label copies": {
+  "value": {
+   "acc": 0.3704,
+   "n": 27,
+   "wilson95": [
+    0.2153,
+    0.5577
+   ]
+  },
+  "source": "results/kaggle_original/summary.json"
+ },
+ "gen::Legacy 70/15/15 file split::Old best (ConvNeXt-B FT)": {
+  "value": {
+   "acc": 0.7132,
+   "n": 523,
+   "wilson95": [
+    0.673,
+    0.7503
+   ]
+  },
+  "source": "legacy/docs/EXPERIMENT_LOG.md"
+ },
+ "gen::Legacy 70/15/15 file split::Ours, same protocol": {
+  "value": {
+   "acc": 0.8772,
+   "n": 521,
+   "wilson95": [
+    0.8462,
+    0.9026
+   ]
+  },
+  "source": "results/kaggle_original/summary.json"
+ },
+ "gen::Legacy 70/15/15 file split::\u2013 copies of train files": {
+  "value": {
+   "acc": 1.0,
+   "n": 113,
+   "wilson95": [
+    0.9671,
+    1.0
+   ]
+  },
+  "source": "results/kaggle_original/summary.json"
+ },
+ "gen::Legacy 70/15/15 file split::\u2013 no copy in train": {
+  "value": {
+   "acc": 0.8431,
+   "n": 408,
+   "wilson95": [
+    0.8047,
+    0.8752
+   ]
+  },
+  "source": "results/kaggle_original/summary.json"
+ }
+}
