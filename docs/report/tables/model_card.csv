@@ -1,0 +1,18 @@
+Field,Value
+Backbone,"siglip_so400m_384 (frozen SigLIP So400m/14 image tower, 384 px)"
+Heads,"logistic-regression probe (C = 0.01) + zero-shot text head, fused: log p_probe + 0.25 log softmax(50 cos)"
+Preprocessing,"resize short side 427 (bicubic), centre crop 384, mean/std 0.5/0.5, RGB, NCHW"
+Temperature T,0.8977 (fit on dev OOF scores)
+OOF ECE before → after T,0.0501 → 0.0295
+Abstain threshold,0.5 (smallest grid value with OOF accepted acc. ≥ 0.90)
+Dev OOF accuracy / macro-F1,0.8264 / 0.8256 (n = 2512)
+Sealed test accuracy / macro-F1,0.8373 / 0.8337 (n = 418)
+Sealed test in-scope accuracy / macro-F1,0.8693 / 0.8681 (n = 306)
+Sealed test probe-only accuracy,0.8445
+Sealed test coverage / accepted accuracy,0.8708 / 0.9093
+Sealed test ECE,0.0343
+ONNX size,1637.1 MB (external data: True)
+onnxruntime parity,"max |Δp| = 6.3e-06, argmax agreement 1.0"
+onnxruntime CPU latency,892.4 ms / image
+OpenCV DNN,fails: child process exit -11: (segmentation fault)
+Data,data/v2 manifest fingerprint 431315e87d2612cb

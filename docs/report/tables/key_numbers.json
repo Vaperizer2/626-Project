@@ -1,0 +1,573 @@
+{
+ "benchmark_vs_runs_max_abs_diff": {
+  "value": 4.9e-05,
+  "source": "results/benchmark.csv vs runs*.jsonl"
+ },
+ "data_raw_files": {
+  "value": 3530,
+  "source": "data/v2/leakage_report.json"
+ },
+ "data_unique_sha256": {
+  "value": 2943,
+  "source": "data/v2/leakage_report.json"
+ },
+ "data_exact_dup_redundant_files": {
+  "value": 587,
+  "source": "data/v2/leakage_report.json"
+ },
+ "data_exact_dup_groups": {
+  "value": 533,
+  "source": "data/v2/leakage_report.json"
+ },
+ "data_exact_dup_conflicting_label_groups": {
+  "value": 13,
+  "source": "data/v2/leakage_report.json"
+ },
+ "data_excluded_total": {
+  "value": 13,
+  "source": "data/v2/leakage_report.json"
+ },
+ "data_rows": {
+  "value": 2930,
+  "source": "data/v2/leakage_report.json"
+ },
+ "data_clusters": {
+  "value": 2787,
+  "source": "data/v2/leakage_report.json"
+ },
+ "data_near_dup_clusters": {
+  "value": 91,
+  "source": "data/v2/leakage_report.json"
+ },
+ "data_rows_in_near_dup_clusters": {
+  "value": 234,
+  "source": "data/v2/leakage_report.json"
+ },
+ "data_near_dup_mixed_label_clusters": {
+  "value": 2,
+  "source": "data/v2/leakage_report.json"
+ },
+ "data_ood_suspect": {
+  "value": 816,
+  "source": "data/v2/leakage_report.json"
+ },
+ "data_test_rows": {
+  "value": 418,
+  "source": "data/v2/leakage_report.json"
+ },
+ "data_dev_rows": {
+  "value": 2512,
+  "source": "data/v2/leakage_report.json"
+ },
+ "ood_share_overall": {
+  "value": 0.2785,
+  "source": "data/v2/leakage_report.json"
+ },
+ "ood_test_rows": {
+  "value": 112,
+  "source": "data/v2/manifest.json"
+ },
+ "ood_dev_rows": {
+  "value": 704,
+  "source": "data/v2/manifest.json"
+ },
+ "ood_switch": {
+  "value": "121/177",
+  "source": "data/v2/manifest.json"
+ },
+ "ood_transformer": {
+  "value": "64/128",
+  "source": "data/v2/manifest.json"
+ },
+ "ood_top_distractors": {
+  "value": {
+   "circuit_schematic": 245,
+   "logo": 180,
+   "cartoon_game_art": 130,
+   "person": 83,
+   "collage": 62,
+   "website_screenshot": 44,
+   "car": 34,
+   "text_screenshot": 30,
+   "food": 8
+  },
+  "source": "data/v2/review/ood_suspects.csv"
+ },
+ "cv_probe_siglip_so400m_384": {
+  "value": {
+   "f1": 0.8238,
+   "f1_sd": 0.0119,
+   "acc": 0.8252,
+   "inscope_acc": 0.8612,
+   "folds": 5
+  },
+  "source": "results/benchmark.csv"
+ },
+ "cv_zeroshot_siglip_so400m_384": {
+  "value": {
+   "f1": 0.7758,
+   "f1_sd": 0.0178,
+   "acc": 0.7751,
+   "inscope_acc": 0.8269,
+   "folds": 5
+  },
+  "source": "results/benchmark.csv"
+ },
+ "cv_siglip_so400m_384_partial_v2": {
+  "value": {
+   "f1": 0.8124,
+   "f1_sd": 0.0232,
+   "acc": 0.813,
+   "inscope_acc": 0.8347,
+   "folds": 3
+  },
+  "source": "results/benchmark.csv"
+ },
+ "cv_siglip2_b16": {
+  "value": {
+   "f1": 0.7329,
+   "f1_sd": 0.0267,
+   "acc": 0.7345,
+   "inscope_acc": 0.7666,
+   "folds": 5
+  },
+  "source": "results/benchmark.csv"
+ },
+ "cv_clip_vitb16": {
+  "value": {
+   "f1": 0.702,
+   "f1_sd": 0.0172,
+   "acc": 0.7066,
+   "inscope_acc": 0.724,
+   "folds": 5
+  },
+  "source": "results/benchmark.csv"
+ },
+ "cv_dinov2_vitb14": {
+  "value": {
+   "f1": 0.6683,
+   "f1_sd": 0.0235,
+   "acc": 0.6716,
+   "inscope_acc": 0.7174,
+   "folds": 5
+  },
+  "source": "results/benchmark.csv"
+ },
+ "cv_vit_b16": {
+  "value": {
+   "f1": 0.6541,
+   "f1_sd": 0.0323,
+   "acc": 0.6585,
+   "inscope_acc": 0.7118,
+   "folds": 5
+  },
+  "source": "results/benchmark.csv"
+ },
+ "cv_convnext_tiny": {
+  "value": {
+   "f1": 0.6408,
+   "f1_sd": 0.0338,
+   "acc": 0.6465,
+   "inscope_acc": 0.6892,
+   "folds": 5
+  },
+  "source": "results/benchmark.csv"
+ },
+ "cv_swin_t": {
+  "value": {
+   "f1": 0.6393,
+   "f1_sd": 0.0338,
+   "acc": 0.6441,
+   "inscope_acc": 0.6936,
+   "folds": 5
+  },
+  "source": "results/benchmark.csv"
+ },
+ "cv_efficientnet_v2_s": {
+  "value": {
+   "f1": 0.6079,
+   "f1_sd": 0.0236,
+   "acc": 0.6158,
+   "inscope_acc": 0.6532,
+   "folds": 5
+  },
+  "source": "results/benchmark.csv"
+ },
+ "cv_resnet50": {
+  "value": {
+   "f1": 0.5801,
+   "f1_sd": 0.0124,
+   "acc": 0.5852,
+   "inscope_acc": 0.6184,
+   "folds": 5
+  },
+  "source": "results/benchmark.csv"
+ },
+ "cv_mobilenetv3_large": {
+  "value": {
+   "f1": 0.5475,
+   "f1_sd": 0.0158,
+   "acc": 0.5561,
+   "inscope_acc": 0.5835,
+   "folds": 5
+  },
+  "source": "results/benchmark.csv"
+ },
+ "cv_scratch_cnn": {
+  "value": {
+   "f1": 0.3552,
+   "f1_sd": 0.0152,
+   "acc": 0.3654,
+   "inscope_acc": 0.3789,
+   "folds": 5
+  },
+  "source": "results/benchmark.csv"
+ },
+ "cv_hog_hsv_svm": {
+  "value": {
+   "f1": 0.2059,
+   "f1_sd": 0.0172,
+   "acc": 0.2198,
+   "inscope_acc": NaN,
+   "folds": 5
+  },
+  "source": "results/benchmark.csv"
+ },
+ "cv_probe_resnet50": {
+  "value": {
+   "f1": 0.5149,
+   "f1_sd": 0.0181,
+   "acc": 0.5215,
+   "inscope_acc": 0.5514,
+   "folds": 5
+  },
+  "source": "results/benchmark.csv"
+ },
+ "imagenet_finetune_f1_range": {
+  "value": [
+   0.5475,
+   0.6541
+  ],
+  "source": "results/benchmark.csv"
+ },
+ "imagenet_finetune_acc_range": {
+  "value": [
+   0.5561,
+   0.6585
+  ],
+  "source": "results/benchmark.csv"
+ },
+ "probe_vs_ft_siglip2_b16": {
+  "value": {
+   "delta_pts": -2.52,
+   "wins": "0/5"
+  },
+  "source": "results/phase1/raw/runs.jsonl + results/phase2/runs_fixed.jsonl"
+ },
+ "probe_vs_ft_siglip_so400m_384": {
+  "value": {
+   "delta_pts": -0.92,
+   "wins": "1/3"
+  },
+  "source": "results/phase1/raw/runs.jsonl + results/phase2/runs_fixed.jsonl"
+ },
+ "probe_vs_ft_dinov2_vitb14": {
+  "value": {
+   "delta_pts": 3.57,
+   "wins": "5/5"
+  },
+  "source": "results/phase1/raw/runs.jsonl + results/phase2/runs_fixed.jsonl"
+ },
+ "probe_vs_ft_clip_vitb16": {
+  "value": {
+   "delta_pts": 3.99,
+   "wins": "5/5"
+  },
+  "source": "results/phase1/raw/runs.jsonl + results/phase2/runs_fixed.jsonl"
+ },
+ "probe_vs_ft_convnext_tiny": {
+  "value": {
+   "delta_pts": 4.78,
+   "wins": "5/5"
+  },
+  "source": "results/phase1/raw/runs.jsonl + results/phase2/runs_fixed.jsonl"
+ },
+ "probe_vs_ft_resnet50": {
+  "value": {
+   "delta_pts": 6.52,
+   "wins": "5/5"
+  },
+  "source": "results/phase1/raw/runs.jsonl + results/phase2/runs_fixed.jsonl"
+ },
+ "leakage": {
+  "value": [
+   {
+    "model": "resnet50",
+    "legacy_style_acc": 0.6577,
+    "grouped_cv_acc": 0.5215,
+    "inflation_pts": 13.6173,
+    "acc_on_leaked": 0.9949,
+    "acc_on_clean": 0.5557
+   },
+   {
+    "model": "convnext_tiny",
+    "legacy_style_acc": 0.7081,
+    "grouped_cv_acc": 0.5983,
+    "inflation_pts": 10.9759,
+    "acc_on_leaked": 0.9646,
+    "acc_on_clean": 0.6305
+   },
+   {
+    "model": "siglip_so400m_384",
+    "legacy_style_acc": 0.8804,
+    "grouped_cv_acc": 0.8252,
+    "inflation_pts": 5.5192,
+    "acc_on_leaked": 0.9495,
+    "acc_on_clean": 0.8595
+   }
+  ],
+  "source": "results/leakage_simulation.csv"
+ },
+ "leakage_rows": {
+  "value": {
+   "eval": 853,
+   "leaked": 198,
+   "share": 0.2321
+  },
+  "source": "results/leakage_simulation.csv"
+ },
+ "test_n": {
+  "value": 418,
+  "source": "results/final/final_test_v2_preds.npz (+ final_test_v2.json)"
+ },
+ "test_accuracy": {
+  "value": 0.8373,
+  "source": "results/final/final_test_v2_preds.npz (+ final_test_v2.json)"
+ },
+ "test_macro_f1": {
+  "value": 0.8337,
+  "source": "results/final/final_test_v2_preds.npz (+ final_test_v2.json)"
+ },
+ "test_accuracy_se_pts": {
+  "value": 1.81,
+  "source": "binomial SE sqrt(p(1-p)/n) from test accuracy"
+ },
+ "test_accuracy_wilson95": {
+  "value": [
+   0.7989,
+   0.8696
+  ],
+  "source": "results/final/final_test_v2_preds.npz (+ final_test_v2.json)"
+ },
+ "test_inscope": {
+  "value": {
+   "n": 306,
+   "acc": 0.8693,
+   "macro_f1": 0.8681
+  },
+  "source": "results/final/final_test_v2_preds.npz (+ final_test_v2.json)"
+ },
+ "test_ood_rows": {
+  "value": {
+   "n": 112,
+   "acc": 0.75
+  },
+  "source": "results/final/final_test_v2_preds.npz (+ final_test_v2.json)"
+ },
+ "test_probe_only_accuracy": {
+  "value": 0.8445,
+  "source": "results/final/final_test_v2.json"
+ },
+ "test_switch_ood": {
+  "value": {
+   "n": 25,
+   "ood_flagged": 19,
+   "ood_flagged_correct": 18
+  },
+  "source": "results/final/final_test_v2_preds.npz (+ final_test_v2.json)"
+ },
+ "test_top_confusions": {
+  "value": [
+   "resistor -> transformer: 2",
+   "resistor -> power supply module: 2",
+   "resistor -> capacitor: 2",
+   "power supply module -> relay: 2",
+   "power supply module -> led: 2",
+   "jumper wire -> connector: 2",
+   "jumper wire -> breadboard: 2",
+   "fuse -> transistor: 2",
+   "diode -> led: 2",
+   "breadboard -> power supply module: 2"
+  ],
+  "source": "results/final/final_test_v2_preds.npz (+ final_test_v2.json)"
+ },
+ "test_worst_class": {
+  "value": {
+   "class": "resistor",
+   "recall": 0.545,
+   "precision": 1.0,
+   "support": 22
+  },
+  "source": "results/final/final_test_v2_preds.npz (+ final_test_v2.json)"
+ },
+ "test_resistor_misrouted_to": {
+  "value": {
+   "capacitor": 2,
+   "transformer": 2,
+   "power supply module": 2,
+   "jumper wire": 1,
+   "crystal oscillator": 1,
+   "diode": 1,
+   "heat sink": 1
+  },
+  "source": "results/final/final_test_v2_preds.npz (+ final_test_v2.json)"
+ },
+ "test_ece": {
+  "value": 0.0343,
+  "source": "results/final/final_test_v2_preds.npz (15-bin ECE as in compclass.final)"
+ },
+ "oof_ece_before_after": {
+  "value": [
+   0.0501,
+   0.0295
+  ],
+  "source": "exports/final/fit_report.json"
+ },
+ "temperature": {
+  "value": 0.8977,
+  "source": "exports/final/fit_report.json"
+ },
+ "abstain_threshold": {
+  "value": 0.5,
+  "source": "exports/final/fit_report.json"
+ },
+ "test_coverage_accepted_acc": {
+  "value": [
+   0.8708,
+   0.9093
+  ],
+  "source": "results/final/final_test_v2.json"
+ },
+ "schedule_folds_improved": {
+  "value": "14/30",
+  "source": "results/phase2/runs_fixed.jsonl vs raw_oldschedule/runs_{A,B}.jsonl"
+ },
+ "schedule_mean_delta_pts": {
+  "value": 0.19,
+  "source": "same"
+ },
+ "schedule_perfold_delta_sd_pts": {
+  "value": 1.4,
+  "source": "same"
+ },
+ "schedule_noise_floor_2se_pts": {
+  "value": 1.62,
+  "source": "2 x SD(per-fold delta)/sqrt(3)"
+ },
+ "schedule_sign_test_p": {
+  "value": 0.856,
+  "source": "exact two-sided binomial"
+ },
+ "tta_probe_siglip_so400m_384": {
+  "value": {
+   "delta_pts": -0.5,
+   "folds_improved": "1/5"
+  },
+  "source": "results/phase1/raw/runs.jsonl + results/phase1b/runs.jsonl"
+ },
+ "tta_probe_siglip2_so400m_384": {
+  "value": {
+   "delta_pts": 0.57,
+   "folds_improved": "5/5"
+  },
+  "source": "results/phase1/raw/runs.jsonl + results/phase1b/runs.jsonl"
+ },
+ "cleaning": {
+  "value": [
+   {
+    "variant": "keep_all",
+    "all_acc": 0.8252,
+    "all_f1": 0.8244,
+    "in_acc": 0.8612,
+    "in_f1": 0.857
+   },
+   {
+    "variant": "drop_issues",
+    "all_acc": 0.8276,
+    "all_f1": 0.8266,
+    "in_acc": 0.8628,
+    "in_f1": 0.8588
+   },
+   {
+    "variant": "drop_ood",
+    "all_acc": 0.7922,
+    "all_f1": 0.7903,
+    "in_acc": 0.8523,
+    "in_f1": 0.8471
+   },
+   {
+    "variant": "drop_ood+issues",
+    "all_acc": 0.7954,
+    "all_f1": 0.7938,
+    "in_acc": 0.8529,
+    "in_f1": 0.847
+   }
+  ],
+  "source": "results/phase1/cleaning_ablation_siglip_so400m.csv"
+ },
+ "fusion_oof": {
+  "value": {
+   "probe_only_acc": 0.8248,
+   "fused_acc": 0.8264,
+   "fused_macro_f1": 0.8256
+  },
+  "source": "exports/final/fit_report.json"
+ },
+ "fusion_test": {
+  "value": {
+   "probe_only_acc": 0.8445,
+   "fused_acc": 0.8373
+  },
+  "source": "results/final/final_test_v2.json"
+ },
+ "partial_ft": {
+  "value": {
+   "probe_folds012_f1": 0.8216,
+   "old_137M_f1": 0.8206,
+   "v2_76M_f1": 0.8124,
+   "old_min_per_fold": 23.3,
+   "v2_min_per_fold": 17.5
+  },
+  "source": "results/benchmark.csv"
+ },
+ "export": {
+  "value": {
+   "onnx": "exports/final/model.onnx",
+   "external_data": true,
+   "onnx_mb": 1637.1,
+   "ort_max_abs_prob_diff": 6.258487701416016e-06,
+   "ort_argmax_agree": 1.0,
+   "ort_cpu_ms_per_image": 892.4,
+   "cv2_error": "exit -11: "
+  },
+  "source": "exports/final/export_report.json"
+ },
+ "fit_report_core": {
+  "value": {
+   "oof_accuracy": 0.8264331210191083,
+   "oof_macro_f1": 0.8255592236843311,
+   "oof_inscope_accuracy": 0.8611725663716814,
+   "oof_probe_only_accuracy": 0.8248407643312102,
+   "temperature": 0.8976628274420188,
+   "ece_before": 0.05012124819550542,
+   "ece_after": 0.029494672972163193,
+   "abstain_threshold": 0.5,
+   "final_C": 0.01,
+   "t_zs": 50.0,
+   "w_zs": 0.25,
+   "manifest": "431315e87d2612cb",
+   "n_dev": 2512
+  },
+  "source": "exports/final/fit_report.json"
+ }
+}

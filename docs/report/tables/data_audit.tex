@@ -1,0 +1,17 @@
+\begin{table}[t]
+\centering\small
+\caption{Data audit of the Kaggle electronic-component scrape (data/v2/leakage\_report.json).}
+\label{tab:data_audit}
+\begin{tabular}{lr}
+\toprule
+Stage & Images \\
+\midrule
+Raw image files & 3530 \\
+Unique files (SHA-256) & 2943 \\
+Rows kept (conflicting-label exact duplicates removed) & 2930 \\
+Duplicate clusters (CV groups) & 2787 \\
+Rows in near-duplicate clusters & 234 \\
+Rows flagged out-of-scope (CLIP) & 816 \\
+\bottomrule
+\end{tabular}
+\end{table}

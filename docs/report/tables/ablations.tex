@@ -1,0 +1,20 @@
+\begin{table}[t]
+\centering\small
+\caption{Ablations: TTA, training-data cleaning, zero-shot fusion and partial fine-tuning.}
+\label{tab:ablations}
+\begin{tabular}{llllrl}
+\toprule
+Ablation & Model & Baseline & Variant & Δ (pts) & Evidence \\
+\midrule
+hflip TTA (probe features averaged over flip) & SigLIP So400m/14@384 & 0.8238 & 0.8189 & -0.5 & 1/5 folds improved \\
+hflip TTA (probe features averaged over flip) & SigLIP 2 So400m/14@384 & 0.8144 & 0.8201 & 0.57 & 5/5 folds improved \\
+training-data cleaning: drop\_issues (all rows / in-scope acc.) & SigLIP So400m/14@384 probe & 0.8252 / 0.8612 & 0.8276 / 0.8628 & 0.16 & pooled OOF, accuracy; Δ = in-scope \\
+training-data cleaning: drop\_ood (all rows / in-scope acc.) & SigLIP So400m/14@384 probe & 0.8252 / 0.8612 & 0.7922 / 0.8523 & -0.89 & pooled OOF, accuracy; Δ = in-scope \\
+training-data cleaning: drop\_ood+issues (all rows / in-scope acc.) & SigLIP So400m/14@384 probe & 0.8252 / 0.8612 & 0.7954 / 0.8529 & -0.83 & pooled OOF, accuracy; Δ = in-scope \\
+zero-shot fusion (w=0.25, T=50), deployable pipeline, OOF & final model & 0.8248 & 0.8264 & 0.16 & accuracy, 2,512 dev rows \\
+zero-shot fusion, sealed test & final model & 0.8445 & 0.8373 & -0.72 & accuracy, 418 rows (SE ≈ 1.8 pt) \\
+partial fine-tune, old schedule, 137M trainable & SigLIP So400m/14@384 & 0.8216 & 0.8206 & -0.1 & folds 0-2, macro-F1 vs probe \\
+partial fine-tune (last 4 blocks), fixed schedule, 76M trainable & SigLIP So400m/14@384 & 0.8216 & 0.8124 & -0.92 & folds 0-2, macro-F1 vs probe \\
+\bottomrule
+\end{tabular}
+\end{table}

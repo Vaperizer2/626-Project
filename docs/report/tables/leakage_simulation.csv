@@ -1,0 +1,4 @@
+Model,Grouped-CV acc.,Legacy-style acc.,Inflation (pts),Acc. on duplicated rows,Acc. on other rows
+ResNet-50 probe,0.5215,0.6577,13.6173,0.9949,0.5557
+ConvNeXt-T probe,0.5983,0.7081,10.9759,0.9646,0.6305
+SigLIP So400m/14@384 probe,0.8252,0.8804,5.5192,0.9495,0.8595

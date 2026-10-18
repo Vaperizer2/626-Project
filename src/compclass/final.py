@@ -1,8 +1,12 @@
 """The final, deployable classifier: frozen SigLIP So400m image tower + two linear heads, fused.
 
-Why this design (see results/benchmark.csv): on data v2 a *frozen* web-pretrained vision-language backbone with
-a logistic-regression head beat every fine-tuned network, and adding the backbone's own zero-shot text
-classifier as a second head added ~1 point for free. Both heads are linear on the same 1152-d image feature,
+Why this design (see results/benchmark.csv): on data v2 the best *frozen* web-pretrained vision-language backbone
+(SigLIP So400m) with a logistic-regression head scored higher than every fine-tuned network we trained. The
+backbone's own zero-shot text classifier is fused in as a second head. That fusion was chosen from a Phase-1
+analysis (+0.9 pt OOF) whose zero-shot scores used open_clip's slightly different preprocessing; with this single
+deployable pipeline the gain is ~0 (exports/final/fit_report.json: 0.826 vs 0.825 OOF accuracy) and on the sealed
+test the probe alone scored 0.844 vs 0.837 fused -- a tie within sampling error. It is kept because it was
+pre-registered and costs nothing (a 20 x 1152 matrix). Both heads are linear on the same 1152-d image feature,
 so the whole model is one network:
 
     image -> SigLIP So400m/14 @384 (frozen) -> f (1152)
@@ -34,7 +38,7 @@ from .features import extract_features, fit_probe
 from .models import build_model
 
 KEY = "siglip_so400m_384"
-T_ZS, W_ZS = 50.0, 0.25  # fixed a priori from Phase-1 OOF analysis (results/STATUS); not re-tuned here
+T_ZS, W_ZS = 50.0, 0.25  # fixed a priori from the Phase-1 OOF analysis (results/phase1/fusion_ablation.csv)
 OUT = Path("exports/final")
 
 

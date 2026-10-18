@@ -15,7 +15,7 @@
   3×3 depthwise) and proposes progressive learning (image size and regularisation grow during training).
 
 Building blocks: the **MBConv** inverted-residual block (M. Sandler et al. 2018, *MobileNetV2*, arXiv:1801.04381)
-and **squeeze-and-excitation** channel attention (J. Hu, L. Shen, G. Sun 2017, *Squeeze-and-Excitation Networks*,
+and **squeeze-and-excitation** channel attention (J. Hu, L. Shen, S. Albanie, G. Sun, E. Wu 2017, *Squeeze-and-Excitation Networks*,
 arXiv:1709.01507).
 
 ## 2. Architecture (EfficientNetV2-S, 300×300 input; block counts verified against timm 1.0.30)
@@ -139,5 +139,5 @@ uv run python -m compclass.train --config configs/efficientnet_v2_s.yaml --fold 
 * M. Tan, Q. V. Le (2019). *EfficientNet: Rethinking Model Scaling for Convolutional Neural Networks.* arXiv:1905.11946.
 * M. Tan, Q. V. Le (2021). *EfficientNetV2: Smaller Models and Faster Training.* arXiv:2104.00298.
 * M. Sandler et al. (2018). *MobileNetV2: Inverted Residuals and Linear Bottlenecks.* arXiv:1801.04381.
-* J. Hu, L. Shen, G. Sun (2017). *Squeeze-and-Excitation Networks.* arXiv:1709.01507.
+* J. Hu, L. Shen, S. Albanie, G. Sun, E. Wu (2017). *Squeeze-and-Excitation Networks.* arXiv:1709.01507 (CVPR 2018 version: Hu, Shen, Sun).
 * G. Huang et al. (2016). *Deep Networks with Stochastic Depth.* arXiv:1603.09382.
