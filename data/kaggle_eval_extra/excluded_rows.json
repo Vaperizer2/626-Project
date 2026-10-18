@@ -1,0 +1,175 @@
+{
+ "rows": [
+  {
+   "id": "01d3681672747efc",
+   "path": "images/01d3681672747efc.jpg",
+   "label": "fuse",
+   "src_paths": [
+    "fuse/fuse/af056a3c-1ac5-4511-a39d-6ef7d6f5130e.jpg",
+    "relay/relay/0754bf83-516a-4b2f-8885-f49c057f55d1.jpg"
+   ],
+   "labels": [
+    "fuse",
+    "relay"
+   ]
+  },
+  {
+   "id": "166381d320b644fd",
+   "path": "images/166381d320b644fd.jpg",
+   "label": "breadboard",
+   "src_paths": [
+    "breadboard/breadboard/ae2953d7-2949-487f-a3ea-1cd656030782.png",
+    "power supply module/power supply module/8555bac3-47a5-4c40-941f-cf67c58bb98b.png"
+   ],
+   "labels": [
+    "breadboard",
+    "power supply module"
+   ]
+  },
+  {
+   "id": "41ad53a7417a5161",
+   "path": "images/41ad53a7417a5161.jpg",
+   "label": "diode",
+   "src_paths": [
+    "diode/diode/8cbbb59f-9e39-4ce6-8634-5a67eed40b08.jpg",
+    "led/led/d5963e49-260e-4833-8657-2e54a742aea5.jpg"
+   ],
+   "labels": [
+    "diode",
+    "led"
+   ]
+  },
+  {
+   "id": "699b033545e55eaf",
+   "path": "images/699b033545e55eaf.jpg",
+   "label": "breadboard",
+   "src_paths": [
+    "breadboard/breadboard/74defd85-0423-460b-8df4-7a290aacae45.webp",
+    "transistor/transistor/3b409980-15ee-427e-ba8c-c754f8bbd62a.webp"
+   ],
+   "labels": [
+    "breadboard",
+    "transistor"
+   ]
+  },
+  {
+   "id": "778460fb1bcfa85c",
+   "path": "images/778460fb1bcfa85c.jpg",
+   "label": "fuse",
+   "src_paths": [
+    "fuse/fuse/aa253a13-a573-4911-a7b9-2440455b3810.jpg",
+    "relay/relay/c0e68217-c306-4837-a72c-8c239c9ad8c3.jpg"
+   ],
+   "labels": [
+    "fuse",
+    "relay"
+   ]
+  },
+  {
+   "id": "8786feeebd301d5a",
+   "path": "images/8786feeebd301d5a.jpg",
+   "label": "diode",
+   "src_paths": [
+    "diode/diode/fc3c891f-899d-4498-93c5-f4798ef6e4e8.png",
+    "transistor/transistor/11158e8c-85bb-4038-8775-2d3565747c6c.png"
+   ],
+   "labels": [
+    "diode",
+    "transistor"
+   ]
+  },
+  {
+   "id": "983c191343803e84",
+   "path": "images/983c191343803e84.jpg",
+   "label": "resistor",
+   "src_paths": [
+    "resistor/resistor/4397f535-7ebc-4e29-a9b8-4aaf5c31d5d5.jpg",
+    "transformer/transformer/49254e87-fb8f-443d-bb5d-81d75d25eecb.jpg"
+   ],
+   "labels": [
+    "resistor",
+    "transformer"
+   ]
+  },
+  {
+   "id": "98ce970641602463",
+   "path": "images/98ce970641602463.jpg",
+   "label": "breadboard",
+   "src_paths": [
+    "breadboard/breadboard/c2915c69-69ee-4fcc-9599-531a35c295f9.jpg",
+    "power supply module/power supply module/fd0b7052-da29-455d-92b4-2ea93c8f8e3d.jpg"
+   ],
+   "labels": [
+    "breadboard",
+    "power supply module"
+   ]
+  },
+  {
+   "id": "ad0f4cc51a72406c",
+   "path": "images/ad0f4cc51a72406c.jpg",
+   "label": "capacitor",
+   "src_paths": [
+    "capacitor/capacitor/2cd0efd0-80cb-4917-a259-07ef4327c108.view",
+    "diode/diode/401c4086-62c3-463c-97e4-facb9156885a.view",
+    "resistor/resistor/795060fd-e6c2-47c3-9602-082b30729c97.view"
+   ],
+   "labels": [
+    "capacitor",
+    "diode",
+    "resistor"
+   ]
+  },
+  {
+   "id": "c30757a4725028e2",
+   "path": "images/c30757a4725028e2.jpg",
+   "label": "breadboard",
+   "src_paths": [
+    "breadboard/breadboard/bb25f8a7-633f-446f-9ce9-4135cfd27169.png",
+    "jumper wire/jumper wire/63882864-e49e-4a64-a265-b6775d4789ad.png"
+   ],
+   "labels": [
+    "breadboard",
+    "jumper wire"
+   ]
+  },
+  {
+   "id": "c711d0c3a069e311",
+   "path": "images/c711d0c3a069e311.jpg",
+   "label": "crystal oscillator",
+   "src_paths": [
+    "crystal oscillator/crystal oscillator/35ef54fc-a4b6-4dca-abbe-24aca342a71f.jpg",
+    "inductor coil/inductor coil/51452b75-3058-4b39-b937-200e6772bb6b.jpg"
+   ],
+   "labels": [
+    "crystal oscillator",
+    "inductor coil"
+   ]
+  },
+  {
+   "id": "e9767a506e9dd6c4",
+   "path": "images/e9767a506e9dd6c4.jpg",
+   "label": "fuse",
+   "src_paths": [
+    "fuse/fuse/e0af285f-0553-4b49-b9a9-b73665099643.jpg",
+    "relay/relay/e41b6bbc-d490-479f-a4bf-6351ac69c5bf.jpg"
+   ],
+   "labels": [
+    "fuse",
+    "relay"
+   ]
+  },
+  {
+   "id": "ea193ae773241ce1",
+   "path": "images/ea193ae773241ce1.jpg",
+   "label": "fuse",
+   "src_paths": [
+    "fuse/fuse/190eef4b-1a2f-4207-81da-349c99e8f886.jpg",
+    "relay/relay/1121d280-2841-4695-b88e-69202f30502d.jpg"
+   ],
+   "labels": [
+    "fuse",
+    "relay"
+   ]
+  }
+ ]
+}

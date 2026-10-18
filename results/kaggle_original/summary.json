@@ -1,0 +1,128 @@
+{
+ "n_files": 3530,
+ "n_rows": 2930,
+ "n_excluded_groups": 13,
+ "abstain_threshold": 0.5,
+ "all_files": {
+  "n": 3530,
+  "accuracy": 0.9552407932011332,
+  "macro_f1": 0.9543026722593142,
+  "coverage": 0.9606232294617564,
+  "accepted_accuracy": 0.9722795635505751
+ },
+ "by_v2_split": {
+  "test": {
+   "n": 493,
+   "accuracy": 0.8296146044624746,
+   "macro_f1": 0.8282640759745343,
+   "coverage": 0.8539553752535497,
+   "accepted_accuracy": 0.9121140142517815
+  },
+  "dev": {
+   "n": 3010,
+   "accuracy": 0.981063122923588,
+   "macro_f1": 0.9804798266172406,
+   "coverage": 0.9794019933554817,
+   "accepted_accuracy": 0.9847354138398915
+  },
+  "excluded": {
+   "n": 27,
+   "accuracy": 0.37037037037037035,
+   "macro_f1": 0.14047619047619048,
+   "coverage": 0.8148148148148148,
+   "accepted_accuracy": 0.45454545454545453
+  }
+ },
+ "test_inscope": {
+  "n": 348,
+  "accuracy": 0.8649425287356322,
+  "macro_f1": 0.8645297790413997,
+  "coverage": 0.9022988505747126,
+  "accepted_accuracy": 0.9140127388535032
+ },
+ "by_ood_flag": {
+  "in_scope": {
+   "n": 2467,
+   "accuracy": 0.9627077421970004,
+   "macro_f1": 0.96215906952936,
+   "coverage": 0.9716254560194568,
+   "accepted_accuracy": 0.9716312056737588
+  },
+  "ood_suspect": {
+   "n": 1036,
+   "accuracy": 0.9527027027027027,
+   "macro_f1": 0.9405019548395204,
+   "coverage": 0.9382239382239382,
+   "accepted_accuracy": 0.98559670781893
+  }
+ },
+ "legacy_test_as_deployed": {
+  "n": 523,
+  "accuracy": 0.9655831739961759,
+  "macro_f1": 0.9645762996839661,
+  "coverage": 0.9694072657743786,
+  "accepted_accuracy": 0.980276134122288
+ },
+ "legacy_test_as_deployed_unseen_rows_only": {
+  "n": 71,
+  "accuracy": 0.8591549295774648,
+  "macro_f1": 0.8431560106560105,
+  "coverage": 0.8732394366197183,
+  "accepted_accuracy": 0.9516129032258065
+ },
+ "legacy_test_replay": {
+  "description": "probe refit on rows containing a legacy-train file; scored on legacy-test files (old protocol)",
+  "n_train_rows": 2129,
+  "C": 0.1,
+  "all": {
+   "n": 521,
+   "accuracy": 0.8771593090211133,
+   "macro_f1": 0.8712167898864731,
+   "coverage": 0.9404990403071017,
+   "accepted_accuracy": 0.9081632653061225
+  },
+  "leaked_copy_of_train": {
+   "n": 113,
+   "accuracy": 1.0,
+   "macro_f1": 0.9,
+   "coverage": 1.0,
+   "accepted_accuracy": 1.0
+  },
+  "clean_not_in_train": {
+   "n": 408,
+   "accuracy": 0.8431372549019608,
+   "macro_f1": 0.840574624777795,
+   "coverage": 0.9240196078431373,
+   "accepted_accuracy": 0.8806366047745358
+  },
+  "excluded_conflict_files_not_scored": 2,
+  "old_best_for_reference": {
+   "model": "ConvNeXt-Base strong recipe",
+   "accuracy": 0.7132,
+   "macro_f1": 0.6969,
+   "source": "legacy/docs/EXPERIMENT_LOG.md"
+  }
+ },
+ "test_per_class_file_accuracy": {
+  "battery holder": 0.8387,
+  "breadboard": 0.8421,
+  "capacitor": 0.7647,
+  "connector": 0.8125,
+  "crystal oscillator": 0.8519,
+  "diode": 0.8571,
+  "fuse": 0.8095,
+  "heat sink": 0.8333,
+  "ic chip": 0.7826,
+  "inductor coil": 0.8684,
+  "jumper wire": 0.8333,
+  "led": 0.96,
+  "microcontroller board": 0.9091,
+  "potentiometer": 1.0,
+  "power supply module": 0.6486,
+  "relay": 0.8636,
+  "resistor": 0.6,
+  "switch": 0.9615,
+  "transformer": 0.7895,
+  "transistor": 0.8095
+ }
+}
