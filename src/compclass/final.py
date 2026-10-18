@@ -164,7 +164,7 @@ def load_final(head_path: Path = OUT / "head.npz") -> tuple[FusedClassifier, obj
     return FusedClassifier(trunk, head).eval(), spec
 
 
-def cmd_export(manifest: str, n_check: int = 32) -> dict:
+def cmd_export(manifest: str, n_check: int = 32, force: bool = False) -> dict:
     import onnxruntime as ort
 
     m = load_manifest(manifest)
@@ -173,15 +173,19 @@ def cmd_export(manifest: str, n_check: int = 32) -> dict:
     onnx_path = OUT / "model.onnx"
     x0 = torch.randn(1, 3, size, size)
     dyn = ({0: torch.export.Dim("batch", min=1, max=64)},)
-    try:
-        torch.onnx.export(model, (x0,), onnx_path, input_names=["input"], output_names=["logits", "probs"],
-                          opset_version=18, dynamo=True, dynamic_shapes=dyn, external_data=False)
-        external = False
-    except Exception as e:  # >2 GB protobuf limit -> weights in a side file
-        print("single-file export failed, using external data:", repr(e)[:200])
-        torch.onnx.export(model, (x0,), onnx_path, input_names=["input"], output_names=["logits", "probs"],
-                          opset_version=18, dynamo=True, dynamic_shapes=dyn, external_data=True)
-        external = True
+    external = (OUT / "model.onnx.data").exists()
+    if force or not onnx_path.exists():
+        kw = dict(input_names=["input"], output_names=["logits", "probs"], opset_version=18, dynamo=True,
+                  dynamic_shapes=dyn)
+        try:
+            torch.onnx.export(model, (x0,), onnx_path, external_data=False, **kw)
+            external = False
+        except Exception as e:  # > 2 GB protobuf limit -> weights go to model.onnx.data
+            print("single-file export failed, using external data:", repr(e)[:200])
+            torch.onnx.export(model, (x0,), onnx_path, external_data=True, **kw)
+            external = True
+    else:
+        print("reusing existing", onnx_path)
     (OUT / "labels.json").write_text(json.dumps(m.classes, indent=1))
     head = dict(np.load(OUT / "head.npz"))
     pre = {**spec.to_dict(), "color_order": "RGB", "layout": "NCHW", "scale": 1 / 255,
@@ -196,7 +200,8 @@ def cmd_export(manifest: str, n_check: int = 32) -> dict:
     with torch.no_grad():
         ref = torch.cat([model(X[i:i + 8])[1] for i in range(0, len(X), 8)]).numpy()
     sess = ort.InferenceSession(str(onnx_path), providers=["CPUExecutionProvider"])
-    got = np.concatenate([sess.run(["probs"], {"input": X[i:i + 8].numpy()})[0] for i in range(0, len(X), 8)])
+    # the dynamo exporter may specialise the batch dimension to 1 -> feed one image at a time (what a demo does)
+    got = np.concatenate([sess.run(["probs"], {"input": X[i:i + 1].numpy()})[0] for i in range(len(X))])
     t0 = time.perf_counter()
     for i in range(8):
         sess.run(["probs"], {"input": X[i:i + 1].numpy()})
@@ -258,8 +263,9 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--manifest", default="data/v2/manifest.json")
     ap.add_argument("--confirm", action="store_true", help="test only: acknowledge spending the sealed-test look")
     ap.add_argument("--tag", default=None)
+    ap.add_argument("--force", action="store_true", help="export: re-export even if model.onnx exists")
     a = ap.parse_args(argv)
-    {"fit": lambda: cmd_fit(a.manifest), "export": lambda: cmd_export(a.manifest),
+    {"fit": lambda: cmd_fit(a.manifest), "export": lambda: cmd_export(a.manifest, force=a.force),
      "test": lambda: cmd_test(a.manifest, a.confirm, a.tag)}[a.cmd]()
 
 
