@@ -1,0 +1,29 @@
+{
+ "input_size": 384,
+ "mean": [
+  0.5,
+  0.5,
+  0.5
+ ],
+ "std": [
+  0.5,
+  0.5,
+  0.5
+ ],
+ "interpolation": "bicubic",
+ "crop_pct": 0.9,
+ "resize_short_side": 427,
+ "color_order": "RGB",
+ "layout": "NCHW",
+ "scale": 0.00392156862745098,
+ "outputs": [
+  "logits",
+  "probs"
+ ],
+ "abstain_threshold": 0.5,
+ "temperature": 0.8976628184318542,
+ "model": "siglip_so400m_384",
+ "t_zs": 50.0,
+ "w_zs": 0.25,
+ "manifest_fingerprint": "431315e87d2612cb"
+}

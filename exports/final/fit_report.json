@@ -1,0 +1,117 @@
+{
+ "oof_accuracy": 0.8264331210191083,
+ "oof_macro_f1": 0.8255592236843311,
+ "oof_inscope_accuracy": 0.8611725663716814,
+ "oof_probe_only_accuracy": 0.8248407643312102,
+ "temperature": 0.8976628274420188,
+ "ece_before": 0.05012124819550542,
+ "ece_after": 0.029494672972163193,
+ "abstain_threshold": 0.5,
+ "abstain_table": [
+  {
+   "threshold": 0.0,
+   "coverage": 1.0,
+   "accepted_acc": 0.8264331210191083
+  },
+  {
+   "threshold": 0.05,
+   "coverage": 1.0,
+   "accepted_acc": 0.8264331210191083
+  },
+  {
+   "threshold": 0.1,
+   "coverage": 1.0,
+   "accepted_acc": 0.8264331210191083
+  },
+  {
+   "threshold": 0.15,
+   "coverage": 0.9956210191082803,
+   "accepted_acc": 0.8296681327469012
+  },
+  {
+   "threshold": 0.2,
+   "coverage": 0.98328025477707,
+   "accepted_acc": 0.8388663967611336
+  },
+  {
+   "threshold": 0.25,
+   "coverage": 0.9685509554140127,
+   "accepted_acc": 0.8475133579942458
+  },
+  {
+   "threshold": 0.3,
+   "coverage": 0.9442675159235668,
+   "accepted_acc": 0.8600337268128162
+  },
+  {
+   "threshold": 0.35,
+   "coverage": 0.9215764331210191,
+   "accepted_acc": 0.8734341252699784
+  },
+  {
+   "threshold": 0.4,
+   "coverage": 0.8949044585987261,
+   "accepted_acc": 0.8865658362989324
+  },
+  {
+   "threshold": 0.45,
+   "coverage": 0.8714171974522293,
+   "accepted_acc": 0.8990406578346277
+  },
+  {
+   "threshold": 0.5,
+   "coverage": 0.8455414012738853,
+   "accepted_acc": 0.9091337099811676
+  },
+  {
+   "threshold": 0.55,
+   "coverage": 0.8180732484076433,
+   "accepted_acc": 0.9206812652068127
+  },
+  {
+   "threshold": 0.6,
+   "coverage": 0.7925955414012739,
+   "accepted_acc": 0.9271722752385736
+  },
+  {
+   "threshold": 0.65,
+   "coverage": 0.767515923566879,
+   "accepted_acc": 0.9325726141078838
+  },
+  {
+   "threshold": 0.7,
+   "coverage": 0.7364649681528662,
+   "accepted_acc": 0.9394594594594594
+  },
+  {
+   "threshold": 0.75,
+   "coverage": 0.7109872611464968,
+   "accepted_acc": 0.9468085106382979
+  },
+  {
+   "threshold": 0.8,
+   "coverage": 0.6807324840764332,
+   "accepted_acc": 0.952046783625731
+  },
+  {
+   "threshold": 0.85,
+   "coverage": 0.6401273885350318,
+   "accepted_acc": 0.9577114427860697
+  },
+  {
+   "threshold": 0.9,
+   "coverage": 0.5895700636942676,
+   "accepted_acc": 0.9642133693450371
+  },
+  {
+   "threshold": 0.95,
+   "coverage": 0.4924363057324841,
+   "accepted_acc": 0.9700889248181084
+  }
+ ],
+ "final_C": 0.01,
+ "t_zs": 50.0,
+ "w_zs": 0.25,
+ "manifest": "431315e87d2612cb",
+ "n_dev": 2512
+}
