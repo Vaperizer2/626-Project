@@ -1,4 +1,4 @@
-# STATUS — resume checkpoint (updated 2026-10-18 ~14:45 SAST) — ALL PLANNED PHASES COMPLETE
+# STATUS — resume checkpoint (updated 2026-10-18 ~16:15 SAST) — ALL PLANNED PHASES COMPLETE
 
 If an assistant session dies, a new one should read this file first, then `CODEBASE.md` and `EXPERIMENT_LOG.md`.
 
@@ -78,8 +78,17 @@ Collect: `host.compute.create('ssh:carlpc2-science').attach_job('<id>').result()
    a small CNN for real-time OpenCV; export ONNX + parity check; evaluate sealed test + web holdout once.
 4. OpenCV demo app (file/folder/URL/webcam) and comparative report.
 
+## Second plan (2026-10-18 afternoon) — complete
+- IEEE paper: docs/paper/main.tex -> main.pdf (8 pp, 47 refs from arXiv/CrossRef; fill \placeholder affiliation/email/ack/URL).
+- Interactive explorer: docs/explorer/index.html (offline, 10 tabs, 11 family pages); rebuild with scripts/build_explorer.py.
+- Original Kaggle evaluation: results/kaggle_original/ (never-seen 83.0 %; legacy-protocol replay 87.7 % vs old 71.3 %).
+- GPUI app: apps/gpui-demo (gpui =0.2.2, ort =2.0.0-rc.14 load-dynamic; build with `cargo run --release --locked`;
+  keep Cargo.lock: libc pinned to 0.2.189 because 0.2.191 breaks xattr). Window not yet launched by anyone — first
+  run is the user's; headless parity 64/64. Model weights exports/final/model.onnx.data now on the laptop too.
+
 ## Open items (user's call)
 - Switch the PC login shell back: `chsh -s /bin/fish carl` (temporarily bash for job submission).
+- Run the GPUI app once on the laptop desktop and report any window/portal/clipboard issues.
 - Optional next work: relabel the 69 audited issues + rebuild "switch" (Nintendo contamination); distil the model into
   a small CNN for pure OpenCV-DNN/real-time CPU use; collect target-domain camera photos; test webcam/window demo
   modes and onnxruntime-gpu on the RTX 3060 laptop (untested).

@@ -10,7 +10,15 @@ repository has three parts:
 2. A **deployable classifier** with calibrated abstention, exported to ONNX, and an OpenCV demo for files, folders,
    URLs and webcams: [`docs/DEMO.md`](docs/DEMO.md).
 3. A **learning resource** on model families, transfer learning and honest evaluation:
-   [`docs/LEARNING_PATH.md`](docs/LEARNING_PATH.md).
+   [`docs/LEARNING_PATH.md`](docs/LEARNING_PATH.md) and the interactive, offline explorer
+   [`docs/explorer/index.html`](docs/explorer/index.html) (open in a browser: walkthrough, benchmark explorer,
+   abstention slider, and an in-depth page per model family).
+
+Also: the IEEE-format paper [`docs/paper/main.pdf`](docs/paper/main.pdf) (source `docs/paper/main.tex`), the
+GPUI desktop demo [`apps/gpui-demo/`](apps/gpui-demo/README.md) (Rust, onnxruntime), and the evaluation on the
+original Kaggle download [`results/kaggle_original/`](results/kaggle_original/summary.json)
+(`scripts/eval_original_kaggle.py`): 83.0 % on the 493 never-seen files; 87.7 % vs the old notebooks' 71.3 % when the
+old 70/15/15 protocol is replayed on the same legacy-test files.
 
 ## Headline results
 

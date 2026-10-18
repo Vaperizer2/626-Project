@@ -224,6 +224,10 @@ uv run python -m pytest -q tests/test_demo.py
 
 ## 8. Deploying elsewhere (e.g. a Rust GPUI app via the `ort` crate)
 
+> **Built:** the GPUI desktop app now exists at [`apps/gpui-demo/`](../apps/gpui-demo/README.md)
+> (`cd apps/gpui-demo && cargo run --release --locked`). It implements exactly the contract below; its headless
+> `classify` mode matches the Python pipeline on 64/64 dev images (`results/demo/gpui_parity.json`).
+
 The export folder is a self-contained contract. Any onnxruntime binding (Rust `ort`, C++, C#) can reproduce the demo
 from these three files:
 

@@ -529,7 +529,7 @@ cannot load the graph (\texttt{readNetFromONNX} terminates with a segmentation f
 use onnxruntime for inference. A Python/OpenCV application classifies files, folders, URLs or webcam frames and draws
 the top-3 labels or \emph{UNSURE}; its webcam and window modes have not yet been tested on a display.
 Its predictions match the PyTorch reference on 64 dev images (maximum
-$|\Delta p| = 9.1\times10^{-6}$). A Rust/GPUI desktop front end using onnxruntime is under development.
+$|\Delta p| = 9.1\times10^{-6}$). A Rust/GPUI desktop front end (\texttt{apps/gpui-demo}) loads the same ONNX graph through onnxruntime; its Rust port of the preprocessing agrees with the Python pipeline on 64/64 development images (argmax), and is bit-identical at the input tensor when built against libjpeg-turbo.
 
 % =====================================================================================================================
 \section{Generalisation Beyond the Test Split}\label{sec:gen}
