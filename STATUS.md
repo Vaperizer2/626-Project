@@ -1,4 +1,4 @@
-# STATUS — resume checkpoint (updated 2026-10-17 ~22:00 SAST, laptop going off overnight)
+# STATUS — resume checkpoint (updated 2026-10-18 ~11:30 SAST)
 
 If an assistant session dies, a new one should read this file first, then `CODEBASE.md` and `EXPERIMENT_LOG.md`.
 
@@ -24,7 +24,17 @@ Repo doubles as a learning resource (`docs/LEARNING_PATH.md`). uv for all envs. 
       21:11 SAST: So400m partial FT fold0 = 0.7948 acc / 0.7936 F1 (probe fold0 = 0.8048 / 0.8041); ~25 min/fold,
       ~1.7 min/epoch, 137M trainable params, 4.3 GB peak VRAM. ETA: 2A ~22:50, 2B ~01:00-01:30 SAST.
 - [x] Phase 2 docs — `docs/` (paper citations still to verify).
-- [ ] Phase 2 ablations; Phase 3 final model + ONNX export; Phase 4 OpenCV demo + report.
+- [x] Phase 2 — results/benchmark.csv (fixed schedule, 9 FT families x 5 folds + all probes/zero-shot). Schedule fix: no
+      consistent effect (paired folds 0-2, 14/30 improved). Leakage simulation: legacy-style eval inflates +5.5 (SigLIP) to
+      +13.6 pts (ResNet50). Best FT: SigLIP2-B 73.3% F1 < its probe 75.8%.
+- [x] Phase 3 — final model = SigLIP So400m frozen + probe fused with zero-shot head (src/compclass/final.py; exports/final/).
+      SEALED TEST USED (once, 2026-10-18): 83.7% acc / 83.4% macro-F1; in-scope 86.9%; 87.1% coverage @ 90.9% accepted acc
+      (abstain < 0.5); ECE 0.034. Probe-only 84.4% (fusion gain ~0 with deployable preprocessing). ONNX on PC only
+      (1.64 GB, batch 1): ORT parity 6e-6, 892 ms/img CPU; OpenCV DNN segfaults on this graph.
+- [~] Phase 4 — sub-agents running: Demo b7690ee5-9b8f-4b59-8751-24a296aca0f3 (src/compclass/demo.py, docs/DEMO.md),
+      Report becf6e88-1518-4dd1-98f9-5e01867757a3 (docs/report/REPORT.md, figures, README, EXPERIMENT_LOG).
+      Web holdout agent decc9afc-dbca-4d62-968b-b038543aee95 still downloading (data/web_holdout_v1); evaluate ONCE with
+      `uv run python -m compclass.final test --manifest data/web_holdout_v1/manifest.json --confirm` when ready.
 
 ## Running PC jobs (Claude Science job ids; they run detached, serialised by flock ~/.gpu.lock)
 | job | id | what | outputs on PC |
