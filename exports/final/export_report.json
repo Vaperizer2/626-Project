@@ -1,0 +1,9 @@
+{
+ "onnx": "exports/final/model.onnx",
+ "external_data": true,
+ "onnx_mb": 1637.1,
+ "ort_max_abs_prob_diff": 6.258487701416016e-06,
+ "ort_argmax_agree": 1.0,
+ "ort_cpu_ms_per_image": 892.4,
+ "cv2_error": "exit -11: "
+}
