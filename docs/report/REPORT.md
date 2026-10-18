@@ -423,7 +423,7 @@ Three observations.
 2. **The zero-shot head pays off under distribution shift.** In-distribution the fusion was a null result
    (Section 6), but on the web holdout the fused model is correct on 334 images versus 317 for the probe alone
    (+4.2 points). This is consistent with reports that keeping a vision-language model's text classifier preserves
-   robustness lost by a purely task-trained head (e.g. WiSE-FT). Per-image probe-only predictions were not saved,
+   robustness lost by a purely task-trained head (e.g. WiSE-FT [21]). Per-image probe-only predictions were not saved,
    so a paired significance test is not available; the comparison is on the same 407 images.
 3. **The weakest classes mirror training-data contamination.** Recall is lowest for *led* (0.47; 7 of its errors
    are predicted *diode*), *switch* (0.52; real toggle, slide and DIP switches are predicted *ic chip* 6 times, and
@@ -506,6 +506,8 @@ looking at thumbnails, without a second annotator.
 18. S. Kornblith, J. Shlens, Q. V. Le. Do Better ImageNet Models Transfer Better? arXiv:1805.08974, 2018 (CVPR 2019).
 19. C. Guo, G. Pleiss, Y. Sun, K. Q. Weinberger. On Calibration of Modern Neural Networks. arXiv:1706.04599, 2017.
 20. Y. Geifman, R. El-Yaniv. Selective Classification for Deep Neural Networks. arXiv:1705.08500, 2017.
+21. M. Wortsman, G. Ilharco, J. W. Kim, M. Li, S. Kornblith, R. Roelofs, R. Gontijo-Lopes, H. Hajishirzi, A. Farhadi,
+    H. Namkoong, L. Schmidt. Robust fine-tuning of zero-shot models. arXiv:2109.01903, 2021 (CVPR 2022).
 
 All arXiv identifiers, titles, first authors and years above were checked against the arXiv API on 2026-10-18.
 
