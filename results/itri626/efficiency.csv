@@ -1,0 +1,4 @@
+model,params,trainable_params,input_size,checkpoint_mb,fp32_weights_mb,gpu_ms_per_image_batch1_fp16,gpu_ms_per_image_batch32_fp16,cpu_ms_per_image_batch1_fp32_8threads
+A_scratch_cnn,1187636,1187636,160,4.56,4.5,0.52,0.046,1.7
+B_convnext_tiny,27835508,27835508,224,106.24,106.2,2.79,0.803,18.4
+C_siglip_so400m_linear,428248660,23060,384,0.1,1633.6,31.1,22.475,893.5

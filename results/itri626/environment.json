@@ -1,0 +1,31 @@
+{
+ "python": "3.12.14",
+ "platform": "Linux-7.2.7-1-cachyos-x86_64-with-glibc2.44",
+ "packages": {
+  "torch": "2.11.0+cu128",
+  "torchvision": "0.26.0+cu128",
+  "timm": "1.0.30",
+  "open_clip_torch": "3.3.0",
+  "scikit-learn": "1.9.1",
+  "numpy": "2.5.4",
+  "pandas": "3.0.6",
+  "onnxruntime": "1.31.0",
+  "onnx": "1.23.2",
+  "pillow": "13.0.0",
+  "matplotlib": "3.11.2",
+  "nbconvert": "7.17.2",
+  "ipykernel": "7.4.0"
+ },
+ "cuda_available": true,
+ "torch_cuda": "12.8",
+ "cudnn": 91900,
+ "gpu": {
+  "name": "NVIDIA GeForce RTX 4060 Ti",
+  "memory_gib": 7.7,
+  "compute_capability": "8.9"
+ },
+ "nvidia_driver": "615.71.09",
+ "cpu": "AMD Ryzen 7 8700F 8-Core Processor",
+ "cpu_logical_cores": 16,
+ "ram_gib": 30.7
+}

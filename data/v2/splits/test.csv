@@ -1,0 +1,419 @@
+id,path,label,cluster,fold,ood_suspect
+083728ac118bb62f,images/battery holder/083728ac118bb62f.jpg,battery holder,c00097,,0
+0961bc2e937a6f67,images/battery holder/0961bc2e937a6f67.jpg,battery holder,c00107,,0
+2e4dd0f66afe0a99,images/battery holder/2e4dd0f66afe0a99.jpg,battery holder,c00503,,0
+37ab53c069f762e8,images/battery holder/37ab53c069f762e8.jpg,battery holder,c00619,,0
+60cb192031f98fea,images/battery holder/60cb192031f98fea.jpg,battery holder,c01077,,1
+765a5495f8a4c534,images/battery holder/765a5495f8a4c534.jpg,battery holder,c01288,,0
+79c93648a89cb925,images/battery holder/79c93648a89cb925.jpg,battery holder,c01331,,1
+83a54cda0ba64c3c,images/battery holder/83a54cda0ba64c3c.jpg,battery holder,c01439,,0
+887beaf9b3575351,images/battery holder/887beaf9b3575351.jpg,battery holder,c01501,,0
+8a4a93833632b375,images/battery holder/8a4a93833632b375.jpg,battery holder,c01524,,0
+902ca9aff75642e5,images/battery holder/902ca9aff75642e5.jpg,battery holder,c01582,,0
+93ff2867239079a1,images/battery holder/93ff2867239079a1.jpg,battery holder,c01620,,0
+ac47c34e6b6e82b7,images/battery holder/ac47c34e6b6e82b7.jpg,battery holder,c01842,,0
+ad77ddd75a1c4f12,images/battery holder/ad77ddd75a1c4f12.jpg,battery holder,c01856,,0
+b7edd2967c3b324b,images/battery holder/b7edd2967c3b324b.jpg,battery holder,c01973,,0
+c226f94aff79ffce,images/battery holder/c226f94aff79ffce.jpg,battery holder,c02073,,0
+c3e8abd832bbdf63,images/battery holder/c3e8abd832bbdf63.jpg,battery holder,c02089,,0
+ce0c7fb9d5e1e7cc,images/battery holder/ce0c7fb9d5e1e7cc.jpg,battery holder,c02209,,1
+deb12872c16ef14d,images/battery holder/deb12872c16ef14d.jpg,battery holder,c02385,,0
+e4002fa398d35c7c,images/battery holder/e4002fa398d35c7c.jpg,battery holder,c00619,,0
+fbf4a5ac8116f5cd,images/battery holder/fbf4a5ac8116f5cd.jpg,battery holder,c02739,,0
+ff425a3521fb9d5c,images/battery holder/ff425a3521fb9d5c.jpg,battery holder,c02776,,1
+0028f5602e7a5fd2,images/breadboard/0028f5602e7a5fd2.jpg,breadboard,c00003,,0
+0320527e14efa79c,images/breadboard/0320527e14efa79c.jpg,breadboard,c00042,,0
+0dcc4eec062e61b1,images/breadboard/0dcc4eec062e61b1.jpg,breadboard,c00145,,1
+12462ddadce2920e,images/breadboard/12462ddadce2920e.jpg,breadboard,c00197,,0
+192f1a7c64e7e3ad,images/breadboard/192f1a7c64e7e3ad.jpg,breadboard,c00275,,0
+19ea0971f422d2b4,images/breadboard/19ea0971f422d2b4.jpg,breadboard,c00282,,0
+26b20c8791231259,images/breadboard/26b20c8791231259.jpg,breadboard,c00417,,0
+52ab49b27e896dc6,images/breadboard/52ab49b27e896dc6.jpg,breadboard,c00915,,0
+557ac7382dbf0cc5,images/breadboard/557ac7382dbf0cc5.jpg,breadboard,c00942,,0
+5845e1b720f46272,images/breadboard/5845e1b720f46272.jpg,breadboard,c00976,,0
+7e4a92d443d10474,images/breadboard/7e4a92d443d10474.jpg,breadboard,c01382,,0
+8569989f1910f80b,images/breadboard/8569989f1910f80b.jpg,breadboard,c01463,,0
+93a2a2d81a63318d,images/breadboard/93a2a2d81a63318d.jpg,breadboard,c00942,,0
+ac7c1f83fd437994,images/breadboard/ac7c1f83fd437994.jpg,breadboard,c01844,,0
+d9e20aaebf168047,images/breadboard/d9e20aaebf168047.jpg,breadboard,c02333,,0
+dcc52f4dd299f7a0,images/breadboard/dcc52f4dd299f7a0.jpg,breadboard,c02363,,0
+e0ec0eada78b238d,images/breadboard/e0ec0eada78b238d.jpg,breadboard,c02406,,0
+e3ccb7bf0c37a6b7,images/breadboard/e3ccb7bf0c37a6b7.jpg,breadboard,c02438,,1
+edaa8877f2463103,images/breadboard/edaa8877f2463103.jpg,breadboard,c02572,,1
+1edfcc104750a2cc,images/capacitor/1edfcc104750a2cc.jpg,capacitor,c00326,,0
+20782deddfddc672,images/capacitor/20782deddfddc672.jpg,capacitor,c00342,,0
+21f3a814500e16e2,images/capacitor/21f3a814500e16e2.jpg,capacitor,c00358,,1
+2d3e7402fa19e07e,images/capacitor/2d3e7402fa19e07e.jpg,capacitor,c00487,,0
+3df190a447ca4359,images/capacitor/3df190a447ca4359.jpg,capacitor,c00690,,0
+430b32244a57a71c,images/capacitor/430b32244a57a71c.jpg,capacitor,c00736,,1
+4c74fea117570018,images/capacitor/4c74fea117570018.jpg,capacitor,c00840,,0
+5e671a329ffceede,images/capacitor/5e671a329ffceede.jpg,capacitor,c01048,,0
+5f897ac2c51195e0,images/capacitor/5f897ac2c51195e0.jpg,capacitor,c01062,,0
+65af6ceebdf82ba6,images/capacitor/65af6ceebdf82ba6.jpg,capacitor,c01121,,0
+7289a5ebb3f23f0d,images/capacitor/7289a5ebb3f23f0d.jpg,capacitor,c01253,,0
+8dbbea967e3e57a4,images/capacitor/8dbbea967e3e57a4.jpg,capacitor,c01560,,0
+a4401e9d8929ce10,images/capacitor/a4401e9d8929ce10.jpg,capacitor,c01769,,1
+c1490d7df2b6a277,images/capacitor/c1490d7df2b6a277.jpg,capacitor,c02062,,0
+e7c379fa4af967d5,images/capacitor/e7c379fa4af967d5.jpg,capacitor,c02486,,0
+ee76dc1e72944521,images/capacitor/ee76dc1e72944521.jpg,capacitor,c02579,,0
+f47b61bf667c8f3b,images/capacitor/f47b61bf667c8f3b.jpg,capacitor,c02647,,0
+09b85967d82427b0,images/connector/09b85967d82427b0.jpg,connector,c00111,,0
+24c26f3d62dd7a75,images/connector/24c26f3d62dd7a75.jpg,connector,c00391,,0
+3366711cc0a83d5b,images/connector/3366711cc0a83d5b.jpg,connector,c00555,,0
+376d199f106f679e,images/connector/376d199f106f679e.jpg,connector,c00612,,1
+41913d911553f119,images/connector/41913d911553f119.jpg,connector,c00723,,0
+67c6ec9e45f9d242,images/connector/67c6ec9e45f9d242.jpg,connector,c01145,,0
+7832769fb0e4baf1,images/connector/7832769fb0e4baf1.jpg,connector,c01311,,0
+8777d68d13ca5660,images/connector/8777d68d13ca5660.jpg,connector,c01488,,0
+97f4b345cf2a7403,images/connector/97f4b345cf2a7403.jpg,connector,c01648,,0
+adda11459366e395,images/connector/adda11459366e395.jpg,connector,c01865,,0
+baec50cf661ba585,images/connector/baec50cf661ba585.jpg,connector,c00111,,0
+d22682cc6628dbfe,images/connector/d22682cc6628dbfe.jpg,connector,c00111,,0
+e42e7917452e7d38,images/connector/e42e7917452e7d38.jpg,connector,c02443,,0
+e8a4b6fd1c6588c7,images/connector/e8a4b6fd1c6588c7.jpg,connector,c02502,,0
+ea928fdcecd20217,images/connector/ea928fdcecd20217.jpg,connector,c02528,,0
+f84f5d30ee1ae21c,images/connector/f84f5d30ee1ae21c.jpg,connector,c02690,,1
+12f3cc649a18b3c9,images/crystal oscillator/12f3cc649a18b3c9.jpg,crystal oscillator,c00203,,1
+149d2750fe3ae575,images/crystal oscillator/149d2750fe3ae575.jpg,crystal oscillator,c00218,,0
+1993c85223cd65ff,images/crystal oscillator/1993c85223cd65ff.jpg,crystal oscillator,c00279,,0
+1a37c32d791a35ea,images/crystal oscillator/1a37c32d791a35ea.jpg,crystal oscillator,c00285,,1
+24dd296a6402e005,images/crystal oscillator/24dd296a6402e005.jpg,crystal oscillator,c00393,,1
+4796b478570a5a20,images/crystal oscillator/4796b478570a5a20.jpg,crystal oscillator,c00786,,0
+5178b575de447fc3,images/crystal oscillator/5178b575de447fc3.jpg,crystal oscillator,c00903,,0
+59c529659e41ee0e,images/crystal oscillator/59c529659e41ee0e.jpg,crystal oscillator,c00998,,1
+5ff61e68a566b3e5,images/crystal oscillator/5ff61e68a566b3e5.jpg,crystal oscillator,c01069,,0
+65c0ba6bca6396e2,images/crystal oscillator/65c0ba6bca6396e2.jpg,crystal oscillator,c01122,,1
+746bdea64b8c3fa2,images/crystal oscillator/746bdea64b8c3fa2.jpg,crystal oscillator,c01270,,0
+7ea3c75ca7105d50,images/crystal oscillator/7ea3c75ca7105d50.jpg,crystal oscillator,c00903,,0
+959321f2e02be07e,images/crystal oscillator/959321f2e02be07e.jpg,crystal oscillator,c01631,,0
+a839dc5782a24850,images/crystal oscillator/a839dc5782a24850.jpg,crystal oscillator,c01803,,0
+bd8c1adee90b9790,images/crystal oscillator/bd8c1adee90b9790.jpg,crystal oscillator,c02019,,1
+c6ce48be06de5f90,images/crystal oscillator/c6ce48be06de5f90.jpg,crystal oscillator,c02128,,1
+cfc65c8afe23f8bc,images/crystal oscillator/cfc65c8afe23f8bc.jpg,crystal oscillator,c02242,,0
+db886486b3712c45,images/crystal oscillator/db886486b3712c45.jpg,crystal oscillator,c02346,,0
+df37e559c00e133e,images/crystal oscillator/df37e559c00e133e.jpg,crystal oscillator,c02387,,1
+eb1ee39161201212,images/crystal oscillator/eb1ee39161201212.jpg,crystal oscillator,c02535,,0
+f7e4840eaa89c9e7,images/crystal oscillator/f7e4840eaa89c9e7.jpg,crystal oscillator,c02686,,0
+014d5aa693d6c2ca,images/diode/014d5aa693d6c2ca.jpg,diode,c00017,,0
+3c3246bf47d566ac,images/diode/3c3246bf47d566ac.jpg,diode,c00664,,0
+498dd8a6db9b5e20,images/diode/498dd8a6db9b5e20.jpg,diode,c00807,,1
+4c255df2237e6b80,images/diode/4c255df2237e6b80.jpg,diode,c00832,,0
+51b8b5f641e72480,images/diode/51b8b5f641e72480.jpg,diode,c00907,,0
+5afd58e931512221,images/diode/5afd58e931512221.jpg,diode,c01012,,0
+6fc39e91bc30a4dc,images/diode/6fc39e91bc30a4dc.jpg,diode,c01222,,0
+775ca33efbc57498,images/diode/775ca33efbc57498.jpg,diode,c01300,,1
+813471f3df81e342,images/diode/813471f3df81e342.jpg,diode,c01408,,1
+86fdca3e779eddb9,images/diode/86fdca3e779eddb9.jpg,diode,c01478,,0
+87cd9aaf6512d2b4,images/diode/87cd9aaf6512d2b4.jpg,diode,c01493,,0
+8efe558cd1efd4c3,images/diode/8efe558cd1efd4c3.jpg,diode,c01408,,1
+9dd9b440f971ac3c,images/diode/9dd9b440f971ac3c.jpg,diode,c01712,,0
+9eaecb08718d8236,images/diode/9eaecb08718d8236.jpg,diode,c01716,,0
+be97f9e99c2b1479,images/diode/be97f9e99c2b1479.jpg,diode,c02032,,0
+d4a1bc5ec088d487,images/diode/d4a1bc5ec088d487.jpg,diode,c02291,,0
+df89e7d37f6db7ed,images/diode/df89e7d37f6db7ed.jpg,diode,c02392,,0
+f81fa084b075a2d1,images/diode/f81fa084b075a2d1.jpg,diode,c02688,,0
+f893a2872d43c4e6,images/diode/f893a2872d43c4e6.jpg,diode,c02693,,0
+f9dae2b6ad95b2d9,images/diode/f9dae2b6ad95b2d9.jpg,diode,c02708,,0
+fb354e06c17b7c86,images/diode/fb354e06c17b7c86.jpg,diode,c02731,,0
+06477dc885147ffd,images/fuse/06477dc885147ffd.jpg,fuse,c00081,,0
+1a6328dfa941cc24,images/fuse/1a6328dfa941cc24.jpg,fuse,c00287,,1
+36ac535653a0687b,images/fuse/36ac535653a0687b.jpg,fuse,c00605,,0
+3a3bdcdc4e54b202,images/fuse/3a3bdcdc4e54b202.jpg,fuse,c00638,,1
+3d153abc5663429c,images/fuse/3d153abc5663429c.jpg,fuse,c00678,,0
+5023fa704a34669a,images/fuse/5023fa704a34669a.jpg,fuse,c00890,,0
+5690fa81859f5bff,images/fuse/5690fa81859f5bff.jpg,fuse,c00954,,0
+6f96a83483f8d5d1,images/fuse/6f96a83483f8d5d1.jpg,fuse,c01220,,1
+7a2ec072b9be6611,images/fuse/7a2ec072b9be6611.jpg,fuse,c01340,,0
+92bc1e189131d136,images/fuse/92bc1e189131d136.jpg,fuse,c01607,,1
+92f143d168c6a869,images/fuse/92f143d168c6a869.jpg,fuse,c01609,,0
+9a1a2bf7ced17a54,images/fuse/9a1a2bf7ced17a54.jpg,fuse,c01671,,0
+9abc4e1a975d34d8,images/fuse/9abc4e1a975d34d8.jpg,fuse,c01678,,1
+a37ed5254f337266,images/fuse/a37ed5254f337266.jpg,fuse,c01764,,0
+a9e657fb5337ac35,images/fuse/a9e657fb5337ac35.jpg,fuse,c01813,,1
+aaf9afd3241e215a,images/fuse/aaf9afd3241e215a.jpg,fuse,c01821,,0
+ca1dbae8c8479b94,images/fuse/ca1dbae8c8479b94.jpg,fuse,c02154,,0
+cee53c28310f7fce,images/fuse/cee53c28310f7fce.jpg,fuse,c02226,,0
+e265716536fc4091,images/fuse/e265716536fc4091.jpg,fuse,c02429,,0
+f013903984bd9567,images/fuse/f013903984bd9567.jpg,fuse,c02596,,0
+178ba91116999a81,images/heat sink/178ba91116999a81.jpg,heat sink,c00254,,0
+1ab4fd4b51b2dd4c,images/heat sink/1ab4fd4b51b2dd4c.jpg,heat sink,c00288,,0
+231a90030e5c4870,images/heat sink/231a90030e5c4870.jpg,heat sink,c00374,,0
+2845d4deabe2658a,images/heat sink/2845d4deabe2658a.jpg,heat sink,c00435,,0
+312e6e585d8ae6e4,images/heat sink/312e6e585d8ae6e4.jpg,heat sink,c00530,,1
+4eeceaa734e7038f,images/heat sink/4eeceaa734e7038f.jpg,heat sink,c00870,,0
+5596dd47becdb22a,images/heat sink/5596dd47becdb22a.jpg,heat sink,c00943,,0
+6e5eb0f643df6cdb,images/heat sink/6e5eb0f643df6cdb.jpg,heat sink,c01204,,0
+710a0e79733b7b24,images/heat sink/710a0e79733b7b24.jpg,heat sink,c01235,,0
+7e29872b56b25cbe,images/heat sink/7e29872b56b25cbe.jpg,heat sink,c01380,,0
+8134f42de2fe4398,images/heat sink/8134f42de2fe4398.jpg,heat sink,c01409,,0
+97d3dac0d2b5f081,images/heat sink/97d3dac0d2b5f081.jpg,heat sink,c01644,,0
+b679799cbb5b3449,images/heat sink/b679799cbb5b3449.jpg,heat sink,c01958,,0
+bafc649ecfdd3718,images/heat sink/bafc649ecfdd3718.jpg,heat sink,c02000,,0
+c909663bbbc19296,images/heat sink/c909663bbbc19296.jpg,heat sink,c02149,,0
+ccd37f903bbc8bcf,images/heat sink/ccd37f903bbc8bcf.jpg,heat sink,c02191,,1
+cdeca47192ee3849,images/heat sink/cdeca47192ee3849.jpg,heat sink,c02207,,0
+e42d6cc5504b561e,images/heat sink/e42d6cc5504b561e.jpg,heat sink,c02442,,0
+ecd8187e132f8ea4,images/heat sink/ecd8187e132f8ea4.jpg,heat sink,c02555,,0
+f199bd5c1dddb30c,images/heat sink/f199bd5c1dddb30c.jpg,heat sink,c02610,,0
+f1e7da844d49876b,images/heat sink/f1e7da844d49876b.jpg,heat sink,c02613,,0
+fb2c5cdb1189de2a,images/heat sink/fb2c5cdb1189de2a.jpg,heat sink,c02730,,0
+ff8e962baea09193,images/heat sink/ff8e962baea09193.jpg,heat sink,c02780,,0
+01412af7438397e2,images/ic chip/01412af7438397e2.jpg,ic chip,c00015,,0
+0d3cb7deda47dce1,images/ic chip/0d3cb7deda47dce1.jpg,ic chip,c00137,,0
+102822902fc24e35,images/ic chip/102822902fc24e35.jpg,ic chip,c00175,,0
+37b21ffca905cb72,images/ic chip/37b21ffca905cb72.jpg,ic chip,c00620,,0
+480a07983c3fb98b,images/ic chip/480a07983c3fb98b.jpg,ic chip,c00791,,0
+4c2e9dce9ce2a1b5,images/ic chip/4c2e9dce9ce2a1b5.jpg,ic chip,c00833,,1
+4f1504c6195d8077,images/ic chip/4f1504c6195d8077.jpg,ic chip,c00873,,0
+6659ff88fb18ebce,images/ic chip/6659ff88fb18ebce.jpg,ic chip,c01130,,0
+6a54618b4fed39b3,images/ic chip/6a54618b4fed39b3.jpg,ic chip,c01168,,0
+78b39cfe8c9fac3a,images/ic chip/78b39cfe8c9fac3a.jpg,ic chip,c01319,,0
+7d298d8517ff4f45,images/ic chip/7d298d8517ff4f45.jpg,ic chip,c01366,,0
+a122742d5751ed34,images/ic chip/a122742d5751ed34.jpg,ic chip,c01743,,1
+aaf3733f0e838931,images/ic chip/aaf3733f0e838931.jpg,ic chip,c01820,,0
+b8cfb79a07b57c10,images/ic chip/b8cfb79a07b57c10.jpg,ic chip,c01980,,0
+b98103b78c40e16a,images/ic chip/b98103b78c40e16a.jpg,ic chip,c01987,,0
+be4e77e7a3f85f22,images/ic chip/be4e77e7a3f85f22.jpg,ic chip,c02029,,0
+c23eeae0922a0219,images/ic chip/c23eeae0922a0219.jpg,ic chip,c00620,,0
+ce59807a311564de,images/ic chip/ce59807a311564de.jpg,ic chip,c02217,,0
+da9cb1bc8d60ec8e,images/ic chip/da9cb1bc8d60ec8e.jpg,ic chip,c02340,,0
+e1d006e3f58486a2,images/ic chip/e1d006e3f58486a2.jpg,ic chip,c02419,,0
+efd5a763645b07a4,images/ic chip/efd5a763645b07a4.jpg,ic chip,c02595,,0
+fb0202e05fcb40a0,images/ic chip/fb0202e05fcb40a0.jpg,ic chip,c02728,,0
+1269b342d5057df4,images/inductor coil/1269b342d5057df4.jpg,inductor coil,c00199,,1
+2a3f0122a06ee00d,images/inductor coil/2a3f0122a06ee00d.jpg,inductor coil,c00454,,0
+325b5b25692aa33e,images/inductor coil/325b5b25692aa33e.jpg,inductor coil,c00547,,1
+336531c6f28283f0,images/inductor coil/336531c6f28283f0.jpg,inductor coil,c00554,,0
+3f02c07f307ffb00,images/inductor coil/3f02c07f307ffb00.jpg,inductor coil,c00702,,1
+58c8a878c02cc382,images/inductor coil/58c8a878c02cc382.jpg,inductor coil,c00982,,0
+5d347d10e9caecd1,images/inductor coil/5d347d10e9caecd1.jpg,inductor coil,c01036,,0
+6156fc5b66e490ea,images/inductor coil/6156fc5b66e490ea.jpg,inductor coil,c01084,,0
+6c3150d714d296bb,images/inductor coil/6c3150d714d296bb.jpg,inductor coil,c01181,,0
+724b8d712764c622,images/inductor coil/724b8d712764c622.jpg,inductor coil,c01250,,0
+72cbd2b4791b7bec,images/inductor coil/72cbd2b4791b7bec.jpg,inductor coil,c01257,,0
+768387b42bc2c962,images/inductor coil/768387b42bc2c962.jpg,inductor coil,c01290,,1
+865898ec34830aa6,images/inductor coil/865898ec34830aa6.jpg,inductor coil,c01474,,1
+abb42836bcbad136,images/inductor coil/abb42836bcbad136.jpg,inductor coil,c01835,,0
+b73de8b38d31a83c,images/inductor coil/b73de8b38d31a83c.jpg,inductor coil,c01835,,0
+bde2ef416078540c,images/inductor coil/bde2ef416078540c.jpg,inductor coil,c02024,,0
+c0b4d9e3bdcb6c53,images/inductor coil/c0b4d9e3bdcb6c53.jpg,inductor coil,c02057,,1
+c163c46f011860c4,images/inductor coil/c163c46f011860c4.jpg,inductor coil,c02065,,0
+c1bf5b120ee82a87,images/inductor coil/c1bf5b120ee82a87.jpg,inductor coil,c02069,,0
+c9958e04e6a28b87,images/inductor coil/c9958e04e6a28b87.jpg,inductor coil,c02152,,0
+d5099a317c13670d,images/inductor coil/d5099a317c13670d.jpg,inductor coil,c02295,,1
+e0d844e377b4c2c2,images/inductor coil/e0d844e377b4c2c2.jpg,inductor coil,c02405,,0
+f1642d353cd168d7,images/inductor coil/f1642d353cd168d7.jpg,inductor coil,c02608,,0
+082baa73c857a497,images/jumper wire/082baa73c857a497.jpg,jumper wire,c00096,,1
+345bf5541bebee16,images/jumper wire/345bf5541bebee16.jpg,jumper wire,c00565,,0
+3ea585b2df7267f0,images/jumper wire/3ea585b2df7267f0.jpg,jumper wire,c00698,,1
+3ff1043ea12501a6,images/jumper wire/3ff1043ea12501a6.jpg,jumper wire,c00707,,0
+4382948b50f61187,images/jumper wire/4382948b50f61187.jpg,jumper wire,c00741,,1
+68af4d152e41a364,images/jumper wire/68af4d152e41a364.jpg,jumper wire,c01157,,0
+934d66dd85efb2be,images/jumper wire/934d66dd85efb2be.jpg,jumper wire,c01612,,0
+9b55716bc71e0ac5,images/jumper wire/9b55716bc71e0ac5.jpg,jumper wire,c01682,,0
+9d3bef0dc9f64824,images/jumper wire/9d3bef0dc9f64824.jpg,jumper wire,c01703,,1
+a5c4f3594a62be39,images/jumper wire/a5c4f3594a62be39.jpg,jumper wire,c01781,,1
+af01a2cc7b1c39a2,images/jumper wire/af01a2cc7b1c39a2.jpg,jumper wire,c01882,,1
+af1e4b6372f3b9c8,images/jumper wire/af1e4b6372f3b9c8.jpg,jumper wire,c01612,,0
+c2e21c0abc1eefba,images/jumper wire/c2e21c0abc1eefba.jpg,jumper wire,c01612,,0
+c670d1d7ca05061a,images/jumper wire/c670d1d7ca05061a.jpg,jumper wire,c02121,,0
+cba0711fe0f2b3a4,images/jumper wire/cba0711fe0f2b3a4.jpg,jumper wire,c02171,,0
+d2fd9e9de93170a9,images/jumper wire/d2fd9e9de93170a9.jpg,jumper wire,c02270,,1
+e2450a63b91527a9,images/jumper wire/e2450a63b91527a9.jpg,jumper wire,c02425,,1
+e7629b34e836226f,images/jumper wire/e7629b34e836226f.jpg,jumper wire,c01612,,0
+e8f8c3875165dd2d,images/jumper wire/e8f8c3875165dd2d.jpg,jumper wire,c02506,,1
+ede99203d51d34c9,images/jumper wire/ede99203d51d34c9.jpg,jumper wire,c02576,,0
+f475e8e72d408353,images/jumper wire/f475e8e72d408353.jpg,jumper wire,c02646,,0
+fba02f3d1d3aba65,images/jumper wire/fba02f3d1d3aba65.jpg,jumper wire,c02734,,0
+fe47139b9db562d0,images/jumper wire/fe47139b9db562d0.jpg,jumper wire,c02768,,1
+0f4a869c81e8219e,images/led/0f4a869c81e8219e.jpg,led,c00164,,0
+15601777df11c9c3,images/led/15601777df11c9c3.jpg,led,c00229,,1
+46b1efa3879b166d,images/led/46b1efa3879b166d.jpg,led,c00776,,1
+7a1b854fde135b15,images/led/7a1b854fde135b15.jpg,led,c01337,,1
+87dca7da0f7b119e,images/led/87dca7da0f7b119e.jpg,led,c01494,,0
+8eed403bc63874a6,images/led/8eed403bc63874a6.jpg,led,c01570,,1
+91635162c4139514,images/led/91635162c4139514.jpg,led,c01594,,0
+9515cef6889471ee,images/led/9515cef6889471ee.jpg,led,c01627,,0
+9552e433c9f6d5e0,images/led/9552e433c9f6d5e0.jpg,led,c01630,,1
+b440fc4229ff13bf,images/led/b440fc4229ff13bf.jpg,led,c01933,,0
+c33c3c89dda20136,images/led/c33c3c89dda20136.jpg,led,c02081,,0
+c69ec82b7d532b92,images/led/c69ec82b7d532b92.jpg,led,c02124,,0
+dc11adb9eed79449,images/led/dc11adb9eed79449.jpg,led,c02353,,1
+e2cb8f99473c536f,images/led/e2cb8f99473c536f.jpg,led,c02431,,1
+ea059f9c1186a36d,images/led/ea059f9c1186a36d.jpg,led,c02523,,0
+ecc966d194c9cbc2,images/led/ecc966d194c9cbc2.jpg,led,c02553,,0
+f5b99d9ff1dfb14b,images/led/f5b99d9ff1dfb14b.jpg,led,c02669,,0
+fda173584f0ae103,images/led/fda173584f0ae103.jpg,led,c02431,,1
+016e9b94414ff26e,images/microcontroller board/016e9b94414ff26e.jpg,microcontroller board,c00019,,0
+039460fbb1b84a60,images/microcontroller board/039460fbb1b84a60.jpg,microcontroller board,c00047,,0
+07e7f6320078367d,images/microcontroller board/07e7f6320078367d.jpg,microcontroller board,c00093,,0
+0bcdfc44ec5dba40,images/microcontroller board/0bcdfc44ec5dba40.jpg,microcontroller board,c00125,,0
+1509c06977d3e1ec,images/microcontroller board/1509c06977d3e1ec.jpg,microcontroller board,c00223,,0
+161a21337230aa67,images/microcontroller board/161a21337230aa67.jpg,microcontroller board,c00093,,0
+357854fadcf715cc,images/microcontroller board/357854fadcf715cc.jpg,microcontroller board,c00585,,0
+3c54a63601dbcb13,images/microcontroller board/3c54a63601dbcb13.jpg,microcontroller board,c00669,,1
+571fe7d46c3b607b,images/microcontroller board/571fe7d46c3b607b.jpg,microcontroller board,c00959,,0
+58ff2c9c717e476c,images/microcontroller board/58ff2c9c717e476c.jpg,microcontroller board,c00986,,0
+6e672881108ba021,images/microcontroller board/6e672881108ba021.jpg,microcontroller board,c01205,,1
+71a2f449a9258c92,images/microcontroller board/71a2f449a9258c92.jpg,microcontroller board,c01241,,0
+863beb75dab43ab7,images/microcontroller board/863beb75dab43ab7.jpg,microcontroller board,c01471,,0
+8dfc383e278d8342,images/microcontroller board/8dfc383e278d8342.jpg,microcontroller board,c01561,,0
+975c669abe8fa7dc,images/microcontroller board/975c669abe8fa7dc.jpg,microcontroller board,c01643,,0
+99779a43c055bc7e,images/microcontroller board/99779a43c055bc7e.jpg,microcontroller board,c01665,,0
+b4cd0e7dd0e5691f,images/microcontroller board/b4cd0e7dd0e5691f.jpg,microcontroller board,c01939,,0
+b4d4b952286dd5e8,images/microcontroller board/b4d4b952286dd5e8.jpg,microcontroller board,c01941,,0
+cbcb6d4a72e40fad,images/microcontroller board/cbcb6d4a72e40fad.jpg,microcontroller board,c02177,,0
+d5412bc36639186a,images/microcontroller board/d5412bc36639186a.jpg,microcontroller board,c02297,,0
+dd01bccb3c6397ef,images/microcontroller board/dd01bccb3c6397ef.jpg,microcontroller board,c02364,,0
+f16aa1fd705bc5ea,images/microcontroller board/f16aa1fd705bc5ea.jpg,microcontroller board,c02609,,0
+04541bc21610ed53,images/potentiometer/04541bc21610ed53.jpg,potentiometer,c00058,,0
+151023f3d221a3e9,images/potentiometer/151023f3d221a3e9.jpg,potentiometer,c00225,,0
+23f68b5b7ea662a9,images/potentiometer/23f68b5b7ea662a9.jpg,potentiometer,c00385,,0
+2a9737af3914f0e7,images/potentiometer/2a9737af3914f0e7.jpg,potentiometer,c00459,,0
+36ba765e924fb1a5,images/potentiometer/36ba765e924fb1a5.jpg,potentiometer,c00607,,0
+3f161024dfd6cdf7,images/potentiometer/3f161024dfd6cdf7.jpg,potentiometer,c00703,,0
+47f2335135da0812,images/potentiometer/47f2335135da0812.jpg,potentiometer,c00789,,0
+542cf49b5f40c01c,images/potentiometer/542cf49b5f40c01c.jpg,potentiometer,c00928,,0
+6e729759d25c5b82,images/potentiometer/6e729759d25c5b82.jpg,potentiometer,c01206,,0
+6f3ee99ce9282583,images/potentiometer/6f3ee99ce9282583.jpg,potentiometer,c01219,,0
+74d1fd9727836a60,images/potentiometer/74d1fd9727836a60.jpg,potentiometer,c01272,,0
+81b7477facf07570,images/potentiometer/81b7477facf07570.jpg,potentiometer,c00703,,0
+81fed565ed506f95,images/potentiometer/81fed565ed506f95.jpg,potentiometer,c01421,,0
+88bc93a6d318e62e,images/potentiometer/88bc93a6d318e62e.jpg,potentiometer,c01502,,1
+9edd5a4ad6393541,images/potentiometer/9edd5a4ad6393541.jpg,potentiometer,c01717,,0
+b69ff8f33bc9a0f7,images/potentiometer/b69ff8f33bc9a0f7.jpg,potentiometer,c01960,,0
+bdf8788f65a1f484,images/potentiometer/bdf8788f65a1f484.jpg,potentiometer,c02025,,0
+d4584e95cc775ade,images/potentiometer/d4584e95cc775ade.jpg,potentiometer,c02284,,0
+e3f47802cdae0181,images/potentiometer/e3f47802cdae0181.jpg,potentiometer,c02440,,0
+ed466e19cb4588f2,images/potentiometer/ed466e19cb4588f2.jpg,potentiometer,c02563,,0
+fdb72731e76de75c,images/potentiometer/fdb72731e76de75c.jpg,potentiometer,c02759,,0
+00bb2f076c2b6f9f,images/power supply module/00bb2f076c2b6f9f.jpg,power supply module,c00009,,0
+0b69dc1bf463bfca,images/power supply module/0b69dc1bf463bfca.jpg,power supply module,c00121,,0
+1bb64f065f9520c5,images/power supply module/1bb64f065f9520c5.jpg,power supply module,c00301,,0
+26f6ea13032181a5,images/power supply module/26f6ea13032181a5.jpg,power supply module,c00420,,0
+3555df29c4e027f1,images/power supply module/3555df29c4e027f1.jpg,power supply module,c00584,,0
+359ed4d18ae5e28e,images/power supply module/359ed4d18ae5e28e.jpg,power supply module,c00121,,0
+42ad111374c21e9b,images/power supply module/42ad111374c21e9b.jpg,power supply module,c00731,,1
+4433e357e000a1fe,images/power supply module/4433e357e000a1fe.jpg,power supply module,c00745,,0
+580d05c526d04a2a,images/power supply module/580d05c526d04a2a.jpg,power supply module,c00975,,0
+5e9681e650bce1b3,images/power supply module/5e9681e650bce1b3.jpg,power supply module,c01050,,0
+60a425e6eeeb12bd,images/power supply module/60a425e6eeeb12bd.jpg,power supply module,c01075,,0
+6ad427b1bfd51d23,images/power supply module/6ad427b1bfd51d23.jpg,power supply module,c01171,,0
+77542534264ffb2a,images/power supply module/77542534264ffb2a.jpg,power supply module,c01299,,0
+7b0d549a3b16c578,images/power supply module/7b0d549a3b16c578.jpg,power supply module,c01347,,0
+95eb0731b6c9ae49,images/power supply module/95eb0731b6c9ae49.jpg,power supply module,c01635,,0
+a7ea104f3cdb6dad,images/power supply module/a7ea104f3cdb6dad.jpg,power supply module,c01800,,0
+ab87977acd5bdbf4,images/power supply module/ab87977acd5bdbf4.jpg,power supply module,c01828,,0
+abb34e5542ca4054,images/power supply module/abb34e5542ca4054.jpg,power supply module,c01834,,0
+bcf773902157213e,images/power supply module/bcf773902157213e.jpg,power supply module,c02013,,0
+e5fa0d7e4fc467a2,images/power supply module/e5fa0d7e4fc467a2.jpg,power supply module,c02468,,1
+f23924e1b8bd60ba,images/power supply module/f23924e1b8bd60ba.jpg,power supply module,c02617,,0
+f5227582b9b61c05,images/power supply module/f5227582b9b61c05.jpg,power supply module,c02655,,0
+02a5ca3f664d1fd3,images/relay/02a5ca3f664d1fd3.jpg,relay,c00038,,0
+032d419173e57924,images/relay/032d419173e57924.jpg,relay,c00043,,0
+17faf848a7673069,images/relay/17faf848a7673069.jpg,relay,c00261,,0
+22b4ae89c1226693,images/relay/22b4ae89c1226693.jpg,relay,c00371,,0
+27853bc3c6de3861,images/relay/27853bc3c6de3861.jpg,relay,c00425,,0
+3b24c6e4ef943a3d,images/relay/3b24c6e4ef943a3d.jpg,relay,c00647,,1
+4f6e26986ccf8c71,images/relay/4f6e26986ccf8c71.jpg,relay,c00882,,1
+54763e895c49140f,images/relay/54763e895c49140f.jpg,relay,c00932,,0
+6d7bfbe5a95e9f72,images/relay/6d7bfbe5a95e9f72.jpg,relay,c01189,,0
+6ec7691a8f1c2b84,images/relay/6ec7691a8f1c2b84.jpg,relay,c01212,,0
+89db1febf6e6ca14,images/relay/89db1febf6e6ca14.jpg,relay,c01522,,0
+8b174fe20a3f707b,images/relay/8b174fe20a3f707b.jpg,relay,c01535,,0
+9928fbf505fd611d,images/relay/9928fbf505fd611d.jpg,relay,c01660,,0
+9f84b383b33e985c,images/relay/9f84b383b33e985c.jpg,relay,c01725,,0
+ac01e4fb3bbf24c8,images/relay/ac01e4fb3bbf24c8.jpg,relay,c01840,,1
+ad9e11083e218840,images/relay/ad9e11083e218840.jpg,relay,c01860,,0
+b7686d789a455f82,images/relay/b7686d789a455f82.jpg,relay,c01969,,0
+b78dbe0f14347fdc,images/relay/b78dbe0f14347fdc.jpg,relay,c01971,,1
+ca352bd9b03f2d9f,images/relay/ca352bd9b03f2d9f.jpg,relay,c02155,,0
+d34f8bf5f208c552,images/relay/d34f8bf5f208c552.jpg,relay,c02275,,1
+e9f920abfa930f4a,images/relay/e9f920abfa930f4a.jpg,relay,c02521,,0
+ff06630a12531930,images/relay/ff06630a12531930.jpg,relay,c02774,,0
+213d5a546afca805,images/resistor/213d5a546afca805.jpg,resistor,c00351,,1
+25f7d46422aeaf63,images/resistor/25f7d46422aeaf63.jpg,resistor,c00406,,0
+2c18ca2cd8892665,images/resistor/2c18ca2cd8892665.jpg,resistor,c00475,,1
+3014cb21592fee25,images/resistor/3014cb21592fee25.jpg,resistor,c00521,,0
+5d135af7b645bc15,images/resistor/5d135af7b645bc15.jpg,resistor,c01032,,0
+645578c014fdfabe,images/resistor/645578c014fdfabe.jpg,resistor,c01113,,0
+86ac3798958bc25c,images/resistor/86ac3798958bc25c.jpg,resistor,c01476,,1
+898642dd08f6f397,images/resistor/898642dd08f6f397.jpg,resistor,c01516,,0
+8fc33951c1f7e604,images/resistor/8fc33951c1f7e604.jpg,resistor,c01575,,1
+a3e0dedaa517a319,images/resistor/a3e0dedaa517a319.jpg,resistor,c01768,,1
+a7e1d7e4e859dde9,images/resistor/a7e1d7e4e859dde9.jpg,resistor,c01799,,0
+abefbfa7fd9eec25,images/resistor/abefbfa7fd9eec25.jpg,resistor,c01839,,0
+ad91598604add89a,images/resistor/ad91598604add89a.jpg,resistor,c01859,,0
+b0935d6bc84be052,images/resistor/b0935d6bc84be052.jpg,resistor,c01899,,0
+c94eae7c192b04b9,images/resistor/c94eae7c192b04b9.jpg,resistor,c02151,,0
+cc3561267abfef6d,images/resistor/cc3561267abfef6d.jpg,resistor,c02183,,0
+d45290376a2306f4,images/resistor/d45290376a2306f4.jpg,resistor,c02283,,1
+e173afc178728cb1,images/resistor/e173afc178728cb1.jpg,resistor,c02413,,0
+e5fc99cecfd5e021,images/resistor/e5fc99cecfd5e021.jpg,resistor,c02469,,1
+e998e0f2262b2711,images/resistor/e998e0f2262b2711.jpg,resistor,c02151,,0
+f1ef49bd03466885,images/resistor/f1ef49bd03466885.jpg,resistor,c02614,,0
+fcf018765e79344d,images/resistor/fcf018765e79344d.jpg,resistor,c02754,,0
+05d68d407b04b3e8,images/switch/05d68d407b04b3e8.jpg,switch,c00079,,0
+1375009a9a9d674a,images/switch/1375009a9a9d674a.jpg,switch,c00207,,1
+2076db9a62641cef,images/switch/2076db9a62641cef.jpg,switch,c00341,,0
+2cea3e9f9b0c866c,images/switch/2cea3e9f9b0c866c.jpg,switch,c00483,,1
+2d50101061024494,images/switch/2d50101061024494.jpg,switch,c00488,,1
+5526231268192946,images/switch/5526231268192946.jpg,switch,c00939,,0
+5b62bb214a63cb79,images/switch/5b62bb214a63cb79.jpg,switch,c01018,,1
+62791c823a4d91b7,images/switch/62791c823a4d91b7.jpg,switch,c01095,,1
+6da08ecce1fcc69c,images/switch/6da08ecce1fcc69c.jpg,switch,c01194,,0
+713940d7652272c7,images/switch/713940d7652272c7.jpg,switch,c01236,,1
+807aac93a5c682a7,images/switch/807aac93a5c682a7.jpg,switch,c01399,,1
+8d11460999967960,images/switch/8d11460999967960.jpg,switch,c01553,,1
+a001f1eb3cc98e5a,images/switch/a001f1eb3cc98e5a.jpg,switch,c01732,,1
+ac7cdf1faae11f83,images/switch/ac7cdf1faae11f83.jpg,switch,c01845,,1
+ada3ac5dcb7931c0,images/switch/ada3ac5dcb7931c0.jpg,switch,c01863,,1
+b8ee8deaab5ce9a0,images/switch/b8ee8deaab5ce9a0.jpg,switch,c01982,,1
+c08cac047c50102b,images/switch/c08cac047c50102b.jpg,switch,c02055,,1
+e07c20a857efc367,images/switch/e07c20a857efc367.jpg,switch,c02398,,0
+e1b727ff5e7b759d,images/switch/e1b727ff5e7b759d.jpg,switch,c02418,,1
+eabec009ffa6cb77,images/switch/eabec009ffa6cb77.jpg,switch,c02531,,1
+f4d5e713001fd24a,images/switch/f4d5e713001fd24a.jpg,switch,c02651,,1
+f5309c319c765ed4,images/switch/f5309c319c765ed4.jpg,switch,c01095,,1
+f718769ce0542a87,images/switch/f718769ce0542a87.jpg,switch,c02682,,0
+f901bca02c522675,images/switch/f901bca02c522675.jpg,switch,c01095,,1
+ff79e0e03645d7f0,images/switch/ff79e0e03645d7f0.jpg,switch,c02779,,1
+007e0fe6aad11618,images/transformer/007e0fe6aad11618.jpg,transformer,c00005,,0
+0660ec673c4d0e18,images/transformer/0660ec673c4d0e18.jpg,transformer,c00084,,0
+083a6ff38052236b,images/transformer/083a6ff38052236b.jpg,transformer,c00098,,1
+157f26216deb7c51,images/transformer/157f26216deb7c51.jpg,transformer,c00232,,1
+191810ba7b45ccec,images/transformer/191810ba7b45ccec.jpg,transformer,c00274,,0
+2ce9cc23416069eb,images/transformer/2ce9cc23416069eb.jpg,transformer,c00482,,1
+2eb111eea3c425c6,images/transformer/2eb111eea3c425c6.jpg,transformer,c00506,,0
+3665db2d701b91b9,images/transformer/3665db2d701b91b9.jpg,transformer,c00599,,1
+555a78e4f1d2c0ca,images/transformer/555a78e4f1d2c0ca.jpg,transformer,c00941,,0
+59a3c8d297a7d063,images/transformer/59a3c8d297a7d063.jpg,transformer,c00996,,0
+7f91cb9ef3427627,images/transformer/7f91cb9ef3427627.jpg,transformer,c01394,,1
+8766eecc8377a3b6,images/transformer/8766eecc8377a3b6.jpg,transformer,c01487,,1
+87fbc4b50d12048f,images/transformer/87fbc4b50d12048f.jpg,transformer,c01496,,0
+9026b001eb9cc190,images/transformer/9026b001eb9cc190.jpg,transformer,c01580,,1
+b4ba7f9f202bfea3,images/transformer/b4ba7f9f202bfea3.jpg,transformer,c01937,,0
+b5bf41a0bd2e498d,images/transformer/b5bf41a0bd2e498d.jpg,transformer,c01950,,1
+ba179c8fb72fbef5,images/transformer/ba179c8fb72fbef5.jpg,transformer,c01991,,0
+c4cf8449e67802d1,images/transformer/c4cf8449e67802d1.jpg,transformer,c02098,,1
+02b7a5fcbae08ff7,images/transistor/02b7a5fcbae08ff7.jpg,transistor,c00039,,0
+114ef23654f997e4,images/transistor/114ef23654f997e4.jpg,transistor,c00192,,0
+199156e8010ea4f0,images/transistor/199156e8010ea4f0.jpg,transistor,c00278,,0
+4c0a96924f5d81b5,images/transistor/4c0a96924f5d81b5.jpg,transistor,c00830,,0
+4e9ff2679312f1a3,images/transistor/4e9ff2679312f1a3.jpg,transistor,c00863,,0
+61dfc6cd8542d281,images/transistor/61dfc6cd8542d281.jpg,transistor,c01089,,0
+62be097e0c2a8ddb,images/transistor/62be097e0c2a8ddb.jpg,transistor,c01100,,1
+6868911d7bfc73bf,images/transistor/6868911d7bfc73bf.jpg,transistor,c01151,,1
+6c430f14ff4a8c1b,images/transistor/6c430f14ff4a8c1b.jpg,transistor,c01182,,0
+6dbe7114768db749,images/transistor/6dbe7114768db749.jpg,transistor,c01196,,0
+70ccf5ad401ed5ea,images/transistor/70ccf5ad401ed5ea.jpg,transistor,c01231,,1
+7d7fc2534a8ca805,images/transistor/7d7fc2534a8ca805.jpg,transistor,c01371,,1
+82fd348680672df6,images/transistor/82fd348680672df6.jpg,transistor,c01433,,0
+8b1e4d4e9387fcd3,images/transistor/8b1e4d4e9387fcd3.jpg,transistor,c01537,,0
+9c694489374f28ed,images/transistor/9c694489374f28ed.jpg,transistor,c01694,,0
+a17cff4334d130bb,images/transistor/a17cff4334d130bb.jpg,transistor,c01748,,1
+aa0237d114aa8576,images/transistor/aa0237d114aa8576.jpg,transistor,c01814,,0
+c4dd651c7b86c414,images/transistor/c4dd651c7b86c414.jpg,transistor,c02100,,1
+c710228bc05eee7f,images/transistor/c710228bc05eee7f.jpg,transistor,c02132,,0
+ce672cf5ce31f157,images/transistor/ce672cf5ce31f157.jpg,transistor,c02218,,1
+f11cf5decc16f860,images/transistor/f11cf5decc16f860.jpg,transistor,c02606,,1

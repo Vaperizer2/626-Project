@@ -7,6 +7,8 @@ CLI -- re-evaluate a saved checkpoint on its validation fold, or (once, at the v
 
     uv run python -m compclass.evaluate --checkpoint runs/<run>/best.pt
     uv run python -m compclass.evaluate --checkpoint runs/<run>/best.pt --sealed-test
+    uv run python -m compclass.evaluate --checkpoint runs/<run>/best.pt --sealed-test --out <dir>
+        # also writes <dir>/test_preds.npz (ids, y, probs) and <dir>/test_metrics.json
 """
 
 from __future__ import annotations
@@ -51,6 +53,35 @@ def predict(model: torch.nn.Module, loader: DataLoader, device: torch.device,
     return torch.cat(probs).numpy(), torch.cat(ys).numpy()
 
 
+def extended_metrics(y_true, probs: np.ndarray, classes: list[str]) -> dict[str, Any]:
+    """``compute_metrics`` plus balanced accuracy, macro/weighted precision/recall/F1 and mean log-loss."""
+    from sklearn.metrics import balanced_accuracy_score
+
+    y_true = np.asarray(y_true)
+    y_pred = probs.argmax(1)
+    labels = list(range(len(classes)))
+    out = compute_metrics(y_true, y_pred, classes)
+    for avg in ("macro", "weighted"):
+        p, r, f, _ = precision_recall_fscore_support(y_true, y_pred, labels=labels, average=avg, zero_division=0)
+        out.update({f"{avg}_precision": float(p), f"{avg}_recall": float(r), f"{avg}_f1": float(f)})
+    out["balanced_accuracy"] = float(balanced_accuracy_score(y_true, y_pred))
+    out["log_loss"] = float(-np.log(np.clip(probs[np.arange(len(y_true)), y_true], 1e-12, None)).mean())
+    out["n"] = int(len(y_true))
+    return out
+
+
+def write_eval(out_dir: str | Path, split: str, ids, y, probs: np.ndarray, classes: list[str],
+               extra: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Write ``<split>_preds.npz`` (ids, y, probs, classes) and ``<split>_metrics.json``; return the metrics."""
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    np.savez_compressed(out_dir / f"{split}_preds.npz", ids=np.asarray(ids), y=np.asarray(y), probs=probs,
+                        classes=np.asarray(classes))
+    met = {"split": split, **(extra or {}), **extended_metrics(y, probs, classes)}
+    (out_dir / f"{split}_metrics.json").write_text(json.dumps(met, indent=1, default=float))
+    return met
+
+
 def log_run(record: dict[str, Any], path: str | Path = "results/runs.jsonl") -> None:
     """Append one JSON line (adds timestamp + host info)."""
     path = Path(path)
@@ -72,6 +103,7 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--manifest", help="override the manifest path stored in the checkpoint")
     ap.add_argument("--sealed-test", action="store_true", help="evaluate on the sealed test split (use once)")
     ap.add_argument("--batch-size", type=int, default=32)
+    ap.add_argument("--out", help="also write <split>_preds.npz and <split>_metrics.json to this directory")
     args = ap.parse_args(argv)
 
     ck = torch.load(args.checkpoint, map_location="cpu", weights_only=False)
@@ -90,6 +122,10 @@ def main(argv: list[str] | None = None) -> None:
     metrics = compute_metrics(y, probs.argmax(1), m.classes)
     split = "test" if args.sealed_test else f"val_fold{ck['fold']}"
     print(json.dumps({"split": split, "accuracy": metrics["accuracy"], "macro_f1": metrics["macro_f1"]}))
+    if args.out:
+        write_eval(args.out, "test" if args.sealed_test else "val", [r["id"] for r in rows], y, probs, m.classes,
+                   {"name": cfg["name"], "config_hash": ck["config_hash"], "fold": ck["fold"],
+                    "checkpoint": str(args.checkpoint), "manifest": m.fingerprint})
     log_run({"method": "evaluate", "name": cfg["name"], "model": cfg["model"]["key"], "split": split,
              "config_hash": ck["config_hash"], "fold": ck["fold"], "manifest": m.fingerprint,
              "checkpoint": str(args.checkpoint), **metrics}, cfg["output"]["results"])

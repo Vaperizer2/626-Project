@@ -15,6 +15,16 @@ Recipe (each knob lives in the YAML ``train:`` / ``aug:`` sections, documented i
   ``batch_size * accum_steps``) so ViT-B fits in 8 GB.
 * Validation every epoch; the best macro-F1 checkpoint is kept, training stops after ``patience`` epochs
   without improvement. One line per run is appended to ``results/runs.jsonl``.
+
+Per-epoch ``history`` (learning curves): ``train_loss`` is the optimised objective (label-smoothed / soft-target
+cross-entropy on the augmented training batches, mean over batches); ``train_ce`` is the plain, *unsmoothed*
+cross-entropy and ``train_acc`` the accuracy on those same augmented batches (computed from the logits of the
+forward pass used for the update, against the original labels; ``train_ce`` is None when Mixup/CutMix is on);
+``val_loss`` is the plain cross-entropy (no label smoothing) on the validation split with eval preprocessing,
+plus ``val_acc`` and ``val_macro_f1``. Compare ``train_ce`` (not ``train_loss``) with ``val_loss``.
+
+``--test`` evaluates the best checkpoint once on the sealed test split after training and writes
+``test_preds.npz`` (ids, y, probs) and ``test_metrics.json`` next to ``best.pt``.
 """
 
 from __future__ import annotations
@@ -30,11 +40,12 @@ from typing import Any
 import numpy as np
 import torch
 from torch import nn
+from torch.nn import functional as F
 from torch.utils.data import DataLoader
 
 from .config import Config, config_hash, load_config
-from .data import ImageDataset, build_mixup, build_transforms, get_fold, load_manifest
-from .evaluate import compute_metrics, log_run, predict
+from .data import ImageDataset, build_mixup, build_transforms, get_fold, get_test, load_manifest
+from .evaluate import compute_metrics, log_run, predict, write_eval
 from .models import build_model
 
 # Fewer fragmentation OOMs on 8 GB cards (must be set before CUDA initialises).
@@ -109,8 +120,11 @@ def set_backbone_trainable(model: nn.Module, trainable: bool, frozen: set[int] =
         p.requires_grad_((trainable or id(p) in head) and id(p) not in frozen)
 
 
-def run(cfg: Config, fold: int) -> dict[str, Any]:
-    """Train one model on one CV fold; returns the record appended to the run log."""
+def run(cfg: Config, fold: int, test: bool = False) -> dict[str, Any]:
+    """Train one model on one CV fold; returns the record appended to the run log.
+
+    ``test=True``: afterwards score the best checkpoint on the sealed test split (see module docstring).
+    """
     d, t, a = cfg["data"], cfg["train"], cfg.get("aug", {})
     seed_everything(t.get("seed", 0))
     device = torch.device(cfg.get("device") or ("cuda" if torch.cuda.is_available() else "cpu"))
@@ -170,16 +184,18 @@ def run(cfg: Config, fold: int) -> dict[str, Any]:
             for mod in model.modules():
                 if isinstance(mod, nn.modules.batchnorm._BatchNorm):
                     mod.eval()
-        t0, loss_sum = time.perf_counter(), 0.0
+        t0, loss_sum, ce_sum, n_correct, n_epoch = time.perf_counter(), 0.0, 0.0, 0, 0
         opt.zero_grad(set_to_none=True)
         for step, (x, y) in enumerate(train_dl):
             if step >= steps_per_epoch:
                 break
             x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
+            y_hard = y  # original labels, kept for train accuracy / plain CE
             if mixup is not None:
                 x, y = mixup(x, y)
             with torch.autocast(device.type, dtype=amp_dtype, enabled=amp_dtype is not None):
-                loss = criterion(model(x), y) / accum
+                logits = model(x)
+                loss = criterion(logits, y) / accum
             scaler.scale(loss).backward()
             if (step + 1) % accum == 0 or step + 1 == steps_per_epoch:
                 scaler.unscale_(opt)  # so clipping sees true gradient magnitudes
@@ -190,16 +206,27 @@ def run(cfg: Config, fold: int) -> dict[str, Any]:
                 opt.zero_grad(set_to_none=True)
                 sched.step()
             loss_sum += loss.item() * accum
+            with torch.no_grad():  # monitoring only: no effect on the update
+                lf = logits.detach().float()
+                n_correct += int((lf.argmax(1) == y_hard).sum())
+                if mixup is None:
+                    ce_sum += float(F.cross_entropy(lf, y_hard, reduction="sum"))
+            n_epoch += x.shape[0]
             n_seen += x.shape[0]
         if device.type == "cuda":
             torch.cuda.synchronize()
         train_time += time.perf_counter() - t0
 
         probs, y_val = predict(model, val_dl, device, amp_dtype)
-        f1 = compute_metrics(y_val, probs.argmax(1), m.classes)["macro_f1"]
-        history.append({"epoch": epoch, "train_loss": loss_sum / steps_per_epoch, "val_macro_f1": f1,
+        vm = compute_metrics(y_val, probs.argmax(1), m.classes)
+        f1 = vm["macro_f1"]
+        val_loss = float(-np.log(np.clip(probs[np.arange(len(y_val)), y_val], 1e-12, None)).mean())
+        history.append({"epoch": epoch, "train_loss": loss_sum / steps_per_epoch,
+                        "train_ce": ce_sum / n_epoch if mixup is None else None, "train_acc": n_correct / n_epoch,
+                        "val_loss": val_loss, "val_acc": vm["accuracy"], "val_macro_f1": f1,
                         "lr": opt.param_groups[-1]["lr"]})
         print(f"[{cfg['name']} f{fold}] epoch {epoch:3d}  loss {loss_sum / steps_per_epoch:.4f}  "
+              f"train acc {n_correct / n_epoch:.4f}  val loss {val_loss:.4f}  val acc {vm['accuracy']:.4f}  "
               f"val macro-F1 {f1:.4f}", flush=True)
         if f1 > best_f1:
             best_f1, best_epoch, bad = f1, epoch, 0
@@ -228,6 +255,16 @@ def run(cfg: Config, fold: int) -> dict[str, Any]:
     log_run(record, cfg["output"]["results"])
     print(f"[{cfg['name']} f{fold}] best epoch {best_epoch}: acc {metrics['accuracy']:.4f}  "
           f"macro-F1 {metrics['macro_f1']:.4f}  -> {run_dir}", flush=True)
+    if test:
+        test_rows = get_test(m, confirm=True)
+        test_dl = DataLoader(ImageDataset(test_rows, m.root, m.class_to_idx, build_transforms(spec, a, False)),
+                             batch_size=t.get("eval_batch_size", 2 * t["batch_size"]), **common)
+        tp, ty = predict(model, test_dl, device, amp_dtype)
+        tm = write_eval(run_dir, "test", [r["id"] for r in test_rows], ty, tp, m.classes,
+                        {"name": cfg["name"], "config_hash": h, "fold": fold, "best_epoch": best_epoch,
+                         "manifest": m.fingerprint})
+        record["test"] = {k: tm[k] for k in ("accuracy", "macro_f1")}
+        print(f"[{cfg['name']} f{fold}] TEST: acc {tm['accuracy']:.4f}  macro-F1 {tm['macro_f1']:.4f}", flush=True)
     return record
 
 
@@ -236,10 +273,12 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--config", required=True)
     ap.add_argument("--fold", type=int, nargs="+", required=True, help="one or more CV folds")
     ap.add_argument("--set", nargs="*", default=[], metavar="KEY=VALUE", help="config overrides")
+    ap.add_argument("--test", action="store_true",
+                    help="after training, score the best checkpoint on the sealed test split (final comparison only)")
     args = ap.parse_args(argv)
     cfg = load_config(args.config, args.set)
     for k in args.fold:
-        run(cfg, k)
+        run(cfg, k, test=args.test)
 
 
 if __name__ == "__main__":

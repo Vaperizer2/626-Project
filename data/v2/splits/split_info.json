@@ -1,0 +1,42 @@
+{
+ "manifest": "data/v2/manifest.json",
+ "fingerprint": "431315e87d2612cb",
+ "seed": 42,
+ "method": "cluster-grouped StratifiedGroupKFold (tools/build_dataset_v2.py); outer fold -> sealed test, remaining dev rows -> 5 folds; this split: train = dev folds 1-4, val = dev fold 0, test = sealed",
+ "group_key": "cluster (exact SHA-256 duplicates collapsed; near-duplicates linked by pHash<=10 & CLIP-B/32 cos>=0.85, or cos>=0.92)",
+ "sizes": {
+  "train": 2010,
+  "val": 502,
+  "test": 418
+ },
+ "n_rows": 2930,
+ "n_clusters": 2787,
+ "n_classes": 20,
+ "classes": [
+  "battery holder",
+  "breadboard",
+  "capacitor",
+  "connector",
+  "crystal oscillator",
+  "diode",
+  "fuse",
+  "heat sink",
+  "ic chip",
+  "inductor coil",
+  "jumper wire",
+  "led",
+  "microcontroller board",
+  "potentiometer",
+  "power supply module",
+  "relay",
+  "resistor",
+  "switch",
+  "transformer",
+  "transistor"
+ ],
+ "raw_files_total": 3530,
+ "unique_images_global": 2943,
+ "excluded_conflicting_groups": 13,
+ "raw_counts_source": "disk (data/raw/...) cross-checked with manifest src_paths",
+ "ood_suspect_definition": "CLIP zero-shot flag: softmax mass on distractor concepts >= 0.25 (data/v2/leakage_report.json, ood_rule); flagged rows are kept"
+}
