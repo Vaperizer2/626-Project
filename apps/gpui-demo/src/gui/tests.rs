@@ -25,7 +25,10 @@ async fn window_renders_every_tab(cx: &mut TestAppContext) {
     // The app's inference and thumbnail threads are real OS threads that wake GPUI tasks; tell the
     // deterministic test scheduler that this is expected.
     cx.executor().allow_parking();
-    cx.update(gpui_kit::init);
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        super::theme::install(cx);
+    });
     cx.update(|cx| cx.bind_keys(super::keymap()));
     let (handle, view) = cx.update(|cx| {
         let bounds = Bounds { origin: Point::default(), size: size(px(1360.), px(860.)) };

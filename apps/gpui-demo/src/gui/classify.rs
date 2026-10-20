@@ -16,7 +16,6 @@ use gpui_kit::component::{
     notification::NotificationType,
     scroll::ScrollableElement as _,
     spinner::Spinner,
-    tag::Tag,
     v_flex,
 };
 use gpui_kit::{
@@ -24,8 +23,9 @@ use gpui_kit::{
     Subscription, Window, div, img, prelude::*, px,
 };
 
+use super::widgets::Lucide;
 use super::worker::{Cmd, Job, JobInput, ModelState, Update};
-use super::{DemoApp, FocusUrl, Open, Paste, widgets};
+use super::{DemoApp, FocusUrl, Open, Paste, theme, widgets};
 use crate::contract::Prediction;
 use crate::fetch::Source;
 use crate::models::ModelKey;
@@ -246,6 +246,7 @@ impl DemoApp {
             .gap_2()
             .px_4()
             .py_2()
+            .bg(theme::roles(cx).chrome)
             .border_b_1()
             .border_color(t.border)
             .child(
@@ -291,16 +292,31 @@ impl DemoApp {
                     .child(Spinner::new().xsmall().color(t.muted_foreground))
                     .child(div().text_color(t.muted_foreground).child("classifying…"))
                     .into_any_element(),
-                EntryState::Failed(_) => div().text_color(t.danger).child("error").into_any_element(),
+                EntryState::Failed(_) => h_flex()
+                    .gap_1()
+                    .items_center()
+                    .text_color(t.danger)
+                    .child(Icon::new(IconName::CircleAlert).xsmall())
+                    .child("could not read")
+                    .into_any_element(),
                 EntryState::Done(p, _) if p.unsure => h_flex()
                     .gap_1()
-                    .child(Tag::warning().small().child("Unsure"))
-                    .child(div().text_color(t.muted_foreground).truncate().child(p.top3[0].0.clone()))
+                    .items_center()
+                    .child(widgets::verdict_tag(crate::demo::Verdict::Unsure, true, cx))
+                    .child(div().text_xs().text_color(t.muted_foreground).truncate().child(p.top3[0].0.clone()))
                     .into_any_element(),
-                EntryState::Done(p, _) => div()
-                    .text_color(t.foreground)
-                    .truncate()
-                    .child(format!("{} · {}", p.top3[0].0, widgets::pct(p.top3[0].1)))
+                EntryState::Done(p, _) => h_flex()
+                    .gap_2()
+                    .justify_between()
+                    .min_w_0()
+                    .child(
+                        div()
+                            .text_color(t.foreground)
+                            .font_weight(FontWeight::MEDIUM)
+                            .truncate()
+                            .child(p.top3[0].0.clone()),
+                    )
+                    .child(div().flex_none().text_xs().text_color(t.muted_foreground).child(widgets::pct(p.top3[0].1)))
                     .into_any_element(),
             };
             h_flex()
@@ -338,6 +354,7 @@ impl DemoApp {
             .w(px(272.))
             .h_full()
             .flex_none()
+            .bg(t.sidebar)
             .border_r_1()
             .border_color(t.border)
             .child(
@@ -346,7 +363,7 @@ impl DemoApp {
                     .pt_3()
                     .pb_2()
                     .justify_between()
-                    .child(div().text_sm().font_weight(FontWeight::SEMIBOLD).child("Recent"))
+                    .child(widgets::caption("Recent", cx))
                     .child(div().text_xs().text_color(t.muted_foreground).child(format!("{}", c.entries.len()))),
             )
             .child(
@@ -366,11 +383,14 @@ impl DemoApp {
                             .children(rows)
                             .when(c.entries.is_empty(), |d| {
                                 d.child(
-                                    div()
+                                    h_flex()
+                                        .gap_2()
                                         .p_2()
+                                        .items_center()
                                         .text_xs()
                                         .text_color(t.muted_foreground)
-                                        .child("Classified pictures appear here."),
+                                        .child(Icon::new(Lucide::Images).small())
+                                        .child("Nothing classified yet."),
                                 )
                             }),
                     )
@@ -381,8 +401,26 @@ impl DemoApp {
     fn render_picture(&self, entry_ix: Option<usize>, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.theme();
         let entry = entry_ix.map(|i| &self.classify.entries[i]);
+        let failed = entry.and_then(|e| match &e.state {
+            EntryState::Failed(msg) => Some(msg.clone()),
+            _ => None,
+        });
         let body = match entry.and_then(|e| e.image.clone()) {
-            Some(im) => div().size_full().p_4().child(img(im).size_full().object_fit(ObjectFit::Contain)).into_any_element(),
+            Some(im) => div().size_full().p_6().child(img(im).size_full().object_fit(ObjectFit::Contain)).into_any_element(),
+            None if failed.is_some() => div()
+                .size_full()
+                .p_8()
+                .child(
+                    Empty::new().size_full().header(
+                        EmptyHeader::new()
+                            .media(EmptyMedia::new().child(Icon::new(Lucide::ImageOff).large().text_color(t.danger)))
+                            .title(EmptyTitle::new().child("This picture could not be read"))
+                            .description(EmptyDescription::new().child(
+                                "Check the path or URL, or try another picture. The details are on the right.",
+                            )),
+                    ),
+                )
+                .into_any_element(),
             None if entry.is_some() => v_flex()
                 .size_full()
                 .items_center()
@@ -399,11 +437,12 @@ impl DemoApp {
                         .size_full()
                         .border_2()
                         .border_dashed()
-                        .border_color(t.border)
+                        .border_color(theme::roles(cx).border_strong)
                         .rounded(t.radius_lg)
+                        .bg(theme::roles(cx).surface)
                         .header(
                             EmptyHeader::new()
-                                .media(EmptyMedia::new().child(Icon::new(IconName::GalleryVerticalEnd).large()))
+                                .media(EmptyMedia::new().child(Icon::new(Lucide::ImagePlus).large()))
                                 .title(EmptyTitle::new().child("Drop component pictures here"))
                                 .description(EmptyDescription::new().child(
                                     "Or open files, paste a picture, URL or path, or try the curated images in the Demo tab.",
@@ -419,7 +458,7 @@ impl DemoApp {
                 )
                 .into_any_element(),
         };
-        div().flex_1().min_w_0().h_full().bg(t.muted.opacity(0.35)).child(body)
+        div().flex_1().min_w_0().h_full().bg(theme::roles(cx).canvas).child(body)
     }
 
     fn render_result(&self, entry_ix: Option<usize>, cx: &mut Context<Self>) -> impl IntoElement {
@@ -429,6 +468,7 @@ impl DemoApp {
             .w(px(400.))
             .h_full()
             .flex_none()
+            .bg(theme::roles(cx).surface)
             .border_l_1()
             .border_color(border)
             .overflow_y_scroll()
@@ -439,7 +479,7 @@ impl DemoApp {
     fn render_result_body(&self, entry_ix: Option<usize>, cx: &mut Context<Self>) -> gpui_kit::Div {
         let t = cx.theme();
         let entry = entry_ix.map(|i| &self.classify.entries[i]);
-        let mut panel = v_flex().gap_4().p_4();
+        let mut panel = v_flex().gap_5().p_5();
         if let Some(ModelState::Failed(msg)) = self.state(self.model) {
             panel = panel.child(
                 Alert::error("model-failed", SharedString::from(msg.clone()))
@@ -447,12 +487,23 @@ impl DemoApp {
             );
         }
         let Some(e) = entry else {
-            return panel.child(div().text_sm().text_color(t.muted_foreground).child("No picture yet."));
+            return panel.child(
+                v_flex()
+                    .gap_2()
+                    .pt_8()
+                    .items_center()
+                    .text_color(t.muted_foreground)
+                    .child(Icon::new(Lucide::ScanSearch).large())
+                    .child(div().text_sm().font_weight(FontWeight::MEDIUM).child("No picture yet"))
+                    .child(
+                        div().text_xs().text_center().child("The top class, its confidence and the top 3 appear here."),
+                    ),
+            );
         };
         panel = panel.child(
             v_flex()
                 .gap_0p5()
-                .child(div().text_sm().font_weight(FontWeight::SEMIBOLD).truncate().child(e.name.clone()))
+                .child(div().text_base().font_weight(FontWeight::SEMIBOLD).truncate().child(e.name.clone()))
                 .child(div().text_xs().text_color(t.muted_foreground).truncate().child(e.full.clone()))
                 .when_some(e.dims, |d, (w, h)| {
                     d.child(div().text_xs().text_color(t.muted_foreground).child(format!("{w} × {h} px")))
@@ -472,14 +523,14 @@ impl DemoApp {
                 Alert::error(("classify-error", e.id as usize), SharedString::from(msg.clone()))
                     .title("Could not classify"),
             ),
-            EntryState::Done(p, total) => panel
-                .child(widgets::prediction_block("classify", p, e.model, self.threshold(), None, &self.labels, cx))
-                .child(
+            EntryState::Done(p, total) => {
+                panel.child(widgets::prediction_block(p, e.model, self.threshold(), None, &self.labels, cx)).child(
                     div()
                         .text_xs()
                         .text_color(t.muted_foreground)
                         .child(format!("Total incl. read and decode: {total:.0} ms")),
-                ),
+                )
+            }
         }
     }
 }

@@ -10,6 +10,7 @@
 mod bench;
 mod classify;
 mod demo_tab;
+mod theme;
 mod widgets;
 mod worker;
 
@@ -20,7 +21,7 @@ use std::time::Duration;
 
 use futures::StreamExt;
 use gpui_kit::component::{
-    ActiveTheme as _, IconName, Sizable as _, Theme, ThemeMode, TitleBar,
+    ActiveTheme as _, Icon, IconName, Sizable as _, Theme, ThemeMode, TitleBar,
     alert::Alert,
     button::{Button, ButtonGroup, ButtonVariants as _},
     h_flex,
@@ -35,6 +36,7 @@ use gpui_kit::{
 
 use crate::model::ModelOptions;
 use crate::models::ModelKey;
+use widgets::Lucide;
 use worker::{Cmd, Event, ModelState};
 
 actions!(
@@ -261,10 +263,21 @@ impl DemoApp {
         TitleBar::new()
             .child(
                 h_flex()
-                    .gap_3()
+                    .gap_2()
                     .items_center()
+                    .child(
+                        div()
+                            .size(px(22.))
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .rounded(t.radius)
+                            .bg(t.primary)
+                            .text_color(t.primary_foreground)
+                            .child(Icon::new(Lucide::Microchip).small()),
+                    )
                     .child(div().text_sm().font_weight(FontWeight::SEMIBOLD).child("Component Classifier"))
-                    .child(div().text_xs().text_color(t.muted_foreground).child("20 electronic-component classes")),
+                    .child(div().text_xs().text_color(t.muted_foreground).child("· 20 electronic-component classes")),
             )
             .child(
                 h_flex().pr_2().child(
@@ -295,6 +308,8 @@ impl DemoApp {
                 Button::new(SharedString::from(format!("model-{}", k.id())))
                     .label(k.short())
                     .selected(self.model == k)
+                    // outline + primary: the chosen model reads as an accent tint, not a grey press state
+                    .when(self.model == k, |b| b.primary())
                     .disabled(!usable)
                     .tooltip(tip)
             }))
@@ -308,6 +323,7 @@ impl DemoApp {
             .items_center()
             .gap_4()
             .px_4()
+            .bg(t.tab_bar)
             .border_b_1()
             .border_color(t.border)
             .child(
@@ -315,9 +331,9 @@ impl DemoApp {
                     .underline()
                     .selected_index(self.tab.index())
                     .on_click(cx.listener(|this, ix: &usize, w, cx| this.set_tab(TabKind::ALL[*ix], w, cx)))
-                    .child(Tab::new().label("Classify"))
-                    .child(Tab::new().label("Demo"))
-                    .child(Tab::new().label("Benchmark")),
+                    .child(Tab::new().prefix(Icon::new(Lucide::ScanSearch).small()).label("Classify"))
+                    .child(Tab::new().prefix(Icon::new(Lucide::LayoutGrid).small()).label("Demo"))
+                    .child(Tab::new().prefix(Icon::new(Lucide::ChartNoAxesColumn).small()).label("Benchmark")),
             )
             .child(
                 h_flex()
@@ -381,7 +397,7 @@ impl Render for DemoApp {
             window.drop_image(im).ok();
         }
         let t = cx.theme();
-        let (bg, fg, drop_border) = (t.background, t.foreground, t.drag_border);
+        let (bg, fg, drop_border) = (theme::roles(cx).canvas, t.foreground, t.drag_border);
         let body = prof!(
             "gui::build_tab_elements",
             match self.tab {
@@ -507,8 +523,9 @@ pub fn run(opts: ModelOptions, demo_dir: Option<PathBuf>, gui: GuiOptions, initi
         );
         std::process::exit(1);
     }
-    gpui_kit::application().with_assets(gpui_kit::assets::Assets).run(move |cx: &mut App| {
+    gpui_kit::application().with_assets(widgets::AppAssets).run(move |cx: &mut App| {
         gpui_kit::init(cx);
+        theme::install(cx);
         cx.bind_keys(keymap());
         cx.on_action(|_: &Quit, cx: &mut App| cx.quit());
         let bounds = Bounds::centered(None, size(px(1360.), px(860.)), cx);
@@ -519,10 +536,7 @@ pub fn run(opts: ModelOptions, demo_dir: Option<PathBuf>, gui: GuiOptions, initi
             ..TitleBar::window_options()
         };
         let opened = gpui_kit::open_window(options, cx, |window, cx| {
-            match gui.theme {
-                Some(dark) => Theme::change(if dark { ThemeMode::Dark } else { ThemeMode::Light }, Some(window), cx),
-                None => Theme::sync_system_appearance(Some(window), cx),
-            }
+            theme::apply_initial(gui.theme, window, cx);
             window.set_window_title("Component Classifier");
             cx.new(|cx| {
                 let mut app = DemoApp::new(opts, demo_dir, initial, window, cx);

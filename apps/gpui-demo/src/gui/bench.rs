@@ -9,11 +9,10 @@ use std::time::Instant;
 use futures::StreamExt;
 use futures::channel::mpsc as fmpsc;
 use gpui_kit::component::{
-    ActiveTheme as _, Disableable as _, IconName, Sizable as _,
+    ActiveTheme as _, Disableable as _, Icon, IconName, Sizable as _,
     alert::Alert,
     button::{Button, ButtonVariants as _},
     h_flex,
-    progress::Progress,
     scroll::ScrollableElement as _,
     spinner::Spinner,
     switch::Switch,
@@ -24,8 +23,9 @@ use gpui_kit::{
 };
 
 use super::demo_tab::ItemResult;
+use super::widgets::Lucide;
 use super::worker::{Cmd, Job, JobInput, ModelState, Update};
-use super::{DemoApp, widgets};
+use super::{DemoApp, theme, widgets};
 use crate::contract::Prediction;
 use crate::demo::Verdict;
 use crate::models::ModelKey;
@@ -244,15 +244,21 @@ impl DemoApp {
                 _ => None,
             })
             .collect();
+        let roles = theme::roles(cx);
         let progress = running.map(|r| {
             let done = r.total - r.queue.len() - usize::from(r.current.is_some());
             h_flex()
                 .gap_2()
                 .items_center()
-                .child(Spinner::new().small().color(t.muted_foreground))
-                .child(Progress::new("bench-progress").w(px(260.)).value(done as f32 / r.total.max(1) as f32 * 100.0))
+                .child(Spinner::new().small().color(roles.accent))
+                .child(div().w(px(240.)).child(widgets::bar(
+                    done as f32 / r.total.max(1) as f32,
+                    roles.accent,
+                    px(6.),
+                    &roles,
+                )))
                 .child(div().text_sm().text_color(t.muted_foreground).child(format!(
-                    "image {} of {} · {:.0} s",
+                    "image {}/{} · {:.0} s",
                     (done + 1).min(r.total),
                     r.total,
                     r.started.elapsed().as_secs_f64()
@@ -264,11 +270,12 @@ impl DemoApp {
             .gap_4()
             .px_4()
             .py_3()
+            .bg(roles.chrome)
             .border_b_1()
             .border_color(t.border)
             .child(
                 v_flex()
-                    .child(div().text_base().font_weight(FontWeight::SEMIBOLD).child("Benchmark on the demo stack"))
+                    .child(div().text_lg().font_weight(FontWeight::SEMIBOLD).child("Benchmark on the demo stack"))
                     .child(div().text_xs().text_color(t.muted_foreground).child(format!(
                         "{n} images × {} models{}",
                         available.len(),
@@ -285,11 +292,22 @@ impl DemoApp {
                     .items_center()
                     .children(progress)
                     .when(running.is_none() && self.bench.wall_s.is_some(), |d| {
-                        d.child(div().text_sm().text_color(t.muted_foreground).child(format!(
-                            "{} in {:.0} s",
-                            if self.bench.cancelled { "stopped" } else { "finished" },
-                            self.bench.wall_s.unwrap_or(0.0)
-                        )))
+                        d.child(
+                            h_flex()
+                                .gap_1()
+                                .items_center()
+                                .text_sm()
+                                .text_color(t.muted_foreground)
+                                .child(
+                                    Icon::new(if self.bench.cancelled { Lucide::CircleStop } else { Lucide::Timer })
+                                        .small(),
+                                )
+                                .child(format!(
+                                    "{} in {:.0} s",
+                                    if self.bench.cancelled { "stopped" } else { "finished" },
+                                    self.bench.wall_s.unwrap_or(0.0)
+                                )),
+                        )
                     })
                     .child(
                         Switch::new("bench-disagree")
@@ -319,42 +337,87 @@ impl DemoApp {
                     }),
             );
         let models = if self.bench.models.is_empty() { available.clone() } else { self.bench.models.clone() };
+        let best = models
+            .iter()
+            .map(|&k| stats(stack, &self.bench.results, k))
+            .filter(|s| s.judged > 0)
+            .map(|s| s.correct)
+            .max();
         let cards = h_flex()
             .items_stretch()
             .gap_3()
             .px_4()
             .pt_4()
-            .children(models.iter().map(|&k| self.render_stats_card(k, n, cx)));
-        v_flex().size_full().child(header).child(cards).child(self.render_matrix(&models, cx)).into_any_element()
+            .children(models.iter().map(|&k| self.render_stats_card(k, n, best, cx)));
+        v_flex()
+            .size_full()
+            .bg(roles.canvas)
+            .child(header)
+            .child(cards)
+            .child(self.render_matrix(&models, cx))
+            .into_any_element()
     }
 
-    fn render_stats_card(&self, k: ModelKey, n: usize, cx: &App) -> impl IntoElement {
+    fn render_stats_card(&self, k: ModelKey, n: usize, best: Option<usize>, cx: &App) -> impl IntoElement {
         let t = cx.theme();
+        let r = theme::roles(cx);
         let stack = self.demo.stack().expect("stack");
         let s = stats(stack, &self.bench.results, k);
         let big = if s.judged == 0 { "–".to_string() } else { format!("{}/{}", s.correct, s.judged) };
         let acc = if s.judged == 0 { 0.0 } else { s.correct as f32 / s.judged as f32 };
+        let leading = s.judged > 0 && best == Some(s.correct);
+        let meta =
+            |icon: Lucide, text: String| h_flex().gap_1().items_center().child(Icon::new(icon).xsmall()).child(text);
         v_flex()
             .flex_1()
             .min_w_0()
-            .gap_1()
+            .gap_2()
             .p_4()
             .rounded(t.radius_lg)
             .border_1()
-            .border_color(t.border)
-            .bg(t.group_box)
-            .child(div().text_sm().font_weight(FontWeight::SEMIBOLD).truncate().child(k.name()))
+            .border_color(if leading { r.accent.opacity(0.6) } else { r.border })
+            .bg(r.surface)
+            .child(
+                h_flex()
+                    .justify_between()
+                    .items_center()
+                    .gap_2()
+                    .child(div().text_sm().font_weight(FontWeight::SEMIBOLD).truncate().child(k.name()))
+                    .when(leading, |d| {
+                        d.child(
+                            h_flex()
+                                .flex_none()
+                                .gap_1()
+                                .items_center()
+                                .px_2()
+                                .rounded_full()
+                                .bg(r.accent_soft)
+                                .text_xs()
+                                .text_color(r.accent)
+                                .child(Icon::new(Lucide::Trophy).xsmall())
+                                .child("best"),
+                        )
+                    }),
+            )
             .child(
                 h_flex()
                     .gap_2()
                     .items_baseline()
                     .child(div().text_3xl().font_weight(FontWeight::BOLD).child(big))
+                    .child(
+                        div()
+                            .text_lg()
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .text_color(r.accent)
+                            .when(s.judged > 0, |d| d.child(format!("{:.0}%", acc * 100.0))),
+                    )
                     .child(div().text_sm().text_color(t.muted_foreground).child(if s.judged == 0 {
                         format!("of {n}")
                     } else {
-                        format!("correct · {:.0}%", acc * 100.0)
+                        "correct".to_string()
                     })),
             )
+            .child(widgets::bar(acc, if leading { r.accent } else { r.bar_muted }, px(6.), &r))
             .child(
                 h_flex()
                     .flex_wrap()
@@ -362,21 +425,28 @@ impl DemoApp {
                     .gap_y_1()
                     .text_xs()
                     .text_color(t.muted_foreground)
-                    .child(format!("mean conf. {}", if s.judged > 0 { widgets::pct(s.mean_conf) } else { "–".into() }))
-                    .child(if s.judged > 0 { format!("{:.0} ms / image", s.mean_ms) } else { "– ms / image".into() })
+                    .child(meta(
+                        Lucide::Gauge,
+                        format!("mean conf. {}", if s.judged > 0 { widgets::pct(s.mean_conf) } else { "–".into() }),
+                    ))
+                    .child(meta(
+                        Lucide::Timer,
+                        if s.judged > 0 { format!("{:.0} ms / image", s.mean_ms) } else { "– ms / image".into() },
+                    ))
                     .when(
                         matches!(k, ModelKey::C | ModelKey::Deployed)
                             && self.bench.models.contains(&ModelKey::C)
                             && self.bench.models.contains(&ModelKey::Deployed),
                         |d| d.child("one SigLIP pass shared by C and Deployed"),
                     )
-                    .when(s.unsure > 0, |d| d.child(format!("{} unsure", s.unsure)))
-                    .when(s.errors > 0, |d| d.child(format!("{} errors", s.errors))),
+                    .when(s.unsure > 0, |d| d.child(meta(Lucide::CircleQuestionMark, format!("{} unsure", s.unsure))))
+                    .when(s.errors > 0, |d| d.child(meta(Lucide::CircleAlert, format!("{} errors", s.errors)))),
             )
     }
 
     fn render_matrix(&self, models: &[ModelKey], cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.theme();
+        let r = theme::roles(cx);
         let stack = self.demo.stack().expect("stack");
         let current = self.bench.run.as_ref().and_then(|r| r.current);
         let head = h_flex()
@@ -397,33 +467,78 @@ impl DemoApp {
                 let im = &stack.images[i];
                 let thumb = self.demo.items.get(i).and_then(|it| it.thumb.clone());
                 let cells = models.iter().map(|&k| {
-                    let cell =
-                        div().flex_1().min_w_0().h(px(48.)).px_2().rounded(t.radius).flex().flex_col().justify_center();
+                    let cell = h_flex()
+                        .flex_1()
+                        .min_w_0()
+                        .h(px(48.))
+                        .rounded(t.radius)
+                        .overflow_hidden()
+                        .border_1()
+                        .border_color(r.border);
+                    let body = v_flex().flex_1().min_w_0().px_2().gap_1().justify_center();
                     match self.bench.results.get(&(i, k)) {
                         Some(Ok(p)) => {
                             let v = im.judge(&p.top3[0].0, p.unsure);
-                            let c = widgets::verdict_color(v, cx);
-                            let (label, sub) = if p.unsure {
-                                ("unsure".to_string(), format!("best {} {}", p.top3[0].0, widgets::pct(p.top3[0].1)))
-                            } else {
-                                (p.top3[0].0.clone(), widgets::pct(p.top3[0].1))
-                            };
-                            cell.bg(c.opacity(0.14))
-                                .border_1()
-                                .border_color(c.opacity(0.55))
-                                .child(div().text_sm().font_weight(FontWeight::SEMIBOLD).truncate().child(label))
-                                .child(div().text_xs().text_color(t.muted_foreground).truncate().child(sub))
+                            let c = r.verdict(v).0;
+                            let label =
+                                if p.unsure { format!("unsure · {}", p.top3[0].0) } else { p.top3[0].0.clone() };
+                            cell.bg(r.surface)
+                                .child(div().w(px(4.)).h_full().flex_none().bg(c))
+                                .child(
+                                    body.child(
+                                        h_flex()
+                                            .gap_1()
+                                            .items_center()
+                                            .min_w_0()
+                                            .child(Icon::new(widgets::verdict_icon(v)).small().text_color(c))
+                                            .child(
+                                                div()
+                                                    .flex_1()
+                                                    .min_w_0()
+                                                    .text_sm()
+                                                    .font_weight(FontWeight::MEDIUM)
+                                                    .truncate()
+                                                    .when(p.unsure, |d| d.text_color(r.muted_fg))
+                                                    .child(label),
+                                            )
+                                            .child(
+                                                div()
+                                                    .flex_none()
+                                                    .text_xs()
+                                                    .text_color(r.muted_fg)
+                                                    .child(widgets::pct(p.top3[0].1)),
+                                            ),
+                                    )
+                                    .child(widgets::bar(
+                                        p.top3[0].1,
+                                        r.bar_muted,
+                                        px(3.),
+                                        &r,
+                                    )),
+                                )
                                 .into_any_element()
                         }
                         Some(Err(e)) => cell
-                            .border_1()
-                            .border_color(t.danger.opacity(0.55))
-                            .child(div().text_xs().text_color(t.danger).truncate().child(format!("error: {e}")))
+                            .bg(r.surface)
+                            .child(div().w(px(4.)).h_full().flex_none().bg(r.wrong))
+                            .child(
+                                body.child(
+                                    h_flex()
+                                        .gap_1()
+                                        .items_center()
+                                        .text_xs()
+                                        .text_color(r.wrong)
+                                        .child(Icon::new(IconName::CircleAlert).xsmall())
+                                        .child(div().truncate().child(format!("error: {e}"))),
+                                ),
+                            )
                             .into_any_element(),
-                        None if current == Some(i) => {
-                            cell.child(Spinner::new().small().color(t.muted_foreground)).into_any_element()
-                        }
-                        None => cell.bg(t.muted.opacity(0.4)).into_any_element(),
+                        None if current == Some(i) => cell
+                            .bg(r.surface)
+                            .border_color(r.accent.opacity(0.5))
+                            .child(body.items_center().child(Spinner::new().small().color(r.accent)))
+                            .into_any_element(),
+                        None => cell.border_dashed().into_any_element(),
                     }
                 });
                 h_flex()
@@ -432,7 +547,7 @@ impl DemoApp {
                     .py_1()
                     .gap_2()
                     .items_center()
-                    .when(current == Some(i), |d| d.bg(t.list_active))
+                    .when(current == Some(i), |d| d.bg(r.accent_soft))
                     .child(
                         h_flex()
                             .w(px(300.))
@@ -447,6 +562,8 @@ impl DemoApp {
                                     .rounded(t.radius)
                                     .overflow_hidden()
                                     .bg(t.muted)
+                                    .border_1()
+                                    .border_color(r.border)
                                     .when_some(thumb, |d, th| {
                                         d.child(img(th).size_full().object_fit(ObjectFit::Cover))
                                     }),

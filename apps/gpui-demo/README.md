@@ -11,8 +11,9 @@ A native desktop demo of the project's models (20 electronic-component classes),
   against the true label, and the photo's author, licence and source are shown. **Run all** classifies the stack in
   order and keeps a running "21/28 correct" count.
 * **Benchmark**: runs every available model over the stack, live and cancellable. It then compares accuracy,
-  mean confidence and ms per image, and shows a per-image matrix (green = correct, red = wrong, amber = unsure).
-  A switch shows only the images where the models disagree.
+  mean confidence and ms per image, and shows a per-image matrix (✓ bluish green = correct, ✕ vermillion = wrong,
+  ? violet = unsure; colour-blind safe, and always with an icon). A switch shows only the images where the models
+  disagree.
 
 A model picker switches between the report's models (**A · Custom CNN**, **B · ConvNeXt-T**, **C · SigLIP + linear**)
 and the **Deployed** fused SigLIP model. Models load on first use. The 1.7 GB SigLIP weights are loaded once and shared
@@ -155,7 +156,7 @@ out-of-distribution detector.
 |---|---|
 | `cargo build --release --locked` and `--features turbojpeg` (Rust 1.99.1) | ✓ |
 | `cargo clippy --release --locked --all-targets` (default; `turbojpeg,cuda`; `hotpath,hotpath-alloc`) | no warnings |
-| `cargo test --release --locked` | 30/30 pass. They cover the earlier preprocessing, contract and fetch tests, the bilinear kernel, demo_stack.json parsing and locating, the model registry and `model_multi.json`, benchmark statistics, and a **headless GUI smoke test** (GPUI Kit's test platform: builds the real window, renders all three tabs, keyboard stepping) |
+| `cargo test --release --locked` | 32/32 pass. They cover the earlier preprocessing, contract and fetch tests, the bilinear kernel, demo_stack.json parsing and locating, the model registry and `model_multi.json`, benchmark statistics, the embedded theme file, a check that every Lucide icon used in the GUI is bundled, and a **headless GUI smoke test** (GPUI Kit's test platform: builds the real window, renders all three tabs, keyboard stepping) |
 | parity, 64 dev images vs PyTorch `row_probs.npz` (`scripts/parity.py`, turbojpeg build) | argmax 64/64, UNSURE 64/64, input tensors bit-identical, max \|Δp\| 0.0029: unchanged from 2026-10-18 |
 | A and B input tensors vs Pillow (`compclass.demo.preprocess`), every 10th test image | 42/42 bit-identical each (A uses the new bilinear resize) |
 | A and B on all 418 test images (`classify --model a,b`) | 148/418 and 266/418, exactly the exported ONNX accuracy; argmax agreement with the report's PyTorch predictions 417/418 and 418/418 |
@@ -209,13 +210,17 @@ Classify tab can still interleave its own jobs.
 
 | piece | pinned | why |
 |---|---|---|
-| UI | `gpui-kit = "=0.7.3"` | GPUI Kit (longbridge, formerly `gpui-component`) is the component library: `TitleBar`, `TabBar`, `Button`/`ButtonGroup`, `Input`, `Tag`, `Progress`, `Spinner`, `Alert`, `Kbd`, `Tooltip`, `Switch`, `Empty`, `StatusBar`, notifications, scrollbars and its light/dark themes. It pins and re-exports its own GPUI snapshot (`gpui-pre 0.3.9`), so the app has no direct GPUI dependency. Exact pin because the API changes between pre-1.0 releases. (0.8.0 was published while this port was made; it was not tested.) |
+| UI | `gpui-kit = "=0.7.3"` | GPUI Kit (longbridge, formerly `gpui-component`) is the component library: `TitleBar`, `TabBar`, `Button`/`ButtonGroup`, `Input`, `Tag`, `Spinner`, `Alert`, `Kbd`, `Tooltip`, `Switch`, `Empty`, `StatusBar`, notifications, scrollbars and its theme system (the app ships its own two theme files). It pins and re-exports its own GPUI snapshot (`gpui-pre 0.3.9`), so the app has no direct GPUI dependency. Exact pin because the API changes between pre-1.0 releases. (0.8.0 was published while this port was made; it was not tested.) |
 | inference | `ort = "=2.0.0-rc.14"`, features `load-dynamic`, `api-22` | `load-dynamic` dlopens libonnxruntime at runtime, so nothing is downloaded at build time and the CUDA build is just a different `.so`. `api-22` requires only the onnxruntime 1.22 C API. ort allows one environment per process; all sessions share it. |
 | decode | `image = "0.25.10"` (+ optional `turbojpeg = "=1.5.1"`) | see "Preprocessing parity" |
 | resize | own code (`src/preprocess.rs`) | a port of Pillow's `Resample.c` (bicubic and bilinear); see below |
 | HTTP | `ureq = "3.4"` (rustls) | small and blocking (it runs on the worker thread), no OpenSSL needed |
 | profiling | `hotpath = "0.28"`, optional | see "Profiling" |
 | libc | normal (0.2.191 in `Cargo.lock`) | The old pin to 0.2.189 is no longer needed: it existed only for `xattr 0.2.3`, which GPUI 0.2.2 pulled in and GPUI Kit's GPUI does not. |
+
+| look | own GPUI Kit themes "Bench Light" / "Bench Dark" (`src/gui/themes/bench.json`, loaded by `src/gui/theme.rs`) | Built for a projector: chrome / canvas / card layering, one blue accent for "the answer", colour-blind-safe verdicts with icons, large numerals. The rationale, the reference apps studied and the token table are in [`docs/VISUAL_DIRECTION.md`](docs/VISUAL_DIRECTION.md). Views use theme roles only (no hex in views). The default follows the system theme: light reads better on a projector in a lit room; use `--dark` in a dim one. |
+| fonts | system fonts, nothing bundled | The UI prefers Noto Sans (or DejaVu Sans, Liberation Sans, Ubuntu) because GPUI's Linux text system draws only the regular instance of a *variable* system font (GNOME's Adwaita Sans), which would make all bold text regular. Numbers in columns use the system monospace font. |
+| icons | Lucide via `gpui_kit::assets` | The Kit's `Assets` bundles only its ~100 component icons; the extra Lucide icons the app uses are embedded with `icon_assets!` (`widgets::ExtraIcons`, ~20 KB). A unit test fails if an icon used in the source is not bundled (it would render blank). |
 
 The `Cargo.lock` is committed; build with `--locked`.
 
@@ -296,9 +301,12 @@ src/gui.rs             window shell: Kit TitleBar, TabBar + model picker, Status
 src/gui/classify.rs    Classify tab: toolbar (Button, Input), recent list, picture, result panel
 src/gui/demo_tab.rs    Demo tab: sectioned thumbnail grid, detail pane with verdict + attribution, Run all
 src/gui/bench.rs       Benchmark tab: live run over all models, summary cards, per-image matrix, disagreement filter
-src/gui/widgets.rs     probability bars, prediction block, verdict / model-state tags, Kbd hints
+src/gui/widgets.rs     bars, prediction block, verdict pills, model-state chip, Kbd hints, extra Lucide icon assets
+src/gui/theme.rs       loads the Bench Light / Bench Dark themes; app roles (canvas/chrome/surface, verdict colours)
+src/gui/themes/        bench.json: the two GPUI Kit theme files (see docs/VISUAL_DIRECTION.md)
 src/gui/worker.rs      inference thread (model registry, jobs) and thumbnail decoding thread
 src/gui/tests.rs       headless GUI smoke test (GPUI Kit test platform)
+docs/VISUAL_DIRECTION.md   reference-app study, design synthesis and token table for the look
 src/models.rs          model registry: A/B/C/Deployed discovery, model_multi.json, lazy shared sessions, predict
 src/model.rs           model dir + libonnxruntime discovery, Runtime (one ort environment), Classifier, Engine
 src/demo.rs            demo_stack.json parsing, locating, correct/wrong judgement

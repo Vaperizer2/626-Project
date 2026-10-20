@@ -13,7 +13,6 @@ use gpui_kit::component::{
     alert::Alert,
     button::{Button, ButtonVariants as _},
     h_flex,
-    progress::Progress,
     scroll::ScrollableElement as _,
     spinner::Spinner,
     tag::Tag,
@@ -27,7 +26,7 @@ use gpui_kit::{
 use image::RgbImage;
 
 use super::worker::{self, Cmd, Job, JobInput, Update};
-use super::{DemoApp, widgets};
+use super::{DemoApp, theme, widgets};
 use crate::contract::Prediction;
 use crate::demo::{DemoStack, Verdict};
 use crate::models::ModelKey;
@@ -307,24 +306,30 @@ impl DemoApp {
 
     fn render_demo_header(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.theme();
+        let r = theme::roles(cx);
         let n = self.demo.items.len();
         let (ok, judged, _) = self.demo.summary(self.model);
         let running = self.demo.run.as_ref();
-        let progress = running.map(|r| {
-            let done = (r.total - r.queue.len()).saturating_sub(1); // one image is in flight
+        let progress = running.map(|run| {
+            let done = (run.total - run.queue.len()).saturating_sub(1); // one image is in flight
             h_flex()
                 .gap_2()
                 .items_center()
-                .child(Progress::new("demo-progress").w(px(220.)).value(done as f32 / r.total.max(1) as f32 * 100.0))
-                .child(div().text_sm().text_color(t.muted_foreground).child(format!("{done} / {}", r.total)))
+                .child(div().w(px(200.)).child(widgets::bar(
+                    done as f32 / run.total.max(1) as f32,
+                    r.accent,
+                    px(6.),
+                    &r,
+                )))
+                .child(div().text_sm().text_color(t.muted_foreground).child(format!("{done}/{}", run.total)))
         });
         let summary = (judged > 0).then(|| {
             h_flex()
                 .gap_2()
                 .items_baseline()
-                .child(div().text_2xl().font_weight(FontWeight::BOLD).child(format!("{ok}/{judged}")))
+                .child(div().text_3xl().font_weight(FontWeight::BOLD).child(format!("{ok}/{judged}")))
                 .child(div().text_sm().text_color(t.muted_foreground).child(if judged < n {
-                    format!("correct · {} of {n} classified · {}", judged, self.model.short())
+                    format!("correct · {judged} of {n} classified · {}", self.model.short())
                 } else {
                     format!("correct · {}", self.model.short())
                 }))
@@ -335,11 +340,12 @@ impl DemoApp {
             .gap_4()
             .px_4()
             .py_3()
+            .bg(r.chrome)
             .border_b_1()
             .border_color(t.border)
             .child(
                 v_flex()
-                    .child(div().text_base().font_weight(FontWeight::SEMIBOLD).child("Demo stack"))
+                    .child(div().text_lg().font_weight(FontWeight::SEMIBOLD).child("Demo stack"))
                     .child(div().text_xs().text_color(t.muted_foreground).child(format!(
                         "{n} Wikimedia Commons photos never used for training or model selection · click a card or press Enter"
                     ))),
@@ -390,8 +396,8 @@ impl DemoApp {
                     .w_full()
                     .justify_between()
                     .items_baseline()
-                    .when(si > 0, |d| d.pt_4())
-                    .child(div().text_sm().font_weight(FontWeight::SEMIBOLD).child(section.clone()))
+                    .when(si > 0, |d| d.pt_5())
+                    .child(div().text_base().font_weight(FontWeight::SEMIBOLD).child(section.clone()))
                     .child(div().text_xs().text_color(muted_fg).child(if n > 0 {
                         format!("{ok}/{n} correct · {} images", idx.len())
                     } else {
@@ -408,6 +414,7 @@ impl DemoApp {
             .flex_1()
             .min_w_0()
             .h_full()
+            .bg(theme::roles(cx).canvas)
             .child(
                 div()
                     .id("demo-grid")
@@ -430,10 +437,15 @@ impl DemoApp {
     fn render_card(&self, i: usize, card_w: f32, cx: &mut Context<Self>) -> impl IntoElement {
         let thumb_h = (card_w * 0.72).round();
         let t = cx.theme();
+        let r = theme::roles(cx);
         let stack = self.demo.stack().expect("stack loaded");
         let im = &stack.images[i];
         let it = &self.demo.items[i];
         let sel = self.demo.selected == i;
+        let verdict = match it.results.get(&self.model) {
+            Some(ItemResult::Done(p)) => Some(im.judge(&p.top3[0].0, p.unsure)),
+            _ => None,
+        };
         let result: AnyElement = match it.results.get(&self.model) {
             Some(ItemResult::Working) => h_flex()
                 .gap_1()
@@ -443,29 +455,26 @@ impl DemoApp {
                 .into_any_element(),
             Some(ItemResult::Done(p)) => {
                 let v = im.judge(&p.top3[0].0, p.unsure);
-                let text = if p.unsure {
-                    format!("unsure · {}", widgets::pct(p.top3[0].1))
-                } else {
-                    format!("{} · {}", p.top3[0].0, widgets::pct(p.top3[0].1))
-                };
+                let text = if p.unsure { "unsure".to_string() } else { p.top3[0].0.clone() };
                 h_flex()
                     .gap_1()
                     .items_center()
                     .min_w_0()
-                    .child(
-                        Icon::new(match v {
-                            Verdict::Correct => IconName::CircleCheck,
-                            Verdict::Wrong => IconName::CircleX,
-                            Verdict::Unsure => IconName::TriangleAlert,
-                        })
-                        .xsmall()
-                        .text_color(widgets::verdict_color(v, cx)),
-                    )
-                    .child(div().text_xs().truncate().child(text))
+                    .text_xs()
+                    .child(Icon::new(widgets::verdict_icon(v)).xsmall().text_color(r.verdict(v).0))
+                    .child(div().flex_1().min_w_0().truncate().text_color(r.fg).child(text))
+                    .child(div().flex_none().text_color(r.muted_fg).child(widgets::pct(p.top3[0].1)))
                     .into_any_element()
             }
-            Some(ItemResult::Failed(_)) => div().text_xs().text_color(t.danger).child("error").into_any_element(),
-            None => div().text_xs().text_color(t.muted_foreground).child("not classified").into_any_element(),
+            Some(ItemResult::Failed(_)) => h_flex()
+                .gap_1()
+                .items_center()
+                .text_xs()
+                .text_color(t.danger)
+                .child(Icon::new(IconName::CircleAlert).xsmall())
+                .child("error")
+                .into_any_element(),
+            None => div().text_xs().text_color(t.muted_foreground).child("not classified yet").into_any_element(),
         };
         let credit = im.credit();
         let tip = format!("{}\n{}\n{}", im.title, credit, im.source_url);
@@ -474,12 +483,12 @@ impl DemoApp {
             .w(px(card_w))
             .rounded(t.radius_lg)
             .border_1()
-            .border_color(if sel { t.primary } else { t.border })
-            .when(sel, |d| d.shadow_sm())
-            .bg(t.background)
+            .border_color(if sel { r.accent } else { r.border })
+            .when(sel, |d| d.border_2())
+            .bg(r.surface)
             .overflow_hidden()
             .cursor_pointer()
-            .hover(|s| s.border_color(t.primary.opacity(0.6)))
+            .hover(|s| s.border_color(r.accent.opacity(0.6)))
             .tooltip(move |window, cx| Tooltip::new(tip.clone()).build(window, cx))
             .on_click(cx.listener(move |this, _, _, cx| {
                 this.demo.selected = i;
@@ -488,6 +497,11 @@ impl DemoApp {
             .child(div().w_full().h(px(thumb_h)).overflow_hidden().bg(t.muted).child(match &it.thumb {
                 Some(th) => img(th.clone()).size_full().object_fit(ObjectFit::Cover).into_any_element(),
                 None => div().size_full().into_any_element(),
+            }))
+            // verdict strip: colour echo of the icon below (never the only cue)
+            .child(div().w_full().h(px(3.)).bg(match verdict {
+                Some(v) => r.verdict(v).0,
+                None => r.border,
             }))
             .child(
                 v_flex()
@@ -509,22 +523,30 @@ impl DemoApp {
 
     fn render_detail(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.theme();
+        let r = theme::roles(cx);
         let stack = self.demo.stack().expect("stack loaded");
         let i = self.demo.selected.min(stack.images.len() - 1);
         let im = &stack.images[i];
         let it = &self.demo.items[i];
-        let picture =
-            div().w_full().h(px(280.)).rounded(t.radius_lg).bg(t.muted.opacity(0.5)).p_2().overflow_hidden().child(
-                match &it.full {
-                    Some(full) => img(full.clone()).size_full().object_fit(ObjectFit::Contain).into_any_element(),
-                    None => div().size_full().into_any_element(),
-                },
-            );
+        let picture = div().w_full().h(px(280.)).rounded(t.radius_lg).bg(r.canvas).p_2().overflow_hidden().child(
+            match &it.full {
+                Some(full) => img(full.clone()).size_full().object_fit(ObjectFit::Contain).into_any_element(),
+                None => div().size_full().into_any_element(),
+            },
+        );
         let heading = v_flex()
             .gap_1()
-            .child(h_flex().gap_2().items_center().child(Tag::secondary().small().child(im.section.clone())).child(
-                div().text_xs().text_color(t.muted_foreground).child(format!("{} / {}", i + 1, stack.images.len())),
-            ))
+            .child(
+                h_flex()
+                    .gap_2()
+                    .items_center()
+                    .child(Tag::secondary().small().rounded_full().child(im.section.clone()))
+                    .child(div().text_xs().text_color(t.muted_foreground).child(format!(
+                        "{} / {}",
+                        i + 1,
+                        stack.images.len()
+                    ))),
+            )
             .child(div().text_xl().font_weight(FontWeight::BOLD).child(format!("True label: {}", im.true_text())))
             .when(!im.note.is_empty(), |d| {
                 d.child(div().text_sm().text_color(t.muted_foreground).child(im.note.clone()))
@@ -540,15 +562,7 @@ impl DemoApp {
         let result: AnyElement = match it.results.get(&self.model) {
             Some(ItemResult::Done(p)) => {
                 let v = im.judge(&p.top3[0].0, p.unsure);
-                widgets::prediction_block(
-                    "demo",
-                    p,
-                    self.model,
-                    self.threshold(),
-                    Some((v, im.true_text())),
-                    &self.labels,
-                    cx,
-                )
+                widgets::prediction_block(p, self.model, self.threshold(), Some((v, im.true_text())), &self.labels, cx)
             }
             Some(ItemResult::Working) => h_flex()
                 .gap_2()
@@ -580,9 +594,7 @@ impl DemoApp {
             .pt_3()
             .border_t_1()
             .border_color(t.border)
-            .child(
-                div().text_xs().font_weight(FontWeight::SEMIBOLD).text_color(t.muted_foreground).child("Photo credit"),
-            )
+            .child(widgets::caption("Photo credit", cx))
             .child(div().text_sm().child(im.title.clone()))
             .child(div().text_xs().text_color(t.muted_foreground).child(format!("by {}", im.author)))
             .child(
@@ -610,6 +622,7 @@ impl DemoApp {
             .w(px(DETAIL_W))
             .h_full()
             .flex_none()
+            .bg(r.surface)
             .border_l_1()
             .border_color(t.border)
             .overflow_y_scroll()

@@ -1,14 +1,58 @@
-//! Small presentational pieces shared by the tabs: probability bars, the prediction block, verdict and model
-//! state tags, keyboard hints. Colours come from the Kit theme by semantic role only.
+//! Small presentational pieces shared by the tabs: bars, probability rows, the prediction block, verdict pills,
+//! model state chips, keyboard hints, section captions. Colours come from the Kit theme or `theme::roles` only.
 
 use gpui_kit::component::{
-    ActiveTheme as _, Icon, IconName, Sizable as _, h_flex, kbd::Kbd, progress::Progress, spinner::Spinner, tag::Tag,
-    v_flex,
+    ActiveTheme as _, Icon, IconName, Sizable as _, h_flex, kbd::Kbd, spinner::Spinner, tag::Tag, v_flex,
 };
 use gpui_kit::{
-    AnyElement, App, FontWeight, Hsla, IntoElement, Keystroke, ParentElement, SharedString, Styled, div, prelude::*,
+    AnyElement, App, Div, FontWeight, Hsla, IntoElement, Keystroke, ParentElement, Pixels, SharedString, Styled, div,
+    prelude::*, px, relative,
 };
 
+/// The complete bundled Lucide catalog (the component crate's `IconName` is a subset).
+pub use gpui_kit::assets::IconName as Lucide;
+
+// The Kit's `Assets` embeds only the ~100 component icons; every other Lucide icon the app uses must be
+// listed here (the `every_lucide_icon_used_is_bundled` test fails otherwise).
+gpui_kit::assets::icon_assets!(
+    ExtraIcons,
+    [
+        ChartNoAxesColumn,
+        Circle,
+        CircleOff,
+        CircleQuestionMark,
+        CircleStop,
+        Gauge,
+        ImageOff,
+        ImagePlus,
+        Images,
+        LayoutGrid,
+        Microchip,
+        ScanSearch,
+        Timer,
+        Trophy,
+    ]
+);
+
+/// Asset source for the window: the selected extra icons, then the Kit's component assets.
+pub struct AppAssets;
+
+impl gpui_kit::AssetSource for AppAssets {
+    fn load(&self, path: &str) -> gpui_kit::Result<Option<std::borrow::Cow<'static, [u8]>>> {
+        match ExtraIcons.load(path)? {
+            Some(bytes) => Ok(Some(bytes)),
+            None => gpui_kit::assets::Assets.load(path),
+        }
+    }
+
+    fn list(&self, path: &str) -> gpui_kit::Result<Vec<SharedString>> {
+        let mut all = ExtraIcons.list(path)?;
+        all.extend(gpui_kit::assets::Assets.list(path)?);
+        Ok(all)
+    }
+}
+
+use super::theme::{self, Roles};
 use super::worker::ModelState;
 use crate::contract::Prediction;
 use crate::demo::Verdict;
@@ -38,33 +82,80 @@ pub fn hint(keys: &[&str], label: &'static str, cx: &App) -> impl IntoElement {
         .child(div().text_xs().text_color(cx.theme().muted_foreground).child(label))
 }
 
-/// Label + percentage + bar. `strong` = the committed top-1 (primary colour), others are muted.
-pub fn prob_row(id: impl Into<SharedString>, label: &str, p: f32, strong: bool, large: bool, cx: &App) -> AnyElement {
-    let t = cx.theme();
-    let color = if strong { t.primary } else { t.muted_foreground.opacity(0.55) };
-    let bar = Progress::new(id.into()).value((p * 100.0).clamp(0.0, 100.0)).color(color);
+/// Small semibold muted caption above a group ("Prediction", "Other classes", "Photo credit").
+pub fn caption(text: impl Into<SharedString>, cx: &App) -> Div {
+    div().text_xs().font_weight(FontWeight::SEMIBOLD).text_color(cx.theme().muted_foreground).child(text.into())
+}
+
+/// Rounded bar: `value` in 0..=1 of `fill` over the theme track.
+pub fn bar(value: f32, fill: Hsla, height: Pixels, r: &Roles) -> Div {
+    let v = value.clamp(0.0, 1.0);
+    div()
+        .w_full()
+        .h(height)
+        .rounded_full()
+        .bg(r.track)
+        .overflow_hidden()
+        .child(div().h_full().w(relative(v)).rounded_full().bg(fill))
+}
+
+/// The verdict's icon: three different shapes, so the verdict never rests on colour alone.
+pub fn verdict_icon(v: Verdict) -> Lucide {
+    match v {
+        Verdict::Correct => Lucide::CircleCheck,
+        Verdict::Wrong => Lucide::CircleX,
+        Verdict::Unsure => Lucide::CircleQuestionMark,
+    }
+}
+
+pub fn verdict_text(v: Verdict) -> &'static str {
+    match v {
+        Verdict::Correct => "Correct",
+        Verdict::Wrong => "Wrong",
+        Verdict::Unsure => "Unsure",
+    }
+}
+
+/// Pill: icon + word on a soft tint of the verdict colour.
+pub fn verdict_tag(v: Verdict, small: bool, cx: &App) -> Tag {
+    let (c, soft) = theme::roles(cx).verdict(v);
+    let tag = Tag::custom(soft, c, c.opacity(0.35)).rounded_full().child(
+        h_flex()
+            .gap_1()
+            .items_center()
+            .child(Icon::new(verdict_icon(v)).xsmall())
+            .child(div().font_weight(FontWeight::SEMIBOLD).child(verdict_text(v))),
+    );
+    if small { tag.small() } else { tag }
+}
+
+/// Label + percentage + bar. `strong` = the committed top-1 (accent bar), others are muted.
+pub fn prob_row(label: &str, p: f32, strong: bool, large: bool, cx: &App) -> AnyElement {
+    let r = theme::roles(cx);
+    let fill = if strong { r.accent } else { r.bar_muted };
     v_flex()
         .gap_1()
         .child(
             h_flex()
                 .justify_between()
+                .items_baseline()
                 .when(large, |d| d.text_base())
                 .when(!large, |d| d.text_sm())
                 .child(
                     div()
-                        .text_color(t.foreground)
+                        .text_color(r.fg)
+                        .truncate()
                         .when(strong, |d| d.font_weight(FontWeight::SEMIBOLD))
                         .child(label.to_string()),
                 )
-                .child(div().text_color(t.muted_foreground).child(pct(p))),
+                .child(div().text_sm().text_color(if strong { r.fg } else { r.muted_fg }).child(pct(p))),
         )
-        .child(if large { bar.into_any_element() } else { bar.small().into_any_element() })
+        .child(bar(p, fill, px(if large { 8. } else { 5. }), &r))
         .into_any_element()
 }
 
 /// Headline + top-3 + all classes. Used by the Classify result panel and the Demo detail pane.
 pub fn prediction_block(
-    id: &str,
     p: &Prediction,
     key: ModelKey,
     threshold: f32,
@@ -72,19 +163,21 @@ pub fn prediction_block(
     labels: &[String],
     cx: &App,
 ) -> AnyElement {
-    let t = cx.theme();
+    let r = theme::roles(cx);
     let top = &p.top3[0];
     let headline = if p.unsure {
         v_flex()
             .gap_1()
+            .child(caption("Prediction", cx))
             .child(
                 h_flex()
                     .gap_2()
                     .items_center()
-                    .child(Icon::new(IconName::TriangleAlert).text_color(t.warning))
-                    .child(div().text_3xl().font_weight(FontWeight::BOLD).text_color(t.warning).child("Unsure")),
+                    .text_color(r.unsure)
+                    .child(Icon::new(Lucide::CircleQuestionMark).large())
+                    .child(div().text_3xl().font_weight(FontWeight::BOLD).child("Unsure")),
             )
-            .child(div().text_sm().text_color(t.muted_foreground).child(format!(
+            .child(div().text_sm().text_color(r.muted_fg).child(format!(
                 "Top probability {} is below the {} threshold, so the model abstains. Best guess: {}.",
                 pct(top.1),
                 pct(threshold),
@@ -92,21 +185,27 @@ pub fn prediction_block(
             )))
     } else {
         v_flex()
-            .gap_0p5()
-            .child(div().text_xs().text_color(t.muted_foreground).child("Prediction"))
-            .child(div().text_3xl().font_weight(FontWeight::BOLD).text_color(t.foreground).child(top.0.clone()))
-            .child(div().text_sm().text_color(t.muted_foreground).child(if key.calibrated() {
-                format!("{} confidence (calibrated)", pct(top.1))
-            } else {
-                format!("{} confidence (softmax, not calibrated)", pct(top.1))
-            }))
+            .gap_1()
+            .child(caption("Prediction", cx))
+            .child(div().text_3xl().font_weight(FontWeight::BOLD).text_color(r.fg).child(top.0.clone()))
+            .child(
+                h_flex()
+                    .gap_2()
+                    .items_baseline()
+                    .child(div().text_2xl().font_weight(FontWeight::SEMIBOLD).text_color(r.accent).child(pct(top.1)))
+                    .child(div().text_sm().text_color(r.muted_fg).child(if key.calibrated() {
+                        "confidence · calibrated"
+                    } else {
+                        "confidence · softmax, not calibrated"
+                    })),
+            )
             .when(!key.calibrated() && top.1 < threshold, |d| {
                 d.child(
                     h_flex()
                         .gap_1()
                         .items_center()
                         .text_xs()
-                        .text_color(t.muted_foreground)
+                        .text_color(r.muted_fg)
                         .child(Icon::new(IconName::Info).xsmall())
                         .child("Low confidence. Only the deployed model is calibrated and abstains; this one always answers."),
                 )
@@ -116,8 +215,8 @@ pub fn prediction_block(
         h_flex()
             .gap_2()
             .items_center()
-            .child(verdict_tag(v, false))
-            .child(div().text_sm().text_color(t.muted_foreground).child(format!("True label: {truth}")))
+            .child(verdict_tag(v, false, cx))
+            .child(div().text_sm().text_color(r.muted_fg).child(format!("True label: {truth}")))
     });
     let mut order: Vec<usize> = (0..p.probs.len()).collect();
     order.sort_by(|&a, &b| p.probs[b].partial_cmp(&p.probs[a]).unwrap_or(std::cmp::Ordering::Equal));
@@ -125,89 +224,112 @@ pub fn prediction_block(
         h_flex()
             .justify_between()
             .text_xs()
-            .child(
-                div()
-                    .text_color(t.muted_foreground)
-                    .child(labels.get(i).cloned().unwrap_or_else(|| format!("class {i}"))),
-            )
-            .child(div().text_color(t.muted_foreground).child(format!("{:.1}%", p.probs[i] * 100.0)))
+            .text_color(r.muted_fg)
+            .child(div().truncate().child(labels.get(i).cloned().unwrap_or_else(|| format!("class {i}"))))
+            .child(div().child(format!("{:.1}%", p.probs[i] * 100.0)))
     });
     v_flex()
-        .gap_4()
+        .gap_5()
         .child(headline)
         .children(verdict_row)
         .child(
-            v_flex().gap_3().children(
-                p.top3
-                    .iter()
-                    .enumerate()
-                    .map(|(i, (l, v))| prob_row(format!("{id}-top{i}"), l, *v, i == 0 && !p.unsure, true, cx)),
-            ),
+            v_flex()
+                .gap_3()
+                .child(caption("Top 3", cx))
+                .children(p.top3.iter().enumerate().map(|(i, (l, v))| prob_row(l, *v, i == 0 && !p.unsure, true, cx))),
         )
         .child(
             v_flex()
                 .gap_1()
-                .pt_2()
+                .pt_3()
                 .border_t_1()
-                .border_color(t.border)
-                .child(
-                    div()
-                        .text_xs()
-                        .font_weight(FontWeight::SEMIBOLD)
-                        .text_color(t.muted_foreground)
-                        .child("Other classes"),
-                )
+                .border_color(r.border)
+                .child(caption("Other classes", cx).pb_1())
                 .children(rest),
         )
-        .child(div().text_xs().text_color(t.muted_foreground).child(format!(
-            "{} · preprocess + inference {:.0} ms",
-            key.name(),
-            p.ms
-        )))
+        .child(
+            h_flex()
+                .gap_1()
+                .items_center()
+                .text_xs()
+                .text_color(r.muted_fg)
+                .child(Icon::new(Lucide::Timer).xsmall())
+                .child(format!("{} · preprocess + inference {:.0} ms", key.name(), p.ms)),
+        )
         .into_any_element()
 }
 
-pub fn verdict_tag(v: Verdict, small: bool) -> Tag {
-    let tag = match v {
-        Verdict::Correct => Tag::success()
-            .child(h_flex().gap_1().items_center().child(Icon::new(IconName::CircleCheck).xsmall()).child("Correct")),
-        Verdict::Wrong => Tag::danger()
-            .child(h_flex().gap_1().items_center().child(Icon::new(IconName::CircleX).xsmall()).child("Wrong")),
-        Verdict::Unsure => Tag::warning()
-            .child(h_flex().gap_1().items_center().child(Icon::new(IconName::TriangleAlert).xsmall()).child("Unsure")),
-    };
-    if small { tag.small() } else { tag }
-}
-
-/// Semantic colour for a verdict (cells, card accents).
-pub fn verdict_color(v: Verdict, cx: &App) -> Hsla {
-    match v {
-        Verdict::Correct => cx.theme().success,
-        Verdict::Wrong => cx.theme().danger,
-        Verdict::Unsure => cx.theme().warning,
-    }
-}
-
-/// Compact model state: spinner while loading, otherwise a short tag.
+/// Compact model state: spinner while loading, otherwise a short pill.
 pub fn model_state_chip(state: Option<&ModelState>, cx: &App) -> AnyElement {
-    let t = cx.theme();
+    let r = theme::roles(cx);
+    let pill = |icon: Lucide, text: String, color: Hsla| {
+        h_flex()
+            .gap_1()
+            .items_center()
+            .px_2()
+            .py_0p5()
+            .rounded_full()
+            .border_1()
+            .border_color(r.border)
+            .bg(r.surface)
+            .text_xs()
+            .text_color(color)
+            .child(Icon::new(icon).xsmall())
+            .child(text)
+            .into_any_element()
+    };
     match state {
-        None | Some(ModelState::Idle) => Tag::secondary().small().child("not loaded").into_any_element(),
+        None | Some(ModelState::Idle) => pill(Lucide::Circle, "loads on first use".into(), r.muted_fg),
         Some(ModelState::Loading(t0)) => h_flex()
             .gap_1()
             .items_center()
-            .child(Spinner::new().small().color(t.muted_foreground))
-            .child(
-                div()
-                    .text_xs()
-                    .text_color(t.muted_foreground)
-                    .child(format!("loading… {:.0} s", t0.elapsed().as_secs_f64())),
-            )
+            .px_2()
+            .py_0p5()
+            .rounded_full()
+            .border_1()
+            .border_color(r.accent.opacity(0.5))
+            .bg(r.accent_soft)
+            .child(Spinner::new().xsmall().color(r.accent))
+            .child(div().text_xs().text_color(r.fg).child(format!("loading… {:.0} s", t0.elapsed().as_secs_f64())))
             .into_any_element(),
         Some(ModelState::Ready(ms)) => {
-            Tag::secondary().small().child(format!("ready · loaded in {:.1} s", ms / 1000.0)).into_any_element()
+            pill(Lucide::CircleCheck, format!("ready · loaded in {:.1} s", ms / 1000.0), r.muted_fg)
         }
-        Some(ModelState::Unavailable(_)) => Tag::secondary().outline().small().child("not exported").into_any_element(),
-        Some(ModelState::Failed(_)) => Tag::danger().outline().small().child("failed to load").into_any_element(),
+        Some(ModelState::Unavailable(_)) => pill(Lucide::CircleOff, "not exported".into(), r.muted_fg),
+        Some(ModelState::Failed(_)) => pill(Lucide::CircleAlert, "failed to load".into(), r.wrong),
+    }
+}
+
+#[cfg(test)]
+mod unit {
+    use super::*;
+    use gpui_kit::AssetSource as _;
+
+    /// Every Lucide icon named in the GUI sources must resolve through `AppAssets`, or it renders blank.
+    #[test]
+    fn every_lucide_icon_used_is_bundled() {
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+        let mut files = vec![dir.join("gui.rs")];
+        files.extend(std::fs::read_dir(dir.join("gui")).unwrap().map(|e| e.unwrap().path()));
+        let mut used = std::collections::BTreeSet::new();
+        for f in files.iter().filter(|f| f.extension().is_some_and(|e| e == "rs")) {
+            let src = std::fs::read_to_string(f).unwrap();
+            for part in src.split("Lucide::").skip(1) {
+                let name: String = part.chars().take_while(|c| c.is_ascii_alphanumeric()).collect();
+                // variants are CamelCase; skips `Lucide::ALL` and format strings
+                if name.chars().next().is_some_and(|c| c.is_ascii_uppercase())
+                    && name.chars().any(|c| c.is_ascii_lowercase())
+                {
+                    used.insert(name);
+                }
+            }
+        }
+        assert!(used.len() > 5, "found {used:?}");
+        for name in &used {
+            let icon =
+                Lucide::ALL.iter().find(|i| format!("{i:?}") == *name).unwrap_or_else(|| panic!("no Lucide::{name}"));
+            let bytes = AppAssets.load(&icon.path()).unwrap();
+            assert!(bytes.is_some(), "Lucide::{name} ({}) is not bundled; add it to ExtraIcons", icon.path());
+        }
     }
 }
