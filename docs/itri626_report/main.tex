@@ -1,0 +1,820 @@
+% ITRI626 practical project report -- electronic-component image classification with three model families.
+% Build: see README.md ("ITRI626 submission") or docs/itri626_report/RUBRIC_CHECKLIST.md.
+% Every number in the text is a macro from generated/numbers.tex, written by make_tables.py from the result files.
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{amsmath}
+\usepackage{siunitx}
+\usepackage{xcolor}
+\usepackage{xspace}
+\usepackage{enumitem}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{float}
+\usepackage{placeins}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning}
+\usepackage[round,sort&compress]{natbib}
+\usepackage{xurl}
+\usepackage[hidelinks]{hyperref}
+\usepackage[nameinlink,capitalise,noabbrev]{cleveref}
+
+\graphicspath{{../../results/itri626/figures/}}
+\sisetup{group-separator={,},group-minimum-digits=4,group-digits=integer}
+\captionsetup{font=small,labelfont=bf,margin=0pt}
+\setlist{itemsep=1pt,topsep=3pt,parsep=0pt}
+\newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\setlength{\parskip}{0.25em}
+\setlength{\parindent}{0pt}
+\renewcommand{\floatpagefraction}{0.60}
+\renewcommand{\topfraction}{0.90}
+\renewcommand{\textfraction}{0.08}
+\newcommand{\cls}[1]{\textit{#1}}
+\DeclareUrlCommand\fileurl{\urlstyle{tt}}
+\DeclareRobustCommand{\file}{\fileurl}
+\newcommand{\mA}{model~A\xspace}
+\newcommand{\mB}{model~B\xspace}
+\newcommand{\mC}{model~C\xspace}
+
+\input{generated/numbers.tex}
+
+\begin{document}
+
+% ------------------------------------------------------------------------------------------------- title page
+\begin{titlepage}
+\centering
+{\large ITRI626 practical project: Deep learning for image classification\par}
+\vspace{1.2cm}
+{\LARGE\bfseries Recognising electronic components in web photographs:\\[2pt]
+a leakage-free comparison of a scratch CNN, a fine-tuned ConvNeXt\\[2pt] and a frozen SigLIP Vision Transformer\par}
+\vspace{1.0cm}
+\begin{tabular}{@{}ll@{}}
+Module & ITRI626 -- Deep learning for image classification\\
+Lecturer & Prof.\ Absalom Ezugwu\\
+Facilitator & Mr.\ Bernard Swanepoel\\[4pt]
+Group members & [Name 1, student no.]\\
+ & [Name 2, student no.]\\
+ & [Name 3, student no.]\\[4pt]
+Date & 20 October 2026\\
+\end{tabular}
+\vspace{1.0cm}
+
+\begin{minipage}{0.9\textwidth}
+\small
+\textbf{Abstract.}
+We classify photographs of electronic components into 20 classes (resistor, capacitor, relay, microcontroller
+board and 16 others) using the public Kaggle dataset \emph{Electronic Component Recognizer}, a DuckDuckGo
+image-search scrape. The download held \nRaw files; collapsing exact duplicates and removing \nConflictGroups
+duplicate groups with contradictory labels left \nRows images. Near-duplicates were linked into clusters, and a
+cluster-grouped, stratified split (seed \splitSeed) produced \nTrain training, \nVal validation and \nTest test
+images, so no image or re-encoded copy crosses a split boundary. Three model families were trained on this split and
+scored once on the same test set: (A) a custom VGG-style CNN trained from scratch, (B) ConvNeXt-Tiny fine-tuned from
+ImageNet-22k weights, and (C) a frozen SigLIP So400m Vision Transformer with a trained linear softmax head. Test
+accuracy is \accA (A), \accB (B) and \accC (C), with macro-F1 \foneA, \foneB and \foneC. The 95\% bootstrap
+intervals do not overlap, and paired McNemar tests reject equal accuracy for every pair. Transfer learning
+explains the ranking. ImageNet fine-tuning adds \diffBA accuracy points over the scratch baseline, and
+web-scale image--text pretraining adds a further \diffCB points. Most remaining errors come from look-alike
+parts and from images that do not show the labelled component. We recommend \mC, and ConvNeXt-T when inference must
+be fast or run on a CPU.
+\end{minipage}
+\end{titlepage}
+
+% ------------------------------------------------------------------------------------------------- 1
+\section{Introduction and problem motivation}\label{sec:intro}
+
+\textbf{Problem.} Given one photograph, assign it to exactly one of 20 classes of electronic components and modules
+(\cref{tab:dataset}). This is single-label, multiclass image classification of web photographs of arbitrary origin:
+product shots, close-ups, cluttered workbenches, renders and some diagrams.
+
+\textbf{Motivation.} Recognising a part from a photograph helps to sort mixed parts bins and take inventory, to teach
+students to tell a diode from a resistor, and as the recognition stage of lab-assistant tools. Earlier work on
+electronic-component classification fine-tunes ImageNet networks \citep{shao2025electronic} or designs dedicated
+CNNs for varied backgrounds \citep{zhou2025electronic}; inspection of assembled circuit boards is surveyed by
+\citet{ling2023pcb}. The task is also a good test of transfer learning. There are only about 100 training images per
+class, the data are noisy, and several classes look alike (resistor, diode and fuse are small axial bodies with
+leads; inductor coil and transformer are both windings).
+
+\textbf{Aim and scope.} We compare three model families, one trained from scratch and two transfer-learning
+strategies, on one leakage-free train/validation/test split, evaluate all of them on the same held-out test set,
+explain their differences and recommend one. The scope is whole-image classification of the dataset's 20 classes;
+detecting several components in one image is out of scope.
+
+\textbf{Target classes.} We keep the dataset's 20 classes because they cover the parts on a typical electronics
+workbench, are defined by a public source (so the work is reproducible), are roughly balanced
+(\cref{sec:imbalance}), and include genuinely confusable groups that make a model comparison informative.
+
+% ------------------------------------------------------------------------------------------------- 2
+\section{Dataset: source, classes, preparation and ethics}\label{sec:data}
+
+\subsection{Source, licence and usage conditions}\label{sec:source}
+The images come from the Kaggle dataset \emph{Electronic Component Recognizer} by the user
+\texttt{mdfaisalahmed025} \citep{kaggle_dataset},
+\url{https://www.kaggle.com/datasets/mdfaisalahmed025/electronic-component-recognizer}, released under the
+\textbf{MIT licence} (use, copying, modification and redistribution with the copyright notice, without warranty).
+The author collected the images with DuckDuckGo image search, one query per class, so \textbf{the labels are the
+search terms}. The dataset card states 3,661 images, but our download contains \nRaw files; we could not determine
+the reason (the card may describe an earlier version), and all counts below refer to the files we received. The MIT
+licence covers the compilation, not the copyright of the individual web images, which stays with their owners. We
+therefore use the images only for this non-commercial course project, acknowledge the source, and do not commit the
+images to the project's Git repository.
+
+\subsection{Class definitions and counts}\label{sec:classes}
+\Cref{tab:dataset} defines each class and gives its image count at every cleaning stage and in every split;
+\cref{fig:examples} shows four random training images per class.
+
+\begin{table}[!t]
+\centering\scriptsize
+\caption{The 20 classes. Raw: files in the Kaggle download. Uniq.: unique images per class folder after
+collapsing exact duplicates (an image saved under two folders counts in both). Excl.: files in exact-duplicate groups
+with conflicting labels (removed). Final: images kept. Train/Val/Test: the fixed split. OOD: images flagged as
+possibly out of scope by the CLIP screen (kept). Source: \file{data/v2/splits/split_summary.csv}.}
+\label{tab:dataset}
+\setlength{\tabcolsep}{3.6pt}
+\input{generated/tab_dataset.tex}
+\end{table}
+
+\begin{figure}[!tbp]
+\centering
+\includegraphics[width=0.58\textwidth]{fig02_examples_per_class.pdf}
+\caption{Four random training images of every class. The mix of product photos, close-ups, renders, diagrams and
+off-topic pictures (e.g.\ the game console under \cls{switch}, the infographic under \cls{led}) is typical of the
+dataset.}
+\label{fig:examples}
+\end{figure}
+
+\subsection{Cleaning, label checking and corrections}\label{sec:cleaning}
+All cleaning is done by \file{tools/build_dataset_v2.py}, which writes the manifest \file{data/v2/manifest.json} and
+the audit \file{data/v2/leakage_report.json}; \cref{tab:cleaning} summarises the counts.
+\begin{enumerate}[leftmargin=*]
+\item \textbf{Decoding.} Every file was decoded and stored as an RGB JPEG (the unique files were \nJPEG JPEG,
+\nWEBP WebP, \nPNG PNG, \nAVIF AVIF, \nGIF GIF and \nMPO MPO files; \nAlpha transparent images were composited on
+white). No file was corrupt.
+\item \textbf{Exact duplicates.} Files with identical SHA-256 hashes were collapsed into one image (\nDupRedundant
+redundant copies in \nDupGroups groups). \nConflictGroups groups (\nConflictFiles files) held the same image under two
+class folders, e.g.\ \cls{fuse} and \cls{relay}; their labels contradict each other, so they were \textbf{removed},
+leaving \nRows images.
+\item \textbf{Near-duplicates.} Re-encoded or resized copies were linked when their perceptual-hash distance was at
+most \phashRadius and their CLIP ViT-B/32 cosine similarity at least \cosWithPhash, or when the cosine alone was at
+least \cosOnly. This gave \nNearDupClusters clusters with \nNearDupRows images (sizes 2 to \maxClusterSize), which are
+kept but always assigned to the same split (\cref{sec:split}).
+\item \textbf{Irrelevant or uncertain samples.} A CLIP zero-shot screen compares each image with the 20 class prompts
+and \nDistractors distractor concepts (person, car, food, logo, text screenshot, cartoon or game art, circuit
+schematic, website screenshot, collage) and flags it when the distractor probability mass exceeds \oodThreshold. It
+flagged \nOOD images (\pctOOD\%), concentrated in classes whose names are common words: \nSwitchOOD of \nSwitch
+\cls{switch} images (mostly Nintendo Switch consoles) and \nTransformerOOD of \nTransformer \cls{transformer} images
+(toy robots, cartoons). Flagged images are \textbf{kept and reported separately}: in earlier 5-fold cross-validation,
+dropping them from training lowered a SigLIP probe's accuracy from \abKeepAcc to \abDropAcc overall and from
+\abKeepIn to \abDropIn on unflagged images (\file{results/phase1/cleaning_ablation_siglip_so400m.csv}).
+\item \textbf{Label errors.} A confident-learning audit \citep{northcutt2021confident} on out-of-fold probe
+probabilities listed \nLabelIssues images whose given label is improbable while another class is highly probable
+(\file{results/phase1/label_issues_v2.csv}).
+\end{enumerate}
+\textbf{How labels were obtained, checked and corrected.} Labels come from the search query. They were checked
+automatically (conflicting duplicates, CLIP screen, confident-learning audit) and by inspecting the review sheets in
+\file{data/v2/review/}. The only correction applied was the removal of the \nConflictGroups conflicting groups; we
+did not relabel images, which would need a manual review of all \nRows images by more than one annotator. The test
+labels therefore contain the same noise as the training labels, which caps every model's measurable accuracy.
+
+\begin{table}[!tbp]
+\centering\small
+\caption{Cleaning pipeline (\file{data/v2/leakage_report.json}). Indented rows are subsets of the row above.}
+\label{tab:cleaning}
+\input{generated/tab_cleaning.tex}
+\end{table}
+
+\subsection{Class imbalance}\label{sec:imbalance}
+After cleaning, the largest class (\cls{\classMaxName}, \classMax images) is \imbalance times the smallest
+(\cls{\classMinName}, \classMin); training classes have \trainMin--\trainMax images and test classes
+\testMin--\testMax (\cref{tab:dataset}, \cref{fig:counts} in \cref{app:extra}). Because the imbalance is mild we used
+\textbf{no class weights and no re-sampling}. Instead the split is stratified by class, early stopping and model
+selection use validation macro-F1 (every class counts equally), and we report macro- and weighted averages.
+
+\subsection{Train/validation/test split and leakage prevention}\label{sec:split}
+The unit of splitting is the \emph{duplicate cluster}: a near-duplicate cluster or a single image without
+near-duplicates (\nClusters clusters). A cluster-grouped \texttt{StratifiedGroupKFold} (scikit-learn, \textbf{seed
+\splitSeed}) set one outer fold aside as the sealed test set and cut the remaining development images into five folds.
+Here \textbf{train} = development folds 1--4 (\nTrain images), \textbf{validation} = fold 0 (\nVal) and \textbf{test}
+= the sealed set (\nTest), i.e.\ \pctTrain/\pctVal/\pctTest\%, close to the 70/15/15 split suggested in the brief.
+The class distribution of each split is in \cref{tab:dataset}. \file{tools/export_splits.py} writes the split from
+the manifest (fingerprint \texttt{\fingerprint}) to \texttt{data/v2/splits/\{train,val,test\}.csv} and, with
+\texttt{--check}, verifies the files; the notebook and \file{make_tables.py} assert that no image and no cluster
+occurs in two splits. Grouping matters: in the dataset's original random file split, \legValCopies of \legValEntries
+validation and \legTestCopies of \legTestEntries test entries are byte-identical copies of a training file, which
+inflates scores \citep{barz2020cifair, kapoor2023leakage} (\cref{sec:further}). The test set was used once per model, after all choices had been fixed on validation data.
+
+\subsection{Ethical, privacy and licensing considerations}\label{sec:ethics}
+The task uses no health or personal records, and no person is a subject of the classification. As a web scrape,
+the data contain incidental people (the CLIP screen names ``person'' as the top distractor for \nPersonTop images,
+\file{data/v2/review/ood_suspects.csv}) and trademarks (game consoles, brand logos). We identify no one; such images appear in
+our figures only as small thumbnails from the public dataset. Use follows \cref{sec:source}: the
+source is acknowledged, the use is non-commercial and educational, and the images are not redistributed in the
+repository (they are rebuilt from the Kaggle download, \cref{app:repro}). The 407 photographs of the supplementary web
+holdout (\cref{sec:further}) are from Wikimedia Commons under public-domain or Creative-Commons licences; author,
+licence and source of each are listed in \file{data/web_holdout_v1/ATTRIBUTION.md}. Pretrained weights come from
+their official \texttt{timm} releases \citep{wightman2019timm}. The main risk is over-trust in a wrong label,
+which is why we report confidence and a reject option.
+
+% ------------------------------------------------------------------------------------------------- 3
+\section{Methodology, selected models and transfer learning}\label{sec:method}
+
+\Cref{fig:workflow} shows the workflow. The same split files feed all three models; each is selected on the
+validation set only and scored once on the test set.
+
+\begin{figure}[!tbp]
+\centering
+\begin{tikzpicture}[node distance=4mm and 5mm, font=\footnotesize,
+  box/.style={draw, rounded corners=2pt, align=center, minimum height=9mm, inner sep=3pt, fill=gray!6},
+  arr/.style={-{Stealth[length=2mm]}, thick}]
+\node[box, text width=2.1cm] (raw) {Kaggle download\\ \nRaw files};
+\node[box, text width=2.4cm, right=of raw] (clean) {decode, SHA-256 dedup, drop conflicts\\ \nRows images};
+\node[box, text width=2.4cm, right=of clean] (clus) {near-dup clusters, CLIP OOD flag\\ \nClusters groups};
+\node[box, text width=2.5cm, right=of clus] (split) {grouped stratified split, seed \splitSeed\\ \nTrain\,/\,\nVal\,/\,\nTest};
+\node[box, text width=3.0cm, below=9mm of raw.south west, anchor=north west] (A) {\textbf{A} scratch CNN\\ train all \paramsA params};
+\node[box, text width=3.0cm, right=6mm of A] (B) {\textbf{B} ConvNeXt-T\\ fine-tune ImageNet-22k weights};
+\node[box, text width=3.0cm, right=6mm of B] (C) {\textbf{C} SigLIP So400m frozen\\ cache features, train linear head};
+\node[box, text width=2.9cm, right=6mm of C] (eval) {select on validation; score test \emph{once}; analyse};
+\draw[arr] (raw) -- (clean); \draw[arr] (clean) -- (clus); \draw[arr] (clus) -- (split);
+\draw[arr] (split.south) -- ++(0,-3mm) -| (A.north);
+\draw[arr] (split.south) -- ++(0,-3mm) -| (B.north);
+\draw[arr] (split.south) -- ++(0,-3mm) -| (C.north);
+\draw[arr] (A.south) -- ++(0,-3mm) -| (eval.south);
+\draw[arr] (B.south) -- ++(0,-3mm) -| (eval.south);
+\draw[arr] (C.south) -- ++(0,-3mm) -| (eval.south);
+\end{tikzpicture}
+\caption{Workflow. Data preparation (top) is shared; the three models (bottom) use the same split files and
+selection rule and are evaluated on the same \nTest test images.}
+\label{fig:workflow}
+\end{figure}
+
+\subsection{Model A: custom CNN trained from scratch (baseline)}
+A VGG-style network \citep{simonyan2014vgg} written for this project (\file{src/compclass/models/scratch_cnn.py}):
+a stride-2 stem convolution, four stages of two $3\times3$ convolution--BatchNorm \citep{ioffe2015bn}--ReLU blocks
+(32, 64, 128, 256 channels) with max-pooling between stages, global average pooling, dropout 0.3 and a linear
+classifier; \paramsA parameters with He initialisation \citep{he2015delving} and \textbf{no pretrained weights}. It
+shows what can be learned from about 2,000 images alone.
+
+\subsection{Model B: ConvNeXt-Tiny, fine-tuned (transfer learning by fine-tuning)}
+ConvNeXt \citep{liu2022convnext} modernises the ResNet design \citep{he2016resnet} with $7\times7$ depthwise
+convolutions, inverted bottlenecks, LayerNorm and GELU. We use the Tiny variant (\paramsB parameters) with the
+\texttt{timm} weights \file{convnext_tiny.fb_in22k_ft_in1k}, pretrained on ImageNet-22k and fine-tuned on
+ImageNet-1k \citep{russakovsky2015imagenet}. The 1000-class head is replaced by a new 20-class linear layer, which is
+trained alone in the first epoch so that its large initial gradients do not disturb the pretrained features
+\citep{kumar2022finetuning}. Afterwards all layers are trained, with layer-wise learning-rate decay 0.8 so that early,
+generic layers change less than late, task-specific ones. Fine-tuning ImageNet networks is the standard transfer
+recipe for small datasets \citep{yosinski2014transferable, kornblith2019transfer}.
+
+\subsection{Model C: SigLIP So400m ViT, frozen, with a linear head (transfer learning by feature extraction)}
+The Vision Transformer \citep{dosovitskiy2020vit} splits an image into patches and processes the patch tokens with
+self-attention. SigLIP \citep{zhai2023siglip} trains a ViT image encoder and a text encoder on WebLI image--text
+pairs with a pairwise sigmoid loss. We use its shape-optimised So400m/14 encoder at $384\times384$ pixels (27 blocks,
+width 1152, patch size 14; \texttt{timm} weights \file{vit_so400m_patch14_siglip_384.webli}). \textbf{The backbone
+is frozen.} Each image is encoded once into its attention-pooled 1152-dimensional embedding; the features are
+standardised with the training-split mean and standard deviation, and only one \texttt{nn.Linear(1152,\,20)} layer
+(\paramsHead parameters) with softmax output is trained with cross-entropy and AdamW, i.e.\ the linear-probe
+protocol used for image--text models \citep{radford2021clip}.
+
+\subsection{Why these three, and evaluation}
+The models come from three families (plain CNN, modernised CNN, Vision Transformer) and span the transfer-learning
+spectrum: no transfer (A), full fine-tuning of supervised ImageNet features (B) and frozen features from web-scale
+image--text pretraining (C). Between B and C, architecture and pretraining data change together, so the comparison
+measures \emph{model plus pretraining} as available to a practitioner; the supplementary benchmark
+(\cref{sec:further}) separates the two factors.
+
+\textbf{Evaluation.} On the test set we compute per-class precision, recall and F1, their macro averages (all classes equal) and weighted
+averages (by support), accuracy, balanced accuracy (equal to macro recall) and log-loss. Uncertainty is estimated with
+2,000 bootstrap resamples of the test images \citep{efron1979bootstrap}; pairs of models are compared on the same
+images with a paired bootstrap of the accuracy difference and an exact McNemar test \citep{mcnemar1947}.
+
+% ------------------------------------------------------------------------------------------------- 4
+\section{Experimental setup and hyperparameters}\label{sec:setup}
+
+\subsection{Preprocessing}
+Every image is decoded to 8-bit RGB, and each model uses the input size and normalisation of its weights. For \textbf{evaluation} (validation, test, and the
+feature extraction of \mC) the short side is resized to input/crop\_pct and the centre square is cut out:
+183$\to$160\,px bilinear for A, 256$\to$224\,px bicubic for B, 427$\to$384\,px bicubic for C. Pixels are scaled to
+$[0,1]$ and normalised per channel (mean and standard deviation 0.5 for A and C; ImageNet statistics for B).
+
+\subsection{Augmentation (training data only)}
+A and B are trained with \texttt{RandomResizedCrop} (aspect ratio 0.75--1.33), horizontal flips ($p=0.5$) and
+RandAugment with two operations of magnitude 9 \citep{cubuk2020randaugment}; A also uses colour jitter 0.2 and a
+wider crop range (scale 0.35--1 instead of 0.5--1), because a network trained from scratch needs stronger
+regularisation (\cref{fig:aug}). Validation and test images always receive the deterministic evaluation transform.
+The transformations are realistic for this domain: web photos of parts are taken at arbitrary zoom and framing
+(random crops), components have no canonical left--right orientation (horizontal flips), and lighting, white balance
+and compression vary between shops and phones (RandAugment's photometric operations, colour jitter). Vertical flips
+were not used because printed text and lighting in product shots have a natural ``up'', and MixUp/CutMix were not used
+because blended components cannot occur. \mC uses no augmentation: its features are computed once from the evaluation
+crop, which keeps the frozen-feature protocol simple and cheap.
+
+\begin{figure}[!tbp]
+\centering
+\includegraphics[width=0.62\textwidth]{fig03_augmentation.pdf}
+\caption{One training image, its evaluation crop and five random training augmentations per model. \mC uses frozen
+features of the evaluation crop and therefore no augmentation.}
+\label{fig:aug}
+\end{figure}
+
+\subsection{Hyperparameters}
+\Cref{tab:hparams} lists every training setting. Settings differ where the architectures require it: a randomly
+initialised CNN needs a high learning rate, many epochs and strong augmentation; a pretrained network a small learning
+rate and few epochs; a linear head on frozen, standardised features neither augmentation nor a schedule. The recipes of
+A and B were fixed earlier in the project's grouped 5-fold cross-validation benchmark (\file{results/benchmark.csv}),
+not on this split. The only choice made here is the weight decay of \mC's head, selected on the validation set from
+$\{10^{-4},10^{-3},10^{-2},10^{-1}\}$ (\cref{tab:wdgrid}, \cref{app:extra}). The first \nTies values reached the
+identical best validation macro-F1, because AdamW's decoupled decay \citep{loshchilov2019adamw} is negligible over a
+few dozen epochs at this learning rate; the tie was broken by the rule, fixed before the grid was run, that the
+smallest value wins. A and B use label smoothing 0.1 \citep{szegedy2016inception} and a cosine schedule
+\citep{loshchilov2017sgdr}. All models are early-stopped on validation macro-F1, and the best validation epoch is
+tested.
+
+\begin{table}[!tbp]
+\centering\scriptsize
+\caption{Training settings (\file{results/itri626/hyperparameters.csv}, \file{results/itri626/runs/*.json}).
+Epochs are counted from 1.}
+\label{tab:hparams}
+\renewcommand{\arraystretch}{1.0}
+\input{generated/tab_hparams.tex}
+\end{table}
+
+\subsection{Software, hardware, fairness and reproducibility}
+The models are implemented in PyTorch \citep{paszke2019pytorch} with \texttt{timm} \citep{wightman2019timm};
+scikit-learn \citep{pedregosa2011sklearn} provides the split and the reference probe, and uv \citep{astral2024uv}
+pins the environment. Training ran on one \gpuName with \gpuMem\,GiB of memory (\cref{tab:env}); peak GPU memory was
+\vramA\,MB for A and \vramB\,MB for B, and head C was trained on the CPU from cached features. All models use the same
+\nTrain training, \nVal validation and \nTest test images; no model saw the test set before its final evaluation, and
+none of the test numbers led to a change. The training seed is 0 and the split seed \splitSeed. GPU training of A is
+not bit-for-bit reproducible (non-deterministic cuDNN kernels), so a re-run can differ slightly. All result files,
+the executed notebook \file{notebooks/ITRI626_three_models.ipynb} and the commands in \cref{app:repro} are in the
+repository.
+
+\begin{table}[!tbp]
+\centering\small
+\caption{Software and hardware of the training run (\file{results/itri626/environment.json}).}
+\label{tab:env}
+\footnotesize
+\input{generated/tab_env.tex}
+\end{table}
+
+% ------------------------------------------------------------------------------------------------- 5
+\section{Results and model comparison}\label{sec:results}
+
+\subsection{Overall test performance}
+\Cref{tab:test} gives the test metrics. The ranking is the same for every metric: \mC (accuracy \accC, macro-F1
+\foneC) $>$ \mB (\accB, \foneB) $>$ \mA (\accA, \foneA), and the 95\% bootstrap intervals do not overlap. The paired
+comparisons (\cref{tab:pairwise}) are decisive: B is right where A is wrong on \onlyFirstBA images against
+\onlySecondBA the other way ($p=$~\pvalBA), and C beats B on \onlyFirstCB images against \onlySecondCB ($p=$~\pvalCB).
+Because the classes are nearly balanced, balanced accuracy and macro and weighted averages agree. Test accuracy is
+slightly above validation accuracy at the selected epoch for every model (A \valAccA, B \valAccB, C \valAccC), within
+the sampling variation of two sets of about 450 images. The reference rows confirm C: a scikit-learn
+logistic-regression probe on the same features (R1) scores \accRA, \gapRAC images more than C, and the project's
+deployed model (R2: probe fitted on training plus validation data, fused with the zero-shot text head) scores \accRB.
+
+\begin{table}[!tbp]
+\centering\small
+\caption{Test-set metrics ($n=\nTest$, identical images for all models; \file{results/itri626/metrics.json}). Best
+main-model value in bold. CI: 95\% percentile bootstrap (2,000 resamples) for accuracy and macro-F1.}
+\label{tab:test}
+\footnotesize\setlength{\tabcolsep}{4pt}
+\input{generated/tab_test_metrics.tex}
+\end{table}
+
+\begin{table}[!tbp]
+\centering\small
+\caption{Paired comparisons on the same \nTest test images: accuracy difference with paired-bootstrap interval,
+discordant counts and exact McNemar test.}
+\label{tab:pairwise}
+\input{generated/tab_pairwise.tex}
+\end{table}
+
+\subsection{Learning curves}
+\Cref{fig:curves} shows training and validation loss and validation accuracy and macro-F1 per epoch;
+\cref{tab:curves} (\cref{app:extra}) gives the values at the selected epoch. Losses are plain cross-entropy; for A and B the
+training curve is measured on augmented batches (dotted: the label-smoothed objective).
+\begin{itemize}[leftmargin=*]
+\item \textbf{A} is still improving slowly when its \maxEpochsA-epoch budget ends. At the selected epoch (\bestA) its
+training accuracy is \trainAccA but its validation accuracy only \valAccA; the validation loss flattens at about
+\minValCEA (chance level $\ln 20=\lnTwenty$) while the training loss keeps falling.
+\item \textbf{B} profits from its pretrained features at once: validation accuracy passes 0.5 in epoch \epHalfB and
+plateaus near \valAccB, while training accuracy rises to \finalTrainAccB and validation loss stays at about \valCEB,
+i.e.\ a 28-million-parameter network overfits a small, noisy training set. The cosine schedule and early stopping
+(best epoch \bestB of \epochsB) keep it from getting worse.
+\item \textbf{C} passes 0.75 validation accuracy in epoch \epTqC and reaches \valAccC. Training accuracy goes to
+\finalTrainAccC, since 1,152 standardised features are almost linearly separable for 2,010 images. Validation loss is
+lowest in epoch \minValCEepC (\minValCEC) and then creeps up while accuracy and macro-F1 stay flat: the head grows more
+confident without changing many decisions. Early stopping selected epoch \bestC.
+\end{itemize}
+
+\begin{figure}[!tbp]
+\centering
+\includegraphics[width=0.72\textwidth]{fig04_learning_curves.pdf}
+\caption{Learning curves. Left: training and validation cross-entropy. Right: training accuracy and validation
+accuracy and macro-F1. The vertical grey line marks the epoch whose weights were tested.}
+\label{fig:curves}
+\end{figure}
+
+
+\subsection{Per-class results and confusion matrices}
+\Cref{fig:perclass} plots the per-class test F1; the full per-class precision, recall and F1 values are in
+\cref{tab:perclass} (\cref{app:perclass}). \mC is best or tied for best in nearly every class; its weakest class is
+\cls{\worstC} (F1 \worstFoneC, recall \recResC) and its strongest \cls{\bestClsC} (\bestFoneC). B is weakest on
+\cls{\worstB} (F1 \worstFoneB, recall \recFuseB). A exceeds F1 0.5 only for a few visually distinctive classes
+(\cls{microcontroller board}, \cls{switch}, \cls{jumper wire}, \cls{heat sink}). The confusion matrices
+(\cref{fig:cm}) show A's errors spread over the whole matrix, B's concentrated in a few blocks, and C's matrix almost
+diagonal; \cref{sec:errors} analyses the largest off-diagonal entries.
+
+\begin{figure}[!tbp]
+\centering
+\includegraphics[width=0.66\textwidth]{fig07_per_class_f1.pdf}
+\caption{Per-class test F1 of the three models, sorted by \mC; the number after each class is its training-set
+size.}
+\label{fig:perclass}
+\end{figure}
+
+\begin{figure}[p]
+\centering
+\begin{subfigure}[t]{0.49\textwidth}\centering
+\includegraphics[width=\textwidth,trim=0 0 271.8 0,clip]{fig06_confusion_A_scratch_cnn.pdf}
+\caption{\mA (custom CNN), counts.}
+\end{subfigure}\hfill
+\begin{subfigure}[t]{0.49\textwidth}\centering
+\includegraphics[width=\textwidth,trim=0 0 271.8 0,clip]{fig06_confusion_B_convnext_tiny.pdf}
+\caption{\mB (ConvNeXt-T, fine-tuned), counts.}
+\end{subfigure}
+
+\medskip
+\begin{subfigure}[t]{\textwidth}\centering
+\includegraphics[width=\textwidth]{fig06_confusion_C_siglip_so400m_linear.pdf}
+\caption{\mC (SigLIP So400m ViT, frozen, linear head): counts (left) and row-normalised (right; the diagonal is the
+per-class recall).}
+\end{subfigure}
+\caption{Test confusion matrices (rows: true class; columns: predicted class; $n=\nTest$). The row-normalised
+matrices of A and B are in the notebook and in \file{results/itri626/figures/}.}
+\label{fig:cm}
+\end{figure}
+
+\subsection{Correct and incorrect predictions}
+\Cref{fig:galleries} shows, for each model, six random correct predictions and its six most confident errors with
+true class, prediction and softmax confidence. Many of C's confident errors are images that do not show the labelled component: a DIP chip
+labelled \cls{transistor}, a breadboard power module labelled \cls{breadboard}, a fibre-optic pigtail and a coaxial
+plug labelled \cls{jumper wire}, and an icon sheet and a ``Capacitor vs Resistor'' banner labelled \cls{resistor}. A's most
+confident errors include a sheet of package drawings labelled \cls{diode}, an LED arrow sign labelled \cls{power supply
+module} and handwritten notes labelled \cls{inductor coil}.
+
+\begin{figure}[p]
+\centering
+\begin{subfigure}{\textwidth}\centering
+\includegraphics[width=0.64\textwidth]{fig08_gallery_A_scratch_cnn.pdf}
+\caption{\mA}
+\end{subfigure}
+\begin{subfigure}{\textwidth}\centering
+\includegraphics[width=0.64\textwidth]{fig08_gallery_B_convnext_tiny.pdf}
+\caption{\mB}
+\end{subfigure}
+\begin{subfigure}{\textwidth}\centering
+\includegraphics[width=0.64\textwidth]{fig08_gallery_C_siglip_so400m_linear.pdf}
+\caption{\mC}
+\end{subfigure}
+\caption{Six random correct predictions (top row of each panel) and the six most confident errors (bottom row, in
+orange) of every model on the test set.}
+\label{fig:galleries}
+
+\medskip
+\begin{minipage}[b]{0.31\textwidth}\centering
+\includegraphics[width=\textwidth]{fig09_agreement.pdf}
+\caption{Test images by which models classify them correctly (capital letter = correct).}
+\label{fig:agree}
+\end{minipage}\hfill
+\begin{minipage}[b]{0.56\textwidth}\centering
+\includegraphics[width=\textwidth]{fig10_disagreements.pdf}
+\caption{C right and B wrong (first four), B right and C wrong (next four), all wrong (last four); x marks a wrong
+prediction.}
+\label{fig:disagree}
+\end{minipage}
+\end{figure}
+
+\subsection{Agreement between the models and computational cost}
+All three models are right on \allRight test images and all three wrong on \allWrong (\cref{fig:agree}). \onlyC
+images are recognised only by C and \bcNotA by B and C but not A, whereas C is wrong on only \cWrongOther images that A
+or B get right (examples in \cref{fig:disagree}). Accuracy has a price (\cref{tab:eff} in \cref{app:extra}): C needs \gpuMsC\,ms per
+image on the GPU at batch size 1, about \gpuRatioCB times as long as B (\gpuMsB\,ms), and \cpuMsC\,ms on an 8-thread
+CPU, about \cpuRatioCB times as long as B (\cpuMsB\,ms); its frozen backbone weighs \fpMBC\,MB in fp32.
+
+
+
+
+% ------------------------------------------------------------------------------------------------- 6
+\section{Discussion, limitations and error analysis}\label{sec:discussion}
+
+\subsection{Why the models differ}\label{sec:why}
+The ranking follows \emph{how much relevant visual knowledge each model brings} to a 2,010-image problem, rather than
+depth or parameter count. \textbf{A} starts from random weights and must learn edges, textures, shapes and classes at
+once from about 100 images per class; its learning curves show it is data-limited, and its per-class F1 follows the
+number of training images most closely (Spearman $\rho$ over the 20 classes \rhoA, against \rhoB for B and \rhoC for
+C). \textbf{B} re-uses ImageNet-22k features that already encode objects, materials and shapes, so it learns fast;
+but ImageNet contains few electronic parts, so the features are generic, and fine-tuning all 28 million parameters on
+2,010 noisy images overfits (training accuracy \finalTrainAccB against \valAccB on validation). \textbf{C} uses a
+428-million-parameter encoder pretrained on web image--text pairs. Its embedding already separates concepts such as
+``resistor'' and ``capacitor'' and is robust to the mix of photos, renders and diagrams, which come from the same web
+domain as its pretraining data. Freezing the backbone means label noise cannot distort it, and
+training the \paramsHead head parameters takes \timeC\,s for the whole grid on cached features.
+
+\subsection{Error analysis}\label{sec:errors}
+\textbf{Look-alike components.} \Cref{tab:confused} lists the most frequent confusions. C's largest are
+\cls{resistor}$\to$\cls{inductor coil} (\cmResIndC) and \cls{jumper wire}$\to$\cls{connector} (\cmJumpConC); B's are
+\cls{resistor}$\to$\cls{crystal oscillator} (\cmResXtalB) and \cls{ic chip}$\to$\cls{microcontroller board}
+(\cmIcMcuB). These pairs share shapes: colour-banded axial bodies (some inductors look like fat resistors), cables
+with plugs, chips mounted on boards. \cls{Resistor} is C's hardest class: precision \precResC but recall only
+\recResC, partly because several test ``resistors'' are icon sheets, banners or schematics. A's confusions (e.g.\
+\cls{fuse}$\to$\cls{connector}, \cls{fuse}$\to$\cls{switch}) are spread widely and often have no visual explanation,
+typical of a model without robust shape features. \cls{Diode} and \cls{led} are related devices that are often shown together in infographics, and C confuses
+\cls{diode}$\to$\cls{led} \cmDiodeLedC times.
+
+\begin{table}[!tbp]
+\centering\scriptsize
+\caption{Most frequent test confusions (true $\rightarrow$ predicted) per model, from the confusion matrices in
+\file{results/itri626/metrics.json}; equal counts are listed alphabetically. Summed over the three models the most
+frequent are \confusedSum.}
+\label{tab:confused}
+\setlength{\tabcolsep}{3.5pt}
+\input{generated/tab_confused.tex}
+\end{table}
+
+\textbf{Data quality matters more than class imbalance.} On the \nTestClean test images that the CLIP screen did not
+flag, accuracy is \accCleanA (A), \accCleanB (B) and \accCleanC (C); on the \oodTest flagged ones it is \accOODA,
+\accOODB and \accOODC (flags from \file{data/v2/splits/test.csv}). B loses most (\oodDropB points; A \oodDropA,
+C \oodDropC), and C stays far ahead on flagged images, plausibly because its pretraining has seen such web content. All three models
+fail on \allWrong test images, many of them infographics, diagrams or scenes without the labelled component, where
+the label rather than the prediction is often questionable (\cref{fig:disagree}). Class imbalance, by contrast, is not
+an important factor: the size ratio is only \imbalance, and C's per-class F1 is not significantly related to class
+size ($\rho=\rhoC$, $p=\rhopC$).
+
+
+\textbf{Confidence is informative.} C's mean softmax confidence is \confOkC on correct and \confBadC on wrong
+predictions (B: \confOkB and \confBadB), so a reject option can catch many errors \citep{chow1970reject,
+geifman2017selective}. The deployed model uses one: at a confidence threshold of \ftThr it answers \ftCov\% of the
+test images and is right on \ftAccepted of those (\file{results/final/final_test_v2.json}).
+
+\subsection{Further analysis (supporting work)}\label{sec:further}
+The project's broader study (\file{docs/report/REPORT.md}; details in \cref{app:benchmark}) supports the comparison.
+Grouped 5-fold cross-validation over eleven families reproduces the ordering (macro-F1: scratch CNN \bmScratch,
+ConvNeXt-T fine-tuned \bmConvnext, frozen SigLIP So400m probe \bmProbeSiglip), and every ImageNet-pretrained fine-tune
+(\bmImagenetLo--\bmImagenetHi) stays below SigLIP zero-shot classification without any training (\bmZeroSiglip).
+The dataset's original file-level split leaks duplicates and inflates linear-probe accuracy by \inflSiglip to
+\inflResnet points, more for weaker models. On \whN fresh Wikimedia Commons photographs the deployed SigLIP-based model
+(R2) scored \whAcc accuracy, close to its in-distribution result.
+
+\subsection{Limitations}\label{sec:limits}
+\begin{enumerate}[leftmargin=*]
+\item \textbf{One split, one training seed.} With about 21 test images per class, one image moves a per-class F1 by up
+to about 0.05, and accuracy differences below about 4 points would not be significant. The cross-validation benchmark
+gives the same ordering.
+\item \textbf{Noisy labels and scope.} Labels are unreviewed search terms and \pctOOD\% of the images are flagged as
+possibly off-topic (by an automated screen that no person verified). Measured accuracy therefore underestimates
+performance on clean photographs.
+\item \textbf{Unequal pretraining and budgets.} C's backbone was trained on far more data than B's, so the comparison
+measures model and pretraining together. The budgets of A and B were fixed by earlier cross-validation, not tuned
+exhaustively; longer training would help A, but not enough to close a gap of \diffCA points.
+\item \textbf{Cost.} C has \paramsMC million parameters and needs about \cpuMsC\,ms per image on a CPU, which rules it
+out for microcontrollers or real-time video without a GPU.
+\end{enumerate}
+
+% ------------------------------------------------------------------------------------------------- 7
+\section{Conclusion}\label{sec:conclusion}
+On one leakage-free split and the same \nTest test images the three model families rank clearly: a frozen SigLIP
+So400m ViT with a linear head (accuracy \accC, macro-F1 \foneC), a fine-tuned ConvNeXt-T (\accB, \foneB) and a custom
+CNN trained from scratch (\accA, \foneA). The differences are statistically clear and confirmed by the five-fold
+benchmark. Transfer learning is the decisive factor: ImageNet fine-tuning adds \diffBA
+points over training from scratch, and large-scale image--text pretraining another \diffCB.
+
+\textbf{Recommended model: C, the frozen SigLIP So400m ViT with a linear softmax head.} It is the most accurate by a
+wide margin, the most robust to off-topic web images, confident enough on correct answers for a reject option, and the
+cheapest to train (\paramsHead parameters, learned in seconds), provided a GPU or about a second per CPU image is
+acceptable. Where inference cost dominates (mobile devices,
+real-time video), the fine-tuned ConvNeXt-T is the practical second choice: about \gpuRatioCB times faster on a GPU,
+at about \diffCB accuracy points lower. The clearest route to further gains is better data rather than a
+bigger model: relabelling the audited issues and cleaning the classes contaminated by homonyms (\cls{switch},
+\cls{transformer}).
+
+\FloatBarrier
+% ------------------------------------------------------------------------------------------------- 8
+\bibliographystyle{plainnat}
+\bibliography{refs,extra}
+
+% ------------------------------------------------------------------------------------------------- appendices
+\clearpage
+\appendix
+\section{Full per-class results}\label{app:perclass}
+\Cref{tab:perclass} gives the per-class test precision, recall and F1 of the three main models, and
+\cref{tab:perclassrefs} those of the two reference rows on the same test images. The per-class image counts of every
+split are in \cref{tab:dataset}.
+
+\begin{table}[htbp]
+\centering\small
+\caption{Per-class test precision (P), recall (R) and F1 ($n$ = test images per class;
+\file{results/itri626/per_class.csv}). Best F1 per class in bold.}
+\label{tab:perclass}
+\setlength{\tabcolsep}{4pt}
+\input{generated/tab_per_class.tex}
+\end{table}
+
+\begin{table}[htbp]
+\centering\small
+\caption{Per-class test results of the reference rows (\file{results/itri626/metrics.json}, key
+\texttt{references}). R1: scikit-learn logistic-regression probe (inverse regularisation $C=\probeC$) on the same
+frozen SigLIP features and training split as C. R2: the deployed model (probe fitted on train + validation, fused with
+the zero-shot text head, temperature \tempR).}
+\label{tab:perclassrefs}
+\input{generated/tab_per_class_refs.tex}
+\end{table}
+
+\section{Additional dataset and training details}\label{app:extra}
+\Cref{fig:counts} shows the class distribution before and after cleaning and per split (the numbers are in
+\cref{tab:dataset}). \Cref{tab:wdgrid} gives the weight-decay grid of \mC's head, \cref{tab:curves} the state of each
+model at its selected epoch, and \cref{tab:eff} model size and inference time.
+
+\begin{table}[htbp]
+\centering\small
+\caption{State at the selected (best validation macro-F1) epoch (\file{results/itri626/histories.json}).}
+\label{tab:curves}
+\footnotesize\setlength{\tabcolsep}{4pt}
+\input{generated/tab_curves.tex}
+\end{table}
+
+\begin{table}[htbp]
+\centering\small
+\caption{Model size and inference time (\file{results/itri626/efficiency.csv}): forward pass of a preprocessed tensor
+after warm-up, fp16 on the GPU, fp32 on 8 CPU threads, without JPEG decoding and resizing. C's checkpoint holds only
+the head; the backbone is the public weight file.}
+\label{tab:eff}
+\footnotesize\setlength{\tabcolsep}{4pt}
+\input{generated/tab_efficiency.tex}
+\end{table}
+
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.80\textwidth]{fig01_class_counts.pdf}
+\caption{Left: images per class in the raw download (light) and after cleaning (dark). Right: the split of the cleaned
+images into training, validation and test sets (\pctTrain\,/\,\pctVal\,/\,\pctTest\%).}
+\label{fig:counts}
+\end{figure}
+
+\begin{table}[htbp]
+\centering\small
+\caption{Weight-decay selection for \mC's head on the validation set (learning rate $10^{-3}$, batch 256, at most
+200 epochs, patience 20; \file{results/itri626/head_grid.csv}). The \nTies-way tie was broken by the pre-set
+smallest-value rule.}
+\label{tab:wdgrid}
+\input{generated/tab_wdgrid.tex}
+\end{table}
+
+\section{Supporting analysis}\label{app:benchmark}
+This appendix details the supporting results summarised in \cref{sec:further} (full write-up:
+\file{docs/report/REPORT.md}). In \cref{tab:benchmark}, fine-tuning used one fixed recipe per family, the probe is a
+logistic regression on frozen features, and zero-shot uses the model's text encoder with class-name prompts and no
+training.
+
+\textbf{Eleven-family benchmark.} Grouped 5-fold cross-validation on the 2,512 development images
+(\cref{tab:benchmark}) reproduces the ordering: scratch CNN \bmScratch macro-F1, ConvNeXt-T
+fine-tuned \bmConvnext, frozen SigLIP So400m probe \bmProbeSiglip. All six ImageNet-pretrained fine-tunes lie between
+\bmImagenetLo and \bmImagenetHi, SigLIP zero-shot classification without training (\bmZeroSiglip) beats all of them,
+and partial fine-tuning of the SigLIP backbone (\bmPartial, three folds) did not beat the frozen probe.
+
+
+\textbf{Leakage of the original split.} Under the dataset's original file-level split, \leakRows of \leakEval
+validation and test images (\leakPct\%) duplicate a training image, which inflates three linear probes by \inflSiglip
+(SigLIP), \inflConvnext (ConvNeXt-T) and \inflResnet (ResNet-50) points (\file{results/leakage_simulation.csv}).
+Weaker models gain most, so leakage also compresses the gaps between models. 
+
+\textbf{Out-of-source test and deployment.} The deployed model (R2) was tested once on \whN Wikimedia Commons
+photographs collected after it was frozen (\file{data/web_holdout_v1/}): \whAcc accuracy and \whFone macro-F1, close
+to its in-distribution result. Its weakest classes there are \cls{led} (recall \whRecLed; \whCmLedDiode errors to
+\cls{diode}), \cls{switch} (\whRecSwitch; real switches predicted \cls{ic chip} \whCmSwIc times, a consequence of the
+console-dominated training class) and \cls{transformer} (\whRecTrf; \whCmTrfInd errors to \cls{inductor coil}). It is
+exported to ONNX for an OpenCV demo and a Rust desktop application (\file{docs/DEMO.md}, \file{apps/gpui-demo/}).
+
+
+\begin{table}[htbp]
+\centering\small
+\caption{Supporting benchmark: grouped 5-fold CV macro-F1 (mean $\pm$ SD over folds) on the development set
+(\file{results/benchmark.csv}). $^{\dagger}$Three folds only. Model C itself corresponds to the SigLIP probe column.}
+\label{tab:benchmark}
+\input{generated/tab_benchmark.tex}
+\end{table}
+
+\section{Reproduction}\label{app:repro}
+All commands run from the repository root with uv (Python 3.12). The images are not tracked in Git. Download the
+Kaggle dataset (\cref{sec:source}) and unpack it to \file{data/raw/electronic-component-recognizer/} to rebuild
+\file{data/v2/images/} (\nRows JPEG files) with \file{tools/build_dataset_v2.py}; the result must reproduce manifest
+fingerprint \texttt{\fingerprint}.
+\begin{small}
+\begin{verbatim}
+uv sync                    # runtime environment (pyproject.toml + uv.lock)
+uv sync --group dev        # + pytest, ipykernel, jupyterlab
+uv run --no-config tools/build_dataset_v2.py   # only if data/v2/images/ is missing
+uv run python tools/export_splits.py --check    # verify data/v2/splits/*.csv
+uv run python scripts/itri626_experiments.py    # train A, B, C; score test (GPU)
+uv run jupyter nbconvert --to notebook --execute --inplace \
+    notebooks/ITRI626_three_models.ipynb        # RETRAIN = False by default
+uv run --no-project --with numpy --with scipy \
+    python docs/itri626_report/make_tables.py   # report tables and numbers
+cd docs/itri626_report && latexmk -pdf main.tex # this report
+\end{verbatim}
+\end{small}
+Setting \texttt{RETRAIN = True} in the first code cell of the notebook re-runs the experiment script before loading
+its outputs. \texttt{scripts/itri626\_experiments.py --steps head reference collect} re-runs only the CPU parts (head C
+from cached features, the reference rows and the result collection).
+
+\section{Rubric compliance checklist}\label{app:rubric}
+\Cref{tab:rubric} maps every requirement of the project brief to the place where it is addressed. The same list,
+with file paths, is in \file{docs/itri626_report/RUBRIC_CHECKLIST.md}.
+
+{\small
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{6.6cm}>{\raggedright\arraybackslash}p{8.6cm}@{}}
+\caption{Brief requirement $\rightarrow$ location in this report or repository.}\label{tab:rubric}\\
+\toprule
+Requirement (brief section) & Where it is addressed \\
+\midrule
+\endfirsthead
+\toprule
+Requirement (brief section) & Where it is addressed \\
+\midrule
+\endhead
+\bottomrule
+\endfoot
+\multicolumn{2}{@{}l}{\textit{Problem definition and motivation (2 marks)}}\\
+Classification task, aim, scope, motivation (\S2, \S4) & \cref{sec:intro} \\
+Target classes and reasons for them (\S2, \S5) & \cref{sec:intro}, \cref{tab:dataset} \\
+\midrule
+\multicolumn{2}{@{}l}{\textit{Dataset selection and preparation (4 marks)}}\\
+Source, access link, licence, usage conditions (\S5) & \cref{sec:source}; README ``ITRI626 submission'' \\
+Class definitions (\S5) & \cref{tab:dataset} \\
+Images per class before and after cleaning (\S5) & \cref{tab:dataset}, \cref{tab:cleaning}, \cref{fig:counts} \\
+Removed duplicates, corrupt files, irrelevant samples, uncertain labels (\S5) & \cref{sec:cleaning}, \cref{tab:cleaning} \\
+How labels were obtained, checked and corrected (\S5) & \cref{sec:cleaning} (last paragraph) \\
+Class imbalance and how it was handled (\S5) & \cref{sec:imbalance}; \cref{sec:errors} \\
+Representative examples of every class (\S5) & \cref{fig:examples} \\
+Ethics, privacy, lawful use, acknowledgement of internet data (\S5) & \cref{sec:ethics}, \cref{sec:source} \\
+Train/validation/test split; same test set for all models (\S7.1) & \cref{sec:split}; \file{data/v2/splits/} \\
+Leakage prevention by group identity (\S7.1) & \cref{sec:split}, \cref{sec:cleaning} item 3, \cref{sec:further} \\
+Random seed, images per split, class distribution per split (\S7.1) & \cref{sec:split}, \cref{tab:dataset} \\
+\midrule
+\multicolumn{2}{@{}l}{\textit{Model selection and methodology (4 marks)}}\\
+At least three models from three families (\S6) & \cref{sec:method}: plain CNN, ConvNeXt, ViT \\
+At least one model with transfer learning (\S6) & B (fine-tuning) and C (feature extraction), \cref{sec:method} \\
+Methods, transfer-learning approach, complete workflow (\S6) & \cref{sec:method}, \cref{fig:workflow} \\
+Same split for all models; fair, justified hyperparameters (\S6) & \cref{sec:setup}, \cref{tab:hparams}, \cref{tab:wdgrid} \\
+\midrule
+\multicolumn{2}{@{}l}{\textit{Experimental setup and reproducibility (3 marks)}}\\
+Preprocessing steps (\S7.2) & \cref{sec:setup} (Preprocessing) \\
+Augmentation, training data only, realism argued (\S7.2) & \cref{sec:setup} (Augmentation), \cref{fig:aug} \\
+Model name, variant, pretrained weights; input size (\S7.3) & \cref{tab:hparams} \\
+Batch size, gradient accumulation; epochs, early stopping (\S7.3) & \cref{tab:hparams} \\
+Optimiser, learning rate, schedule; weight decay, loss (\S7.3) & \cref{tab:hparams}, \cref{tab:wdgrid} \\
+Class weights or sampling; random seed (\S7.3) & \cref{tab:hparams}, \cref{sec:imbalance} \\
+Software framework and library versions; hardware, GPU memory (\S7.3) & \cref{tab:env} \\
+Fairness of the comparison (rubric) & \cref{sec:setup} (Software, hardware, fairness and reproducibility) \\
+\midrule
+\multicolumn{2}{@{}l}{\textit{Results and evaluation (4 marks)}}\\
+Test accuracy; precision, recall, F1; macro-F1 (\S8) & \cref{tab:test} \\
+Per-class precision, recall and F1 (\S8) & \cref{fig:perclass}; \cref{tab:perclass}, \cref{tab:perclassrefs} (\cref{app:perclass}) \\
+Confusion matrix (\S8) & \cref{fig:cm} (all three models) \\
+Training and validation loss curves (\S8) & \cref{fig:curves} (left), \cref{tab:curves} \\
+Validation accuracy or F1 curve (\S8) & \cref{fig:curves} (right) \\
+Several correct and incorrect predictions (\S8) & \cref{fig:galleries}, \cref{fig:disagree} \\
+Comparison of all three models (rubric) & \cref{tab:test}, \cref{tab:pairwise}, \cref{fig:agree}, \cref{tab:eff} \\
+\midrule
+\multicolumn{2}{@{}l}{\textit{Discussion, error analysis and conclusion (2 marks)}}\\
+Important classification errors (\S8) & \cref{sec:errors}, \cref{tab:confused} \\
+Effects of class imbalance and data quality (\S8) & \cref{sec:errors}; notebook figure \file{fig11_ood_accuracy} \\
+Plausible reasons for performance differences (\S8) & \cref{sec:why} \\
+Limitations (\S9) & \cref{sec:limits} \\
+Justified conclusion and recommended model (rubric) & \cref{sec:conclusion} \\
+\midrule
+\multicolumn{2}{@{}l}{\textit{Report quality and references (1 mark)}}\\
+Nine-part structure, 10--15 pages, PDF (\S9) & title page with group members and abstract; sections 1--7; references \\
+Sources, pretrained models, software acknowledged (\S9) & \cref{sec:source}, \cref{sec:method}, \cref{tab:env}, references \\
+\midrule
+\multicolumn{2}{@{}l}{\textit{Submission items (\S11)}}\\
+Report as PDF & \file{docs/itri626_report/main.pdf} \\
+Presentation slides & to be prepared by the group (not part of this repository) \\
+Notebook with visible outputs, figures, metric tables & \file{notebooks/ITRI626_three_models.ipynb} \\
+Python scripts for data preparation and evaluation & \file{tools/build_dataset_v2.py}, \file{tools/export_splits.py}, \file{scripts/itri626_experiments.py}, \file{src/compclass/} \\
+README with dataset source, setup, reproduction steps & \file{README.md}, section ``ITRI626 submission'' \\
+Split files or a script that recreates them & \file{data/v2/splits/}, \file{tools/export_splits.py} \\
+Repository link or archive; data access instructions & README ``ITRI626 submission''; \cref{app:repro} \\
+\end{longtable}
+}
+
+\end{document}

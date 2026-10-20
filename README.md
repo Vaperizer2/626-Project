@@ -20,6 +20,9 @@ original Kaggle download [`results/kaggle_original/`](results/kaggle_original/su
 (`scripts/eval_original_kaggle.py`): 83.0 % on the 493 never-seen files; 87.7 % vs the old notebooks' 71.3 % when the
 old 70/15/15 protocol is replayed on the same legacy-test files.
 
+**ITRI626 course submission** (three models on one fixed split, report, notebook, split files): see
+[ITRI626 submission](#itri626-submission) at the end of this file.
+
 ## Headline results
 
 Development numbers are grouped 5-fold CV on 2,512 images (mean ± SD over folds). Sealed-test numbers come from
@@ -156,3 +159,92 @@ Model choices use only the `dev` split through `compclass.data.get_fold(manifest
 straddle folds. The `test` split is opened once, for the final model, via `get_test(manifest, confirm=True)` /
 `compclass.final test --confirm`. That look has been spent (2026-10-18). Details in
 [`EXPERIMENT_LOG.md`](EXPERIMENT_LOG.md) and report §3.
+
+## ITRI626 submission
+
+Module ITRI626 *Deep learning for image classification* (Prof. Absalom Ezugwu). Three model families trained on
+**one** fixed train/validation/test split and evaluated on the **same** 418-image test set:
+
+| | Model | Family | Transfer learning | Test acc. | Test macro-F1 |
+|---|---|---|---|---:|---:|
+| A | custom VGG-style CNN (1.19 M params) | plain CNN | none (random init) | 0.354 | 0.336 |
+| B | ConvNeXt-Tiny, fully fine-tuned | modernised CNN | ImageNet-22k → 1k weights, fine-tuned | 0.636 | 0.628 |
+| C | SigLIP So400m/14 @ 384 px, frozen + `nn.Linear(1152, 20)` | Vision Transformer | frozen features, linear head trained | 0.823 | 0.817 |
+
+Source of these numbers: `results/itri626/metrics.json`.
+
+| Deliverable | Location |
+|---|---|
+| Report (PDF, LaTeX source) | [`docs/itri626_report/main.pdf`](docs/itri626_report/main.pdf), `docs/itri626_report/main.tex` |
+| Rubric compliance checklist | [`docs/itri626_report/RUBRIC_CHECKLIST.md`](docs/itri626_report/RUBRIC_CHECKLIST.md) (also report Appendix E) |
+| Executed notebook (outputs, figures, metric tables) | [`notebooks/ITRI626_three_models.ipynb`](notebooks/ITRI626_three_models.ipynb) (+ `notebooks/itri626_helpers.py`) |
+| Experiment script | `scripts/itri626_experiments.py` → `results/itri626/` (metrics, per-class, histories, predictions, figures) |
+| Data preparation | `tools/build_dataset_v2.py` (cleaning, duplicate clustering, grouped split), `tools/export_splits.py` |
+| Split files | `data/v2/splits/{train,val,test}.csv`, `split_summary.csv` (per-class counts), `split_info.json` |
+| Presentation slides | to be prepared by the group (not in this repository) |
+
+### Dataset source and licence
+
+* *Electronic Component Recognizer* by **mdfaisalahmed025** on Kaggle:
+  <https://www.kaggle.com/datasets/mdfaisalahmed025/electronic-component-recognizer>. Licence: **MIT** (use, copy,
+  modify, redistribute with the copyright notice; no warranty).
+* The author collected the images with DuckDuckGo image search, one query per class; the class labels are the search
+  terms. The MIT licence covers the collection; the copyright of the individual web images stays with their owners,
+  so the images are used here for non-commercial, educational purposes only and are not tracked in Git.
+* The Kaggle card states 3,661 images; the download used here contained **3,530** files. After exact de-duplication
+  and removal of 13 conflicting-label groups, **2,930** images remain (`data/v2/leakage_report.json`).
+* The supplementary web holdout (`data/web_holdout_v1/`) consists of Wikimedia Commons photographs under PD/CC
+  licences; author, licence and source of every image are in `data/web_holdout_v1/ATTRIBUTION.md`.
+
+### Getting the data
+
+`data/v2/manifest.json`, `data/v2/leakage_report.json` and `data/v2/splits/` are tracked. The cleaned images
+(`data/v2/images/`, 2,930 JPEG files, also packed as `data/v2/images.tar`) are git-ignored. If you have them (submission
+archive or an existing checkout), nothing needs to be downloaded: every step below except the dataset rebuild uses
+only `data/v2/`.
+
+To rebuild `data/v2/` from scratch, download the Kaggle dataset (web page "Download", or
+`kaggle datasets download -d mdfaisalahmed025/electronic-component-recognizer` with a Kaggle API token) and unpack it
+so that the images sit at `data/raw/electronic-component-recognizer/<class>/<class>/<image files>`, the layout the
+build script expects (it reports any other layout as a warning; `data/raw/` is not in the repository). Then run `tools/build_dataset_v2.py` (below). It never
+modifies `data/raw/`, and it refuses to write a manifest whose split fingerprint differs from `431315e87d2612cb`
+unless `--overwrite` is given.
+
+### Setup (uv)
+
+```bash
+uv sync                  # Python 3.12 environment from pyproject.toml + uv.lock (CUDA 12.8 torch wheels on Linux)
+uv sync --group dev      # + pytest, ipykernel, jupyterlab (needed to execute the notebook)
+uv run pytest -q         # optional smoke tests (CPU, seconds)
+```
+
+### Reproducing the ITRI626 results
+
+```bash
+# 0. (only without data/v2/images/) rebuild dataset v2 from the Kaggle download
+uv run --no-config tools/build_dataset_v2.py
+
+# 1. verify the fixed split files against the manifest (no re-randomisation; seed 42, fingerprint 431315e87d2612cb)
+uv run python tools/export_splits.py --check
+
+# 2. train A and B, extract frozen SigLIP features and train head C, score the test set once, profile the models
+uv run python scripts/itri626_experiments.py                        # GPU recommended, ~15-25 min on an 8 GB GPU
+uv run python scripts/itri626_experiments.py --steps head reference collect   # CPU-only parts (cached features)
+
+# 3. execute the notebook (RETRAIN = False in its first code cell loads results/itri626/; True re-runs step 2 first)
+uv run jupyter nbconvert --to notebook --execute --inplace notebooks/ITRI626_three_models.ipynb
+
+# 4. regenerate the report's tables and number macros from the result files, then build the PDF
+uv run --no-project --with numpy --with scipy python docs/itri626_report/make_tables.py
+cd docs/itri626_report && latexmk -pdf main.tex
+```
+
+Split: train = development folds 1–4 (2,010 images), validation = development fold 0 (502), test = the sealed test
+set (418), from a cluster-grouped `StratifiedGroupKFold` (seed 42) over near-duplicate clusters, so no image or
+re-encoded copy crosses a split boundary. Model selection (early stopping, head C's weight decay) used the validation
+split only; the test split was scored once per model after all settings were frozen. Training seed 0 for all models;
+GPU training of model A is not bit-for-bit reproducible (cuDNN), so re-runs can differ slightly.
+
+**Hardware used:** one NVIDIA GeForce RTX 4060 Ti (7.7 GiB usable memory), AMD Ryzen 7 8700F (16 logical cores),
+30.7 GiB RAM, Linux, PyTorch 2.11.0 + CUDA 12.8, timm 1.0.30 (`results/itri626/environment.json`). Head C trains on
+the CPU from cached features in seconds.
