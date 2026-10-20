@@ -55,8 +55,13 @@ fn decode_jpeg_turbo(_bytes: &[u8]) -> Option<RgbImage> {
 }
 
 /// Which JPEG decoder this build uses (reported by `--version` and the parity script).
-pub const JPEG_DECODER: &str =
-    if cfg!(feature = "turbojpeg") { "libjpeg-turbo (turbojpeg feature)" } else { "zune-jpeg (image crate)" };
+pub const JPEG_DECODER: &str = if cfg!(feature = "turbojpeg-vendored") {
+    "libjpeg-turbo (static, vendored)"
+} else if cfg!(feature = "turbojpeg") {
+    "libjpeg-turbo (turbojpeg feature)"
+} else {
+    "zune-jpeg (image crate)"
+};
 
 /// Grayscale -> RGB by replication; images with alpha are composited on opaque white exactly like
 /// Pillow's `Image.alpha_composite(white, rgba)` (libImaging/AlphaComposite.c integer arithmetic).

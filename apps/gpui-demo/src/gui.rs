@@ -525,6 +525,7 @@ pub fn run(opts: ModelOptions, demo_dir: Option<PathBuf>, gui: GuiOptions, initi
     }
     gpui_kit::application().with_assets(widgets::AppAssets).run(move |cx: &mut App| {
         gpui_kit::init(cx);
+        theme::register_bundled_fonts(cx);
         theme::install(cx);
         cx.bind_keys(keymap());
         cx.on_action(|_: &Quit, cx: &mut App| cx.quit());

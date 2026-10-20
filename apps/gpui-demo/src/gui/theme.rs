@@ -18,7 +18,7 @@ pub const DARK: &str = "Bench Dark";
 
 /// UI families tried in order. GPUI's Linux text system (cosmic-text) renders only the default instance of a
 /// variable font: with a variable system font (GNOME's Adwaita Sans) the matcher reports a 600-weight face for
-/// SEMIBOLD/BOLD, but the glyphs are drawn at the regular weight, so the type hierarchy disappears. These families ship static Bold faces. If none is installed the
+/// SEMIBOLD/BOLD, but the glyphs are drawn at the regular weight, so the type hierarchy disappears. These families ship static Bold faces; Noto Sans is also embedded (`register_bundled_fonts`). If none is found the
 /// themes keep the system UI font.
 pub const UI_FONTS: &[&str] = &["Noto Sans", "DejaVu Sans", "Liberation Sans", "Ubuntu"];
 
@@ -35,6 +35,19 @@ pub fn theme_set_with_font(family: Option<&str>) -> String {
         }
     }
     v.to_string()
+}
+
+/// Noto Sans Regular + Bold (SIL OFL 1.1, `assets/fonts/OFL.txt`), embedded so the type looks the same on
+/// machines without it (+1.2 MB). Registered before the themes pick `UI_FONTS`, so "Noto Sans" is always found.
+const BUNDLED_FONTS: [&[u8]; 2] =
+    [include_bytes!("../../assets/fonts/NotoSans-Regular.ttf"), include_bytes!("../../assets/fonts/NotoSans-Bold.ttf")];
+
+/// Add the embedded fonts to GPUI's text system. On failure the app keeps the system fonts.
+pub fn register_bundled_fonts(cx: &mut App) {
+    let fonts = BUNDLED_FONTS.iter().map(|b| std::borrow::Cow::Borrowed(*b)).collect();
+    if let Err(e) = cx.text_system().add_fonts(fonts) {
+        eprintln!("gpui-demo: could not register the bundled Noto Sans ({e:#}); using system fonts");
+    }
 }
 
 /// Register the Bench themes and make them the Kit's light / dark themes. Call once after `gpui_kit::init`.

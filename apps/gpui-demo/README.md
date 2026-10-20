@@ -206,6 +206,58 @@ is decoded once and its RGB pixels are reused by every later classification. C a
 and one forward pass. Run all and the benchmark submit one image at a time, so they stay cancellable and the
 Classify tab can still interleave its own jobs.
 
+## Packaging (portable Linux bundle for another machine)
+
+`scripts/package_linux.sh` builds a self-contained folder plus archive, for testing on any x86_64 Linux desktop
+with glibc 2.28 or newer (Ubuntu 20.04+, Debian 10+, Fedora 29+, RHEL 8+, Arch):
+
+```
+dist/component-classifier-linux-x86_64/       1.8 GB: binary, onnxruntime, models A/B/C/Deployed, demo_stack,
+                                              run.sh, README.txt (for the recipient), LICENSES/, SHA256SUMS
+dist/component-classifier-linux-x86_64.tar.gz (+ .sha256; split into 1900 MiB .part-* files if it is larger)
+```
+
+```bash
+# one-time build tools: cargo-zigbuild and a zig it supports (0.14 from PyPI), plus cmake + nasm
+cargo install cargo-zigbuild --locked
+uv venv ~/.local/share/zig-venv && uv pip install --python ~/.local/share/zig-venv ziglang==0.14.1
+export CARGO_ZIGBUILD_PYTHON_PATH=~/.local/share/zig-venv/bin/python
+apps/gpui-demo/scripts/package_linux.sh            # GLIBC=2.31, PART_MIB=1000, --skip-build, --no-archive
+```
+
+How the bundle stays portable:
+
+* **glibc**: `cargo zigbuild --target x86_64-unknown-linux-gnu.2.28` links against zig's glibc 2.28 stubs, so the
+  binary runs on glibc ≥ 2.28 (the same floor as onnxruntime's manylinux_2_28 library). The script fails if any
+  symbol needs a newer `GLIBC_` version. It uses its own target dir (`dist/.build-target`), so
+  `target/release/` is untouched.
+* **JPEG**: feature `turbojpeg-vendored` builds the libjpeg-turbo 3.1 source bundled in `turbojpeg-sys` with
+  CMake/NASM and links it statically. The decoder is the same as the system-library `turbojpeg` build:
+  on the 28 demo images × 4 models the probabilities are identical (max |Δp| = 0), and `scripts/parity.py` gives the
+  same result as before: 64/64 input tensors bit-identical to Pillow, argmax 64/64.
+* **Runtime dependencies** (`readelf -d`): libc, libm, libdl, libpthread, ld-linux, libxcb, libxkbcommon,
+  libxkbcommon-x11. Loaded with dlopen when present: libwayland-client/-egl (Wayland), libvulkan or libEGL
+  (rendering), and the bundled `libonnxruntime.so.1.31.0` (which needs libstdc++ ≥ GCC 6 and libgcc_s).
+  The script rejects any other `NEEDED` library.
+* **Fonts**: Noto Sans Regular + Bold (SIL OFL 1.1, `assets/fonts/`) are embedded and registered with GPUI's
+  text system at start-up (`theme::register_bundled_fonts`), so the type hierarchy is the same on machines
+  whose UI font is a variable font or that lack Noto Sans.
+* **Paths**: the app already finds `exports/`, `demo_stack/` and `libonnxruntime` relative to its executable;
+  `run.sh` additionally sets `ORT_DYLIB_PATH`, `COMPCLASS_MODEL_DIR` and `COMPCLASS_DEMO_DIR` to the bundle
+  (caller-set values win), passes all arguments through, and explains a missing display.
+* **Models**: only the files the app reads: `exports/final/{model.onnx, model.onnx.data, model_multi.onnx,
+  model_multi.json, preprocess.json, labels.json}`. `model.onnx` (2 MB) is required for model-folder detection
+  and the CLI default; the 1.7 GB `model.onnx.data` is shared. A and B are `exports/itri626/{A_scratch_cnn,
+  B_convnext_tiny}/{model.onnx, preprocess.json, labels.json}`.
+* **Licences** (`LICENSES/`): onnxruntime (MIT + ThirdPartyNotices), Noto Sans (OFL), libjpeg-turbo (IJG/BSD),
+  Lucide icons (ISC), Apache-2.0 / MIT texts, a dataset and photo-credit note, and `THIRD-PARTY-CRATES.txt`
+  (616 crates with SPDX licence, generated from `cargo metadata` by `packaging/crate_licenses.py`).
+
+Tested from a clean extraction under `env -i HOME=… PATH=/usr/bin:/bin`, started from an unrelated directory:
+`run.sh classify --model a|b|c|deployed` on three demo images, `run.sh classify --json --model all` on all 28
+(A 11, B 17, C 21, Deployed 21 of 28), the missing-display message, and the window under Xvfb (Demo tab, Run all).
+Not tested: a real second machine or distribution, a GPU renderer, Wayland.
+
 ## Design choices and pinned versions
 
 | piece | pinned | why |
@@ -306,6 +358,9 @@ src/gui/theme.rs       loads the Bench Light / Bench Dark themes; app roles (can
 src/gui/themes/        bench.json: the two GPUI Kit theme files (see docs/VISUAL_DIRECTION.md)
 src/gui/worker.rs      inference thread (model registry, jobs) and thumbnail decoding thread
 src/gui/tests.rs       headless GUI smoke test (GPUI Kit test platform)
+assets/fonts/          Noto Sans Regular + Bold (embedded) and OFL.txt
+packaging/             run.sh, README.txt and licence inputs for the portable bundle; crate_licenses.py
+scripts/package_linux.sh   builds dist/component-classifier-linux-x86_64[.tar.gz] (see "Packaging")
 docs/VISUAL_DIRECTION.md   reference-app study, design synthesis and token table for the look
 src/models.rs          model registry: A/B/C/Deployed discovery, model_multi.json, lazy shared sessions, predict
 src/model.rs           model dir + libonnxruntime discovery, Runtime (one ort environment), Classifier, Engine

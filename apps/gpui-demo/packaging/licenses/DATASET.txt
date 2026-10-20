@@ -1,0 +1,14 @@
+Training data and photos
+========================
+
+The models were trained on the "Electronic Component Recognizer" dataset by mdfaisalahmed025 on Kaggle
+(https://www.kaggle.com/datasets/mdfaisalahmed025/electronic-component-recognizer), licensed MIT.
+The MIT licence covers the collection; the copyright of the individual web images stays with their owners.
+No training images are included in this bundle. The model weights are a derived work used for education.
+
+The deployed model fine-tunes Google's SigLIP (so400m-patch14-384) image encoder, released under the
+Apache License 2.0 (see Apache-2.0.txt).
+
+The 28 photos in demo_stack/ are from Wikimedia Commons under public-domain or Creative Commons licences.
+Author, licence, source page and any changes for every photo are listed in demo_stack/ATTRIBUTION.md
+(and shown in the app's Demo tab). They are not covered by the licences of the software.

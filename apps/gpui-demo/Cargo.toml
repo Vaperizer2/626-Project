@@ -19,6 +19,9 @@ cuda = ["ort/cuda"]
 # making the model input bit-identical to the Python pipeline. Without it the pure-Rust decoder differs by a few
 # grey levels on some pixels (argmax parity is unaffected; see README).
 turbojpeg = ["dep:turbojpeg"]
+# Same decoder, but libjpeg-turbo is built from the source vendored in turbojpeg-sys (CMake + NASM at build
+# time) and linked statically: no libturbojpeg.so at runtime. Used for the portable Linux bundle.
+turbojpeg-vendored = ["turbojpeg", "turbojpeg/cmake", "turbojpeg/require-simd"]
 # Profiling with hotpath (https://hotpath.rs): timing report on exit for the instrumented blocks (decode,
 # preprocessing, ONNX runs, model loads, thumbnails, demo/benchmark jobs). Off by default: without the feature
 # the crate is not even in the build and every `prof!` block compiles to plain code.
