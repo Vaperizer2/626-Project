@@ -1,0 +1,33 @@
+{
+ "input_size": 160,
+ "mean": [
+  0.5,
+  0.5,
+  0.5
+ ],
+ "std": [
+  0.5,
+  0.5,
+  0.5
+ ],
+ "interpolation": "bilinear",
+ "crop_pct": 0.875,
+ "resize_short_side": 183,
+ "color_order": "RGB",
+ "layout": "NCHW",
+ "scale": 0.00392156862745098,
+ "outputs": [
+  "logits",
+  "probs"
+ ],
+ "abstain_threshold": 0.5,
+ "temperature": 1.0,
+ "model": "scratch_cnn",
+ "report_model": "A_scratch_cnn",
+ "config_hash": "4e4c6e8f6cf3",
+ "fold": 0,
+ "manifest_fingerprint": "431315e87d2612cb",
+ "checkpoint": "runs/itri626/scratch_cnn-4e4c6e8f6cf3/fold0/best.pt",
+ "checkpoint_sha256": "6d7f73514b91f75d328d29b04859721b252bc5ea3c9d7e7cd5a7b4c6f27cc248",
+ "note": "probs = softmax(logits), not temperature-calibrated; abstain_threshold 0.5 copied from the deployed model's rule, not tuned for this model"
+}

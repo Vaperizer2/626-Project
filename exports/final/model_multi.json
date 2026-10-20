@@ -1,0 +1,153 @@
+{
+ "file": "model_multi.onnx",
+ "graph_bytes": 2129342,
+ "sha256": "b211af57f4296cc130f1fc2b80db71e63ef5ab00c01cad1343da3ef955f86e37",
+ "external_data": "model.onnx.data (shared with model.onnx, unchanged)",
+ "built_from": {
+  "model.onnx": "b3dce111bb9d19cd854d2f264429a12dca4a6843a229446c13faf8fc51059d6c",
+  "model.onnx.data": "a6d11a2daff233b26518ce022d0a8ac6edc7ac79222e0f26325f29ba5ea92c98",
+  "head.npz": "4e806a001340a5436d0db22ae48e0b2a3313befea45f127b672405f1b46755e9",
+  "preprocess.json": "5bfd26bff45e5097260b635510ffc6c754a6191454b6de8dcb53f100262f7598",
+  "labels.json": "bb7bd956f6d7cd0645b381ee858006ef33bd16ede6107b926d9eb8a65eb2011e"
+ },
+ "input": {
+  "name": "input",
+  "shape": [
+   1,
+   3,
+   384,
+   384
+  ],
+  "dtype": "float32",
+  "preprocess": "exports/final/preprocess.json (identical for both heads)"
+ },
+ "labels": "exports/final/labels.json (index order of every output)",
+ "outputs": [
+  {
+   "name": "logits",
+   "model": "deployed final model (R2_deployed_fused)",
+   "shape": [
+    1,
+    20
+   ],
+   "meaning": "temperature-scaled fused log-scores (probe + 0.25 x zero-shot) / T; identical to model.onnx"
+  },
+  {
+   "name": "probs",
+   "model": "deployed final model (R2_deployed_fused)",
+   "shape": [
+    1,
+    20
+   ],
+   "meaning": "calibrated probabilities = softmax(logits); bit-identical to model.onnx 'probs'; use abstain_threshold from preprocess.json"
+  },
+  {
+   "name": "logits_c",
+   "model": "ITRI626 model C (SigLIP So400m/14@384 frozen + nn.Linear(1152,20))",
+   "shape": [
+    1,
+    20
+   ],
+   "meaning": "W (f - mu)/sd + b with f = pooled feature 'select'; standardisation folded"
+  },
+  {
+   "name": "probs_c",
+   "model": "ITRI626 model C",
+   "shape": [
+    1,
+    20
+   ],
+   "meaning": "softmax(logits_c), not temperature-calibrated"
+  }
+ ],
+ "c_head": {
+  "source": "runs/itri626/siglip_so400m_linear/fold0/head.pt",
+  "sha256": "4ba2204f76d4bb0342c303ab1c6758968a21acc92302f5acfb1b1c32cd571665",
+  "train_rows": "dev folds 1-4 (2010)",
+  "mu_sd": "head.pt keys 'mu','sd' = per-feature mean / population std of the train-split cached features",
+  "settings": {
+   "lr": 0.001,
+   "weight_decay": 0.0001,
+   "max_epochs": 200,
+   "patience": 20,
+   "batch_size": 256,
+   "seed": 0,
+   "optimizer": "AdamW",
+   "schedule": "constant",
+   "loss": "cross-entropy",
+   "epochs_run": 34
+  },
+  "best_epoch": 13,
+  "fold": "c_weight = (W / sd).T, c_bias = b - (W / sd) @ mu (float64, stored float32)"
+ },
+ "surgery": {
+  "feature_tensor": "select",
+  "n_external_initializers": 346,
+  "external_locations": [
+   "model.onnx.data"
+  ],
+  "added_initializers": {
+   "c_weight": [
+    1152,
+    20
+   ],
+   "c_bias": [
+    20
+   ]
+  },
+  "added_nodes": [
+   "MatMul(select, c_weight)",
+   "Add(., c_bias) -> logits_c",
+   "Softmax(axis=1) -> probs_c"
+  ]
+ },
+ "checks": {
+  "mu_sd_equal_train_split_stats": true,
+  "mu_sd_max_abs_diff": 0.0,
+  "head_on_cached_features_accuracy": 0.8229665071770335,
+  "fold_vs_unfolded_max_abs_logit_diff_on_cache": 8.58306884765625e-06,
+  "graph_mu_equals_head_npz_mu": true
+ },
+ "verification": {
+  "n_images": 418,
+  "inputs": "test images via compclass.demo.open_image + demo.preprocess(exports/final/preprocess.json)",
+  "fused_probs_bit_identical": true,
+  "fused_logits_bit_identical": true,
+  "fused_max_abs_prob_diff": 0.0,
+  "probs_c_sum_max_dev": 2.384185791015625e-07,
+  "probs_c_equals_softmax_logits_c_max_diff": 2.384185791015625e-07,
+  "test_C": {
+   "onnx_test_accuracy": 0.8205741626794258,
+   "onnx_test_correct": 343,
+   "n_test": 418,
+   "reported_accuracy": 0.8229665071770335,
+   "reported_correct": 344,
+   "delta_images": -1,
+   "reproduces_within_1_image": true
+  },
+  "test_fused_accuracy": 0.8373205741626795,
+  "vs_reported_C_preds": {
+   "note": "results/itri626/preds: linear head on fp16-autocast GPU features (PyTorch)",
+   "argmax_agreement": 0.9976076555023924,
+   "n_argmax_differ": 1,
+   "max_abs_prob_diff": 0.02218148112297058
+  },
+  "ort_cpu_ms_per_image": {
+   "model_multi": 892.48,
+   "model": 894.89
+  },
+  "wall_s": 763.3,
+  "logits_c_vs_head_on_cached_features_max_abs_diff": 0.15997344255447388,
+  "feature_check": {
+   "n_images": 16,
+   "tensor": "select",
+   "vs": "results/cache/features (compclass.features.extract_features, fp16 autocast GPU)",
+   "max_abs_diff": 0.02792072296142578,
+   "max_rel_diff": 0.003654245985671878,
+   "min_cosine": 0.9999697804450989,
+   "feature_abs_max": 9.9609375
+  },
+  "deployed_files_unchanged": true
+ },
+ "run_both_heads_cost": "one backbone pass; the C head adds one 1152x20 MatMul"
+}

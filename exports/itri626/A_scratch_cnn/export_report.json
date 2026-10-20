@@ -1,0 +1,83 @@
+{
+ "model": "A_scratch_cnn",
+ "onnx": "exports/itri626/A_scratch_cnn/model.onnx",
+ "onnx_bytes": 4803517,
+ "onnx_sha256": "f90f49ba39895323551b872086aea0b760fe03f0be00c188e3eddc4a0a515b67",
+ "external_data": false,
+ "io": {
+  "inputs": [
+   [
+    "input",
+    [
+     1,
+     3,
+     160,
+     160
+    ]
+   ]
+  ],
+  "outputs": [
+   [
+    "logits",
+    [
+     1,
+     20
+    ]
+   ],
+   [
+    "probs",
+    [
+     1,
+     20
+    ]
+   ]
+  ],
+  "opset": 18,
+  "ir_version": 10
+ },
+ "labels_match_exports_final": true,
+ "parity": {
+  "n_images": 418,
+  "inputs": "test images, compclass.data.build_transforms(train=False)",
+  "torch": "fp32 CPU 2.11.0+cu128",
+  "max_abs_prob_diff": 5.960464477539062e-07,
+  "argmax_agreement": 1.0
+ },
+ "app_pipeline": {
+  "preprocess": "compclass.demo.open_image + demo.preprocess(preprocess.json)",
+  "max_abs_input_diff_vs_build_transforms": 0.0,
+  "unsure_fraction_at_0.5": 0.7272727272727273
+ },
+ "test": {
+  "onnx_test_accuracy": 0.35406698564593303,
+  "onnx_test_correct": 148,
+  "n_test": 418,
+  "reported_accuracy": 0.35406698564593303,
+  "reported_correct": 148,
+  "delta_images": 0,
+  "reproduces_within_1_image": true
+ },
+ "vs_reported_preds": {
+  "note": "results/itri626/preds: PyTorch fp16 autocast on GPU at training time",
+  "argmax_agreement": 0.9976076555023924,
+  "n_argmax_differ": 1,
+  "max_abs_prob_diff": 0.0009717941284179688
+ },
+ "ort_cpu_ms_per_image": 0.88,
+ "image_quirks": {
+  "n_exif_rotated": 0,
+  "n_alpha_or_palette": 0,
+  "exif_ids": [],
+  "alpha_ids": []
+ },
+ "if_resized_bicubic_instead": {
+  "onnx_test_accuracy": 0.34688995215311,
+  "onnx_test_correct": 145,
+  "n_test": 418,
+  "reported_accuracy": 0.35406698564593303,
+  "reported_correct": 148,
+  "delta_images": -3,
+  "reproduces_within_1_image": false,
+  "argmax_agreement_with_correct_pipeline": 0.9258373205741627
+ }
+}

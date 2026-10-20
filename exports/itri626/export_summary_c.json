@@ -1,0 +1,59 @@
+{
+ "versions": {
+  "python": "3.12.14",
+  "torch": "2.11.0+cu128",
+  "onnx": "1.23.2",
+  "onnxruntime": "1.31.0"
+ },
+ "opset": 18,
+ "C_siglip_so400m_linear": {
+  "model_multi": {
+   "n_images": 418,
+   "inputs": "test images via compclass.demo.open_image + demo.preprocess(exports/final/preprocess.json)",
+   "fused_probs_bit_identical": true,
+   "fused_logits_bit_identical": true,
+   "fused_max_abs_prob_diff": 0.0,
+   "probs_c_sum_max_dev": 2.384185791015625e-07,
+   "probs_c_equals_softmax_logits_c_max_diff": 2.384185791015625e-07,
+   "test_C": {
+    "onnx_test_accuracy": 0.8205741626794258,
+    "onnx_test_correct": 343,
+    "n_test": 418,
+    "reported_accuracy": 0.8229665071770335,
+    "reported_correct": 344,
+    "delta_images": -1,
+    "reproduces_within_1_image": true
+   },
+   "test_fused_accuracy": 0.8373205741626795,
+   "vs_reported_C_preds": {
+    "note": "results/itri626/preds: linear head on fp16-autocast GPU features (PyTorch)",
+    "argmax_agreement": 0.9976076555023924,
+    "n_argmax_differ": 1,
+    "max_abs_prob_diff": 0.02218148112297058
+   },
+   "ort_cpu_ms_per_image": {
+    "model_multi": 892.48,
+    "model": 894.89
+   },
+   "wall_s": 763.3,
+   "logits_c_vs_head_on_cached_features_max_abs_diff": 0.15997344255447388,
+   "feature_check": {
+    "n_images": 16,
+    "tensor": "select",
+    "vs": "results/cache/features (compclass.features.extract_features, fp16 autocast GPU)",
+    "max_abs_diff": 0.02792072296142578,
+    "max_rel_diff": 0.003654245985671878,
+    "min_cosine": 0.9999697804450989,
+    "feature_abs_max": 9.9609375
+   },
+   "deployed_files_unchanged": true
+  },
+  "checks": {
+   "mu_sd_equal_train_split_stats": true,
+   "mu_sd_max_abs_diff": 0.0,
+   "head_on_cached_features_accuracy": 0.8229665071770335,
+   "fold_vs_unfolded_max_abs_logit_diff_on_cache": 8.58306884765625e-06,
+   "graph_mu_equals_head_npz_mu": true
+  }
+ }
+}

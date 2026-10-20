@@ -1,0 +1,33 @@
+{
+ "input_size": 224,
+ "mean": [
+  0.485,
+  0.456,
+  0.406
+ ],
+ "std": [
+  0.229,
+  0.224,
+  0.225
+ ],
+ "interpolation": "bicubic",
+ "crop_pct": 0.875,
+ "resize_short_side": 256,
+ "color_order": "RGB",
+ "layout": "NCHW",
+ "scale": 0.00392156862745098,
+ "outputs": [
+  "logits",
+  "probs"
+ ],
+ "abstain_threshold": 0.5,
+ "temperature": 1.0,
+ "model": "convnext_tiny",
+ "report_model": "B_convnext_tiny",
+ "config_hash": "bb9c72a49446",
+ "fold": 0,
+ "manifest_fingerprint": "431315e87d2612cb",
+ "checkpoint": "runs/itri626/convnext_tiny-bb9c72a49446/fold0/best.pt",
+ "checkpoint_sha256": "1920e1a9ab7ed8bf00ed0f64927bb8561eefbbdf5edb2ee1ca1aa7ff63f98195",
+ "note": "probs = softmax(logits), not temperature-calibrated; abstain_threshold 0.5 copied from the deployed model's rule, not tuned for this model"
+}
