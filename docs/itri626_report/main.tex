@@ -25,7 +25,7 @@
 \usepackage{placeins}
 \usepackage{tikz}
 \usetikzlibrary{arrows.meta,positioning}
-\usepackage[round,sort&compress]{natbib}
+\usepackage[numbers,square,sort&compress]{natbib}
 \usepackage{xurl}
 \usepackage[hidelinks]{hyperref}
 \usepackage[nameinlink,capitalise,noabbrev]{cleveref}
@@ -100,8 +100,8 @@ product shots, close-ups, cluttered workbenches, renders and some diagrams.
 \textbf{Motivation.} Recognising a part from a photograph helps to sort mixed parts bins and take inventory, to teach
 students to tell a diode from a resistor, and as the recognition stage of lab-assistant tools. Earlier work on
 electronic-component classification fine-tunes ImageNet networks \citep{shao2025electronic} or designs dedicated
-CNNs for varied backgrounds \citep{zhou2025electronic}; inspection of assembled circuit boards is surveyed by
-\citet{ling2023pcb}. The task is also a good test of transfer learning. There are only about 100 training images per
+CNNs for varied backgrounds \citep{zhou2025electronic}; inspection of assembled circuit boards is surveyed by Ling and Isa
+\citep{ling2023pcb}. The task is also a good test of transfer learning. There are only about 100 training images per
 class, the data are noisy, and several classes look alike (resistor, diode and fuse are small axial bodies with
 leads; inductor coil and transformer are both windings).
 
@@ -608,7 +608,7 @@ bigger model: relabelling the audited issues and cleaning the classes contaminat
 
 \FloatBarrier
 % ------------------------------------------------------------------------------------------------- 8
-\bibliographystyle{plainnat}
+\bibliographystyle{ieeetr}
 \bibliography{refs,extra}
 
 % ------------------------------------------------------------------------------------------------- appendices
