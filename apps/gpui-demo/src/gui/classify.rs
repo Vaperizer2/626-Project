@@ -1,0 +1,485 @@
+//! Classify tab: open / drop / paste / fetch pictures, the recent list, the picture and the result panel.
+
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
+
+use futures::StreamExt;
+use futures::channel::mpsc as fmpsc;
+use gpui_kit::component::{
+    ActiveTheme as _, Icon, IconName, Sizable as _, WindowExt as _,
+    alert::Alert,
+    button::{Button, ButtonVariants as _},
+    empty::{Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle},
+    h_flex,
+    input::{Input, InputEvent, InputState},
+    notification::NotificationType,
+    scroll::ScrollableElement as _,
+    spinner::Spinner,
+    tag::Tag,
+    v_flex,
+};
+use gpui_kit::{
+    ClipboardEntry, Context, Entity, FontWeight, ObjectFit, PathPromptOptions, RenderImage, ScrollHandle, SharedString,
+    Subscription, Window, div, img, prelude::*, px,
+};
+
+use super::worker::{Cmd, Job, JobInput, ModelState, Update};
+use super::{DemoApp, FocusUrl, Open, Paste, widgets};
+use crate::contract::Prediction;
+use crate::fetch::Source;
+use crate::models::ModelKey;
+
+const MAX_ENTRIES: usize = 40;
+
+pub enum EntryState {
+    Working,
+    Done(Prediction, f64),
+    Failed(String),
+}
+
+pub struct Entry {
+    id: u64,
+    name: SharedString,
+    full: SharedString,
+    model: ModelKey,
+    image: Option<Arc<RenderImage>>,
+    dims: Option<(u32, u32)>,
+    state: EntryState,
+}
+
+pub struct ClassifyState {
+    url: Entity<InputState>,
+    entries: Vec<Entry>,
+    selected: Option<u64>,
+    next_id: u64,
+    list_scroll: ScrollHandle,
+}
+
+impl ClassifyState {
+    pub fn new(window: &mut Window, cx: &mut Context<DemoApp>) -> (Self, Vec<Subscription>) {
+        let url =
+            cx.new(|cx| InputState::new(window, cx).placeholder("Paste or type an image URL or file path, then Enter"));
+        let sub = cx.subscribe_in(&url, window, |this: &mut DemoApp, _, ev: &InputEvent, window, cx| {
+            if let InputEvent::PressEnter { .. } = ev {
+                this.fetch_typed_url(window, cx);
+            }
+        });
+        let s = Self { url, entries: Vec::new(), selected: None, next_id: 1, list_scroll: ScrollHandle::new() };
+        (s, vec![sub])
+    }
+
+    pub fn busy(&self) -> bool {
+        self.entries.iter().any(|e| matches!(e.state, EntryState::Working))
+    }
+}
+
+impl DemoApp {
+    pub(super) fn submit_source(&mut self, src: Source, cx: &mut Context<Self>) {
+        let (name, full) = (src.display_name(), src.full());
+        self.submit(JobInput::Source(src), name, full, cx);
+    }
+
+    fn submit(&mut self, input: JobInput, name: String, full: String, cx: &mut Context<Self>) {
+        let c = &mut self.classify;
+        let id = c.next_id;
+        c.next_id += 1;
+        let (tx, mut rx) = fmpsc::unbounded();
+        let model = self.model;
+        let job =
+            Job { input, models: vec![model], display: true, cancel: Arc::new(AtomicBool::new(false)), updates: tx };
+        let state = if self.jobs.send(Cmd::Job(job)).is_ok() {
+            EntryState::Working
+        } else {
+            EntryState::Failed("inference thread is not running".into())
+        };
+        c.entries.insert(0, Entry { id, name: name.into(), full: full.into(), model, image: None, dims: None, state });
+        while c.entries.len() > MAX_ENTRIES {
+            if let Some(e) = c.entries.pop() {
+                self.to_drop.extend(e.image);
+            }
+        }
+        c.selected = Some(id);
+        c.list_scroll.scroll_to_item(0);
+        cx.spawn(async move |this, cx| {
+            while let Some(update) = rx.next().await {
+                let alive = this
+                    .update(cx, |this, cx| {
+                        if let Some(e) = this.classify.entries.iter_mut().find(|e| e.id == id) {
+                            match update {
+                                Update::Image(img, dims) => {
+                                    e.image = Some(img);
+                                    e.dims = Some(dims);
+                                }
+                                Update::Result(_, Ok(p)) => e.state = EntryState::Done(p, 0.0),
+                                Update::Result(_, Err(msg)) | Update::Failed(msg) => e.state = EntryState::Failed(msg),
+                                Update::Done(total) => {
+                                    if let EntryState::Done(_, t) = &mut e.state {
+                                        *t = total;
+                                    }
+                                }
+                            }
+                        }
+                        cx.notify();
+                    })
+                    .is_ok();
+                if !alive {
+                    break;
+                }
+            }
+        })
+        .detach();
+        cx.notify();
+    }
+
+    fn fetch_typed_url(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let text = self.classify.url.read(cx).value().to_string();
+        match Source::parse(&text) {
+            Some(src) => self.submit_source(src, cx),
+            None => window.push_notification("Type or paste an image URL (or a file path) first.", cx),
+        }
+    }
+
+    pub(super) fn open(&mut self, _: &Open, window: &mut Window, cx: &mut Context<Self>) {
+        self.set_tab(super::TabKind::Classify, window, cx);
+        let rx = cx.prompt_for_paths(PathPromptOptions {
+            files: true,
+            directories: false,
+            multiple: true,
+            prompt: Some("Classify".into()),
+        });
+        cx.spawn_in(window, async move |this, cx| {
+            let result = rx.await;
+            this.update_in(cx, |this, window, cx| match result {
+                Ok(Ok(Some(paths))) => {
+                    for p in paths {
+                        this.submit_source(Source::File(p), cx);
+                    }
+                }
+                Ok(Ok(None)) => {}
+                Ok(Err(e)) => window.push_notification(
+                    (
+                        NotificationType::Warning,
+                        SharedString::from(format!(
+                            "File dialog unavailable ({e}). It needs xdg-desktop-portal; drag files onto the window \
+                             or paste a path with Ctrl+V instead."
+                        )),
+                    ),
+                    cx,
+                ),
+                Err(_) => window.push_notification("The file dialog closed unexpectedly.", cx),
+            })
+            .ok();
+        })
+        .detach();
+    }
+
+    pub(super) fn paste(&mut self, _: &Paste, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(item) = cx.read_from_clipboard() else {
+            window.push_notification("The clipboard is empty.", cx);
+            return;
+        };
+        self.set_tab(super::TabKind::Classify, window, cx);
+        for entry in item.entries() {
+            match entry {
+                ClipboardEntry::Image(image) => {
+                    self.submit(JobInput::Bytes(image.bytes.clone()), "pasted image".into(), "clipboard".into(), cx);
+                    return;
+                }
+                ClipboardEntry::ExternalPaths(paths) => {
+                    for p in paths.paths() {
+                        self.submit_source(Source::File(PathBuf::from(p)), cx);
+                    }
+                    return;
+                }
+                _ => {}
+            }
+        }
+        let Some(text) = item.text() else { return };
+        let sources: Vec<Source> = text.lines().filter_map(Source::parse).collect();
+        if sources.is_empty() {
+            window.push_notification("The clipboard has no URL, path or image.", cx);
+        }
+        for s in sources {
+            if let Source::Url(u) = &s {
+                let u = u.clone();
+                self.classify.url.update(cx, |st, cx| st.set_value(u, window, cx));
+            }
+            self.submit_source(s, cx);
+        }
+    }
+
+    pub(super) fn focus_url(&mut self, _: &FocusUrl, window: &mut Window, cx: &mut Context<Self>) {
+        self.set_tab(super::TabKind::Classify, window, cx);
+        self.classify.url.update(cx, |st, cx| st.focus(window, cx));
+    }
+
+    pub(super) fn classify_step(&mut self, delta: isize, cx: &mut Context<Self>) {
+        let c = &mut self.classify;
+        if c.entries.is_empty() {
+            return;
+        }
+        let cur = c.selected.and_then(|id| c.entries.iter().position(|e| e.id == id)).unwrap_or(0) as isize;
+        let next = (cur + delta).clamp(0, c.entries.len() as isize - 1) as usize;
+        c.selected = Some(c.entries[next].id);
+        c.list_scroll.scroll_to_item(next);
+        cx.notify();
+    }
+
+    // ------------------------------------------------------------------------------------------ render
+    pub(super) fn render_classify(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let entry_ix = self.classify.selected.and_then(|id| self.classify.entries.iter().position(|e| e.id == id));
+        v_flex().size_full().child(self.render_toolbar(window, cx)).child(
+            h_flex()
+                .flex_1()
+                .min_h_0()
+                .items_start()
+                .child(self.render_recent(cx))
+                .child(self.render_picture(entry_ix, cx))
+                .child(self.render_result(entry_ix, cx)),
+        )
+    }
+
+    fn render_toolbar(&self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let t = cx.theme();
+        h_flex()
+            .gap_2()
+            .px_4()
+            .py_2()
+            .border_b_1()
+            .border_color(t.border)
+            .child(
+                Button::new("open")
+                    .primary()
+                    .icon(IconName::FolderOpen)
+                    .label("Open image…")
+                    .tooltip("Open files (Ctrl+O)")
+                    .on_click(cx.listener(|this, _, w, cx| this.open(&Open, w, cx))),
+            )
+            .child(
+                div().flex_1().min_w_0().child(
+                    Input::new(&self.classify.url)
+                        .prefix(Icon::new(IconName::Globe).small().text_color(t.muted_foreground))
+                        .cleanable(true),
+                ),
+            )
+            .child(
+                Button::new("fetch")
+                    .label("Fetch")
+                    .tooltip("Download and classify the URL (Enter)")
+                    .on_click(cx.listener(|this, _, w, cx| this.fetch_typed_url(w, cx))),
+            )
+            .child(
+                Button::new("paste")
+                    .icon(IconName::Copy)
+                    .label("Paste")
+                    .tooltip("Classify the clipboard: image, URL or path (Ctrl+V)")
+                    .on_click(cx.listener(|this, _, w, cx| this.paste(&Paste, w, cx))),
+            )
+    }
+
+    fn render_recent(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let t = cx.theme();
+        let c = &self.classify;
+        let rows = c.entries.iter().map(|e| {
+            let id = e.id;
+            let sel = c.selected == Some(id);
+            let status = match &e.state {
+                EntryState::Working => h_flex()
+                    .gap_1()
+                    .items_center()
+                    .child(Spinner::new().xsmall().color(t.muted_foreground))
+                    .child(div().text_color(t.muted_foreground).child("classifying…"))
+                    .into_any_element(),
+                EntryState::Failed(_) => div().text_color(t.danger).child("error").into_any_element(),
+                EntryState::Done(p, _) if p.unsure => h_flex()
+                    .gap_1()
+                    .child(Tag::warning().small().child("Unsure"))
+                    .child(div().text_color(t.muted_foreground).truncate().child(p.top3[0].0.clone()))
+                    .into_any_element(),
+                EntryState::Done(p, _) => div()
+                    .text_color(t.foreground)
+                    .truncate()
+                    .child(format!("{} · {}", p.top3[0].0, widgets::pct(p.top3[0].1)))
+                    .into_any_element(),
+            };
+            h_flex()
+                .id(("entry", id as usize))
+                .gap_2()
+                .p_1p5()
+                .rounded(t.radius)
+                .cursor_pointer()
+                .when(sel, |d| d.bg(t.list_active).border_1().border_color(t.list_active_border))
+                .when(!sel, |d| d.border_1().border_color(gpui_kit::transparent_black()).hover(|s| s.bg(t.list_hover)))
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    this.classify.selected = Some(id);
+                    cx.notify();
+                }))
+                .child(
+                    div()
+                        .w(px(56.))
+                        .h(px(42.))
+                        .flex_none()
+                        .rounded(t.radius)
+                        .overflow_hidden()
+                        .bg(t.muted)
+                        .when_some(e.image.clone(), |d, im| d.child(img(im).size_full().object_fit(ObjectFit::Cover))),
+                )
+                .child(
+                    v_flex()
+                        .min_w_0()
+                        .flex_1()
+                        .text_sm()
+                        .child(div().text_xs().text_color(t.muted_foreground).truncate().child(e.name.clone()))
+                        .child(status),
+                )
+        });
+        v_flex()
+            .w(px(272.))
+            .h_full()
+            .flex_none()
+            .border_r_1()
+            .border_color(t.border)
+            .child(
+                h_flex()
+                    .px_3()
+                    .pt_3()
+                    .pb_2()
+                    .justify_between()
+                    .child(div().text_sm().font_weight(FontWeight::SEMIBOLD).child("Recent"))
+                    .child(div().text_xs().text_color(t.muted_foreground).child(format!("{}", c.entries.len()))),
+            )
+            .child(
+                div()
+                    .relative()
+                    .flex_1()
+                    .min_h_0()
+                    .child(
+                        v_flex()
+                            .id("recent")
+                            .size_full()
+                            .overflow_y_scroll()
+                            .track_scroll(&c.list_scroll)
+                            .px_2()
+                            .pb_2()
+                            .gap_1()
+                            .children(rows)
+                            .when(c.entries.is_empty(), |d| {
+                                d.child(
+                                    div()
+                                        .p_2()
+                                        .text_xs()
+                                        .text_color(t.muted_foreground)
+                                        .child("Classified pictures appear here."),
+                                )
+                            }),
+                    )
+                    .vertical_scrollbar(&c.list_scroll),
+            )
+    }
+
+    fn render_picture(&self, entry_ix: Option<usize>, cx: &mut Context<Self>) -> impl IntoElement {
+        let t = cx.theme();
+        let entry = entry_ix.map(|i| &self.classify.entries[i]);
+        let body = match entry.and_then(|e| e.image.clone()) {
+            Some(im) => div().size_full().p_4().child(img(im).size_full().object_fit(ObjectFit::Contain)).into_any_element(),
+            None if entry.is_some() => v_flex()
+                .size_full()
+                .items_center()
+                .justify_center()
+                .gap_2()
+                .child(Spinner::new().large().color(t.muted_foreground))
+                .child(div().text_sm().text_color(t.muted_foreground).child("Reading picture…"))
+                .into_any_element(),
+            None => div()
+                .size_full()
+                .p_8()
+                .child(
+                    Empty::new()
+                        .size_full()
+                        .border_2()
+                        .border_dashed()
+                        .border_color(t.border)
+                        .rounded(t.radius_lg)
+                        .header(
+                            EmptyHeader::new()
+                                .media(EmptyMedia::new().child(Icon::new(IconName::GalleryVerticalEnd).large()))
+                                .title(EmptyTitle::new().child("Drop component pictures here"))
+                                .description(EmptyDescription::new().child(
+                                    "Or open files, paste a picture, URL or path, or try the curated images in the Demo tab.",
+                                )),
+                        )
+                        .child(
+                            h_flex()
+                                .gap_4()
+                                .child(widgets::hint(&["ctrl-o"], "Open", cx))
+                                .child(widgets::hint(&["ctrl-v"], "Paste", cx))
+                                .child(widgets::hint(&["ctrl-2"], "Demo tab", cx)),
+                        ),
+                )
+                .into_any_element(),
+        };
+        div().flex_1().min_w_0().h_full().bg(t.muted.opacity(0.35)).child(body)
+    }
+
+    fn render_result(&self, entry_ix: Option<usize>, cx: &mut Context<Self>) -> impl IntoElement {
+        let border = cx.theme().border;
+        div()
+            .id("result-panel")
+            .w(px(400.))
+            .h_full()
+            .flex_none()
+            .border_l_1()
+            .border_color(border)
+            .overflow_y_scroll()
+            // block child keeps its natural height, so long content scrolls instead of being squeezed
+            .child(div().flex_none().child(self.render_result_body(entry_ix, cx)))
+    }
+
+    fn render_result_body(&self, entry_ix: Option<usize>, cx: &mut Context<Self>) -> gpui_kit::Div {
+        let t = cx.theme();
+        let entry = entry_ix.map(|i| &self.classify.entries[i]);
+        let mut panel = v_flex().gap_4().p_4();
+        if let Some(ModelState::Failed(msg)) = self.state(self.model) {
+            panel = panel.child(
+                Alert::error("model-failed", SharedString::from(msg.clone()))
+                    .title(format!("{} failed to load", self.model.name())),
+            );
+        }
+        let Some(e) = entry else {
+            return panel.child(div().text_sm().text_color(t.muted_foreground).child("No picture yet."));
+        };
+        panel = panel.child(
+            v_flex()
+                .gap_0p5()
+                .child(div().text_sm().font_weight(FontWeight::SEMIBOLD).truncate().child(e.name.clone()))
+                .child(div().text_xs().text_color(t.muted_foreground).truncate().child(e.full.clone()))
+                .when_some(e.dims, |d, (w, h)| {
+                    d.child(div().text_xs().text_color(t.muted_foreground).child(format!("{w} × {h} px")))
+                }),
+        );
+        match &e.state {
+            EntryState::Working => {
+                panel.child(h_flex().gap_2().items_center().child(Spinner::new().color(t.primary)).child(
+                    div().text_lg().child(if matches!(self.state(e.model), Some(ModelState::Loading(_))) {
+                        format!("Loading {}…", e.model.short())
+                    } else {
+                        "Classifying…".to_string()
+                    }),
+                ))
+            }
+            EntryState::Failed(msg) => panel.child(
+                Alert::error(("classify-error", e.id as usize), SharedString::from(msg.clone()))
+                    .title("Could not classify"),
+            ),
+            EntryState::Done(p, total) => panel
+                .child(widgets::prediction_block("classify", p, e.model, self.threshold(), None, &self.labels, cx))
+                .child(
+                    div()
+                        .text_xs()
+                        .text_color(t.muted_foreground)
+                        .child(format!("Total incl. read and decode: {total:.0} ms")),
+                ),
+        }
+    }
+}

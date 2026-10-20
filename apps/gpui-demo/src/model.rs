@@ -127,22 +127,18 @@ pub fn resolve_ort_lib(explicit: Option<&Path>, model_dir: Option<&Path>) -> Pat
     PathBuf::from(format!("{}onnxruntime{}", std::env::consts::DLL_PREFIX, std::env::consts::DLL_SUFFIX))
 }
 
-/// The ONNX model plus its contract. `Session::run` needs `&mut self`, so share it behind a Mutex.
-pub struct Classifier {
-    session: Session,
-    pub contract: Contract,
-    pub model_dir: PathBuf,
+/// The process-wide onnxruntime environment (ort allows exactly one per process) plus session options.
+pub struct Runtime {
+    env: ort::environment::Environment,
     pub ort_lib: PathBuf,
     pub provider: String,
-    pub load_ms: f64,
+    threads: Option<usize>,
 }
 
-impl Classifier {
-    pub fn load(opts: &ModelOptions) -> Result<Self> {
-        let t0 = Instant::now();
-        let model_dir = resolve_model_dir(opts.model_dir.as_deref())?;
-        let contract = Contract::load(&model_dir)?;
-        let ort_lib = resolve_ort_lib(opts.ort_lib.as_deref(), Some(&model_dir));
+impl Runtime {
+    /// dlopen libonnxruntime (see [`resolve_ort_lib`]) and create the environment.
+    pub fn init(opts: &ModelOptions, model_dir: Option<&Path>) -> Result<Self> {
+        let ort_lib = resolve_ort_lib(opts.ort_lib.as_deref(), model_dir);
         #[cfg_attr(not(feature = "cuda"), allow(unused_mut))]
         let mut eps = Vec::new();
         #[cfg(feature = "cuda")]
@@ -165,30 +161,58 @@ impl Classifier {
             .with_execution_providers(&eps)
             .build()
             .map_err(|e| anyhow!("creating onnxruntime environment: {e}"))?;
-        let mut builder = Session::builder(&env)
+        let provider = if opts.cuda && cfg!(feature = "cuda") { "CUDA (requested) + CPU" } else { "CPU" };
+        Ok(Self { env, ort_lib, provider: provider.to_string(), threads: opts.threads })
+    }
+
+    /// Load one ONNX graph (+ its external weights) into a session.
+    pub fn session(&self, onnx: &Path) -> Result<Session> {
+        let mut builder = Session::builder(&self.env)
             .map_err(|e| anyhow!("{e}"))?
             .with_optimization_level(GraphOptimizationLevel::Level3)
             .map_err(|e| anyhow!("{e}"))?;
-        if let Some(n) = opts.threads {
+        if let Some(n) = self.threads {
             builder = builder.with_intra_threads(n).map_err(|e| anyhow!("{e}"))?;
         }
+        builder
+            .commit_from_file(onnx)
+            .map_err(|e| anyhow!("loading {}: {e} (are its external weights next to it and complete?)", onnx.display()))
+    }
+}
+
+/// The ONNX model plus its contract. `Session::run` needs `&mut self`, so share it behind a Mutex.
+pub struct Classifier {
+    session: Session,
+    pub contract: Contract,
+    pub model_dir: PathBuf,
+    pub ort_lib: PathBuf,
+    pub provider: String,
+    pub load_ms: f64,
+    _runtime: Runtime,
+}
+
+impl Classifier {
+    /// The deployed model (`<model dir>/model.onnx`, output `probs`): the default of `classify`/`preprocess`.
+    pub fn load(opts: &ModelOptions) -> Result<Self> {
+        let t0 = Instant::now();
+        let model_dir = resolve_model_dir(opts.model_dir.as_deref())?;
+        let contract = Contract::load(&model_dir)?;
+        let runtime = Runtime::init(opts, Some(&model_dir))?;
         let onnx = model_dir.join("model.onnx");
-        let session = builder
-            .commit_from_file(&onnx)
-            .map_err(|e| anyhow!("loading {}: {e} (is model.onnx.data next to it and complete?)", onnx.display()))?;
+        let session = runtime.session(&onnx)?;
         let input_ok = session.inputs().iter().any(|i| i.name() == "input");
         let output_ok = session.outputs().iter().any(|o| o.name() == "probs");
         if !input_ok || !output_ok {
             bail!("{} does not have input 'input' and output 'probs'", onnx.display());
         }
-        let provider = if opts.cuda && cfg!(feature = "cuda") { "CUDA (requested) + CPU" } else { "CPU" };
         Ok(Self {
             session,
             contract,
             model_dir,
-            ort_lib,
-            provider: provider.to_string(),
+            ort_lib: runtime.ort_lib.clone(),
+            provider: runtime.provider.clone(),
             load_ms: t0.elapsed().as_secs_f64() * 1000.0,
+            _runtime: runtime,
         })
     }
 
@@ -209,9 +233,52 @@ impl Classifier {
     /// Preprocess + infer + decision rule. `ms` covers preprocessing and inference, like the Python demo.
     pub fn predict(&mut self, img: &RgbImage) -> Result<Prediction> {
         let t0 = Instant::now();
-        let tensor = to_tensor(img, &self.contract.pre)?;
-        let probs = self.probs_from_tensor(&tensor)?;
+        let tensor = prof!("preprocess::to_tensor", to_tensor(img, &self.contract.pre))?;
+        let probs = prof!("onnx::run", self.probs_from_tensor(&tensor))?;
         let ms = t0.elapsed().as_secs_f64() * 1000.0;
         Ok(decide(&probs, &self.contract.labels, self.threshold(), ms))
+    }
+}
+
+/// One loaded ONNX graph with its preprocessing contract; may serve several registry entries (one per output).
+pub struct Engine {
+    session: Session,
+    input: String,
+    pub contract: Contract,
+    pub onnx: PathBuf,
+}
+
+impl Engine {
+    pub fn load(rt: &Runtime, onnx: &Path, contract_dir: &Path) -> Result<Self> {
+        let contract = Contract::load(contract_dir)?;
+        let session = rt.session(onnx)?;
+        let input = if session.inputs().iter().any(|i| i.name() == "input") {
+            "input".to_string()
+        } else {
+            session.inputs().first().map(|i| i.name().to_string()).context("model has no inputs")?
+        };
+        Ok(Self { session, input, contract, onnx: onnx.to_path_buf() })
+    }
+
+    pub fn output_names(&self) -> Vec<String> {
+        self.session.outputs().iter().map(|o| o.name().to_string()).collect()
+    }
+
+    /// One forward pass; returns the requested outputs (flattened f32) in the requested order.
+    pub fn run(&mut self, tensor: &[f32], outputs: &[&str]) -> Result<Vec<Vec<f32>>> {
+        let s = self.contract.pre.input_size as usize;
+        let input = TensorRef::from_array_view(([1usize, 3, s, s], tensor)).map_err(|e| anyhow!("{e}"))?;
+        let res = self
+            .session
+            .run(ort::inputs![self.input.as_str() => input])
+            .map_err(|e| anyhow!("inference ({}): {e}", self.onnx.display()))?;
+        outputs
+            .iter()
+            .map(|name| {
+                let v = res.get(name).with_context(|| format!("{} has no output '{name}'", self.onnx.display()))?;
+                let (_, data) = v.try_extract_tensor::<f32>().map_err(|e| anyhow!("{e}"))?;
+                Ok(data.to_vec())
+            })
+            .collect()
     }
 }

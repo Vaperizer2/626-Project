@@ -115,13 +115,50 @@ fn bicubic(x: f64) -> f64 {
     }
 }
 
+/// Pillow `bilinear_filter` (triangle), support 1.
+#[inline]
+fn bilinear(x: f64) -> f64 {
+    let x = x.abs();
+    if x < 1.0 { 1.0 - x } else { 0.0 }
+}
+
+/// The two Pillow filters the exported models use (`preprocess.json` "interpolation").
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Filter {
+    Bicubic,
+    Bilinear,
+}
+
+impl Filter {
+    pub fn from_name(name: &str) -> Option<Filter> {
+        match name {
+            "bicubic" => Some(Filter::Bicubic),
+            "bilinear" => Some(Filter::Bilinear),
+            _ => None,
+        }
+    }
+    fn support(self) -> f64 {
+        match self {
+            Filter::Bicubic => 2.0,
+            Filter::Bilinear => 1.0,
+        }
+    }
+    #[inline]
+    fn eval(self, x: f64) -> f64 {
+        match self {
+            Filter::Bicubic => bicubic(x),
+            Filter::Bilinear => bilinear(x),
+        }
+    }
+}
+
 /// Pillow `precompute_coeffs` + `normalize_coeffs_8bpc` for a box [0, in_size) -> out_size.
 /// Returns (ksize, bounds as (xmin, count) per output, fixed-point coefficients out_size*ksize).
-fn precompute_coeffs(in_size: u32, out_size: u32) -> (usize, Vec<(usize, usize)>, Vec<i32>) {
+fn precompute_coeffs(in_size: u32, out_size: u32, filter: Filter) -> (usize, Vec<(usize, usize)>, Vec<i32>) {
     let (in0, in1) = (0.0f64, in_size as f64);
     let scale = (in1 - in0) / out_size as f64;
     let filterscale = scale.max(1.0);
-    let support = 2.0 * filterscale;
+    let support = filter.support() * filterscale;
     let ksize = support.ceil() as usize * 2 + 1;
     let mut bounds = Vec::with_capacity(out_size as usize);
     let mut kk = vec![0i32; out_size as usize * ksize];
@@ -142,7 +179,7 @@ fn precompute_coeffs(in_size: u32, out_size: u32) -> (usize, Vec<(usize, usize)>
         let xmin = xmin as usize;
         let mut ww = 0.0f64;
         for (x, kx) in k.iter_mut().enumerate().take(xmax) {
-            let w = bicubic((x as f64 + xmin as f64 - center + 0.5) * ss);
+            let w = filter.eval((x as f64 + xmin as f64 - center + 0.5) * ss);
             *kx = w;
             ww += w;
         }
@@ -163,15 +200,22 @@ fn clip8(v: i32) -> u8 {
 }
 
 /// Bit-exact port of `PIL.Image.resize((w, h), Image.BICUBIC)` for 8-bit RGB (no box, no reducing_gap).
+#[cfg(test)]
 pub fn pillow_bicubic_resize(src: &RgbImage, out_w: u32, out_h: u32) -> RgbImage {
+    pillow_resize(src, out_w, out_h, Filter::Bicubic)
+}
+
+/// Bit-exact port of `PIL.Image.resize((w, h), filter)` for 8-bit RGB, BICUBIC or BILINEAR (same separable
+/// `Resample.c` path; only the kernel and its support differ).
+pub fn pillow_resize(src: &RgbImage, out_w: u32, out_h: u32, filter: Filter) -> RgbImage {
     let (in_w, in_h) = src.dimensions();
     if (in_w, in_h) == (out_w, out_h) {
         return src.clone();
     }
     let need_h = out_w != in_w;
     let need_v = out_h != in_h;
-    let (ks_h, bounds_h, kk_h) = precompute_coeffs(in_w, out_w);
-    let (ks_v, mut bounds_v, kk_v) = precompute_coeffs(in_h, out_h);
+    let (ks_h, bounds_h, kk_h) = precompute_coeffs(in_w, out_w, filter);
+    let (ks_v, mut bounds_v, kk_v) = precompute_coeffs(in_h, out_h, filter);
 
     // Horizontal pass first, only over the source rows the vertical pass will read (as Pillow does).
     let (tmp_w, tmp_h, tmp): (u32, u32, Vec<u8>) = if need_h {
@@ -244,7 +288,8 @@ pub fn to_tensor(img: &RgbImage, pre: &Preprocess) -> Result<Vec<f32>> {
     if nw < size || nh < size {
         bail!("image too small after resize ({nw}x{nh})");
     }
-    let resized = pillow_bicubic_resize(img, nw, nh);
+    let filter = Filter::from_name(&pre.interpolation).context("unsupported interpolation")?;
+    let resized = pillow_resize(img, nw, nh, filter);
     let (left, top) = center_crop_offsets(nw, nh, size);
     // ToTensor: x / float32(1/scale); then (x - mean) / std, all in float32 like numpy.
     let denom = (1.0 / pre.scale) as f32;
@@ -266,15 +311,24 @@ pub fn to_tensor(img: &RgbImage, pre: &Preprocess) -> Result<Vec<f32>> {
 }
 
 /// Downscaled RGBA copy for display (long side <= `max_side`), converted to BGRA as GPUI's RenderImage expects.
+/// (GUI only; the model input never goes through this.)
 pub fn display_bgra(img: &RgbImage, max_side: u32) -> RgbaImage {
     let (w, h) = img.dimensions();
-    let dynimg = DynamicImage::ImageRgb8(img.clone());
-    let small = if w.max(h) > max_side { dynimg.thumbnail(max_side, max_side) } else { dynimg };
-    let mut rgba = small.to_rgba8();
-    for p in rgba.pixels_mut() {
-        p.0.swap(0, 2);
+    let scale = (max_side as f64 / w.max(h) as f64).min(1.0);
+    let (tw, th) = (((w as f64 * scale).round() as u32).max(1), ((h as f64 * scale).round() as u32).max(1));
+    // `imageops::thumbnail` (box filter, fast) reads the source in place: no full-size copy.
+    let small;
+    let src: &RgbImage = if (tw, th) == (w, h) {
+        img
+    } else {
+        small = image::imageops::thumbnail(img, tw, th);
+        &small
+    };
+    let mut out = Vec::with_capacity(src.len() / 3 * 4);
+    for p in src.pixels() {
+        out.extend_from_slice(&[p.0[2], p.0[1], p.0[0], 255]);
     }
-    rgba
+    RgbaImage::from_raw(src.width(), src.height(), out).expect("buffer size matches")
 }
 
 #[cfg(test)]
@@ -312,6 +366,23 @@ mod tests {
         assert_eq!(bicubic(2.0), 0.0);
         assert!((bicubic(0.5) - 0.5625).abs() < 1e-12);
         assert!((bicubic(1.5) + 0.0625).abs() < 1e-12);
+    }
+
+    #[test]
+    fn bilinear_kernel_and_resize() {
+        assert_eq!(bilinear(0.0), 1.0);
+        assert_eq!(bilinear(0.25), 0.75);
+        assert_eq!(bilinear(1.0), 0.0);
+        let img = RgbImage::from_pixel(300, 200, image::Rgb([7, 99, 250]));
+        let r = pillow_resize(&img, 183, 122, Filter::Bilinear);
+        assert!(r.pixels().all(|p| p.0 == [7, 99, 250]));
+        // a horizontal ramp stays monotonic and differs from the bicubic result somewhere
+        let ramp = RgbImage::from_fn(64, 8, |x, _| image::Rgb([(x * 4) as u8; 3]));
+        let a = pillow_resize(&ramp, 23, 8, Filter::Bilinear);
+        let b = pillow_resize(&ramp, 23, 8, Filter::Bicubic);
+        assert!(a.pixels().zip(a.pixels().skip(1)).take(22).all(|(p, q)| p.0[0] <= q.0[0]));
+        assert_ne!(a.as_raw(), b.as_raw());
+        assert_eq!(Filter::from_name("nearest"), None);
     }
 
     #[test]

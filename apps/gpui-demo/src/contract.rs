@@ -36,8 +36,8 @@ impl Preprocess {
         if self.color_order != "RGB" || self.layout != "NCHW" {
             bail!("only RGB / NCHW preprocessing is implemented (got {} / {})", self.color_order, self.layout);
         }
-        if self.interpolation != "bicubic" {
-            bail!("only interpolation=\"bicubic\" is implemented (got {:?})", self.interpolation);
+        if crate::preprocess::Filter::from_name(&self.interpolation).is_none() {
+            bail!("only interpolation \"bicubic\" or \"bilinear\" is implemented (got {:?})", self.interpolation);
         }
         if self.resize_short_side < self.input_size {
             bail!("resize_short_side {} < input_size {}", self.resize_short_side, self.input_size);

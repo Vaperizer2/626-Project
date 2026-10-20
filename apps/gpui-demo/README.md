@@ -1,113 +1,233 @@
-# gpui-demo — Component Classifier desktop app (Rust · GPUI · onnxruntime)
+# gpui-demo — Component Classifier desktop app (Rust · GPUI Kit · onnxruntime)
 
-A native desktop demo of the project's final model (`exports/final/model.onnx`, SigLIP So400m/384 + fused heads,
-20 electronic-component classes). Open, drop or paste a picture (file, URL, or clipboard image) and the app shows
-it with the top-3 classes as probability bars. A prominent **UNSURE** banner appears when the top calibrated
-probability is below `abstain_threshold` (0.50). The same binary also has a headless `classify` mode.
+A native desktop demo of the project's models (20 electronic-component classes), built with
+[GPUI Kit](https://gpui-kit.com/docs/) (`gpui-kit` 0.7.3: GPUI plus a styled component library and themes). Three tabs:
 
-It implements the ONNX contract in `docs/DEMO.md` §8 ("Deploying elsewhere") and mirrors the Python reference
-`src/compclass/demo.py`.
+* **Classify**: open, drop or paste a picture (file, URL, or clipboard image). It shows the picture with the top-3
+  classes as probability bars and all 20 probabilities. The deployed model shows an **Unsure** state when its top
+  calibrated probability is below `abstain_threshold` (0.50).
+* **Demo**: a curated stack of 28 Wikimedia Commons photos that were never used for training or model selection
+  (`demo_stack/`). Click a card, or step with the arrow keys and press Enter. Each result is marked correct or wrong
+  against the true label, and the photo's author, licence and source are shown. **Run all** classifies the stack in
+  order and keeps a running "21/28 correct" count.
+* **Benchmark**: runs every available model over the stack, live and cancellable. It then compares accuracy,
+  mean confidence and ms per image, and shows a per-image matrix (green = correct, red = wrong, amber = unsure).
+  A switch shows only the images where the models disagree.
+
+A model picker switches between the report's models (**A · Custom CNN**, **B · ConvNeXt-T**, **C · SigLIP + linear**)
+and the **Deployed** fused SigLIP model. Models load on first use. The 1.7 GB SigLIP weights are loaded once and shared
+by C and Deployed. The same binary also has a headless `classify` mode. It implements the ONNX contract in
+`docs/DEMO.md` §8 and mirrors the Python reference `src/compclass/demo.py`.
 
 ## Quick start (on the laptop)
 
 ```bash
 # 0. one-time: a Rust toolchain (rustup is installed on Arch; it just needs a default toolchain)
-rustup default stable                   # needs Rust >= 1.92 (ort 2.0.0-rc.14); tested with 1.99.1
+rustup default stable                   # needs Rust >= 1.92; tested with 1.99.1
 
-# 1. one-time: the onnxruntime shared library. Easiest: the project's own uv venv already has it
-cd ~/Work/Prototypes/626-Project
-uv sync                                 # creates .venv with onnxruntime (1.31.0 in uv.lock)
-#    gpui-demo finds .venv/lib/python3.*/site-packages/onnxruntime/capi/libonnxruntime.so.* by itself.
-#    Any other onnxruntime >= 1.22 works too:  --ort-lib /path/to/libonnxruntime.so.1.xx  (or ORT_DYLIB_PATH=...)
-#    Lighter alternative (the full `uv sync` also pulls CUDA torch, several GB): a tiny venv with only onnxruntime
+# 1. one-time: the onnxruntime shared library (any onnxruntime >= 1.22).
+#    target/release/libonnxruntime.so.1.31.0 is already in place on this laptop; the app finds a copy next to the
+#    binary by itself. Other options: `uv sync` in the repo (gpui-demo finds .venv/.../onnxruntime/capi/), or
 #      uv venv ~/.local/share/compclass-ort && uv pip install --python ~/.local/share/compclass-ort onnxruntime
 #      export ORT_DYLIB_PATH=$(ls ~/.local/share/compclass-ort/lib/python3.*/site-packages/onnxruntime/capi/libonnxruntime.so.1.*)
 
-# 2. build and run (from anywhere inside the repo: exports/final/ is found by walking up)
+# 2. build and run (from anywhere inside the repo: exports/ and demo_stack/ are found by walking up)
 cd apps/gpui-demo
-cargo run --release --locked            # first build ~5-10 min (GPUI is large), then seconds
-# recommended on Arch (libjpeg-turbo is installed): bit-identical JPEG decoding to the Python pipeline
-cargo run --release --locked --features turbojpeg
-cargo run --release -- ~/Pictures/arduino.jpg "https://upload.wikimedia.org/...jpg"   # pre-load images
+cargo build --release --locked --features turbojpeg   # Arch has libjpeg-turbo: bit-identical JPEG decoding to Pillow
+./target/release/gpui-demo                            # Classify tab
+./target/release/gpui-demo --tab demo                 # start on the Demo tab (for presenting)
+./target/release/gpui-demo --tab benchmark --autorun  # start the benchmark straight away
+./target/release/gpui-demo ~/Pictures/arduino.jpg "https://upload.wikimedia.org/...jpg"   # pre-load pictures
 
 # headless (no window), e.g. for scripts/tests
-cargo run --release -- classify ../../path/to/photo.jpg            # text line per image
-cargo run --release -- classify --json a.jpg b.png https://...     # JSON with all 20 probabilities
+./target/release/gpui-demo classify photo.jpg                       # deployed model, one text line per image
+./target/release/gpui-demo classify --json a.jpg b.png https://...  # JSON with all 20 probabilities
+./target/release/gpui-demo classify --json --model all demo_stack/*.jpg   # every model (a, b, c, deployed)
+./target/release/gpui-demo models                                   # what the model registry found
 ```
 
-The release binary is `target/release/gpui-demo` (or `$CARGO_TARGET_DIR/release/gpui-demo`). The model folder
-must contain `model.onnx` **and** `model.onnx.data` (1,714,593,792 bytes ≈ 1.7 GB of external weights), `preprocess.json` and `labels.json`.
+`cargo build --release --locked` (without `turbojpeg`) also works; it uses the pure-Rust JPEG decoder (see
+"Preprocessing parity"). The first build takes about 5 minutes (GPUI is large); later builds take seconds. The deployed
+export folder must contain `model.onnx` **and** `model.onnx.data` (1,714,593,792 bytes ≈ 1.7 GB of external weights),
+`preprocess.json` and `labels.json`.
 
 ### Options
 
 | option | meaning |
 |---|---|
-| `--model-dir DIR` | export folder. Default: `$COMPCLASS_MODEL_DIR`, else the first `exports/final/` with a `model.onnx` found walking up from the current directory, then from the executable's directory. |
-| `--ort-lib PATH` | `libonnxruntime.so` to load. Default: `$ORT_DYLIB_PATH`, else `<repo>/.venv/lib/python3.*/site-packages/onnxruntime/capi/libonnxruntime.so*` (searched above the model dir, the CWD and the executable), else a copy next to the executable, else the system loader path (`libonnxruntime.so`). |
-| `--threads N` | onnxruntime intra-op threads (default: onnxruntime picks; one per physical core). |
+| `--model-dir DIR` | deployed export folder. Default: `$COMPCLASS_MODEL_DIR`, else the first `exports/final/` with a `model.onnx` found walking up from the current directory, then from the executable's directory. The other models are looked up relative to it (`../itri626/`). |
+| `--model KEYS` | `classify` (and `preprocess`): use registry models instead of `model.onnx`: `a`, `b`, `c`, `deployed`, comma-separated, or `all`. JSON rows then carry a `model` field. Without `--model`, `classify` behaves exactly as before. |
+| `--demo-dir DIR` | folder with `demo_stack.json`. Default: `$COMPCLASS_DEMO_DIR`, else the first `demo_stack/` (or `apps/gpui-demo/demo_stack/`) found walking up from the current directory, then from the executable. |
+| `--tab TAB` | window: start on `classify` (default), `demo` or `benchmark`. |
+| `--autorun` | window: start **Run all** (Demo tab) or the benchmark (Benchmark tab) immediately. |
+| `--dark`, `--light` | window: initial theme (default: follow the system; Ctrl+T toggles). |
+| `--ort-lib PATH` | `libonnxruntime.so` to load. Default: `$ORT_DYLIB_PATH`, else `<repo>/.venv/lib/python3.*/site-packages/onnxruntime/capi/libonnxruntime.so*`, else a copy next to the executable, else the system loader path. |
+| `--threads N` | onnxruntime intra-op threads (default: onnxruntime's choice, one per physical core). |
 | `--cuda` | request the CUDA execution provider (needs a `--features cuda` build, see below). |
-| `--json` | `classify`: print a JSON array (`source, label, top3, unsure, ms, probs, error`). |
-| `preprocess IMG OUT.f32` | write the exact `[1,3,384,384]` float32 model input (little-endian), for parity tests. |
+| `--json` | `classify`: print a JSON array (`source, [model,] label, top3, unsure, ms, probs, error`). |
+| `preprocess IMG OUT.f32 [--model KEY]` | write the exact `[1,3,S,S]` float32 model input (little-endian), for parity tests. |
 
 ### Using the window
 
-* **Open image… / Ctrl+O**: system file dialog (multi-select). It uses xdg-desktop-portal on Linux, see
-  Troubleshooting.
-* **Drag and drop** one or more image files anywhere on the window (the window border highlights).
-* **URL field + Enter / Fetch**: HTTP(S) GET with a descriptive User-Agent
-  (`compclass-gpui-demo/0.1.0 (educational image-classification demo; Rust ureq)`). Wikimedia returns 403 to
-  default agents. Timeout 20 s, 20 MB cap. **Ctrl+L** focuses the field, **Esc** leaves it. Proxies are taken
-  from the environment like curl does: `https_proxy`/`http_proxy` first, then `all_proxy` (http or socks5), and
-  `no_proxy` is honoured. Wikimedia throttles bursts, so a quick series of fetches can return `HTTP 429`; wait a
-  minute and retry.
-* **Paste / Ctrl+V**: if the clipboard holds an image (e.g. "Copy image" in a browser), it is classified directly.
-  If it holds text, each line that is an `http(s)://` URL, a `file://` URI or a path is classified. Pasting while
-  the URL field is focused inserts the text instead.
-* **Recent** list (left, scrollable, last 40): click an entry, or use **Up/Down**, to view an earlier result again.
-* **Ctrl+T** or the button toggles the light/dark theme (the initial theme follows the system). **Ctrl+Q** quits.
-* The model loads once at startup on a dedicated inference thread; the title bar shows "Loading model… n s" and
-  then the load time. Images added meanwhile are queued. Each job runs off the UI thread: read/fetch, decode,
-  then the picture appears, then the prediction. Shown latency = preprocessing + inference, the same span as the
-  Python demo's `ms`.
-* Supported formats: JPEG, PNG, WebP, GIF (first frame), BMP, TIFF. EXIF orientation is applied, and transparency
-  is flattened onto white. AVIF is **not** supported (the Python demo reads it via pillow-avif).
+| key | action |
+|---|---|
+| Ctrl+1 / Ctrl+2 / Ctrl+3 | Classify / Demo / Benchmark tab (or click the tabs) |
+| Ctrl+M | next available model (or click the model picker; hover a model for its state) |
+| Ctrl+T | light / dark theme (button in the title bar) |
+| Ctrl+O | Classify: open files (system dialog via xdg-desktop-portal, multi-select) |
+| Ctrl+V | Classify: paste an image, a URL, a `file://` URI or a path (inside the URL field it pastes text) |
+| Ctrl+L, Enter | Classify: focus the URL field; Enter fetches |
+| Up / Down | Classify: previous / next recent picture |
+| Left / Right or J / K | Demo: previous / next image (wraps around) |
+| Enter | Demo: classify the selected image with the selected model |
+| Ctrl+R | Demo: Run all · Benchmark: run |
+| Esc | stop Run all / the benchmark after the current image |
+| Ctrl+Q | quit |
 
-## What was verified (2026-10-18, on this laptop's CPU, inside a sandbox without GPU or display)
+The status bar shows the keys of the current tab (as Kit `Kbd` chips), the deployed backbone, the onnxruntime library,
+the execution provider and the JPEG decoder.
+
+* **Drag and drop** image files anywhere on the window (the border highlights); they open in the Classify tab.
+* **URL fetch**: HTTP(S) GET with a descriptive User-Agent, 20 s timeout, 20 MB cap. Proxies come from the
+  environment as with curl (`https_proxy`/`http_proxy`, then `all_proxy`; `no_proxy` is honoured). Wikimedia throttles
+  bursts (HTTP 429); wait a minute.
+* **Recent** list (left, last 40): each entry remembers which model classified it.
+* **Model loading** never blocks the window: the inference thread loads a model on first use (the deployed model is
+  pre-loaded at start-up). The model chip next to the picker shows "loading… n s", then the load time. Pictures
+  added meanwhile are queued.
+* Supported formats: JPEG, PNG, WebP, GIF (first frame), BMP, TIFF. EXIF orientation is applied, and transparency is
+  flattened onto white. AVIF is not supported.
+
+## Models
+
+| key | name | files | input | test accuracy (418, report) |
+|---|---|---|---|---|
+| `a` | A · Custom CNN (scratch) | `exports/itri626/A_scratch_cnn/{model.onnx, preprocess.json, labels.json}` | 160 px, **bilinear** | 148/418 |
+| `b` | B · ConvNeXt-T (fine-tuned) | `exports/itri626/B_convnext_tiny/…` (112 MB) | 224 px, ImageNet mean/std | 266/418 |
+| `c` | C · SigLIP ViT + linear head | output `probs_c` of `exports/final/model_multi.onnx` | 384 px | 343/418 (ONNX) |
+| `deployed` | Deployed (fused SigLIP) | output `probs` of `model_multi.onnx` (else `model.onnx`) | 384 px | 350/418 |
+
+`model_multi.onnx` is the deployed graph plus the model-C head on the same pooled feature. It reads the unchanged
+`model.onnx.data`, described in `exports/final/model_multi.json`. One forward pass gives both C and Deployed. Without
+it, Deployed uses `model.onnx`, and C is unavailable unless `exports/itri626/C_siglip_linear/head.json` (a folded linear
+head on a named graph output) exists. Missing files make a model show as unavailable (greyed out, with the reason in
+the tooltip and in `gpui-demo models`); the app never crashes on a missing model.
+
+**Unsure only for the deployed model.** Only the deployed model's probabilities are temperature-calibrated, and the
+0.5 abstain threshold was set for it. A, B and C output plain softmax probabilities, and at 0.5 A would abstain on
+73 % and B on 35 % of the test images. So A, B and C always commit to their top-1. When it is below 50 %, the result
+panel adds a "low confidence" note. In the Demo and Benchmark tabs, an out-of-scope photo therefore counts as correct
+only when the deployed model abstains.
+
+## Demo stack (`demo_stack/`, 1.8 MB)
+
+28 photos, none of which was used for training or model selection. 26 come from the independent Wikimedia Commons web
+holdout `data/web_holdout_v1` (evaluated once). The 2 out-of-scope photos are the credited demo images in
+`results/demo/wikimedia_credits.json`. `demo_stack/demo_stack.json` stores file, section, true label (`null` = not
+a component), title, author, licence, licence URL, source URL, a note, and the deployed model's prediction and
+confidence as verified by this binary. `demo_stack/ATTRIBUTION.md` holds the CC credits; the app shows them under
+each photo (hover a card for the source URL, click the licence or "Wikimedia Commons"). The stack is rebuilt and
+re-verified with
+
+```bash
+uv run --no-config apps/gpui-demo/scripts/build_demo_stack.py --bin apps/gpui-demo/target/release/gpui-demo
+```
+
+Sections: **One per class** (20 clean photos the deployed model gets right), **Hard cases** (5 instructive images:
+LED↔diode, toroidal transformer↔inductor, DIP switch↔IC, SMD inductor↔diode, a cluttered Arduino + breadboard scene)
+and **Not a component / abstains** (a coin-cell holder on a motherboard, a multimeter, a soldering iron). Verified
+results with the `turbojpeg` build (`classify --json --model all`):
+
+| model | One per class (20) | Hard cases (5) | Not a component / abstains (3) | total (28) |
+|---|---|---|---|---|
+| A · Custom CNN | 11 | 0 | 0 | 11 |
+| B · ConvNeXt-T | 16 | 1 | 0 | 17 |
+| C · SigLIP + linear | 20 | 1 | 0 | 21 |
+| Deployed | 20 | 0 | 1 | 21 |
+
+The soldering iron is a deliberate borderline case. After downscaling to 1024 px the deployed model says "jumper wire"
+at 50.6 %, just above the threshold, so it is not flagged. This shows that a confidence threshold is not a complete
+out-of-distribution detector.
+
+## What was verified (2026-10-20, on this laptop's CPU, in a sandbox without a GPU or a desktop display)
 
 | check | result |
 |---|---|
-| `cargo build --release --locked` (Rust 1.99.1) | ✓ (also with `--features turbojpeg`, and `clippy` with `--features turbojpeg,cuda`) |
-| `cargo test --release` | 16/16 unit tests pass |
-| `cargo clippy --release` | no warnings in this crate |
-| parity, 64 dev images vs PyTorch `row_probs.npz` (default build) | argmax 64/64, UNSURE decision 64/64, max \|Δp\| 0.024 (mean of per-image max 0.0023) |
-| parity, same images, `--features turbojpeg` | argmax 64/64, input tensor bit-identical to Pillow, max \|Δp\| 0.0029 (onnxruntime vs PyTorch) |
-| model load (onnxruntime 1.31.0 CPU, 1.7 GB weights, file in page cache) | 1.1–1.9 s |
-| latency per image (preprocess + inference, CPU) | median 1.20 s, p90 1.25 s (default build); turbojpeg build median 1.26 s |
-| URL fetch | Wikimedia resistor photo → `resistor 0.998` |
-| GUI window | **not launched here**: no display server, no Xvfb/weston, and no software Vulkan (lavapipe) in the sandbox, and conda-forge was unreachable. The no-display error path was checked. The GUI code compiles and type-checks against gpui 0.2.2, but its first real run is on your desktop. |
+| `cargo build --release --locked` and `--features turbojpeg` (Rust 1.99.1) | ✓ |
+| `cargo clippy --release --locked --all-targets` (default; `turbojpeg,cuda`; `hotpath,hotpath-alloc`) | no warnings |
+| `cargo test --release --locked` | 30/30 pass. They cover the earlier preprocessing, contract and fetch tests, the bilinear kernel, demo_stack.json parsing and locating, the model registry and `model_multi.json`, benchmark statistics, and a **headless GUI smoke test** (GPUI Kit's test platform: builds the real window, renders all three tabs, keyboard stepping) |
+| parity, 64 dev images vs PyTorch `row_probs.npz` (`scripts/parity.py`, turbojpeg build) | argmax 64/64, UNSURE 64/64, input tensors bit-identical, max \|Δp\| 0.0029: unchanged from 2026-10-18 |
+| A and B input tensors vs Pillow (`compclass.demo.preprocess`), every 10th test image | 42/42 bit-identical each (A uses the new bilinear resize) |
+| A and B on all 418 test images (`classify --model a,b`) | 148/418 and 266/418, exactly the exported ONNX accuracy; argmax agreement with the report's PyTorch predictions 417/418 and 418/418 |
+| Deployed from `model_multi.onnx` vs `model.onnx` on the demo stack | same top-1 on 28/28, \|Δp\| ≤ 5·10⁻⁵ (JSON rounding) |
+| GUI window | rendered in a virtual X server (Xvfb + Mesa software GL); every tab was screenshotted in light and dark themes, with Run all and the benchmark run to completion. Not tested: a real Wayland/X11 desktop, the GPU renderer, drag and drop, the file dialog and the clipboard. |
 
-Full numbers: `results/demo/gpui_parity.json`.
+## Profiling
+
+Build with the optional `hotpath` feature ([hotpath](https://hotpath.rs)). Without it, the crate is not in the build,
+and every instrumented block (`prof!` in the source) compiles to plain code.
+
+```bash
+cargo build --release --features turbojpeg,hotpath           # add hotpath-alloc for per-block allocation counts
+./target/release/gpui-demo classify --model all demo_stack/*.jpg > /dev/null   # report printed on exit
+HOTPATH_SHUTDOWN_MS=90000 HOTPATH_OUTPUT_PATH=gui.txt ./target/release/gpui-demo --tab benchmark --autorun
+```
+
+Instrumented blocks: `cli::read/decode`, `job::read/decode/display_texture/predict` (GUI worker),
+`preprocess::to_tensor`, `onnx::run`, `models::load_engine`, `demo::decode_and_thumbnail` and
+`gui::build_tab_elements` (element-tree construction for each frame, on the UI thread). The system tools work on the
+headless path (perf needs access to hardware counters, `perf_event_paranoid` ≤ 1 or root):
+
+```bash
+perf stat -d ./target/release/gpui-demo classify demo_stack/*.jpg > /dev/null
+perf record --call-graph dwarf -o perf.data ./target/release/gpui-demo classify --model all demo_stack/0*.jpg > /dev/null
+perf report -i perf.data --no-children | head -60
+./target/release/gpui-demo --tab benchmark --autorun & pidstat -r -u -t -p $! 5     # CPU / RSS per thread
+```
+
+Measured in the sandbox (8 CPUs visible; `perf` could not run there because no PMU events were available, so these
+numbers come from hotpath and pidstat):
+
+| what | number |
+|---|---|
+| UI thread: building a frame's element tree (1,149 frames during a benchmark run) | mean 0.44 ms, p95 0.84 ms |
+| demo stack: decode once + 360 px thumbnail + display texture, 28 images in parallel | 11 ms each, 37 ms wall |
+| benchmark, 28 images × 4 models (3 graph runs per image: A, B, shared SigLIP) | 2.06 s per image, 57–62 s total |
+| inference per image (preprocess + run): A / B / SigLIP (C + Deployed together) | ≈ 3–5 ms / 100–126 ms / 1.84–1.99 s |
+| memory with all four models loaded (SigLIP once) | 2.4 GB RSS |
+| idle after a run (only a 250 ms tick that stops when nothing is busy) | < 1 % CPU |
+| display texture (BGRA copy), 12 MP photo → 1280 px / → 360 px | 65 → 52 ms / 31 → 17 ms: now resized in place without a full-size copy |
+| headless `classify`, 8 images, deployed model: previous binary vs this one | 13.3 s vs 13.8 s wall (same code path; difference is noise) |
+
+What keeps the live demo smooth: all decoding, fetching, model loading and inference run off the UI thread
+(`inference` and `thumbnails` threads). Thumbnails are decoded once and kept as textures at display size. A demo image
+is decoded once and its RGB pixels are reused by every later classification. C and Deployed share one SigLIP session
+and one forward pass. Run all and the benchmark submit one image at a time, so they stay cancellable and the
+Classify tab can still interleave its own jobs.
 
 ## Design choices and pinned versions
 
 | piece | pinned | why |
 |---|---|---|
-| UI | `gpui = "=0.2.2"` (crates.io, published by zed-industries on 2025-10-22) | The official Zed release, and the newest one on crates.io. GPUI lives in Zed's monorepo and changes API between Zed releases; a git pin of zed-industries/zed would pull the whole monorepo and still break. Community forks (`gpui-ce`, `gpui-pre`, which `gpui-component` 0.7 depends on, and `gpui-unofficial`) are not maintained by Zed. So this app uses only plain GPUI elements, with no widget library; the URL field is a small hand-written key handler. |
-| inference | `ort = "=2.0.0-rc.14"`, features `load-dynamic`, `api-22` | `load-dynamic` dlopens libonnxruntime at runtime: nothing is downloaded at build time and the CUDA build is just a different `.so`. `api-22` asks only for the onnxruntime 1.22 C API (the rc.14 default would require 1.31), so any onnxruntime ≥ 1.22 works. |
+| UI | `gpui-kit = "=0.7.3"` | GPUI Kit (longbridge, formerly `gpui-component`) is the component library: `TitleBar`, `TabBar`, `Button`/`ButtonGroup`, `Input`, `Tag`, `Progress`, `Spinner`, `Alert`, `Kbd`, `Tooltip`, `Switch`, `Empty`, `StatusBar`, notifications, scrollbars and its light/dark themes. It pins and re-exports its own GPUI snapshot (`gpui-pre 0.3.9`), so the app has no direct GPUI dependency. Exact pin because the API changes between pre-1.0 releases. (0.8.0 was published while this port was made; it was not tested.) |
+| inference | `ort = "=2.0.0-rc.14"`, features `load-dynamic`, `api-22` | `load-dynamic` dlopens libonnxruntime at runtime, so nothing is downloaded at build time and the CUDA build is just a different `.so`. `api-22` requires only the onnxruntime 1.22 C API. ort allows one environment per process; all sessions share it. |
 | decode | `image = "0.25.10"` (+ optional `turbojpeg = "=1.5.1"`) | see "Preprocessing parity" |
-| resize | own code (`src/preprocess.rs`) | a port of Pillow's `Resample.c`; see below |
+| resize | own code (`src/preprocess.rs`) | a port of Pillow's `Resample.c` (bicubic and bilinear); see below |
 | HTTP | `ureq = "3.4"` (rustls) | small and blocking (it runs on the worker thread), no OpenSSL needed |
-| libc | locked to **0.2.189** in `Cargo.lock` | libc 0.2.191 removed the deprecated Linux `ENOATTR` constant, and `xattr 0.2.3` (pulled in by `gpui 0.2.2 → gpui_http_client → zed-async-tar`) no longer compiles against it. Keep the committed `Cargo.lock`, and do not run `cargo update` without re-checking this. |
+| profiling | `hotpath = "0.28"`, optional | see "Profiling" |
+| libc | normal (0.2.191 in `Cargo.lock`) | The old pin to 0.2.189 is no longer needed: it existed only for `xattr 0.2.3`, which GPUI 0.2.2 pulled in and GPUI Kit's GPUI does not. |
 
-The `Cargo.lock` is committed. Build with `cargo build --release --locked` to make sure the exact versions are used.
+The `Cargo.lock` is committed; build with `--locked`.
 
 ### Preprocessing parity
 
-`preprocess.json` says: resize so the short side is 427 (Pillow bicubic), centre-crop 384, RGB, ×1/255,
-(x−0.5)/0.5, NCHW. Rust's `image` CatmullRom filter is not bit-identical to Pillow's. So
+Each model folder's `preprocess.json` gives its own transform. Deployed and C: short side 427 (Pillow bicubic),
+centre-crop 384, ×1/255, (x−0.5)/0.5. B: 256 bicubic, crop 224, ImageNet mean/std. A: 183 **bilinear**, crop 160,
+(x−0.5)/0.5. All are RGB NCHW. Rust's `image` CatmullRom filter is not bit-identical to Pillow's. So
 `src/preprocess.rs` ports Pillow's algorithm directly:
-* Keys cubic with a = −0.5, the support widened by the downscale factor (antialias), coefficients normalised in
-  double precision and then quantised to 22-bit fixed point;
+* Keys cubic with a = −0.5 (support 2) or the triangle filter 1 − |x| (bilinear, support 1), the support widened by
+  the downscale factor (antialias), coefficients normalised in double precision and then quantised to 22-bit fixed
+  point;
 * horizontal pass first, over only the rows the vertical pass reads, each pass rounded and clipped to u8;
 * torchvision's truncated long side, and `CenterCrop`'s Python `round()` (half-to-even);
 * the same float32 arithmetic as numpy for the normalisation.
@@ -150,33 +270,44 @@ GPU is in use. This path was not tested (no GPU access on the build machine).
   `classify`.
 * **Wayland vs X11**: GPUI uses Wayland when `WAYLAND_DISPLAY` is set, otherwise X11 (XWayland works). To force
   X11 on a Wayland desktop, run `WAYLAND_DISPLAY= ./gpui-demo`. On compositors without server-side decorations
-  (GNOME), the app draws its own title bar (drag it to move, ✕ to close).
-* **Vulkan**: GPUI renders with Vulkan (blade-graphics). Check with `vulkaninfo --summary` (package
-  `vulkan-tools`). The RTX 3060 needs `nvidia-utils` (the ICD `/usr/share/vulkan/icd.d/nvidia_icd.json`). On an
-  Optimus laptop, either works: the iGPU's Mesa driver (`vulkan-intel`/`vulkan-radeon`) or
-  `prime-run ./gpui-demo`. If no hardware Vulkan driver is present, install `vulkan-swrast` (lavapipe): slow
-  but works. A crash at startup that mentions `blade`/`vk` almost always means a missing Vulkan ICD.
+  (GNOME), the Kit `TitleBar` draws the window controls (drag the bar to move, double-click to maximise).
+* **GPU / renderer**: GPUI Kit's GPUI renders with wgpu, which tries Vulkan first and falls back to OpenGL (EGL).
+  Check Vulkan with `vulkaninfo --summary` (package `vulkan-tools`); the RTX 3060 needs `nvidia-utils`. On an
+  Optimus laptop, either the iGPU's Mesa driver or `prime-run ./gpui-demo` works. Without any GPU driver Mesa's
+  software GL (llvmpipe) still renders: `__EGL_VENDOR_LIBRARY_FILENAMES=/usr/share/glvnd/egl_vendor.d/50_mesa.json
+  LIBGL_ALWAYS_SOFTWARE=1 ./gpui-demo` (this is how the screenshots in the sandbox were made).
 * **Ctrl+O does nothing / "File dialog unavailable"**: GPUI's Linux file dialog goes through
   xdg-desktop-portal. Install `xdg-desktop-portal` plus a backend (`-gtk`, `-kde`, `-gnome` or `-wlr`).
   Drag-and-drop and paste work without it.
 * **Fonts look wrong / missing glyphs**: GPUI needs fontconfig and at least one sans font (e.g. `noto-fonts`).
-* **First build fails on `xattr`**: `Cargo.lock` was regenerated with libc ≥ 0.2.191. Run
-  `cargo update -p libc --precise 0.2.189`.
 * **onnxruntime prints `pthread_setaffinity_np failed`**: harmless (seen in containers and sandboxes). Pass
   `--threads N` to silence it.
+
+* **"A · CNN … not exported" / buttons greyed out**: the model files are missing. `gpui-demo models` lists what the
+  registry found and why the rest is unavailable (see "Models" above).
+* **Demo tab says "Demo stack not found"**: start the app from inside the repository, or pass
+  `--demo-dir apps/gpui-demo/demo_stack` (or set `COMPCLASS_DEMO_DIR`).
 
 ## Layout
 
 ```
-src/main.rs        CLI (window / classify / preprocess), help text
-src/gui.rs         GPUI view, actions, key bindings, inference worker thread
-src/model.rs       model dir + libonnxruntime discovery, ort session, predict()
-src/preprocess.rs  decode (EXIF, alpha-on-white, gray), Pillow-exact bicubic, crop, normalise; unit tests
-src/contract.rs    preprocess.json / labels.json, top-3 + UNSURE rule; unit tests
-src/fetch.rs       path / file:// / URL sources, HTTP with UA, timeout, size cap; unit tests
-scripts/parity.py  parity vs the Python/PyTorch reference on dev images
+src/main.rs            CLI (window / classify [--model] / preprocess / models), help text, prof! macro
+src/gui.rs             window shell: Kit TitleBar, TabBar + model picker, StatusBar, actions and key bindings
+src/gui/classify.rs    Classify tab: toolbar (Button, Input), recent list, picture, result panel
+src/gui/demo_tab.rs    Demo tab: sectioned thumbnail grid, detail pane with verdict + attribution, Run all
+src/gui/bench.rs       Benchmark tab: live run over all models, summary cards, per-image matrix, disagreement filter
+src/gui/widgets.rs     probability bars, prediction block, verdict / model-state tags, Kbd hints
+src/gui/worker.rs      inference thread (model registry, jobs) and thumbnail decoding thread
+src/gui/tests.rs       headless GUI smoke test (GPUI Kit test platform)
+src/models.rs          model registry: A/B/C/Deployed discovery, model_multi.json, lazy shared sessions, predict
+src/model.rs           model dir + libonnxruntime discovery, Runtime (one ort environment), Classifier, Engine
+src/demo.rs            demo_stack.json parsing, locating, correct/wrong judgement
+src/preprocess.rs      decode (EXIF, alpha-on-white, gray), Pillow-exact bicubic/bilinear, crop, normalise
+src/contract.rs        preprocess.json / labels.json, top-3 + UNSURE rule
+src/fetch.rs           path / file:// / URL sources, HTTP with UA, timeout, size cap
+demo_stack/            the 28 demo photos + demo_stack.json + ATTRIBUTION.md
+scripts/parity.py      parity vs the Python/PyTorch reference on dev images
+scripts/build_demo_stack.py   rebuilds and re-verifies demo_stack/
 ```
 
-`cargo test --release` runs the unit tests: preprocessing shape and normalisation, the Pillow kernel, crop
-rounding, alpha and grayscale handling, the label/threshold rule, source parsing. They need neither the model nor a
-display. `cargo clippy --release` should report no warnings in this crate.
+`cargo test --release` needs neither the model files nor a display.
