@@ -87,7 +87,7 @@ for m in A_scratch_cnn B_convnext_tiny; do
     for f in model.onnx preprocess.json labels.json; do cp "$REPO/exports/itri626/$m/$f" "$OUT/exports/itri626/$m/"; done
 done
 cp -r "$APP/demo_stack" "$OUT/demo_stack"
-cp "$APP/packaging/run.sh" "$OUT/run.sh" && chmod 755 "$OUT/run.sh" "$OUT/gpui-demo"
+cp "$APP/packaging/run.sh" "$OUT/run.sh" && cp "$APP/packaging/run-nixos.sh" "$OUT/run-nixos.sh" && chmod 755 "$OUT/run.sh" "$OUT/run-nixos.sh" "$OUT/gpui-demo"
 cp "$APP/packaging/README.txt" "$OUT/README.txt"
 
 # ---------------------------------------------------------------------------------------------- 4. licences

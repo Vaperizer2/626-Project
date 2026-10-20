@@ -101,3 +101,13 @@ LICENSES/                  licences: onnxruntime (MIT), Noto Sans (SIL OFL 1.1, 
 SHA256SUMS                 checksums of every file
 
 The app writes nothing to disk except what you ask it to (it keeps no settings or caches).
+
+NixOS (niri, sway, Hyprland, ...)
+---------------------------------
+The plain ./run.sh cannot start on NixOS (no /lib64 loader, no /usr/lib), and if the Wayland libraries are not found
+the app falls back to X11, which niri does not provide. Use the NixOS launcher instead; it takes the libraries from
+your nixpkgs (first run downloads them once, cached in ~/.cache/component-classifier) and starts the app on Wayland:
+    ./run-nixos.sh                  open the window
+    ./run-nixos.sh --doctor         show which libraries/drivers were found (send this output if it fails)
+    ./run-nixos.sh --x11            use X11 via xwayland-satellite instead
+Requires hardware.graphics.enable = true (GPU drivers in /run/opengl-driver).
