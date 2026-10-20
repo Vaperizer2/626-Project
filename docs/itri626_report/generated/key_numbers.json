@@ -288,7 +288,7 @@
   "source": "metrics.json A peak_vram_mb"
  },
  "vramB": {
-  "value": "2312",
+  "value": "2,312",
   "source": "metrics.json B peak_vram_mb"
  },
  "paramsHead": {
@@ -1528,7 +1528,7 @@
   "source": "efficiency.csv C_siglip_so400m_linear params / 1e6"
  },
  "fpMBC": {
-  "value": "1633.6",
+  "value": "1,633.6",
   "source": "efficiency.csv C_siglip_so400m_linear fp32_weights_mb"
  },
  "gpuRatioCB": {

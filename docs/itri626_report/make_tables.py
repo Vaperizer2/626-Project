@@ -25,10 +25,14 @@ OUT = Path(__file__).resolve().parent / "generated"
 RES = ROOT / "results" / "itri626"
 MAIN = ["A_scratch_cnn", "B_convnext_tiny", "C_siglip_so400m_linear"]
 REFS = ["R1_sklearn_probe", "R2_deployed_fused"]
-SHORT = {"A_scratch_cnn": "A: custom CNN", "B_convnext_tiny": "B: ConvNeXt-T FT",
-         "C_siglip_so400m_linear": "C: SigLIP ViT + linear",
+SHORT = {"A_scratch_cnn": "A: scratch CNN", "B_convnext_tiny": "B: ConvNeXt-T (fine-tuned)",
+         "C_siglip_so400m_linear": "C: SigLIP ViT (frozen + linear)",
          "R1_sklearn_probe": "R1: SigLIP + sklearn probe", "R2_deployed_fused": "R2: deployed fused model"}
 LETTER = {"A_scratch_cnn": "A", "B_convnext_tiny": "B", "C_siglip_so400m_linear": "C"}
+# table label with the model's figure colour (\\msq{A} is defined in main.tex: a small square in colour mA/mB/mC)
+TSHORT = {n: (f"\\msq{{{LETTER[n]}}}" + v if n in LETTER else v) for n, v in SHORT.items()}
+# compact class names where three confusion pairs must share one line (Table 7)
+ABBR = {"microcontroller board": "MCU board"}
 
 NUM: dict[str, tuple[str, str]] = {}   # macro name -> (value, source)
 
@@ -183,10 +187,13 @@ def main() -> None:
         "transformer": "coupled windings on a laminated core",
         "transistor": "three-terminal semiconductor (TO-92, TO-220)",
     }
-    lines = [r"\begin{tabular}{@{}l>{\raggedright\arraybackslash}p{5.2cm}rrrrrrrr@{}}", r"\toprule",
-             r"Class & Definition used in this report & Raw & Uniq. & Excl. & Final & Train & Val & Test & OOD \\",
+    lines = [r"\begin{tabularx}{\textwidth}{@{}lY*{8}{r}@{}}", r"\toprule",
+             r" & & \multicolumn{4}{c}{Cleaning} & \multicolumn{3}{c}{Split} & \\ \cmidrule(lr){3-6}\cmidrule(lr){7-9}",
+             r"Class & Definition & Raw & Uniq. & Excl. & Final & Train & Val & Test & Flag. \\",
              r"\midrule"]
-    for k in classes:
+    for i_, k in enumerate(classes):
+        if i_ and i_ % 5 == 0:
+            lines.append(r"\addlinespace[2pt]")
         r = rows[k]
         lines.append(f"{k} & {defs[k]} & {r['raw_files']} & {r['unique_after_exact_dedup']} & "
                      f"{r['excluded_conflict_files']} & {r['final_rows']} & {r['train']} & {r['val']} & {r['test']} & {r['ood_flagged']} \\\\")
@@ -194,7 +201,7 @@ def main() -> None:
     lines += [r"\midrule",
               f"Total & & {int(t['raw_files']):,} & {int(t['unique_after_exact_dedup']):,} & {t['excluded_conflict_files']} & "
               f"{int(t['final_rows']):,} & {int(t['train']):,} & {t['val']} & {t['test']} & {t['ood_flagged']} \\\\",
-              r"\bottomrule", r"\end{tabular}"]
+              r"\bottomrule", r"\end{tabularx}"]
     write("tab_dataset.tex", "\n".join(lines))
 
     # ---------------------------------------------------------------- table: cleaning pipeline
@@ -204,11 +211,11 @@ def main() -> None:
         (f"\\quad redundant exact copies ({c['exact_dup_groups']} duplicate groups)", c["exact_dup_redundant_files"], "collapsed to one"),
         ("\\quad corrupt or undecodable files", c["unique_sha256"] - c["decoded_unique"], r"--"),
         (f"\\quad duplicate groups with conflicting labels ({tot['excluded_conflict_files']} files)", c["exact_dup_conflicting_label_groups"], "removed"),
-        ("Final images (rows of the manifest)", f"{c['rows']:,}", "kept"),
-        (f"\\quad rows in near-duplicate clusters ({c['near_dup_clusters']} clusters, size 2--{max(int(k) for k in hist)})",
+        ("Final images", f"{c['rows']:,}", "kept"),
+        (f"\\quad images in near-duplicate clusters ({c['near_dup_clusters']} clusters, size 2--{max(int(k) for k in hist)})",
          c["rows_in_near_dup_clusters"], "kept, grouped"),
-        ("\\quad split units (clusters incl.\\ singletons)", f"{c['clusters']:,}", r"--"),
-        ("\\quad rows flagged out-of-scope by the CLIP screen", c["ood_suspect"], "kept, flagged"),
+        ("\\quad split units: clusters incl.\\ singletons (groups, not images)", f"{c['clusters']:,}", r"--"),
+        ("\\quad images flagged as possibly off-topic (CLIP screen)", c["ood_suspect"], "kept, flagged"),
     ]
     lines = [r"\begin{tabular}{@{}lrl@{}}", r"\toprule", r"Step & Count & Action \\", r"\midrule"]
     lines += [f"{a} & {b} & {d} \\\\" for a, b, d in cleaning]
@@ -231,8 +238,8 @@ def main() -> None:
         return cs["patience"] if n == MAIN[2] else cfg[n]["train"]["patience"]
 
     fields = [
-        ("Model / variant", [r"custom VGG-style CNN, width 32, 4 stages, dropout 0.3",
-                             r"ConvNeXt-Tiny, stochastic depth 0.1",
+        ("Model / variant", [r"VGG-style CNN (scratch), width 32, 4 stages, dropout 0.3",
+                             r"ConvNeXt-Tiny, stochastic depth (drop-path rate) 0.1",
                              r"ViT-So400m/14 (SigLIP), frozen; \texttt{nn.Linear(1152,\,20)} head"]),
         ("Pretrained weights", [r"none (He initialisation)",
                                 r"\file{convnext_tiny.fb_in22k_ft_in1k} (ImageNet-22k$\rightarrow$1k)",
@@ -268,10 +275,25 @@ def main() -> None:
     assert cfg[MAIN[0]]["aug"]["rrc_scale"] == [0.35, 1.0] and cfg[MAIN[1]]["aug"]["rrc_scale"] == [0.5, 1.0]
     assert cfg[MAIN[0]]["aug"]["color_jitter"] == 0.2 and cfg[MAIN[1]]["aug"]["color_jitter"] == 0.0
     assert all(cfg[n]["aug"][k] == 0.0 for n in MAIN[:2] for k in ("vflip", "mixup", "cutmix", "random_erasing"))
-    lines = [r"\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.0cm}YYY@{}}", r"\toprule",
-             r" & \textbf{A}: custom CNN (scratch) & \textbf{B}: ConvNeXt-T (fine-tuned) & \textbf{C}: SigLIP ViT (frozen + linear) \\",
+    lines = [r"\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.1cm}YYY@{}}", r"\toprule",
+             r" & " + " & ".join(r"\msq{" + LETTER[n] + r"}\textbf{" + SHORT[n].split(": ")[0] + "}: " + SHORT[n].split(": ")[1]
+                                 for n in MAIN) + r" \\",
              r"\midrule"]
-    lines += [f"{f} & " + " & ".join(vals) + r" \\" for f, vals in fields]
+    groups = {"Model / variant": "Model", "Input size (px)": "Data and augmentation", "Optimiser": "Optimisation",
+              "Early stopping": "Regularisation and stopping", "Numerical precision": "Runtime"}
+    order = ["Model / variant", "Pretrained weights", "Trainable / total params",
+             "Input size (px)", "Augmentation (training only)", "Class weights / sampling", "Batch size; grad.\\ accumulation",
+             "Optimiser", "Learning rate", "LR schedule", "Weight decay", "Loss",
+             "Early stopping", "Epochs (max / run / best)",
+             "Numerical precision", "Random seed (training; split)", "Training time"]
+    fd = dict(fields)
+    assert sorted(order) == sorted(fd), set(fd) ^ set(order)
+    for f in order:
+        if f in groups:
+            if f != order[0]:
+                lines.append(r"\addlinespace[3pt]")
+            lines.append(r"\multicolumn{4}{@{}l}{\textsc{" + groups[f].lower() + r"}} \\")
+        lines.append(f"{f} & " + " & ".join(fd[f]) + r" \\")
     lines += [r"\bottomrule", r"\end{tabularx}"]
     write("tab_hparams.tex", "\n".join(lines))
     for n in MAIN:
@@ -281,7 +303,7 @@ def main() -> None:
         num(f"maxEpochs{L}", max_ep(n), f"results/itri626/runs/{n}.json max epochs")
         num(f"time{L}", runs[n]["train_time_s"], f"results/itri626/runs/{n}.json train_time_s")
     num("vramA", M["models"][MAIN[0]]["peak_vram_mb"], "metrics.json A peak_vram_mb")
-    num("vramB", M["models"][MAIN[1]]["peak_vram_mb"], "metrics.json B peak_vram_mb")
+    num("vramB", f'{M["models"][MAIN[1]]["peak_vram_mb"]:,}', "metrics.json B peak_vram_mb")
     num("paramsHead", f"{runs[MAIN[2]]['trainable_params']:,}", "runs/C trainable_params")
     num("paramsA", f"{int(hp[MAIN[0]]['total_params']):,}", "hyperparameters.csv A total_params")
     num("paramsB", f"{int(hp[MAIN[1]]['total_params']):,}", "hyperparameters.csv B total_params")
@@ -309,13 +331,13 @@ def main() -> None:
         ("timm (architectures and weights)", pk["timm"]), (r"open\_clip\_torch", pk["open_clip_torch"]),
         ("scikit-learn / NumPy / pandas", f"{pk['scikit-learn']} / {pk['numpy']} / {pk['pandas']}"),
         ("Pillow / matplotlib", f"{pk['pillow']} / {pk['matplotlib']}"),
-        ("ONNX / onnxruntime (deployment only)", f"{pk['onnx']} / {pk['onnxruntime']}"),
+        ("ONNX / onnxruntime (deployment)", f"{pk['onnx']} / {pk['onnxruntime']}"),
         ("CUDA (torch build) / cuDNN", f"{env['torch_cuda']} / {env['cudnn']}"),
         ("GPU", f"{env['gpu']['name']}, {env['gpu']['memory_gib']}\\,GiB memory (compute capability {env['gpu']['compute_capability']})"),
         ("NVIDIA driver", env["nvidia_driver"]),
         ("CPU / RAM", f"{env['cpu']} ({env['cpu_logical_cores']} logical cores) / {env['ram_gib']}\\,GiB"),
         ("Operating system", tex_escape(env["platform"])),
-        ("Environment manager", r"uv (\texttt{pyproject.toml} + \texttt{uv.lock})"),
+        ("Environment manager", r"uv (lock file \texttt{uv.lock})"),
     ]
     lines = [r"\begin{tabularx}{\textwidth}{@{}lY@{}}", r"\toprule", r"Component & Version / specification \\", r"\midrule"]
     lines += [f"{a} & {b} \\\\" for a, b in envrows]
@@ -355,14 +377,16 @@ def main() -> None:
         for k, _ in cols:
             s = f3(t[k])
             cells.append(r"\textbf{" + s + "}" if abs(t[k] - best[k]) < 1e-12 else s)
-        lines.append(f"{SHORT[n]} & " + " & ".join(cells) + r" \\")
-        lines.append(r"\quad 95\% CI & " + f"{ci[n]['acc'][0]:.3f}--{ci[n]['acc'][1]:.3f} & & & & "
-                     f"{ci[n]['f1'][0]:.3f}--{ci[n]['f1'][1]:.3f} & & \\\\")
+        if n != MAIN[0]:
+            lines.append(r"\addlinespace[2pt]")
+        lines.append(f"{TSHORT[n]} & " + " & ".join(cells) + r" \\")
+        lines.append(r"\quad{\scriptsize\color{black!60}95\% CI} & " + f"{{\scriptsize\color{{black!60}}[{ci[n]['acc'][0]:.3f}, {ci[n]['acc'][1]:.3f}]}} & & & & "
+                     f"{{\scriptsize\color{{black!60}}[{ci[n]['f1'][0]:.3f}, {ci[n]['f1'][1]:.3f}]}} & & \\\\")
     lines.append(r"\midrule")
     lines.append(r"\multicolumn{8}{@{}l}{\textit{Reference rows (same frozen SigLIP features as C; not additional models)}} \\")
     for n in REFS:
         t = M["references"][n]["test"]
-        lines.append(f"{SHORT[n]} & " + " & ".join(f3(t[k]) for k, _ in cols) + r" \\")
+        lines.append(r"{\color{black!60}" + SHORT[n] + "} & " + " & ".join(r"{\color{black!60}" + f3(t[k]) + "}" for k, _ in cols) + r" \\")
     lines += [r"\bottomrule", r"\end{tabular}"]
     write("tab_test_metrics.tex", "\n".join(lines))
     for n in MAIN:
@@ -457,8 +481,8 @@ def main() -> None:
         L_ += [r"\bottomrule", r"\end{tabular}"]
         return "\n".join(L_)
 
-    write("tab_per_class.tex", per_class_table(MAIN, {"A_scratch_cnn": "A: custom CNN", "B_convnext_tiny": "B: ConvNeXt-T",
-                                                      "C_siglip_so400m_linear": "C: SigLIP + linear"}))
+    write("tab_per_class.tex", per_class_table(MAIN, {"A_scratch_cnn": r"\msq{A}A: scratch CNN", "B_convnext_tiny": r"\msq{B}B: ConvNeXt-T",
+                                                      "C_siglip_so400m_linear": r"\msq{C}C: SigLIP ViT"}))
     write("tab_per_class_refs.tex", per_class_table(REFS, {"R1_sklearn_probe": "R1: sklearn probe", "R2_deployed_fused": "R2: deployed"}))
     for n in MAIN:
         L = LETTER[n]
@@ -481,7 +505,7 @@ def main() -> None:
 
     # ---------------------------------------------------------------- most-confused pairs
     lines = [r"\begin{tabular}{@{}c" + "lr" * 3 + r"@{}}", r"\toprule",
-             r" & " + " & ".join(rf"\multicolumn{{2}}{{c}}{{{SHORT[n]}}}" for n in MAIN) + r" \\",
+             r" & " + " & ".join(rf"\multicolumn{{2}}{{c}}{{{TSHORT[n]}}}" for n in MAIN) + r" \\",
              r"\cmidrule(lr){2-3} \cmidrule(lr){4-5} \cmidrule(lr){6-7}",
              r"\# & True $\rightarrow$ predicted & $n$ & True $\rightarrow$ predicted & $n$ & True $\rightarrow$ predicted & $n$ \\",
              r"\midrule"]
@@ -496,7 +520,7 @@ def main() -> None:
         cells = []
         for n in MAIN:
             cnt, a, b = tops[n][r]
-            cells += [f"{a} $\\rightarrow$ {b}", str(cnt)]
+            cells += [f"{ABBR.get(a, a)} $\\rightarrow$ {ABBR.get(b, b)}", str(cnt)]
         lines.append(f"{r + 1} & " + " & ".join(cells) + r" \\")
     total = sum(np.asarray(M["models"][n]["test"]["confusion"]) for n in MAIN)
     offt = sorted(((int(total[i, j]), classes[i], classes[j]) for i in range(20) for j in range(20) if i != j),
@@ -532,7 +556,7 @@ def main() -> None:
         b = runs[n]["best_epoch"]
         e = h[b]
         assert abs(e["val_macro_f1"] - M["models"][n]["val_at_best_epoch"]["macro_f1"]) < 1e-9
-        lines.append(f"{SHORT[n]} & {len(h)} & {b + 1} & {e['train_acc']:.3f} & {e['val_acc']:.3f} & {e['val_macro_f1']:.3f} & "
+        lines.append(f"{TSHORT[n]} & {len(h)} & {b + 1} & {e['train_acc']:.3f} & {e['val_acc']:.3f} & {e['val_macro_f1']:.3f} & "
                      f"{e['train_ce']:.3f} & {e['val_loss']:.3f} \\\\")
         L = LETTER[n]
         num(f"trainAcc{L}", e["train_acc"], f"histories.json {n}[best].train_acc", ".2f")
@@ -567,19 +591,20 @@ def main() -> None:
 
     # ---------------------------------------------------------------- efficiency
     eff = {r["model"]: r for r in read_csv("results/itri626/efficiency.csv")}
-    lines = [r"\begin{tabular}{@{}lrrrrrrr@{}}", r"\toprule",
-             r"Model & Params & Trainable & Input & Checkpoint & GPU, $b=1$ & GPU, $b=32$ & CPU, $b=1$ \\",
-             r" & (M) & params & (px) & (MB) & (ms/img) & (ms/img) & (ms/img) \\", r"\midrule"]
+    lines = [r"\begin{tabular}{@{}l S[table-format=3.2] S[table-format=8.0, group-minimum-digits=4] S[table-format=3.0] "
+             r"S[table-format=3.2] S[table-format=2.2] S[table-format=2.3] S[table-format=3.1]@{}}", r"\toprule",
+             r"Model & {Params} & {Trainable} & {Input} & {Checkpoint} & {GPU, $b=1$} & {GPU, $b=32$} & {CPU, $b=1$} \\",
+             r" & {(M)} & {params} & {(px)} & {(MB)} & {(ms/img)} & {(ms/img)} & {(ms/img)} \\", r"\midrule"]
     for n in MAIN:
         e = eff[n]
-        lines.append(f"{SHORT[n]} & {int(e['params']) / 1e6:.2f} & {int(e['trainable_params']):,} & {e['input_size']} & "
+        lines.append(f"{TSHORT[n]} & {int(e['params']) / 1e6:.2f} & {int(e['trainable_params'])} & {e['input_size']} & "
                      f"{float(e['checkpoint_mb']):.2f} & {float(e['gpu_ms_per_image_batch1_fp16']):.2f} & "
                      f"{float(e['gpu_ms_per_image_batch32_fp16']):.3f} & {float(e['cpu_ms_per_image_batch1_fp32_8threads']):.1f} \\\\")
         L = LETTER[n]
         num(f"gpuMs{L}", float(e["gpu_ms_per_image_batch1_fp16"]), f"efficiency.csv {n} gpu_ms_per_image_batch1_fp16")
         num(f"cpuMs{L}", float(e["cpu_ms_per_image_batch1_fp32_8threads"]), f"efficiency.csv {n} cpu_ms_per_image_batch1_fp32_8threads")
         num(f"paramsM{L}", int(e["params"]) / 1e6, f"efficiency.csv {n} params / 1e6", ".1f")
-        num(f"fpMB{L}", float(e["fp32_weights_mb"]), f"efficiency.csv {n} fp32_weights_mb")
+        num(f"fpMB{L}", f'{float(e["fp32_weights_mb"]):,}', f"efficiency.csv {n} fp32_weights_mb")
     lines += [r"\bottomrule", r"\end{tabular}"]
     write("tab_efficiency.tex", "\n".join(lines))
     num("gpuRatioCB", float(eff[MAIN[2]]["gpu_ms_per_image_batch1_fp16"]) / float(eff[MAIN[1]]["gpu_ms_per_image_batch1_fp16"]),
@@ -592,7 +617,7 @@ def main() -> None:
     key = {(r["name"], r["schedule"]): r for r in bm}
     fam = [  # label, fine-tune row, probe row, zero-shot row, classical row
         ("Classical: HOG + colour histogram + SVM", None, None, None, "hog_hsv_svm"),
-        ("Custom CNN from scratch (as model A)", "scratch_cnn", None, None, None),
+        ("Scratch CNN (as model A)", "scratch_cnn", None, None, None),
         ("ResNet-50", "resnet50", "probe_resnet50", None, None),
         ("MobileNetV3-L", "mobilenetv3_large", None, None, None),
         ("EfficientNetV2-S", "efficientnet_v2_s", None, None, None),

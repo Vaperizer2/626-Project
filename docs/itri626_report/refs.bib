@@ -1,4 +1,4 @@
-% Copy of docs/paper/refs.bib; only change: year = {n.d.} added to kaggle_dataset (no release year on the card) (verified references of the IEEE paper; see docs/paper/REFERENCES_VERIFIED.md).
+% Copy of docs/paper/refs.bib, edited for the ITRI626 report (2026-10-20): cited entries in sentence case with consistent abbreviated venues; arXiv entries replaced by their published versions (verified on the PMLR, NeurIPS, OpenReview/ICLR pages; Shao et al. via CrossRef DOI 10.1109/uv63228.2024.11189118); Kaggle entry with access date.
 % Kept here so the ITRI626 report builds without relative bibliography paths.
 % refs.bib -- generated from arXiv API / CrossRef metadata on 2026-10-18; see REFERENCES_VERIFIED.md
 
@@ -10,15 +10,13 @@
 }
 
 @article{northcutt2021confident,
-  title = {Confident {Learning:} {Estimating} {Uncertainty} in {Dataset} {Labels}},
+  title = {Confident learning: Estimating uncertainty in dataset labels},
   author = {Curtis Northcutt and Lu Jiang and Isaac Chuang},
   year = {2021},
-  journal = {Journal of Artificial Intelligence Research},
+  journal = {J. Artif. Intell. Res.},
   volume = {70},
   pages = {1373--1411},
-  doi = {10.1613/jair.1.12125},
-  eprint = {1911.00068},
-  archiveprefix = {arXiv}
+  doi = {10.1613/jair.1.12125}
 }
 
 @inproceedings{dalal2005hog,
@@ -42,33 +40,30 @@
   doi = {10.1007/bf00994018}
 }
 
-@misc{simonyan2014vgg,
-  title = {Very {Deep} {Convolutional} {Networks} for {Large-Scale} {Image} {Recognition}},
+@inproceedings{simonyan2014vgg,
+  title = {Very deep convolutional networks for large-scale image recognition},
   author = {Karen Simonyan and Andrew Zisserman},
-  year = {2014},
-  eprint = {1409.1556},
-  archiveprefix = {arXiv},
-  howpublished = {arXiv preprint arXiv:1409.1556}
+  booktitle = {Proc. Int. Conf. Learn. Represent. (ICLR)},
+  year = {2015},
 }
 
-@misc{ioffe2015bn,
-  title = {Batch {Normalization:} {Accelerating} {Deep} {Network} {Training} by {Reducing} {Internal} {Covariate} {Shift}},
+@inproceedings{ioffe2015bn,
+  title = {Batch normalization: Accelerating deep network training by reducing internal covariate shift},
   author = {Sergey Ioffe and Christian Szegedy},
-  year = {2015},
-  eprint = {1502.03167},
-  archiveprefix = {arXiv},
-  howpublished = {arXiv preprint arXiv:1502.03167}
+  booktitle = {Proc. 32nd Int. Conf. Mach. Learn. (ICML)},
+  series = {Proc. Mach. Learn. Res.},
+  volume = {37},
+  pages = {448--456},
+  year = {2015}
 }
 
 @inproceedings{he2016resnet,
-  title = {Deep {Residual} {Learning} for {Image} {Recognition}},
+  title = {Deep residual learning for image recognition},
   author = {Kaiming He and Xiangyu Zhang and Shaoqing Ren and Jian Sun},
   year = {2016},
   booktitle = {Proc. IEEE Conf. Comput. Vis. Pattern Recognit. (CVPR)},
   pages = {770--778},
-  doi = {10.1109/cvpr.2016.90},
-  eprint = {1512.03385},
-  archiveprefix = {arXiv}
+  doi = {10.1109/cvpr.2016.90}
 }
 
 @misc{wightman2021rsb,
@@ -101,23 +96,19 @@
 }
 
 @inproceedings{liu2022convnext,
-  title = {A {ConvNet} for the {2020s}},
+  title = {A {ConvNet} for the 2020s},
   author = {Zhuang Liu and Hanzi Mao and Chao-Yuan Wu and Christoph Feichtenhofer and Trevor Darrell and Saining Xie},
   year = {2022},
   booktitle = {Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR)},
   pages = {11966--11976},
-  doi = {10.1109/cvpr52688.2022.01167},
-  eprint = {2201.03545},
-  archiveprefix = {arXiv}
+  doi = {10.1109/cvpr52688.2022.01167}
 }
 
-@misc{dosovitskiy2020vit,
-  title = {An {Image} is {Worth} {16x16} {Words:} {Transformers} for {Image} {Recognition} at {Scale}},
+@inproceedings{dosovitskiy2020vit,
+  title = {An image is worth 16x16 words: Transformers for image recognition at scale},
   author = {Alexey Dosovitskiy and Lucas Beyer and Alexander Kolesnikov and Dirk Weissenborn and Xiaohua Zhai and Thomas Unterthiner and Mostafa Dehghani and Matthias Minderer and Georg Heigold and Sylvain Gelly and Jakob Uszkoreit and Neil Houlsby},
-  year = {2020},
-  eprint = {2010.11929},
-  archiveprefix = {arXiv},
-  howpublished = {arXiv preprint arXiv:2010.11929}
+  booktitle = {Proc. Int. Conf. Learn. Represent. (ICLR)},
+  year = {2021}
 }
 
 @article{steiner2022augreg,
@@ -149,24 +140,23 @@
   howpublished = {arXiv preprint arXiv:2304.07193}
 }
 
-@misc{radford2021clip,
-  title = {Learning {Transferable} {Visual} {Models} {From} {Natural} {Language} {Supervision}},
+@inproceedings{radford2021clip,
+  title = {Learning transferable visual models from natural language supervision},
   author = {Alec Radford and Jong Wook Kim and Chris Hallacy and Aditya Ramesh and Gabriel Goh and Sandhini Agarwal and Girish Sastry and Amanda Askell and Pamela Mishkin and Jack Clark and Gretchen Krueger and Ilya Sutskever},
-  year = {2021},
-  eprint = {2103.00020},
-  archiveprefix = {arXiv},
-  howpublished = {arXiv preprint arXiv:2103.00020}
+  booktitle = {Proc. 38th Int. Conf. Mach. Learn. (ICML)},
+  series = {Proc. Mach. Learn. Res.},
+  volume = {139},
+  pages = {8748--8763},
+  year = {2021}
 }
 
 @inproceedings{zhai2023siglip,
-  title = {Sigmoid {Loss} for {Language} {Image} {Pre-Training}},
+  title = {Sigmoid loss for language image pre-training},
   author = {Xiaohua Zhai and Basil Mustafa and Alexander Kolesnikov and Lucas Beyer},
   year = {2023},
   booktitle = {Proc. IEEE/CVF Int. Conf. Comput. Vis. (ICCV)},
   pages = {11941--11952},
-  doi = {10.1109/iccv51070.2023.01100},
-  eprint = {2303.15343},
-  archiveprefix = {arXiv}
+  doi = {10.1109/iccv51070.2023.01100}
 }
 
 @misc{tschannen2025siglip2,
@@ -179,16 +169,14 @@
 }
 
 @article{barz2020cifair,
-  title = {Do {We} {Train} on {Test} {Data?} {Purging} {CIFAR} of {Near-Duplicates}},
+  title = {Do we train on test data? {Purging} {CIFAR} of near-duplicates},
   author = {Bj{\"o}rn Barz and Joachim Denzler},
   year = {2020},
-  journal = {Journal of Imaging},
+  journal = {J. Imaging},
   volume = {6},
   number = {6},
   pages = {41},
-  doi = {10.3390/jimaging6060041},
-  eprint = {1902.00423},
-  archiveprefix = {arXiv}
+  doi = {10.3390/jimaging6060041}
 }
 
 @article{kapoor2023leakage,
@@ -199,29 +187,23 @@
   volume = {4},
   number = {9},
   pages = {100804},
-  doi = {10.1016/j.patter.2023.100804},
-  eprint = {2207.07048},
-  archiveprefix = {arXiv}
+  doi = {10.1016/j.patter.2023.100804}
 }
 
-@misc{kumar2022finetuning,
-  title = {{Fine-Tuning} can {Distort} {Pretrained} {Features} and {Underperform} {Out-of-Distribution}},
+@inproceedings{kumar2022finetuning,
+  title = {Fine-tuning can distort pretrained features and underperform out-of-distribution},
   author = {Ananya Kumar and Aditi Raghunathan and Robbie Jones and Tengyu Ma and Percy Liang},
-  year = {2022},
-  eprint = {2202.10054},
-  archiveprefix = {arXiv},
-  howpublished = {arXiv preprint arXiv:2202.10054}
+  booktitle = {Proc. Int. Conf. Learn. Represent. (ICLR)},
+  year = {2022}
 }
 
 @inproceedings{kornblith2019transfer,
-  title = {Do {Better} {ImageNet} {Models} {Transfer} {Better?}},
+  title = {Do better {ImageNet} models transfer better?},
   author = {Simon Kornblith and Jonathon Shlens and Quoc V. Le},
   year = {2019},
   booktitle = {Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR)},
   pages = {2656--2666},
-  doi = {10.1109/cvpr.2019.00277},
-  eprint = {1805.08974},
-  archiveprefix = {arXiv}
+  doi = {10.1109/cvpr.2019.00277}
 }
 
 @misc{guo2017calibration,
@@ -233,13 +215,12 @@
   howpublished = {arXiv preprint arXiv:1706.04599}
 }
 
-@misc{geifman2017selective,
-  title = {Selective {Classification} for {Deep} {Neural} {Networks}},
+@inproceedings{geifman2017selective,
+  title = {Selective classification for deep neural networks},
   author = {Yonatan Geifman and Ran El-Yaniv},
-  year = {2017},
-  eprint = {1705.08500},
-  archiveprefix = {arXiv},
-  howpublished = {arXiv preprint arXiv:1705.08500}
+  booktitle = {Adv. Neural Inf. Process. Syst. (NeurIPS)},
+  volume = {30},
+  year = {2017}
 }
 
 @inproceedings{wortsman2022wiseft,
@@ -254,16 +235,14 @@
 }
 
 @article{russakovsky2015imagenet,
-  title = {{ImageNet} {Large} {Scale} {Visual} {Recognition} {Challenge}},
+  title = {{ImageNet} large scale visual recognition challenge},
   author = {Olga Russakovsky and Jia Deng and Hao Su and Jonathan Krause and Sanjeev Satheesh and Sean Ma and Zhiheng Huang and Andrej Karpathy and Aditya Khosla and Michael Bernstein and Alexander C. Berg and Li Fei-Fei},
   year = {2015},
-  journal = {International Journal of Computer Vision},
+  journal = {Int. J. Comput. Vis.},
   volume = {115},
   number = {3},
   pages = {211--252},
-  doi = {10.1007/s11263-015-0816-y},
-  eprint = {1409.0575},
-  archiveprefix = {arXiv}
+  doi = {10.1007/s11263-015-0816-y}
 }
 
 @inproceedings{yosinski2014transferable,
@@ -271,8 +250,6 @@
   author = {Jason Yosinski and Jeff Clune and Yoshua Bengio and Hod Lipson},
   year = {2014},
   booktitle = {Adv. Neural Inf. Process. Syst. (NeurIPS)},
-  eprint = {1411.1792},
-  archiveprefix = {arXiv},
   pages = {3320--3328},
   volume = {27}
 }
@@ -353,44 +330,36 @@
   howpublished = {arXiv preprint arXiv:1503.02531}
 }
 
-@misc{loshchilov2019adamw,
-  title = {Decoupled {Weight} {Decay} {Regularization}},
+@inproceedings{loshchilov2019adamw,
+  title = {Decoupled weight decay regularization},
   author = {Ilya Loshchilov and Frank Hutter},
-  year = {2017},
-  eprint = {1711.05101},
-  archiveprefix = {arXiv},
-  howpublished = {arXiv preprint arXiv:1711.05101}
+  booktitle = {Proc. Int. Conf. Learn. Represent. (ICLR)},
+  year = {2019}
 }
 
-@misc{loshchilov2017sgdr,
-  title = {{SGDR:} {Stochastic} {Gradient} {Descent} with {Warm} {Restarts}},
+@inproceedings{loshchilov2017sgdr,
+  title = {{SGDR}: Stochastic gradient descent with warm restarts},
   author = {Ilya Loshchilov and Frank Hutter},
-  year = {2016},
-  eprint = {1608.03983},
-  archiveprefix = {arXiv},
-  howpublished = {arXiv preprint arXiv:1608.03983}
+  booktitle = {Proc. Int. Conf. Learn. Represent. (ICLR)},
+  year = {2017}
 }
 
 @inproceedings{cubuk2020randaugment,
-  title = {{RandAugment:} {Practical} automated data augmentation with a reduced search space},
+  title = {{RandAugment}: Practical automated data augmentation with a reduced search space},
   author = {Ekin D. Cubuk and Barret Zoph and Jonathon Shlens and Quoc V. Le},
   year = {2020},
   booktitle = {Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. Workshops (CVPRW)},
   pages = {3008--3017},
-  doi = {10.1109/cvprw50498.2020.00359},
-  eprint = {1909.13719},
-  archiveprefix = {arXiv}
+  doi = {10.1109/cvprw50498.2020.00359}
 }
 
 @inproceedings{szegedy2016inception,
-  title = {Rethinking the {Inception} {Architecture} for {Computer} {Vision}},
+  title = {Rethinking the {Inception} architecture for computer vision},
   author = {Christian Szegedy and Vincent Vanhoucke and Sergey Ioffe and Jon Shlens and Zbigniew Wojna},
   year = {2016},
   booktitle = {Proc. IEEE Conf. Comput. Vis. Pattern Recognit. (CVPR)},
   pages = {2818--2826},
-  doi = {10.1109/cvpr.2016.308},
-  eprint = {1512.00567},
-  archiveprefix = {arXiv}
+  doi = {10.1109/cvpr.2016.308}
 }
 
 @misc{zhang2017rethinking,
@@ -406,7 +375,7 @@
   title = {On optimum recognition error and reject tradeoff},
   author = {C. Chow},
   year = {1970},
-  journal = {IEEE Transactions on Information Theory},
+  journal = {IEEE Trans. Inf. Theory},
   volume = {16},
   number = {1},
   pages = {41--46},
@@ -445,13 +414,13 @@
   pages = {91}
 }
 
-@misc{shao2025electronic,
-  title = {Comparative {Performance} of {Finetuned} {ImageNet} {Pre-trained} {Models} for {Electronic} {Component} {Classification}},
+@inproceedings{shao2025electronic,
+  title = {Comparative performance of finetuned {ImageNet} pre-trained models for electronic component classification},
   author = {Yidi Shao and Longfei Zhou and Fangshuo Tang and Xinyi Shi and Dalang Chen and Shengtao Xia},
-  year = {2025},
-  eprint = {2506.19330},
-  archiveprefix = {arXiv},
-  howpublished = {arXiv preprint arXiv:2506.19330}
+  booktitle = {Proc. 7th Int. Conf. Universal Village (UV)},
+  pages = {1--10},
+  year = {2024},
+  doi = {10.1109/uv63228.2024.11189118}
 }
 
 @incollection{zhou2025electronic,
@@ -465,7 +434,7 @@
 }
 
 @article{ling2023pcb,
-  title = {Printed {Circuit} {Board} {Defect} {Detection} {Methods} {Based} on {Image} {Processing,} {Machine} {Learning} and {Deep} {Learning:} {A} {Survey}},
+  title = {Printed circuit board defect detection methods based on image processing, machine learning and deep learning: A survey},
   author = {Qin Ling and Nor Ashidi Mat Isa},
   year = {2023},
   journal = {IEEE Access},
@@ -476,7 +445,7 @@
 
 @misc{kaggle_dataset,
   author = {{mdfaisalahmed025}},
-  title = {{Electronic Component Recognizer} (image dataset, 20 classes)},
-  year = {n.d.},
-  howpublished = {Kaggle, \url{https://www.kaggle.com/datasets/mdfaisalahmed025/electronic-component-recognizer}}
+  title = {{Electronic Component Recognizer}},
+  howpublished = {Kaggle dataset (20 classes), \url{https://www.kaggle.com/datasets/mdfaisalahmed025/electronic-component-recognizer}},
+  note = {Accessed 17 October 2026}
 }

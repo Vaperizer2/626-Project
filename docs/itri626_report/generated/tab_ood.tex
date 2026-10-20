@@ -3,8 +3,8 @@
 \toprule
 Model & Clean ($n=306$) & OOD-flagged ($n=112$) & All ($n=418$) \\
 \midrule
-A: custom CNN & 0.376 & 0.295 & 0.354 \\
-B: ConvNeXt-T FT & 0.686 & 0.500 & 0.636 \\
-C: SigLIP ViT + linear & 0.846 & 0.759 & 0.823 \\
+A: scratch CNN & 0.376 & 0.295 & 0.354 \\
+B: ConvNeXt-T (fine-tuned) & 0.686 & 0.500 & 0.636 \\
+C: SigLIP ViT (frozen + linear) & 0.846 & 0.759 & 0.823 \\
 \bottomrule
 \end{tabular}
