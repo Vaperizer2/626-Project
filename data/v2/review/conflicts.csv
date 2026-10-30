@@ -1,0 +1,18 @@
+kind,group,id,labels,src_paths,decision,max_cross_label_cos
+exact,01d3681672747efc,01d3681672747efc,fuse|relay,fuse/fuse/af056a3c-1ac5-4511-a39d-6ef7d6f5130e.jpg;relay/relay/0754bf83-516a-4b2f-8885-f49c057f55d1.jpg,excluded:conflicting_labels,
+exact,166381d320b644fd,166381d320b644fd,breadboard|power supply module,breadboard/breadboard/ae2953d7-2949-487f-a3ea-1cd656030782.png;power supply module/power supply module/8555bac3-47a5-4c40-941f-cf67c58bb98b.png,excluded:conflicting_labels,
+exact,41ad53a7417a5161,41ad53a7417a5161,diode|led,diode/diode/8cbbb59f-9e39-4ce6-8634-5a67eed40b08.jpg;led/led/d5963e49-260e-4833-8657-2e54a742aea5.jpg,excluded:conflicting_labels,
+exact,699b033545e55eaf,699b033545e55eaf,breadboard|transistor,breadboard/breadboard/74defd85-0423-460b-8df4-7a290aacae45.webp;transistor/transistor/3b409980-15ee-427e-ba8c-c754f8bbd62a.webp,excluded:conflicting_labels,
+exact,778460fb1bcfa85c,778460fb1bcfa85c,fuse|relay,fuse/fuse/aa253a13-a573-4911-a7b9-2440455b3810.jpg;relay/relay/c0e68217-c306-4837-a72c-8c239c9ad8c3.jpg,excluded:conflicting_labels,
+exact,8786feeebd301d5a,8786feeebd301d5a,diode|transistor,diode/diode/fc3c891f-899d-4498-93c5-f4798ef6e4e8.png;transistor/transistor/11158e8c-85bb-4038-8775-2d3565747c6c.png,excluded:conflicting_labels,
+exact,983c191343803e84,983c191343803e84,resistor|transformer,resistor/resistor/4397f535-7ebc-4e29-a9b8-4aaf5c31d5d5.jpg;transformer/transformer/49254e87-fb8f-443d-bb5d-81d75d25eecb.jpg,excluded:conflicting_labels,
+exact,98ce970641602463,98ce970641602463,breadboard|power supply module,breadboard/breadboard/c2915c69-69ee-4fcc-9599-531a35c295f9.jpg;power supply module/power supply module/fd0b7052-da29-455d-92b4-2ea93c8f8e3d.jpg,excluded:conflicting_labels,
+exact,ad0f4cc51a72406c,ad0f4cc51a72406c,capacitor|diode|resistor,capacitor/capacitor/2cd0efd0-80cb-4917-a259-07ef4327c108.view;diode/diode/401c4086-62c3-463c-97e4-facb9156885a.view;resistor/resistor/795060fd-e6c2-47c3-9602-082b30729c97.view,excluded:conflicting_labels,
+exact,c30757a4725028e2,c30757a4725028e2,breadboard|jumper wire,breadboard/breadboard/bb25f8a7-633f-446f-9ce9-4135cfd27169.png;jumper wire/jumper wire/63882864-e49e-4a64-a265-b6775d4789ad.png,excluded:conflicting_labels,
+exact,c711d0c3a069e311,c711d0c3a069e311,crystal oscillator|inductor coil,crystal oscillator/crystal oscillator/35ef54fc-a4b6-4dca-abbe-24aca342a71f.jpg;inductor coil/inductor coil/51452b75-3058-4b39-b937-200e6772bb6b.jpg,excluded:conflicting_labels,
+exact,e9767a506e9dd6c4,e9767a506e9dd6c4,fuse|relay,fuse/fuse/e0af285f-0553-4b49-b9a9-b73665099643.jpg;relay/relay/e41b6bbc-d490-479f-a4bf-6351ac69c5bf.jpg,excluded:conflicting_labels,
+exact,ea193ae773241ce1,ea193ae773241ce1,fuse|relay,fuse/fuse/190eef4b-1a2f-4207-81da-349c99e8f886.jpg;relay/relay/1121d280-2841-4695-b88e-69202f30502d.jpg,excluded:conflicting_labels,
+near_dup,c00138,0edfb308badeffd9,ic chip,ic chip/ic chip/ee15efa2-1a71-4d4a-a33e-a99c59c8d07e.jpg,kept:flag near_dup_label_conflict,0.9326
+near_dup,c00138,0d3f1f7bf564fd24,microcontroller board,microcontroller board/microcontroller board/85e67317-e07d-45e4-b013-89c8662ba2f6.jpg,kept:flag near_dup_label_conflict,0.9326
+near_dup,c02634,f368d153f73c14b6,diode,diode/diode/1684808a-049b-472c-a496-acd26a383825.jpg,kept:flag near_dup_label_conflict,0.8528
+near_dup,c02634,f57099c9d8e51878,ic chip,ic chip/ic chip/71060349-0d5f-4dc7-94ed-bc45908395c5.jpg,kept:flag near_dup_label_conflict,0.8528

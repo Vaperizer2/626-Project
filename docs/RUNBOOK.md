@@ -90,7 +90,7 @@ A source clone plus release supports inference, but not every training command: 
 feature caches and checkpoints are excluded. Model selection uses development folds only. The original sealed
 test and Wikimedia holdout were already evaluated; read the committed metrics for routine report work.
 
-Reports and generated tables can be refreshed without retraining:
+Reports and generated tables can be refreshed without retraining, using the tracked result files and review CSVs:
 
 ```bash
 uv run python scripts/make_report_figures.py

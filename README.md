@@ -93,7 +93,7 @@ src/compclass/        package: data (manifest, folds, transforms), models/regist
 configs/              base.yaml (every knob, commented) + one YAML per family / ablation
 tools/                build_dataset_v2.py (dataset v2 + leakage report), build_web_holdout.py
 scripts/              make_report_figures.py (report figures/tables), gpu_witness.py (hardware check)
-data/v2/              manifest.json, leakage_report.json, review/ (duplicate, conflict and OOD review sheets)
+data/v2/              manifest.json, leakage_report.json, review/*.csv (duplicate, conflict and OOD audit records)
 results/              phase1/ (probes, zero-shot, HOG, label audit, cleaning), phase1b/ (TTA probes),
                       phase2/ (fine-tunes: runs_fixed.jsonl main, raw_oldschedule/ ablation, per-fold preds),
                       benchmark.csv, leakage_simulation.csv, schedule_ablation_folds012.csv, final/ (sealed test)

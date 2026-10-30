@@ -31,6 +31,11 @@ row labels are focusable (Enter activates).
 
 ## Rebuild
 
+Opening the committed HTML requires no dataset. Rebuilding its embedded image galleries requires the ignored
+`data/v2/images/` and `data/web_holdout_v1/images/` directories from the original datasets; a fresh clone does
+not contain those images. Restore them using the project README before rebuilding. The tracked review CSVs and
+result files provide the audit/benchmark numbers.
+
 ```bash
 uv run --no-config scripts/build_explorer.py          # writes docs/explorer/index.html (CPU, ~10 s)
 uv run --no-config scripts/build_explorer.py --check  # same, plus a size breakdown

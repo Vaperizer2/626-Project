@@ -1,0 +1,203 @@
+id_a,id_b,label_a,label_b,phash_hamming,dhash_hamming,clip_cos,rule
+00e547d15e8e4410,bf3f6a69b554956a,led,led,26,32,0.9224,clip_only
+035537c1d705fab8,c732e5b81c31da21,breadboard,breadboard,28,20,0.9597,clip_only
+045f6c842acc1c58,62d99ff01a70c301,fuse,fuse,30,22,0.9264,clip_only
+045f6c842acc1c58,800b6ac4f258ad86,fuse,fuse,26,30,0.9499,clip_only
+04ae20f90e9469bf,699067586d0c4482,power supply module,power supply module,32,28,0.9437,clip_only
+07e7f6320078367d,161a21337230aa67,microcontroller board,microcontroller board,8,0,0.9380,phash+clip
+09b85967d82427b0,d22682cc6628dbfe,connector,connector,30,23,0.9740,clip_only
+0a442eeb27f4ea08,30e22a6575ff15bf,relay,relay,0,0,0.9995,phash+clip
+0b69dc1bf463bfca,359ed4d18ae5e28e,power supply module,power supply module,26,27,0.9205,clip_only
+0b958549d25850f0,d84ae15a9c2c9d76,crystal oscillator,crystal oscillator,10,17,0.8728,phash+clip
+0bddde10d7e4e409,55adcf827c27ea7e,ic chip,ic chip,34,29,0.9255,clip_only
+0d3f1f7bf564fd24,0edfb308badeffd9,microcontroller board,ic chip,34,28,0.9326,clip_only
+0db6314974d8211a,c3cbe363cea0b4b6,ic chip,ic chip,30,29,0.9242,clip_only
+10d2d843eeae3c54,42a971894d41b29d,ic chip,ic chip,18,20,0.9356,clip_only
+10d2d843eeae3c54,57aa3d05ae8a7293,ic chip,ic chip,28,31,0.9209,clip_only
+10d2d843eeae3c54,7cca7a4992874dd9,ic chip,ic chip,30,23,0.9212,clip_only
+10d2d843eeae3c54,8669a62efe8bff97,ic chip,ic chip,20,12,0.9213,clip_only
+10d2d843eeae3c54,9bb0272415cc5982,ic chip,ic chip,34,24,0.9227,clip_only
+10d2d843eeae3c54,b8d5150ec24cf3cd,ic chip,ic chip,38,18,0.9305,clip_only
+10d2d843eeae3c54,ca8a64460a91f59f,ic chip,ic chip,18,25,0.9206,clip_only
+11013536c9337039,8a7095269e391906,inductor coil,inductor coil,20,16,0.9282,clip_only
+144e3488bdbb010e,d4e347b9badf0cc1,ic chip,ic chip,10,26,0.8757,phash+clip
+144e3488bdbb010e,ed39a462d3b33283,ic chip,ic chip,32,21,0.9252,clip_only
+15fbda3bf5af30fe,1ed1ffb33696b3e7,relay,relay,0,0,0.9967,phash+clip
+17434b121c1ab31d,be170fee5cd5375c,ic chip,ic chip,24,14,0.9218,clip_only
+17434b121c1ab31d,d9f8bb7c3ff5e5bc,ic chip,ic chip,28,20,0.9451,clip_only
+17434b121c1ab31d,dc21917b18aac76a,ic chip,ic chip,10,8,0.9232,phash+clip
+181ca42a86dcd9b6,1cc4f9eb2e09c076,led,led,10,3,0.9444,phash+clip
+181ca42a86dcd9b6,23cd674b26be8e5a,led,led,2,1,0.9610,phash+clip
+181ca42a86dcd9b6,8cc8c923d1f26953,led,led,4,1,0.9738,phash+clip
+181ca42a86dcd9b6,bd972649d0e54667,led,led,0,0,0.9972,phash+clip
+19786402c4b649d3,469131d91c0c2630,power supply module,power supply module,0,0,0.9986,phash+clip
+1bcdb682173eb580,c235df323501f93a,heat sink,heat sink,18,21,0.9251,clip_only
+1cc4f9eb2e09c076,23cd674b26be8e5a,led,led,8,2,0.9500,phash+clip
+1cc4f9eb2e09c076,8cc8c923d1f26953,led,led,14,4,0.9371,clip_only
+1cc4f9eb2e09c076,bd972649d0e54667,led,led,10,3,0.9428,phash+clip
+1f148d01b95c47e0,e42a387825281ed7,jumper wire,jumper wire,14,6,0.9311,clip_only
+21267f498834f384,34d4a2a29df2f3c2,breadboard,breadboard,22,21,0.9241,clip_only
+21267f498834f384,3f3795a58e261157,breadboard,breadboard,18,12,0.9237,clip_only
+21267f498834f384,70a9b6bdc5761c27,breadboard,breadboard,34,25,0.9206,clip_only
+21fad30f60cc6a5b,85aa8f251e73118c,connector,connector,4,10,0.9589,phash+clip
+21fad30f60cc6a5b,b2e9704f246d1a5f,connector,connector,8,9,0.9424,phash+clip
+229b4504a9106945,af4c68bfa02e9999,resistor,resistor,20,26,0.9227,clip_only
+22a7472ba00e3ef1,281a2a64895565e6,battery holder,battery holder,0,1,0.9884,phash+clip
+23cd674b26be8e5a,8cc8c923d1f26953,led,led,6,2,0.9467,phash+clip
+23cd674b26be8e5a,bd972649d0e54667,led,led,2,1,0.9597,phash+clip
+2630b63f4bf78eb0,d1001cd554d765a5,inductor coil,inductor coil,4,8,0.8660,phash+clip
+26c1a2b8f51625e7,3d6be711d7784261,relay,relay,0,1,0.9926,phash+clip
+27f453abd2d1da7d,7d8de3098f0c9586,crystal oscillator,crystal oscillator,6,5,0.9472,phash+clip
+2814fb8f57e9791f,a3a65da20790d3f6,ic chip,ic chip,2,7,0.8701,phash+clip
+2814fb8f57e9791f,b8d5150ec24cf3cd,ic chip,ic chip,28,29,0.9221,clip_only
+2814fb8f57e9791f,d60032a79cc2c3f7,ic chip,ic chip,22,11,0.9336,clip_only
+2884480d323d7856,571098ba0e8f3d55,jumper wire,jumper wire,20,18,0.9372,clip_only
+2884480d323d7856,ffd01c0877f028b0,jumper wire,jumper wire,16,15,0.9237,clip_only
+298978c249548583,5f37a9966a0e0e38,heat sink,heat sink,22,27,0.9259,clip_only
+298978c249548583,868a3a8a1854fe8a,heat sink,heat sink,22,25,0.9560,clip_only
+298978c249548583,a41577c870636a85,heat sink,heat sink,18,19,0.9256,clip_only
+2caa0ddedc5e1914,48b9d42ad16607c5,heat sink,heat sink,8,9,0.8898,phash+clip
+2caa0ddedc5e1914,80218d0938b71043,heat sink,heat sink,8,6,0.8817,phash+clip
+2d332838786a78b9,7a9aa93bbcf910e6,power supply module,power supply module,0,0,0.9799,phash+clip
+2d332838786a78b9,7f7722e2084be898,power supply module,power supply module,0,0,0.9474,phash+clip
+2dac760d6902428f,92512538c7c210d8,transistor,transistor,10,11,0.9615,phash+clip
+2de895096c77fc92,89aa71689e4d73d8,resistor,resistor,16,13,0.9715,clip_only
+2f365a780bf92990,c0d1adf7bdb6f001,ic chip,ic chip,28,24,0.9286,clip_only
+2f54bbaf09979006,4ac8dd3a0436f1e5,diode,diode,0,1,0.9450,phash+clip
+30182b8621ec915a,55adcf827c27ea7e,ic chip,ic chip,34,33,0.9372,clip_only
+30182b8621ec915a,6ce484d95e9b4d83,ic chip,ic chip,36,23,0.9464,clip_only
+30182b8621ec915a,d7058acc580ed2ec,ic chip,ic chip,32,25,0.9543,clip_only
+31fb13d25c1bef23,44405fc7c850fb68,ic chip,ic chip,20,35,0.9603,clip_only
+31fb13d25c1bef23,7a3f184509d0663e,ic chip,ic chip,14,31,0.9601,clip_only
+31fb13d25c1bef23,c7de0edd75755666,ic chip,ic chip,38,33,0.9475,clip_only
+33d01bff76df78cd,34d4a2a29df2f3c2,breadboard,breadboard,26,24,0.9287,clip_only
+33d01bff76df78cd,70a9b6bdc5761c27,breadboard,breadboard,10,16,0.9565,phash+clip
+34d4a2a29df2f3c2,3f3795a58e261157,breadboard,breadboard,32,23,0.9554,clip_only
+34d4a2a29df2f3c2,70a9b6bdc5761c27,breadboard,breadboard,22,18,0.9466,clip_only
+35255979cd2c63bb,be170fee5cd5375c,ic chip,ic chip,12,18,0.9233,clip_only
+35255979cd2c63bb,d9f8bb7c3ff5e5bc,ic chip,ic chip,10,18,0.8990,phash+clip
+3771ee8bef5ea880,e7d004b668d809b8,inductor coil,inductor coil,0,0,0.9994,phash+clip
+37ab53c069f762e8,e4002fa398d35c7c,battery holder,battery holder,0,0,0.9798,phash+clip
+37b21ffca905cb72,c23eeae0922a0219,ic chip,ic chip,20,20,0.9267,clip_only
+38a92296bec073b1,87f43f37f5aef95b,led,led,2,2,0.9811,phash+clip
+3ab02a739faaf52d,8ec13ea3c51b2793,power supply module,power supply module,0,1,0.9848,phash+clip
+3cd05580e33ff9cf,74b6b6d4b2af36a0,power supply module,power supply module,2,0,0.9904,phash+clip
+3f161024dfd6cdf7,81b7477facf07570,potentiometer,potentiometer,0,0,0.9960,phash+clip
+42a971894d41b29d,7cca7a4992874dd9,ic chip,ic chip,22,23,0.9303,clip_only
+42a971894d41b29d,8669a62efe8bff97,ic chip,ic chip,16,18,0.9465,clip_only
+42a971894d41b29d,9bb0272415cc5982,ic chip,ic chip,20,14,0.9740,clip_only
+42a971894d41b29d,b8d5150ec24cf3cd,ic chip,ic chip,28,20,0.9568,clip_only
+42a971894d41b29d,c7de0edd75755666,ic chip,ic chip,8,26,0.8664,phash+clip
+42a971894d41b29d,ca8a64460a91f59f,ic chip,ic chip,18,15,0.9463,clip_only
+42a971894d41b29d,e6a5967d17491bb2,ic chip,ic chip,20,15,0.9425,clip_only
+44405fc7c850fb68,7a3f184509d0663e,ic chip,ic chip,10,16,0.9615,phash+clip
+44405fc7c850fb68,c7de0edd75755666,ic chip,ic chip,32,34,0.9442,clip_only
+455740f510832f73,581413c044dfafdc,led,led,24,4,0.9603,clip_only
+47576fbd738515ce,b344f788774a04ed,potentiometer,potentiometer,2,1,0.9817,phash+clip
+481be509811a60e3,88608d26a31ce5ed,jumper wire,jumper wire,0,0,0.9496,phash+clip
+481be509811a60e3,f800946e56493e43,jumper wire,jumper wire,0,0,1.0000,phash+clip
+49ee0e1f3d3a19fe,f081c802a2915fd0,capacitor,capacitor,0,0,0.9987,phash+clip
+4c30a5417258ddb5,f3a0d9a61b075e9e,battery holder,battery holder,4,1,0.9794,phash+clip
+4c440d10e3e15922,96fa35ac66502f81,jumper wire,jumper wire,0,0,0.9865,phash+clip
+4d1f5283f12aaca3,92e5741bb3173f0e,power supply module,power supply module,6,9,0.8955,phash+clip
+4e101f2bbdce095c,a7df5c4d78e5b44f,power supply module,power supply module,2,1,0.9747,phash+clip
+5178b575de447fc3,7ea3c75ca7105d50,crystal oscillator,crystal oscillator,8,7,0.8935,phash+clip
+51f246c5bd5929d7,6e3d1b6d88d2a52d,ic chip,ic chip,12,19,0.9354,clip_only
+557ac7382dbf0cc5,93a2a2d81a63318d,breadboard,breadboard,0,0,0.9993,phash+clip
+55adcf827c27ea7e,6ce484d95e9b4d83,ic chip,ic chip,30,32,0.9249,clip_only
+55adcf827c27ea7e,d7058acc580ed2ec,ic chip,ic chip,14,28,0.9255,clip_only
+571098ba0e8f3d55,ffd01c0877f028b0,jumper wire,jumper wire,18,25,0.9415,clip_only
+573b07ebfb4a4621,752f96018e5bd7e2,microcontroller board,microcontroller board,30,8,0.9378,clip_only
+57607464fcb6b8b1,60b1476b2af32770,capacitor,capacitor,4,7,0.9672,phash+clip
+57aa3d05ae8a7293,7cca7a4992874dd9,ic chip,ic chip,26,20,0.9373,clip_only
+57aa3d05ae8a7293,9bb0272415cc5982,ic chip,ic chip,24,21,0.9282,clip_only
+57aa3d05ae8a7293,b8d5150ec24cf3cd,ic chip,ic chip,24,29,0.9396,clip_only
+57aa3d05ae8a7293,e6a5967d17491bb2,ic chip,ic chip,6,26,0.9248,phash+clip
+57ad21780b7378a9,f406586ef8d1d13d,crystal oscillator,crystal oscillator,20,19,0.9284,clip_only
+58d2644c9cb5bb8b,77dcf7188aad991d,resistor,resistor,4,6,0.9324,phash+clip
+58d2644c9cb5bb8b,c3dc31cfaa9e92ed,resistor,resistor,2,1,0.9596,phash+clip
+58d2644c9cb5bb8b,c8e65a4236957402,resistor,resistor,2,5,0.9109,phash+clip
+58d2644c9cb5bb8b,d6a09751290b1492,resistor,resistor,4,7,0.9193,phash+clip
+58d2644c9cb5bb8b,e275218a20b34526,resistor,resistor,2,2,0.8898,phash+clip
+5f0959a3f8ee733c,743c8e2929de4c14,jumper wire,jumper wire,10,11,0.8986,phash+clip
+5f97c43eeae68197,9155d1a6d45c6cac,jumper wire,jumper wire,26,18,0.9331,clip_only
+62791c823a4d91b7,f5309c319c765ed4,switch,switch,2,11,0.9733,phash+clip
+62791c823a4d91b7,f901bca02c522675,switch,switch,8,13,0.9047,phash+clip
+629274726f2f0777,ab326ea2268322d2,ic chip,ic chip,26,25,0.9296,clip_only
+62cbd082802690b0,ebe35976d6be8f3e,crystal oscillator,crystal oscillator,6,7,0.9249,phash+clip
+62d99ff01a70c301,800b6ac4f258ad86,fuse,fuse,34,24,0.9228,clip_only
+67317f7c3938c171,8ba936ab415c0bbd,transformer,transformer,0,0,0.9968,phash+clip
+69377feee8aa9977,7ac60d5212bc4eec,transistor,transistor,24,30,0.9201,clip_only
+6939b8170b132ff4,f887a8c24cd88d9b,inductor coil,inductor coil,0,0,0.9935,phash+clip
+6ce484d95e9b4d83,8669a62efe8bff97,ic chip,ic chip,12,23,0.9238,clip_only
+6ce484d95e9b4d83,d4e347b9badf0cc1,ic chip,ic chip,24,23,0.9209,clip_only
+6ce484d95e9b4d83,d7058acc580ed2ec,ic chip,ic chip,30,24,0.9393,clip_only
+6e0d354cbbda0c30,e69bca546fbdfcc0,potentiometer,potentiometer,10,9,0.9240,phash+clip
+6e3d1b6d88d2a52d,9b9e49bb5ddcb940,ic chip,ic chip,24,27,0.9416,clip_only
+71f0903681f03ed6,bef5fda20601b50b,capacitor,capacitor,0,0,0.9752,phash+clip
+76497d232da03c8b,fb866e21ee776fef,switch,switch,16,25,0.9308,clip_only
+77dcf7188aad991d,c0cceb4332233527,resistor,resistor,4,9,0.8687,phash+clip
+77dcf7188aad991d,c3dc31cfaa9e92ed,resistor,resistor,2,7,0.9298,phash+clip
+77dcf7188aad991d,c8e65a4236957402,resistor,resistor,2,3,0.9284,phash+clip
+77dcf7188aad991d,d6a09751290b1492,resistor,resistor,0,7,0.9490,phash+clip
+77dcf7188aad991d,e275218a20b34526,resistor,resistor,2,6,0.8934,phash+clip
+787687be3a8231d1,d925d03af57b2cc4,battery holder,battery holder,4,8,0.9195,phash+clip
+7a3f184509d0663e,c7de0edd75755666,ic chip,ic chip,28,24,0.9553,clip_only
+7a3f184509d0663e,d9f8bb7c3ff5e5bc,ic chip,ic chip,4,18,0.8610,phash+clip
+7a3f184509d0663e,e6a5967d17491bb2,ic chip,ic chip,2,11,0.8548,phash+clip
+7a9aa93bbcf910e6,7f7722e2084be898,power supply module,power supply module,0,0,0.9771,phash+clip
+7cca7a4992874dd9,8669a62efe8bff97,ic chip,ic chip,18,31,0.9392,clip_only
+7cca7a4992874dd9,9bb0272415cc5982,ic chip,ic chip,10,17,0.9388,phash+clip
+7cca7a4992874dd9,b8d5150ec24cf3cd,ic chip,ic chip,18,27,0.9617,clip_only
+7cca7a4992874dd9,ca8a64460a91f59f,ic chip,ic chip,22,26,0.9297,clip_only
+7cca7a4992874dd9,e6a5967d17491bb2,ic chip,ic chip,28,24,0.9377,clip_only
+7fac371a326979b7,e3eda87a9d399d70,crystal oscillator,crystal oscillator,0,0,1.0000,phash+clip
+813471f3df81e342,8efe558cd1efd4c3,diode,diode,0,0,1.0000,phash+clip
+829295109da85f6c,b8a62efd74ad74a2,jumper wire,jumper wire,0,0,0.9927,phash+clip
+84a44e1b9f73a260,9ece65a3e379786b,resistor,resistor,0,1,0.9987,phash+clip
+85174304e6beb789,c5d2be703460199d,ic chip,ic chip,34,25,0.9210,clip_only
+85aa8f251e73118c,b2e9704f246d1a5f,connector,connector,10,11,0.9122,phash+clip
+8669a62efe8bff97,9bb0272415cc5982,ic chip,ic chip,16,20,0.9526,clip_only
+8669a62efe8bff97,b8d5150ec24cf3cd,ic chip,ic chip,24,10,0.9559,clip_only
+8669a62efe8bff97,ca8a64460a91f59f,ic chip,ic chip,12,23,0.9613,clip_only
+8669a62efe8bff97,e6a5967d17491bb2,ic chip,ic chip,32,13,0.9535,clip_only
+8766be7c1036b5b6,e4f61d90f902f15d,capacitor,capacitor,2,0,0.9886,phash+clip
+88608d26a31ce5ed,f800946e56493e43,jumper wire,jumper wire,0,0,0.9496,phash+clip
+8911e47417f4809b,8e4f19bbb9363052,transistor,transistor,0,0,0.9769,phash+clip
+894214d4511326e7,8bde23760195c98e,transistor,transistor,0,0,0.9964,phash+clip
+8ca110beed7582ec,cf5e8587084d5ee6,ic chip,ic chip,6,8,0.8814,phash+clip
+8cc8c923d1f26953,bd972649d0e54667,led,led,4,1,0.9730,phash+clip
+9155d1a6d45c6cac,b0a27a92038461a2,jumper wire,jumper wire,34,26,0.9308,clip_only
+934d66dd85efb2be,af1e4b6372f3b9c8,jumper wire,jumper wire,24,31,0.9276,clip_only
+934d66dd85efb2be,c2e21c0abc1eefba,jumper wire,jumper wire,24,27,0.9240,clip_only
+934d66dd85efb2be,e7629b34e836226f,jumper wire,jumper wire,34,24,0.9425,clip_only
+980f02cfcab8535c,cdd6f07f1130659f,ic chip,ic chip,16,17,0.9495,clip_only
+9bb0272415cc5982,b8d5150ec24cf3cd,ic chip,ic chip,16,24,0.9594,clip_only
+9bb0272415cc5982,ca8a64460a91f59f,ic chip,ic chip,20,19,0.9541,clip_only
+9bb0272415cc5982,e6a5967d17491bb2,ic chip,ic chip,20,15,0.9560,clip_only
+9cf30ed6e8c551a5,9dec61300c6694db,crystal oscillator,crystal oscillator,2,0,0.9956,phash+clip
+a18f901c771510e3,c918a5b72d987d73,resistor,resistor,2,2,0.9351,phash+clip
+a805a6da526f9396,c7d0db26fb3093bb,potentiometer,potentiometer,26,18,0.9312,clip_only
+abb42836bcbad136,b73de8b38d31a83c,inductor coil,inductor coil,0,0,0.9878,phash+clip
+b18819f4327ee038,bf6ef8eb4da759f7,breadboard,breadboard,0,0,0.9806,phash+clip
+b2ee703a126405b0,db9fd37a81e518fb,switch,switch,32,31,0.9352,clip_only
+b6c8b7f00125bcd1,e018691f105820b7,battery holder,battery holder,10,7,0.8990,phash+clip
+b8d5150ec24cf3cd,ca8a64460a91f59f,ic chip,ic chip,28,27,0.9519,clip_only
+b8d5150ec24cf3cd,d60032a79cc2c3f7,ic chip,ic chip,22,26,0.9267,clip_only
+b8d5150ec24cf3cd,e6a5967d17491bb2,ic chip,ic chip,20,13,0.9444,clip_only
+baec50cf661ba585,d22682cc6628dbfe,connector,connector,30,29,0.9202,clip_only
+bea3c4bedff4c653,e1d7ec5e4a4f3e3a,inductor coil,inductor coil,24,12,0.9695,clip_only
+c3dc31cfaa9e92ed,c8e65a4236957402,resistor,resistor,2,4,0.9214,phash+clip
+c3dc31cfaa9e92ed,d6a09751290b1492,resistor,resistor,2,6,0.9363,phash+clip
+c8e65a4236957402,d6a09751290b1492,resistor,resistor,2,4,0.9714,phash+clip
+c8e65a4236957402,e275218a20b34526,resistor,resistor,0,3,0.9021,phash+clip
+c94eae7c192b04b9,e998e0f2262b2711,resistor,resistor,0,0,0.9869,phash+clip
+ca6dea17ab445ec1,ea1bc4e6f7a122dc,battery holder,battery holder,2,2,0.9861,phash+clip
+ca8a64460a91f59f,e6a5967d17491bb2,ic chip,ic chip,28,24,0.9582,clip_only
+d60032a79cc2c3f7,d7058acc580ed2ec,ic chip,ic chip,8,23,0.8884,phash+clip
+d6a09751290b1492,e275218a20b34526,resistor,resistor,2,7,0.9034,phash+clip
+d9f8bb7c3ff5e5bc,dc21917b18aac76a,ic chip,ic chip,32,24,0.9251,clip_only
+dc97b943f73fe41e,e34d4897c9551873,connector,connector,40,31,0.9231,clip_only
+e2cb8f99473c536f,fda173584f0ae103,led,led,2,0,0.9985,phash+clip
+f368d153f73c14b6,f57099c9d8e51878,diode,ic chip,8,16,0.8528,phash+clip
+f5309c319c765ed4,f901bca02c522675,switch,switch,6,4,0.9179,phash+clip

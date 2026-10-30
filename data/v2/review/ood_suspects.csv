@@ -1,0 +1,817 @@
+id,label,path,split,fold,ood_score,top_distractor,top_distractor_p,zeroshot_class,zeroshot_class_p,label_p
+3d84edd478b5abd3,breadboard,images/breadboard/3d84edd478b5abd3.jpg,dev,3,1.0000,cartoon_game_art,0.9991,connector,0.0000,0.0000
+67abde645ed265b4,fuse,images/fuse/67abde645ed265b4.jpg,dev,4,1.0000,logo,0.9286,fuse,0.0000,0.0000
+33794bd8c7db7e63,ic chip,images/ic chip/33794bd8c7db7e63.jpg,dev,4,1.0000,collage,0.9878,relay,0.0000,0.0000
+ce0b75086b7e1fe9,transformer,images/transformer/ce0b75086b7e1fe9.jpg,dev,4,1.0000,person,0.9997,relay,0.0000,0.0000
+98720f6b6c1f93f8,transistor,images/transistor/98720f6b6c1f93f8.jpg,dev,2,1.0000,cartoon_game_art,0.9734,transistor,0.0000,0.0000
+51ca18cf790de47f,transformer,images/transformer/51ca18cf790de47f.jpg,dev,3,1.0000,text_screenshot,0.9782,relay,0.0000,0.0000
+150d067b244935f9,relay,images/relay/150d067b244935f9.jpg,dev,1,1.0000,website_screenshot,0.9745,relay,0.0000,0.0000
+4f4ca5d3422322c5,fuse,images/fuse/4f4ca5d3422322c5.jpg,dev,2,1.0000,cartoon_game_art,0.9999,microcontroller board,0.0000,0.0000
+157f26216deb7c51,transformer,images/transformer/157f26216deb7c51.jpg,test,,1.0000,text_screenshot,0.9991,relay,0.0000,0.0000
+60cb192031f98fea,battery holder,images/battery holder/60cb192031f98fea.jpg,test,,1.0000,collage,0.9999,battery holder,0.0000,0.0000
+371bc276c3cd34fc,switch,images/switch/371bc276c3cd34fc.jpg,dev,0,1.0000,cartoon_game_art,0.9987,microcontroller board,0.0000,0.0000
+e56c7b6ac8e97074,relay,images/relay/e56c7b6ac8e97074.jpg,dev,4,1.0000,car,1.0000,relay,0.0000,0.0000
+0f38d20f1844cab0,fuse,images/fuse/0f38d20f1844cab0.jpg,dev,2,1.0000,person,0.9986,ic chip,0.0000,0.0000
+81a64e5f048a2cca,inductor coil,images/inductor coil/81a64e5f048a2cca.jpg,dev,3,1.0000,collage,1.0000,fuse,0.0000,0.0000
+70ccf5ad401ed5ea,transistor,images/transistor/70ccf5ad401ed5ea.jpg,test,,1.0000,person,0.9945,ic chip,0.0000,0.0000
+02139198a71a4f8b,relay,images/relay/02139198a71a4f8b.jpg,dev,4,1.0000,cartoon_game_art,0.9958,relay,0.0000,0.0000
+3cb3c149cf0ba555,transistor,images/transistor/3cb3c149cf0ba555.jpg,dev,2,1.0000,person,0.9977,connector,0.0000,0.0000
+e8b1e6fe69e6957a,capacitor,images/capacitor/e8b1e6fe69e6957a.jpg,dev,4,1.0000,person,0.9993,relay,0.0000,0.0000
+e8960784aaefe9c5,relay,images/relay/e8960784aaefe9c5.jpg,dev,2,1.0000,person,0.9993,connector,0.0000,0.0000
+e5251e46975fffa9,switch,images/switch/e5251e46975fffa9.jpg,dev,3,1.0000,car,0.9985,relay,0.0000,0.0000
+b5eb34630c7a5a8a,fuse,images/fuse/b5eb34630c7a5a8a.jpg,dev,0,1.0000,logo,0.9996,fuse,0.0000,0.0000
+38efd149a5ebeb4b,transistor,images/transistor/38efd149a5ebeb4b.jpg,dev,3,1.0000,person,0.9990,ic chip,0.0000,0.0000
+6a918fd6519a1a5e,transistor,images/transistor/6a918fd6519a1a5e.jpg,dev,2,1.0000,person,0.9750,ic chip,0.0000,0.0000
+018d9a70801fe9e2,switch,images/switch/018d9a70801fe9e2.jpg,dev,4,1.0000,cartoon_game_art,0.9852,jumper wire,0.0000,0.0000
+16b93417fc2115c0,fuse,images/fuse/16b93417fc2115c0.jpg,dev,2,1.0000,logo,0.9967,diode,0.0000,0.0000
+d52e68726de85ddc,diode,images/diode/d52e68726de85ddc.jpg,dev,3,1.0000,person,0.9963,connector,0.0000,0.0000
+32f6b43622c4084c,relay,images/relay/32f6b43622c4084c.jpg,dev,3,1.0000,logo,0.9993,diode,0.0000,0.0000
+7f91cb9ef3427627,transformer,images/transformer/7f91cb9ef3427627.jpg,test,,1.0000,cartoon_game_art,0.9989,relay,0.0000,0.0000
+dc892503699d3c0e,fuse,images/fuse/dc892503699d3c0e.jpg,dev,0,1.0000,website_screenshot,0.9315,relay,0.0000,0.0000
+0f73e5f469966386,battery holder,images/battery holder/0f73e5f469966386.jpg,dev,0,1.0000,collage,0.9997,connector,0.0000,0.0000
+eeffac5d3b4e3dd6,battery holder,images/battery holder/eeffac5d3b4e3dd6.jpg,dev,3,0.9999,collage,0.9985,heat sink,0.0000,0.0000
+ce0c7fb9d5e1e7cc,battery holder,images/battery holder/ce0c7fb9d5e1e7cc.jpg,test,,0.9999,logo,0.9998,battery holder,0.0000,0.0000
+6d7cfc3f7977b50c,transistor,images/transistor/6d7cfc3f7977b50c.jpg,dev,0,0.9999,person,0.9849,connector,0.0000,0.0000
+bb906ffea10957ee,battery holder,images/battery holder/bb906ffea10957ee.jpg,dev,1,0.9999,logo,0.9999,ic chip,0.0000,0.0000
+e5fc99cecfd5e021,resistor,images/resistor/e5fc99cecfd5e021.jpg,test,,0.9999,cartoon_game_art,0.9990,relay,0.0000,0.0000
+a001f1eb3cc98e5a,switch,images/switch/a001f1eb3cc98e5a.jpg,test,,0.9999,website_screenshot,0.9972,ic chip,0.0000,0.0000
+12ed0a87089d535b,transformer,images/transformer/12ed0a87089d535b.jpg,dev,0,0.9999,cartoon_game_art,0.9978,transformer,0.0001,0.0001
+d6ccfbf7a8d23414,battery holder,images/battery holder/d6ccfbf7a8d23414.jpg,dev,2,0.9999,website_screenshot,0.9951,relay,0.0000,0.0000
+93e38f18f54be64a,transformer,images/transformer/93e38f18f54be64a.jpg,dev,4,0.9999,car,0.9981,power supply module,0.0001,0.0000
+52dc27f72c1d33f8,connector,images/connector/52dc27f72c1d33f8.jpg,dev,1,0.9999,person,0.9989,relay,0.0001,0.0000
+6e074815db76e7ba,switch,images/switch/6e074815db76e7ba.jpg,dev,0,0.9999,car,0.9836,ic chip,0.0001,0.0000
+d5f69ecd873043f3,diode,images/diode/d5f69ecd873043f3.jpg,dev,3,0.9999,collage,0.9990,power supply module,0.0001,0.0000
+90b7f0651ce66d79,switch,images/switch/90b7f0651ce66d79.jpg,dev,3,0.9999,collage,0.6074,ic chip,0.0000,0.0000
+6e672881108ba021,microcontroller board,images/microcontroller board/6e672881108ba021.jpg,test,,0.9999,logo,0.9998,relay,0.0001,0.0000
+d45290376a2306f4,resistor,images/resistor/d45290376a2306f4.jpg,test,,0.9999,person,0.9970,connector,0.0001,0.0000
+a117a1cca6d3d2d1,switch,images/switch/a117a1cca6d3d2d1.jpg,dev,0,0.9999,cartoon_game_art,0.5127,microcontroller board,0.0001,0.0000
+314602cea20e5a2a,relay,images/relay/314602cea20e5a2a.jpg,dev,2,0.9998,car,0.9660,power supply module,0.0001,0.0000
+e8639889d31a7cfc,jumper wire,images/jumper wire/e8639889d31a7cfc.jpg,dev,2,0.9998,person,0.9978,jumper wire,0.0001,0.0001
+1f603514a69a856a,battery holder,images/battery holder/1f603514a69a856a.jpg,dev,4,0.9998,collage,0.9989,battery holder,0.0001,0.0001
+da04721b289055a9,fuse,images/fuse/da04721b289055a9.jpg,dev,0,0.9998,logo,0.9990,fuse,0.0001,0.0001
+73fa561fd54f4a43,relay,images/relay/73fa561fd54f4a43.jpg,dev,0,0.9998,circuit_schematic,0.9998,power supply module,0.0001,0.0001
+6f96a83483f8d5d1,fuse,images/fuse/6f96a83483f8d5d1.jpg,test,,0.9998,cartoon_game_art,0.5465,relay,0.0000,0.0000
+4f260cabcc1d1d98,transformer,images/transformer/4f260cabcc1d1d98.jpg,dev,0,0.9998,website_screenshot,0.9748,transistor,0.0001,0.0000
+f617219ec7fb103d,switch,images/switch/f617219ec7fb103d.jpg,dev,0,0.9998,cartoon_game_art,0.9718,power supply module,0.0001,0.0000
+765096970f65362d,resistor,images/resistor/765096970f65362d.jpg,dev,0,0.9998,person,0.9870,relay,0.0000,0.0000
+1a412f5d755dcd74,transistor,images/transistor/1a412f5d755dcd74.jpg,dev,1,0.9998,collage,0.9916,ic chip,0.0001,0.0000
+51a594e5f00d715d,crystal oscillator,images/crystal oscillator/51a594e5f00d715d.jpg,dev,0,0.9998,circuit_schematic,0.9998,relay,0.0001,0.0000
+5a8804a83fc077ea,transistor,images/transistor/5a8804a83fc077ea.jpg,dev,0,0.9998,person,0.9978,transformer,0.0002,0.0000
+e6f103877753c797,diode,images/diode/e6f103877753c797.jpg,dev,3,0.9998,website_screenshot,0.6763,jumper wire,0.0001,0.0000
+34f5f963fae4a171,switch,images/switch/34f5f963fae4a171.jpg,dev,1,0.9997,person,0.9618,ic chip,0.0001,0.0000
+92bc1e189131d136,fuse,images/fuse/92bc1e189131d136.jpg,test,,0.9997,person,0.9986,connector,0.0002,0.0000
+878c8328398238a6,relay,images/relay/878c8328398238a6.jpg,dev,1,0.9997,logo,0.3020,relay,0.0001,0.0001
+3f1d10f1a364fa09,fuse,images/fuse/3f1d10f1a364fa09.jpg,dev,1,0.9997,car,0.9984,power supply module,0.0001,0.0000
+6108c84820be21f5,resistor,images/resistor/6108c84820be21f5.jpg,dev,1,0.9997,circuit_schematic,0.9997,power supply module,0.0001,0.0000
+807aac93a5c682a7,switch,images/switch/807aac93a5c682a7.jpg,test,,0.9997,car,0.8219,relay,0.0001,0.0000
+0ea321e3a8b95dff,switch,images/switch/0ea321e3a8b95dff.jpg,dev,1,0.9997,cartoon_game_art,0.9368,connector,0.0002,0.0000
+ce740ae55a3b2ac9,relay,images/relay/ce740ae55a3b2ac9.jpg,dev,2,0.9997,car,0.9878,transformer,0.0001,0.0001
+75599839cccc3fdf,transistor,images/transistor/75599839cccc3fdf.jpg,dev,2,0.9997,person,0.4968,jumper wire,0.0001,0.0000
+00a5de243f9fe682,switch,images/switch/00a5de243f9fe682.jpg,dev,3,0.9997,cartoon_game_art,0.8657,ic chip,0.0001,0.0000
+e13944aaa9de3633,inductor coil,images/inductor coil/e13944aaa9de3633.jpg,dev,1,0.9997,text_screenshot,0.9991,transformer,0.0001,0.0000
+e5c9d92865b0b41d,power supply module,images/power supply module/e5c9d92865b0b41d.jpg,dev,0,0.9997,person,0.9548,transistor,0.0001,0.0000
+3db912fb5a571f17,switch,images/switch/3db912fb5a571f17.jpg,dev,3,0.9996,collage,0.6947,switch,0.0001,0.0001
+fe71c67059e10ac3,fuse,images/fuse/fe71c67059e10ac3.jpg,dev,0,0.9996,person,0.9812,relay,0.0003,0.0000
+92d7ba470b3027a2,heat sink,images/heat sink/92d7ba470b3027a2.jpg,dev,4,0.9996,logo,0.9920,ic chip,0.0001,0.0000
+e225a56e178d42cb,transformer,images/transformer/e225a56e178d42cb.jpg,dev,3,0.9996,text_screenshot,0.7175,relay,0.0002,0.0000
+f59d2939d11b03bf,inductor coil,images/inductor coil/f59d2939d11b03bf.jpg,dev,1,0.9996,website_screenshot,0.7465,potentiometer,0.0002,0.0000
+71c80e3ba15ea95a,jumper wire,images/jumper wire/71c80e3ba15ea95a.jpg,dev,4,0.9996,person,0.4872,relay,0.0001,0.0001
+b20e8f2c3f63e395,transformer,images/transformer/b20e8f2c3f63e395.jpg,dev,4,0.9996,person,0.8849,transformer,0.0003,0.0003
+bc9cc098ecefb3dc,resistor,images/resistor/bc9cc098ecefb3dc.jpg,dev,1,0.9996,circuit_schematic,0.9996,resistor,0.0002,0.0002
+4d394b10a3ae626a,crystal oscillator,images/crystal oscillator/4d394b10a3ae626a.jpg,dev,4,0.9996,logo,0.9993,microcontroller board,0.0001,0.0000
+bd8c1adee90b9790,crystal oscillator,images/crystal oscillator/bd8c1adee90b9790.jpg,test,,0.9996,circuit_schematic,0.9996,crystal oscillator,0.0001,0.0001
+3b63ca66250fb3ea,diode,images/diode/3b63ca66250fb3ea.jpg,dev,0,0.9995,person,0.9015,power supply module,0.0002,0.0000
+fa2a117691bf59c7,battery holder,images/battery holder/fa2a117691bf59c7.jpg,dev,1,0.9995,car,0.9971,power supply module,0.0001,0.0000
+025522dcb06933cc,fuse,images/fuse/025522dcb06933cc.jpg,dev,3,0.9995,cartoon_game_art,0.9943,relay,0.0002,0.0000
+a2ac1dbcf3376441,potentiometer,images/potentiometer/a2ac1dbcf3376441.jpg,dev,4,0.9995,circuit_schematic,0.9995,relay,0.0001,0.0001
+768387b42bc2c962,inductor coil,images/inductor coil/768387b42bc2c962.jpg,test,,0.9995,text_screenshot,0.9985,inductor coil,0.0003,0.0003
+2df0fd6160d5627e,microcontroller board,images/microcontroller board/2df0fd6160d5627e.jpg,dev,4,0.9995,circuit_schematic,0.9995,microcontroller board,0.0004,0.0004
+628881ae7f1063df,jumper wire,images/jumper wire/628881ae7f1063df.jpg,dev,0,0.9995,collage,0.6371,power supply module,0.0002,0.0000
+8542e2b947cb3161,diode,images/diode/8542e2b947cb3161.jpg,dev,1,0.9995,website_screenshot,0.8614,power supply module,0.0003,0.0000
+2a9ac4e19e8aba38,connector,images/connector/2a9ac4e19e8aba38.jpg,dev,4,0.9995,circuit_schematic,0.8084,relay,0.0002,0.0000
+a1be287cde904e13,power supply module,images/power supply module/a1be287cde904e13.jpg,dev,3,0.9995,logo,0.9843,heat sink,0.0001,0.0000
+8bebdeb7e437eeac,switch,images/switch/8bebdeb7e437eeac.jpg,dev,0,0.9994,cartoon_game_art,0.9845,relay,0.0002,0.0000
+98f9156f29e31b6e,transistor,images/transistor/98f9156f29e31b6e.jpg,dev,1,0.9994,text_screenshot,0.9689,transformer,0.0003,0.0000
+46fc92ff8636e704,heat sink,images/heat sink/46fc92ff8636e704.jpg,dev,1,0.9993,person,0.9211,relay,0.0003,0.0000
+3dd7d2e3140671c8,relay,images/relay/3dd7d2e3140671c8.jpg,dev,4,0.9993,car,0.9927,power supply module,0.0002,0.0001
+fb866e21ee776fef,switch,images/switch/fb866e21ee776fef.jpg,dev,1,0.9993,car,0.5694,power supply module,0.0002,0.0000
+6f2e74150a1cb67d,crystal oscillator,images/crystal oscillator/6f2e74150a1cb67d.jpg,dev,3,0.9993,logo,0.9953,jumper wire,0.0002,0.0000
+cae8684d0b238c76,transformer,images/transformer/cae8684d0b238c76.jpg,dev,0,0.9993,cartoon_game_art,0.8475,transformer,0.0004,0.0004
+a3c8825c08c79aa5,microcontroller board,images/microcontroller board/a3c8825c08c79aa5.jpg,dev,2,0.9993,website_screenshot,0.8507,ic chip,0.0002,0.0001
+c5c41dd065433549,jumper wire,images/jumper wire/c5c41dd065433549.jpg,dev,4,0.9993,person,0.9736,switch,0.0003,0.0001
+76497d232da03c8b,switch,images/switch/76497d232da03c8b.jpg,dev,1,0.9993,cartoon_game_art,0.7358,relay,0.0002,0.0000
+62be097e0c2a8ddb,transistor,images/transistor/62be097e0c2a8ddb.jpg,test,,0.9992,circuit_schematic,0.9992,crystal oscillator,0.0002,0.0000
+fffb0864ba72e434,switch,images/switch/fffb0864ba72e434.jpg,dev,0,0.9992,cartoon_game_art,0.9916,relay,0.0005,0.0000
+c0b4d9e3bdcb6c53,inductor coil,images/inductor coil/c0b4d9e3bdcb6c53.jpg,test,,0.9992,text_screenshot,0.9865,microcontroller board,0.0002,0.0000
+a5c4f3594a62be39,jumper wire,images/jumper wire/a5c4f3594a62be39.jpg,test,,0.9992,cartoon_game_art,0.4399,transformer,0.0005,0.0000
+457fa55aeeab7053,fuse,images/fuse/457fa55aeeab7053.jpg,dev,2,0.9992,person,0.9932,ic chip,0.0002,0.0000
+6cea1362ffdb6bee,relay,images/relay/6cea1362ffdb6bee.jpg,dev,0,0.9992,text_screenshot,0.9972,microcontroller board,0.0005,0.0002
+ad09b4d728b00f81,transformer,images/transformer/ad09b4d728b00f81.jpg,dev,3,0.9992,text_screenshot,0.9982,transformer,0.0003,0.0003
+8a8d80a5e9ff9011,relay,images/relay/8a8d80a5e9ff9011.jpg,dev,0,0.9991,car,0.9690,relay,0.0006,0.0006
+3665db2d701b91b9,transformer,images/transformer/3665db2d701b91b9.jpg,test,,0.9991,cartoon_game_art,0.9664,transformer,0.0007,0.0007
+6e7b96294c5c8b03,led,images/led/6e7b96294c5c8b03.jpg,dev,3,0.9991,circuit_schematic,0.7686,diode,0.0003,0.0000
+561ebdbe1b941a0d,jumper wire,images/jumper wire/561ebdbe1b941a0d.jpg,dev,4,0.9991,person,0.9653,jumper wire,0.0004,0.0004
+3a5df01dcc55fc5e,fuse,images/fuse/3a5df01dcc55fc5e.jpg,dev,2,0.9991,text_screenshot,0.9908,microcontroller board,0.0003,0.0001
+e01835d813a69a51,fuse,images/fuse/e01835d813a69a51.jpg,dev,3,0.9990,person,0.9935,relay,0.0005,0.0000
+7460f86e99ff24c8,diode,images/diode/7460f86e99ff24c8.jpg,dev,3,0.9990,logo,0.5731,relay,0.0004,0.0000
+2fc25fcc775ed384,relay,images/relay/2fc25fcc775ed384.jpg,dev,3,0.9990,car,0.8979,power supply module,0.0002,0.0002
+ab63986575a85555,connector,images/connector/ab63986575a85555.jpg,dev,3,0.9990,collage,0.9983,connector,0.0003,0.0003
+5b62bb214a63cb79,switch,images/switch/5b62bb214a63cb79.jpg,test,,0.9990,cartoon_game_art,0.8393,microcontroller board,0.0002,0.0000
+eabec009ffa6cb77,switch,images/switch/eabec009ffa6cb77.jpg,test,,0.9990,collage,0.4529,power supply module,0.0004,0.0003
+45d614969beed576,diode,images/diode/45d614969beed576.jpg,dev,0,0.9990,circuit_schematic,0.9990,diode,0.0003,0.0003
+0a36cc6c5ab6304a,relay,images/relay/0a36cc6c5ab6304a.jpg,dev,2,0.9990,logo,0.9944,ic chip,0.0003,0.0000
+d4e68d2d23af8a4b,relay,images/relay/d4e68d2d23af8a4b.jpg,dev,2,0.9990,circuit_schematic,0.9990,relay,0.0004,0.0004
+93bf64ce87f60d7e,relay,images/relay/93bf64ce87f60d7e.jpg,dev,2,0.9990,car,0.8929,power supply module,0.0004,0.0002
+5a553f555be72051,battery holder,images/battery holder/5a553f555be72051.jpg,dev,1,0.9990,collage,0.9933,switch,0.0003,0.0001
+6e7dcb87bdb95c92,resistor,images/resistor/6e7dcb87bdb95c92.jpg,dev,3,0.9989,collage,0.9938,jumper wire,0.0002,0.0001
+86ac3798958bc25c,resistor,images/resistor/86ac3798958bc25c.jpg,test,,0.9988,person,0.7645,connector,0.0002,0.0001
+91e6226d7f866bb0,crystal oscillator,images/crystal oscillator/91e6226d7f866bb0.jpg,dev,1,0.9988,circuit_schematic,0.9988,crystal oscillator,0.0006,0.0006
+af01a2cc7b1c39a2,jumper wire,images/jumper wire/af01a2cc7b1c39a2.jpg,test,,0.9988,person,0.9826,relay,0.0007,0.0000
+fe4925c7cedb08e1,transformer,images/transformer/fe4925c7cedb08e1.jpg,dev,0,0.9987,circuit_schematic,0.9697,microcontroller board,0.0005,0.0001
+893122aa2c523277,jumper wire,images/jumper wire/893122aa2c523277.jpg,dev,4,0.9987,person,0.5413,relay,0.0006,0.0001
+7e120cd7e3f13fa4,crystal oscillator,images/crystal oscillator/7e120cd7e3f13fa4.jpg,dev,4,0.9987,circuit_schematic,0.9987,transistor,0.0005,0.0001
+a2a9658a4d3aac25,relay,images/relay/a2a9658a4d3aac25.jpg,dev,0,0.9986,circuit_schematic,0.9986,relay,0.0007,0.0007
+f264e4b8aad8e1a1,relay,images/relay/f264e4b8aad8e1a1.jpg,dev,1,0.9986,circuit_schematic,0.9986,switch,0.0003,0.0003
+044721706e3d5eaa,switch,images/switch/044721706e3d5eaa.jpg,dev,2,0.9986,cartoon_game_art,0.9940,power supply module,0.0006,0.0002
+ce31ad0973f199e4,crystal oscillator,images/crystal oscillator/ce31ad0973f199e4.jpg,dev,2,0.9986,person,0.9633,connector,0.0004,0.0000
+8d11460999967960,switch,images/switch/8d11460999967960.jpg,test,,0.9986,cartoon_game_art,0.9690,microcontroller board,0.0004,0.0003
+dd21c7c8c67b17c7,jumper wire,images/jumper wire/dd21c7c8c67b17c7.jpg,dev,1,0.9986,circuit_schematic,0.9985,relay,0.0008,0.0000
+993916ab3434705c,jumper wire,images/jumper wire/993916ab3434705c.jpg,dev,3,0.9985,person,0.8909,jumper wire,0.0006,0.0006
+cf396c3f1ddeadce,relay,images/relay/cf396c3f1ddeadce.jpg,dev,3,0.9984,text_screenshot,0.6503,microcontroller board,0.0005,0.0001
+359a125a215a2046,potentiometer,images/potentiometer/359a125a215a2046.jpg,dev,0,0.9984,circuit_schematic,0.9984,relay,0.0006,0.0002
+fd10fcd2fac43e50,microcontroller board,images/microcontroller board/fd10fcd2fac43e50.jpg,dev,1,0.9984,circuit_schematic,0.9983,microcontroller board,0.0009,0.0009
+cde0efa4fa9571c0,transformer,images/transformer/cde0efa4fa9571c0.jpg,dev,4,0.9983,cartoon_game_art,0.9969,transformer,0.0010,0.0010
+d05af755cb308fb7,transistor,images/transistor/d05af755cb308fb7.jpg,dev,3,0.9983,circuit_schematic,0.9983,crystal oscillator,0.0005,0.0005
+0c5e7eb01ef648d0,switch,images/switch/0c5e7eb01ef648d0.jpg,dev,2,0.9983,cartoon_game_art,0.9913,switch,0.0009,0.0009
+a3e0dedaa517a319,resistor,images/resistor/a3e0dedaa517a319.jpg,test,,0.9983,car,0.9915,ic chip,0.0009,0.0000
+2724c0d9ad099f58,switch,images/switch/2724c0d9ad099f58.jpg,dev,0,0.9983,collage,0.6014,switch,0.0016,0.0016
+6e57ac3a97b7ff25,power supply module,images/power supply module/6e57ac3a97b7ff25.jpg,dev,0,0.9982,text_screenshot,0.7661,power supply module,0.0007,0.0007
+3cf2e32553885033,switch,images/switch/3cf2e32553885033.jpg,dev,3,0.9981,text_screenshot,0.9382,relay,0.0005,0.0000
+c7bc1c8f0fec0387,switch,images/switch/c7bc1c8f0fec0387.jpg,dev,3,0.9981,cartoon_game_art,0.8361,relay,0.0005,0.0001
+8a51e6129c0b651a,transistor,images/transistor/8a51e6129c0b651a.jpg,dev,2,0.9981,logo,0.5780,ic chip,0.0009,0.0006
+d0c87c4122b7f2a7,resistor,images/resistor/d0c87c4122b7f2a7.jpg,dev,4,0.9979,circuit_schematic,0.9979,resistor,0.0005,0.0005
+c1fa4b903f99f61f,switch,images/switch/c1fa4b903f99f61f.jpg,dev,0,0.9979,car,0.9045,relay,0.0012,0.0000
+e5cd716ce6090f24,microcontroller board,images/microcontroller board/e5cd716ce6090f24.jpg,dev,4,0.9979,circuit_schematic,0.9979,microcontroller board,0.0011,0.0011
+e94e603d37901cb3,jumper wire,images/jumper wire/e94e603d37901cb3.jpg,dev,1,0.9979,person,0.5314,transformer,0.0006,0.0000
+cde8004187244f16,switch,images/switch/cde8004187244f16.jpg,dev,4,0.9978,collage,0.9734,switch,0.0013,0.0013
+f014597e7578b9ee,switch,images/switch/f014597e7578b9ee.jpg,dev,3,0.9978,collage,0.8135,microcontroller board,0.0006,0.0004
+4a66fe570c09f468,relay,images/relay/4a66fe570c09f468.jpg,dev,3,0.9977,logo,0.9591,fuse,0.0004,0.0000
+7b853f96991f2090,transformer,images/transformer/7b853f96991f2090.jpg,dev,0,0.9977,food,0.9936,relay,0.0009,0.0000
+8911e47417f4809b,transistor,images/transistor/8911e47417f4809b.jpg,dev,1,0.9977,cartoon_game_art,0.9944,ic chip,0.0009,0.0002
+398e9c6b63307049,diode,images/diode/398e9c6b63307049.jpg,dev,1,0.9976,person,0.8084,relay,0.0008,0.0000
+4147defc73e79718,power supply module,images/power supply module/4147defc73e79718.jpg,dev,0,0.9976,person,0.5000,relay,0.0010,0.0002
+fff8242745639160,led,images/led/fff8242745639160.jpg,dev,0,0.9976,logo,0.9905,fuse,0.0009,0.0009
+ab7bbcc1daf75c5d,transistor,images/transistor/ab7bbcc1daf75c5d.jpg,dev,2,0.9976,person,0.9923,crystal oscillator,0.0013,0.0002
+9fd05c75a77e4799,heat sink,images/heat sink/9fd05c75a77e4799.jpg,dev,4,0.9975,logo,0.9963,ic chip,0.0008,0.0000
+db5a9fc0715fcc42,jumper wire,images/jumper wire/db5a9fc0715fcc42.jpg,dev,0,0.9975,person,0.9450,relay,0.0011,0.0007
+8e2fa04d0bf4f16c,fuse,images/fuse/8e2fa04d0bf4f16c.jpg,dev,1,0.9973,logo,0.9621,relay,0.0009,0.0000
+824045dd2c64b324,resistor,images/resistor/824045dd2c64b324.jpg,dev,4,0.9971,circuit_schematic,0.9945,crystal oscillator,0.0005,0.0003
+8d0cdf930d37ae90,microcontroller board,images/microcontroller board/8d0cdf930d37ae90.jpg,dev,2,0.9971,circuit_schematic,0.9971,microcontroller board,0.0025,0.0025
+5bb9b8398e6308b3,transformer,images/transformer/5bb9b8398e6308b3.jpg,dev,4,0.9971,cartoon_game_art,0.9756,transformer,0.0017,0.0017
+d330953555e0aaf4,switch,images/switch/d330953555e0aaf4.jpg,dev,2,0.9970,cartoon_game_art,0.9774,fuse,0.0014,0.0004
+7833583dbbbff48a,transistor,images/transistor/7833583dbbbff48a.jpg,dev,1,0.9970,logo,0.9961,diode,0.0024,0.0000
+847a4ec3d16e73e9,resistor,images/resistor/847a4ec3d16e73e9.jpg,dev,0,0.9969,text_screenshot,0.9961,resistor,0.0021,0.0021
+f8a0b899048eee0c,transformer,images/transformer/f8a0b899048eee0c.jpg,dev,2,0.9969,cartoon_game_art,0.8692,transformer,0.0011,0.0011
+1c55ecbe00e9e285,switch,images/switch/1c55ecbe00e9e285.jpg,dev,4,0.9969,logo,0.4057,relay,0.0012,0.0001
+1a6328dfa941cc24,fuse,images/fuse/1a6328dfa941cc24.jpg,test,,0.9969,cartoon_game_art,0.7154,connector,0.0011,0.0005
+3c4c1a65e7cc1f76,switch,images/switch/3c4c1a65e7cc1f76.jpg,dev,0,0.9968,website_screenshot,0.5130,relay,0.0011,0.0002
+76411b6615b52794,diode,images/diode/76411b6615b52794.jpg,dev,4,0.9967,logo,0.4927,transformer,0.0017,0.0000
+d22ee160c79eebcc,jumper wire,images/jumper wire/d22ee160c79eebcc.jpg,dev,3,0.9967,person,0.9492,jumper wire,0.0012,0.0012
+59da6273b4681937,switch,images/switch/59da6273b4681937.jpg,dev,2,0.9966,cartoon_game_art,0.9874,microcontroller board,0.0019,0.0000
+9c724df118259ace,transformer,images/transformer/9c724df118259ace.jpg,dev,1,0.9966,person,0.7373,transformer,0.0030,0.0030
+9c5f5ba75e3ba9f7,jumper wire,images/jumper wire/9c5f5ba75e3ba9f7.jpg,dev,4,0.9966,logo,0.8039,jumper wire,0.0016,0.0016
+813471f3df81e342,diode,images/diode/813471f3df81e342.jpg,test,,0.9965,circuit_schematic,0.9950,diode,0.0021,0.0021
+8efe558cd1efd4c3,diode,images/diode/8efe558cd1efd4c3.jpg,test,,0.9965,circuit_schematic,0.9950,diode,0.0021,0.0021
+de3baaf67850c8ea,resistor,images/resistor/de3baaf67850c8ea.jpg,dev,3,0.9965,logo,0.9607,connector,0.0009,0.0002
+5f468f46b4f499d2,switch,images/switch/5f468f46b4f499d2.jpg,dev,0,0.9965,collage,0.6470,switch,0.0027,0.0027
+73539b202f2e5af4,switch,images/switch/73539b202f2e5af4.jpg,dev,0,0.9964,cartoon_game_art,0.9353,switch,0.0012,0.0012
+ced8bacadd546816,led,images/led/ced8bacadd546816.jpg,dev,2,0.9964,website_screenshot,0.9725,power supply module,0.0017,0.0000
+6868911d7bfc73bf,transistor,images/transistor/6868911d7bfc73bf.jpg,test,,0.9964,circuit_schematic,0.9964,relay,0.0014,0.0013
+61a75139ff873137,transformer,images/transformer/61a75139ff873137.jpg,dev,4,0.9964,cartoon_game_art,0.9884,transformer,0.0027,0.0027
+0c42311612d3e1fc,heat sink,images/heat sink/0c42311612d3e1fc.jpg,dev,4,0.9962,logo,0.9935,transformer,0.0014,0.0000
+2679895e44fa16aa,switch,images/switch/2679895e44fa16aa.jpg,dev,1,0.9960,cartoon_game_art,0.8993,microcontroller board,0.0011,0.0003
+e09b40d779a89125,transformer,images/transformer/e09b40d779a89125.jpg,dev,2,0.9958,circuit_schematic,0.9861,crystal oscillator,0.0014,0.0001
+5b0c3c940f7e659a,diode,images/diode/5b0c3c940f7e659a.jpg,dev,1,0.9958,person,0.9645,relay,0.0040,0.0000
+a4d2a588026a265e,switch,images/switch/a4d2a588026a265e.jpg,dev,3,0.9956,cartoon_game_art,0.8829,relay,0.0032,0.0001
+8e6ddcfe1a8c7dfc,relay,images/relay/8e6ddcfe1a8c7dfc.jpg,dev,2,0.9956,circuit_schematic,0.9956,relay,0.0020,0.0020
+082baa73c857a497,jumper wire,images/jumper wire/082baa73c857a497.jpg,test,,0.9956,website_screenshot,0.5927,jumper wire,0.0014,0.0014
+fc46c233f2b5eca4,ic chip,images/ic chip/fc46c233f2b5eca4.jpg,dev,0,0.9955,logo,0.9939,transistor,0.0012,0.0006
+d5a243ae54397050,diode,images/diode/d5a243ae54397050.jpg,dev,2,0.9955,person,0.5174,relay,0.0028,0.0000
+103485c7297ab7fe,diode,images/diode/103485c7297ab7fe.jpg,dev,2,0.9954,website_screenshot,0.8016,breadboard,0.0027,0.0000
+32558dd2f06eaba8,jumper wire,images/jumper wire/32558dd2f06eaba8.jpg,dev,2,0.9953,person,0.5973,transformer,0.0024,0.0001
+895b2cc9d1dd7192,relay,images/relay/895b2cc9d1dd7192.jpg,dev,2,0.9953,logo,0.9900,relay,0.0039,0.0039
+b8ee8deaab5ce9a0,switch,images/switch/b8ee8deaab5ce9a0.jpg,test,,0.9952,car,0.4216,microcontroller board,0.0023,0.0000
+68dfaa569bb2db57,relay,images/relay/68dfaa569bb2db57.jpg,dev,1,0.9951,logo,0.9777,relay,0.0035,0.0035
+ac01e4fb3bbf24c8,relay,images/relay/ac01e4fb3bbf24c8.jpg,test,,0.9950,circuit_schematic,0.9948,power supply module,0.0018,0.0014
+5c2e56e091860093,resistor,images/resistor/5c2e56e091860093.jpg,dev,1,0.9950,circuit_schematic,0.9950,diode,0.0014,0.0010
+4c39a8a25798e0c6,transformer,images/transformer/4c39a8a25798e0c6.jpg,dev,0,0.9949,person,0.8914,relay,0.0027,0.0003
+e607199c49649f3f,switch,images/switch/e607199c49649f3f.jpg,dev,0,0.9949,person,0.9354,crystal oscillator,0.0021,0.0000
+1c1b3b01b2bff63c,transformer,images/transformer/1c1b3b01b2bff63c.jpg,dev,2,0.9949,cartoon_game_art,0.9170,transformer,0.0033,0.0033
+269448a3404668de,ic chip,images/ic chip/269448a3404668de.jpg,dev,4,0.9949,collage,0.5467,relay,0.0047,0.0000
+5afe6a07a1fa4e12,power supply module,images/power supply module/5afe6a07a1fa4e12.jpg,dev,2,0.9948,circuit_schematic,0.9938,power supply module,0.0022,0.0022
+ead48a628f5f86fe,transistor,images/transistor/ead48a628f5f86fe.jpg,dev,4,0.9945,logo,0.7294,diode,0.0011,0.0008
+04c61ce878ac543e,transformer,images/transformer/04c61ce878ac543e.jpg,dev,3,0.9945,cartoon_game_art,0.9925,transformer,0.0049,0.0049
+2a26f04aea73cbb1,diode,images/diode/2a26f04aea73cbb1.jpg,dev,3,0.9943,circuit_schematic,0.9943,diode,0.0014,0.0014
+3834420fb43d237b,transistor,images/transistor/3834420fb43d237b.jpg,dev,2,0.9943,circuit_schematic,0.9943,crystal oscillator,0.0032,0.0012
+9920c276a6440ec0,switch,images/switch/9920c276a6440ec0.jpg,dev,3,0.9943,cartoon_game_art,0.8289,relay,0.0021,0.0001
+87f43f37f5aef95b,led,images/led/87f43f37f5aef95b.jpg,dev,4,0.9941,logo,0.9658,diode,0.0033,0.0000
+601abacd27c10b61,diode,images/diode/601abacd27c10b61.jpg,dev,0,0.9940,person,0.3557,connector,0.0042,0.0000
+d2e01e59d6b7d060,relay,images/relay/d2e01e59d6b7d060.jpg,dev,1,0.9939,circuit_schematic,0.9931,relay,0.0037,0.0037
+1fabe9ec13839073,battery holder,images/battery holder/1fabe9ec13839073.jpg,dev,1,0.9938,collage,0.7520,capacitor,0.0015,0.0004
+b9f747c0427e30f6,capacitor,images/capacitor/b9f747c0427e30f6.jpg,dev,3,0.9938,person,0.9078,relay,0.0020,0.0001
+621f52522f640667,diode,images/diode/621f52522f640667.jpg,dev,3,0.9937,logo,0.5185,relay,0.0025,0.0000
+c4f716fbdeb1b26c,fuse,images/fuse/c4f716fbdeb1b26c.jpg,dev,0,0.9936,cartoon_game_art,0.5358,fuse,0.0057,0.0057
+ada3ac5dcb7931c0,switch,images/switch/ada3ac5dcb7931c0.jpg,test,,0.9934,cartoon_game_art,0.6728,switch,0.0062,0.0062
+d49938eb2c35fd9a,capacitor,images/capacitor/d49938eb2c35fd9a.jpg,dev,4,0.9933,logo,0.9814,capacitor,0.0048,0.0048
+ad662c3648018f24,jumper wire,images/jumper wire/ad662c3648018f24.jpg,dev,4,0.9933,person,0.9363,relay,0.0028,0.0001
+e81e4df1438b6532,switch,images/switch/e81e4df1438b6532.jpg,dev,0,0.9932,website_screenshot,0.3673,ic chip,0.0017,0.0008
+111192f79103290d,transistor,images/transistor/111192f79103290d.jpg,dev,1,0.9930,cartoon_game_art,0.9599,ic chip,0.0029,0.0007
+e59d873d592b26a0,switch,images/switch/e59d873d592b26a0.jpg,dev,4,0.9929,text_screenshot,0.5125,power supply module,0.0017,0.0001
+f317770997f6d418,ic chip,images/ic chip/f317770997f6d418.jpg,dev,4,0.9929,food,0.9837,relay,0.0029,0.0003
+02f75971ee122190,power supply module,images/power supply module/02f75971ee122190.jpg,dev,4,0.9925,logo,0.8004,relay,0.0023,0.0003
+2dfbd33de126a105,fuse,images/fuse/2dfbd33de126a105.jpg,dev,3,0.9925,cartoon_game_art,0.7412,fuse,0.0048,0.0048
+1853aa2d33187af2,switch,images/switch/1853aa2d33187af2.jpg,dev,4,0.9922,logo,0.5428,transistor,0.0013,0.0003
+c2b98f41d3bced02,fuse,images/fuse/c2b98f41d3bced02.jpg,dev,3,0.9921,cartoon_game_art,0.9003,relay,0.0051,0.0000
+8d0fea9ab3e17e0b,transistor,images/transistor/8d0fea9ab3e17e0b.jpg,dev,2,0.9920,circuit_schematic,0.9920,relay,0.0039,0.0013
+aaded7a02ef31e8b,transformer,images/transformer/aaded7a02ef31e8b.jpg,dev,0,0.9919,person,0.9325,relay,0.0032,0.0000
+a122742d5751ed34,ic chip,images/ic chip/a122742d5751ed34.jpg,test,,0.9919,collage,0.8553,relay,0.0052,0.0000
+38a92296bec073b1,led,images/led/38a92296bec073b1.jpg,dev,4,0.9918,logo,0.9704,diode,0.0053,0.0001
+e1968ae9e0ba2540,transformer,images/transformer/e1968ae9e0ba2540.jpg,dev,3,0.9916,cartoon_game_art,0.9765,transformer,0.0069,0.0069
+dbe1feba0baf49a3,diode,images/diode/dbe1feba0baf49a3.jpg,dev,1,0.9915,circuit_schematic,0.9915,diode,0.0047,0.0047
+c73d9932e46162af,crystal oscillator,images/crystal oscillator/c73d9932e46162af.jpg,dev,2,0.9913,circuit_schematic,0.9913,crystal oscillator,0.0039,0.0039
+ff79e0e03645d7f0,switch,images/switch/ff79e0e03645d7f0.jpg,test,,0.9912,cartoon_game_art,0.9840,microcontroller board,0.0046,0.0012
+9b26b2f8ad6a6c8c,fuse,images/fuse/9b26b2f8ad6a6c8c.jpg,dev,0,0.9912,cartoon_game_art,0.7863,fuse,0.0049,0.0049
+8e4f19bbb9363052,transistor,images/transistor/8e4f19bbb9363052.jpg,dev,1,0.9911,cartoon_game_art,0.9860,ic chip,0.0035,0.0004
+2242652e3f15142f,jumper wire,images/jumper wire/2242652e3f15142f.jpg,dev,1,0.9910,person,0.9412,relay,0.0055,0.0005
+cf61d2a16f3b05d3,switch,images/switch/cf61d2a16f3b05d3.jpg,dev,1,0.9910,cartoon_game_art,0.8449,power supply module,0.0026,0.0001
+1b27063aa0021210,capacitor,images/capacitor/1b27063aa0021210.jpg,dev,1,0.9909,logo,0.8957,jumper wire,0.0046,0.0001
+15722c26abc6d29c,transistor,images/transistor/15722c26abc6d29c.jpg,dev,4,0.9909,circuit_schematic,0.8447,crystal oscillator,0.0029,0.0008
+713940d7652272c7,switch,images/switch/713940d7652272c7.jpg,test,,0.9906,cartoon_game_art,0.9339,relay,0.0021,0.0002
+328a5a29ca576fbf,transformer,images/transformer/328a5a29ca576fbf.jpg,dev,2,0.9905,circuit_schematic,0.9448,microcontroller board,0.0038,0.0000
+1bd0446ba5255b3e,crystal oscillator,images/crystal oscillator/1bd0446ba5255b3e.jpg,dev,3,0.9905,website_screenshot,0.9167,power supply module,0.0090,0.0000
+fdf48750eee4d1cd,switch,images/switch/fdf48750eee4d1cd.jpg,dev,1,0.9904,car,0.7084,relay,0.0085,0.0000
+9f035ea5f11fd317,transformer,images/transformer/9f035ea5f11fd317.jpg,dev,2,0.9903,cartoon_game_art,0.8258,transformer,0.0039,0.0039
+491063365afefacc,led,images/led/491063365afefacc.jpg,dev,1,0.9902,collage,0.6364,led,0.0041,0.0041
+01f9a3095e4de826,led,images/led/01f9a3095e4de826.jpg,dev,3,0.9901,collage,0.9461,led,0.0079,0.0079
+eda92b044d9d646e,transformer,images/transformer/eda92b044d9d646e.jpg,dev,0,0.9897,circuit_schematic,0.9891,transformer,0.0059,0.0059
+109400509f170627,jumper wire,images/jumper wire/109400509f170627.jpg,dev,2,0.9896,logo,0.9050,relay,0.0052,0.0001
+6c663d681f650411,switch,images/switch/6c663d681f650411.jpg,dev,3,0.9895,text_screenshot,0.9885,relay,0.0047,0.0001
+5005780f86f59dd9,switch,images/switch/5005780f86f59dd9.jpg,dev,4,0.9894,cartoon_game_art,0.7501,ic chip,0.0036,0.0024
+e938bd439622720b,ic chip,images/ic chip/e938bd439622720b.jpg,dev,4,0.9891,cartoon_game_art,0.5183,relay,0.0068,0.0023
+f57f404509ce337a,crystal oscillator,images/crystal oscillator/f57f404509ce337a.jpg,dev,1,0.9891,circuit_schematic,0.9891,transistor,0.0066,0.0012
+5a72a0354531aa70,transformer,images/transformer/5a72a0354531aa70.jpg,dev,2,0.9886,circuit_schematic,0.9838,transformer,0.0103,0.0103
+361ddb047819a789,battery holder,images/battery holder/361ddb047819a789.jpg,dev,2,0.9885,logo,0.8244,battery holder,0.0027,0.0027
+7dcc6e3a1cadf3d5,transistor,images/transistor/7dcc6e3a1cadf3d5.jpg,dev,0,0.9885,circuit_schematic,0.9885,transistor,0.0074,0.0074
+d4e727c2819b8d87,jumper wire,images/jumper wire/d4e727c2819b8d87.jpg,dev,0,0.9882,person,0.7580,switch,0.0048,0.0003
+84524f1b5c05525b,switch,images/switch/84524f1b5c05525b.jpg,dev,1,0.9881,logo,0.8919,ic chip,0.0029,0.0019
+b70ddb7ae8dfbfb1,switch,images/switch/b70ddb7ae8dfbfb1.jpg,dev,2,0.9880,cartoon_game_art,0.8061,relay,0.0049,0.0001
+4ac8dd3a0436f1e5,diode,images/diode/4ac8dd3a0436f1e5.jpg,dev,3,0.9879,circuit_schematic,0.9879,diode,0.0073,0.0073
+b8c95a1eca9f1f71,fuse,images/fuse/b8c95a1eca9f1f71.jpg,dev,2,0.9878,text_screenshot,0.7237,relay,0.0098,0.0014
+ecceaae14bab5afb,microcontroller board,images/microcontroller board/ecceaae14bab5afb.jpg,dev,3,0.9877,collage,0.9862,microcontroller board,0.0071,0.0071
+361212eaf4bcad61,switch,images/switch/361212eaf4bcad61.jpg,dev,4,0.9877,cartoon_game_art,0.8099,power supply module,0.0062,0.0000
+ed30066d2a29ef17,relay,images/relay/ed30066d2a29ef17.jpg,dev,2,0.9877,circuit_schematic,0.9877,relay,0.0110,0.0110
+742f69cd62bbe38a,resistor,images/resistor/742f69cd62bbe38a.jpg,dev,2,0.9874,circuit_schematic,0.9873,relay,0.0032,0.0003
+fbdc11f014a50ffe,transformer,images/transformer/fbdc11f014a50ffe.jpg,dev,1,0.9874,cartoon_game_art,0.9103,transformer,0.0100,0.0100
+337e8b3328999820,transformer,images/transformer/337e8b3328999820.jpg,dev,4,0.9873,circuit_schematic,0.8279,ic chip,0.0036,0.0003
+c4d6156ea1bd9085,relay,images/relay/c4d6156ea1bd9085.jpg,dev,1,0.9869,circuit_schematic,0.9869,relay,0.0088,0.0088
+2483bd8dc3ceeb2e,resistor,images/resistor/2483bd8dc3ceeb2e.jpg,dev,3,0.9868,circuit_schematic,0.9868,resistor,0.0102,0.0102
+015cf66241e3cf4c,transistor,images/transistor/015cf66241e3cf4c.jpg,dev,4,0.9867,website_screenshot,0.8139,ic chip,0.0065,0.0012
+96fa35ac66502f81,jumper wire,images/jumper wire/96fa35ac66502f81.jpg,dev,2,0.9867,person,0.9072,relay,0.0050,0.0013
+bc75fec5380c5a6d,fuse,images/fuse/bc75fec5380c5a6d.jpg,dev,0,0.9867,person,0.6458,power supply module,0.0058,0.0002
+d11bd29b4097c163,transistor,images/transistor/d11bd29b4097c163.jpg,dev,4,0.9864,cartoon_game_art,0.8225,ic chip,0.0067,0.0003
+c4cf8449e67802d1,transformer,images/transformer/c4cf8449e67802d1.jpg,test,,0.9859,person,0.8652,relay,0.0102,0.0002
+3e0956fb5358c478,led,images/led/3e0956fb5358c478.jpg,dev,2,0.9859,person,0.5975,led,0.0130,0.0130
+1e12df919e74d728,crystal oscillator,images/crystal oscillator/1e12df919e74d728.jpg,dev,3,0.9853,collage,0.9829,capacitor,0.0035,0.0000
+8eaa6ef7cbea7d8e,switch,images/switch/8eaa6ef7cbea7d8e.jpg,dev,1,0.9852,cartoon_game_art,0.3452,switch,0.0134,0.0134
+c3c35eb85c6be1a7,power supply module,images/power supply module/c3c35eb85c6be1a7.jpg,dev,2,0.9849,circuit_schematic,0.9770,ic chip,0.0062,0.0018
+59c529659e41ee0e,crystal oscillator,images/crystal oscillator/59c529659e41ee0e.jpg,test,,0.9841,circuit_schematic,0.9841,crystal oscillator,0.0139,0.0139
+9cf392d13a909fd3,battery holder,images/battery holder/9cf392d13a909fd3.jpg,dev,1,0.9838,collage,0.9827,breadboard,0.0055,0.0052
+d019b6743327f56f,crystal oscillator,images/crystal oscillator/d019b6743327f56f.jpg,dev,4,0.9837,text_screenshot,0.6238,ic chip,0.0103,0.0002
+e3ccb7bf0c37a6b7,breadboard,images/breadboard/e3ccb7bf0c37a6b7.jpg,test,,0.9836,food,0.9565,relay,0.0062,0.0038
+30adf80b21aa335d,diode,images/diode/30adf80b21aa335d.jpg,dev,4,0.9833,circuit_schematic,0.9833,diode,0.0139,0.0139
+cd923239a4593b3e,led,images/led/cd923239a4593b3e.jpg,dev,0,0.9833,collage,0.8642,led,0.0072,0.0072
+af7c995025dc1ca6,crystal oscillator,images/crystal oscillator/af7c995025dc1ca6.jpg,dev,1,0.9832,circuit_schematic,0.9832,transistor,0.0111,0.0028
+219bcbb6d0e74c89,crystal oscillator,images/crystal oscillator/219bcbb6d0e74c89.jpg,dev,4,0.9828,circuit_schematic,0.9782,crystal oscillator,0.0035,0.0035
+624fb19fa1b96070,fuse,images/fuse/624fb19fa1b96070.jpg,dev,3,0.9828,website_screenshot,0.7357,ic chip,0.0053,0.0000
+3c54a63601dbcb13,microcontroller board,images/microcontroller board/3c54a63601dbcb13.jpg,test,,0.9824,logo,0.7614,ic chip,0.0035,0.0031
+a9e657fb5337ac35,fuse,images/fuse/a9e657fb5337ac35.jpg,test,,0.9822,cartoon_game_art,0.9522,fuse,0.0138,0.0138
+eae5294230d8f83d,diode,images/diode/eae5294230d8f83d.jpg,dev,1,0.9820,circuit_schematic,0.9820,transistor,0.0073,0.0057
+9d87d8e6b41b8a66,transformer,images/transformer/9d87d8e6b41b8a66.jpg,dev,1,0.9818,logo,0.6361,transformer,0.0164,0.0164
+5ce01e9458c72d03,transistor,images/transistor/5ce01e9458c72d03.jpg,dev,1,0.9807,circuit_schematic,0.9807,transistor,0.0114,0.0114
+9abb31a4e8029305,ic chip,images/ic chip/9abb31a4e8029305.jpg,dev,3,0.9804,circuit_schematic,0.6188,ic chip,0.0107,0.0107
+1f683b5b97be323f,transistor,images/transistor/1f683b5b97be323f.jpg,dev,2,0.9803,circuit_schematic,0.9803,relay,0.0045,0.0005
+bc66d6b12e3ef34a,transistor,images/transistor/bc66d6b12e3ef34a.jpg,dev,3,0.9802,logo,0.5596,ic chip,0.0084,0.0049
+d7ce6bd01585d15b,breadboard,images/breadboard/d7ce6bd01585d15b.jpg,dev,3,0.9800,food,0.7361,relay,0.0076,0.0018
+bd15ad26ada89c24,resistor,images/resistor/bd15ad26ada89c24.jpg,dev,3,0.9796,text_screenshot,0.4754,potentiometer,0.0103,0.0002
+3c8a06a9ce7346ac,diode,images/diode/3c8a06a9ce7346ac.jpg,dev,4,0.9796,logo,0.9639,diode,0.0073,0.0073
+e1f5c86ffe708ddc,crystal oscillator,images/crystal oscillator/e1f5c86ffe708ddc.jpg,dev,4,0.9793,circuit_schematic,0.9793,power supply module,0.0052,0.0005
+1375009a9a9d674a,switch,images/switch/1375009a9a9d674a.jpg,test,,0.9787,logo,0.7904,jumper wire,0.0116,0.0001
+d2fd9e9de93170a9,jumper wire,images/jumper wire/d2fd9e9de93170a9.jpg,test,,0.9786,person,0.6857,relay,0.0096,0.0027
+44543c4a08067eb9,diode,images/diode/44543c4a08067eb9.jpg,dev,2,0.9783,circuit_schematic,0.9783,diode,0.0096,0.0096
+d46801c95d638775,transistor,images/transistor/d46801c95d638775.jpg,dev,4,0.9782,circuit_schematic,0.9782,transistor,0.0179,0.0179
+ba312bc93198ec0c,potentiometer,images/potentiometer/ba312bc93198ec0c.jpg,dev,0,0.9782,circuit_schematic,0.9779,relay,0.0071,0.0026
+b37ae55227f79e72,fuse,images/fuse/b37ae55227f79e72.jpg,dev,2,0.9780,cartoon_game_art,0.9577,relay,0.0095,0.0034
+814dd7f006bf1e6d,fuse,images/fuse/814dd7f006bf1e6d.jpg,dev,1,0.9779,cartoon_game_art,0.5755,ic chip,0.0115,0.0002
+4228e0ef85ad3ae2,ic chip,images/ic chip/4228e0ef85ad3ae2.jpg,dev,4,0.9779,logo,0.9267,battery holder,0.0093,0.0003
+33236cc1a6b25392,switch,images/switch/33236cc1a6b25392.jpg,dev,2,0.9776,cartoon_game_art,0.8634,power supply module,0.0072,0.0013
+66de37046bbba46e,resistor,images/resistor/66de37046bbba46e.jpg,dev,1,0.9775,logo,0.6125,diode,0.0109,0.0049
+ce672cf5ce31f157,transistor,images/transistor/ce672cf5ce31f157.jpg,test,,0.9773,circuit_schematic,0.9773,transistor,0.0186,0.0186
+f6015903c94eecea,switch,images/switch/f6015903c94eecea.jpg,dev,1,0.9771,cartoon_game_art,0.9610,relay,0.0106,0.0042
+8c5d2c0854695166,jumper wire,images/jumper wire/8c5d2c0854695166.jpg,dev,2,0.9766,circuit_schematic,0.9766,microcontroller board,0.0048,0.0001
+1ad0fa9fe5fce591,diode,images/diode/1ad0fa9fe5fce591.jpg,dev,3,0.9765,logo,0.9213,diode,0.0223,0.0223
+da17985f98fa278d,transformer,images/transformer/da17985f98fa278d.jpg,dev,0,0.9759,cartoon_game_art,0.9294,transformer,0.0224,0.0224
+3e02058bd4303c6c,switch,images/switch/3e02058bd4303c6c.jpg,dev,1,0.9750,car,0.5144,relay,0.0072,0.0003
+621c34b5b3772770,jumper wire,images/jumper wire/621c34b5b3772770.jpg,dev,2,0.9741,person,0.8335,relay,0.0213,0.0009
+58abee7500db65c6,jumper wire,images/jumper wire/58abee7500db65c6.jpg,dev,1,0.9739,circuit_schematic,0.8707,jumper wire,0.0117,0.0117
+a96ae95963835994,resistor,images/resistor/a96ae95963835994.jpg,dev,4,0.9738,circuit_schematic,0.9737,resistor,0.0248,0.0248
+2f54bbaf09979006,diode,images/diode/2f54bbaf09979006.jpg,dev,3,0.9737,circuit_schematic,0.9737,diode,0.0153,0.0153
+1b437e7697dd7edf,led,images/led/1b437e7697dd7edf.jpg,dev,0,0.9732,logo,0.9729,led,0.0264,0.0264
+86b469607a8e64dc,ic chip,images/ic chip/86b469607a8e64dc.jpg,dev,4,0.9729,person,0.4997,connector,0.0118,0.0001
+7a26b488f7632378,jumper wire,images/jumper wire/7a26b488f7632378.jpg,dev,0,0.9727,website_screenshot,0.5601,transformer,0.0106,0.0013
+ea0796eeafc9e621,capacitor,images/capacitor/ea0796eeafc9e621.jpg,dev,2,0.9725,logo,0.9663,capacitor,0.0269,0.0269
+d7ee4bd7e75515be,diode,images/diode/d7ee4bd7e75515be.jpg,dev,0,0.9720,logo,0.8726,transistor,0.0137,0.0008
+83f1e11807b8c53c,transistor,images/transistor/83f1e11807b8c53c.jpg,dev,3,0.9719,circuit_schematic,0.9718,transistor,0.0251,0.0251
+4c440d10e3e15922,jumper wire,images/jumper wire/4c440d10e3e15922.jpg,dev,2,0.9717,person,0.8635,relay,0.0096,0.0027
+dc11adb9eed79449,led,images/led/dc11adb9eed79449.jpg,test,,0.9705,logo,0.9232,relay,0.0081,0.0023
+e7d90be0dee3c4a0,heat sink,images/heat sink/e7d90be0dee3c4a0.jpg,dev,0,0.9704,cartoon_game_art,0.8742,crystal oscillator,0.0081,0.0000
+5acab4ef652d0dd3,switch,images/switch/5acab4ef652d0dd3.jpg,dev,2,0.9703,website_screenshot,0.6852,power supply module,0.0108,0.0040
+a17cff4334d130bb,transistor,images/transistor/a17cff4334d130bb.jpg,test,,0.9702,circuit_schematic,0.9699,transistor,0.0232,0.0232
+73e6e81c2c5908cf,relay,images/relay/73e6e81c2c5908cf.jpg,dev,3,0.9695,circuit_schematic,0.9695,relay,0.0243,0.0243
+743c8e2929de4c14,jumper wire,images/jumper wire/743c8e2929de4c14.jpg,dev,2,0.9695,logo,0.8618,relay,0.0174,0.0081
+12f3cc649a18b3c9,crystal oscillator,images/crystal oscillator/12f3cc649a18b3c9.jpg,test,,0.9689,logo,0.5152,relay,0.0132,0.0000
+e2450a63b91527a9,jumper wire,images/jumper wire/e2450a63b91527a9.jpg,test,,0.9686,circuit_schematic,0.9011,battery holder,0.0082,0.0012
+daea3f08f4dd3a79,crystal oscillator,images/crystal oscillator/daea3f08f4dd3a79.jpg,dev,1,0.9684,circuit_schematic,0.9683,crystal oscillator,0.0214,0.0214
+731d3cf605189538,jumper wire,images/jumper wire/731d3cf605189538.jpg,dev,1,0.9678,logo,0.6317,relay,0.0155,0.0005
+3ac62adfc42bf5fb,crystal oscillator,images/crystal oscillator/3ac62adfc42bf5fb.jpg,dev,0,0.9677,logo,0.8551,jumper wire,0.0076,0.0002
+1a37c32d791a35ea,crystal oscillator,images/crystal oscillator/1a37c32d791a35ea.jpg,test,,0.9676,logo,0.5966,ic chip,0.0201,0.0039
+e054789cdcca8fd2,inductor coil,images/inductor coil/e054789cdcca8fd2.jpg,dev,2,0.9675,circuit_schematic,0.9675,inductor coil,0.0154,0.0154
+2ce9cc23416069eb,transformer,images/transformer/2ce9cc23416069eb.jpg,test,,0.9674,cartoon_game_art,0.8659,transformer,0.0211,0.0211
+1273cb4438da6613,crystal oscillator,images/crystal oscillator/1273cb4438da6613.jpg,dev,1,0.9671,car,0.8711,ic chip,0.0210,0.0003
+724e8d75d4307d4b,jumper wire,images/jumper wire/724e8d75d4307d4b.jpg,dev,0,0.9667,person,0.8048,relay,0.0178,0.0015
+199c640378a50785,led,images/led/199c640378a50785.jpg,dev,0,0.9661,food,0.5951,ic chip,0.0109,0.0039
+bb0c07ab9b595410,switch,images/switch/bb0c07ab9b595410.jpg,dev,4,0.9661,cartoon_game_art,0.4919,relay,0.0131,0.0027
+600e457aad81e4f4,crystal oscillator,images/crystal oscillator/600e457aad81e4f4.jpg,dev,2,0.9660,website_screenshot,0.8535,fuse,0.0138,0.0002
+fab67eabea6270dc,jumper wire,images/jumper wire/fab67eabea6270dc.jpg,dev,4,0.9659,website_screenshot,0.3946,relay,0.0105,0.0008
+ccaae3b79fe23039,led,images/led/ccaae3b79fe23039.jpg,dev,0,0.9653,collage,0.9610,led,0.0315,0.0315
+bcc39d2b5934a93f,diode,images/diode/bcc39d2b5934a93f.jpg,dev,4,0.9652,circuit_schematic,0.9652,diode,0.0294,0.0294
+2d5fb360395df96c,led,images/led/2d5fb360395df96c.jpg,dev,3,0.9649,website_screenshot,0.9246,jumper wire,0.0098,0.0001
+754fcf2edd1c65cc,jumper wire,images/jumper wire/754fcf2edd1c65cc.jpg,dev,4,0.9649,person,0.6447,relay,0.0130,0.0110
+0a00dba359b6f186,switch,images/switch/0a00dba359b6f186.jpg,dev,1,0.9644,cartoon_game_art,0.9141,relay,0.0232,0.0001
+10d6b558cac176f9,switch,images/switch/10d6b558cac176f9.jpg,dev,2,0.9644,circuit_schematic,0.8541,jumper wire,0.0210,0.0002
+0d7e580b58b57c55,transformer,images/transformer/0d7e580b58b57c55.jpg,dev,4,0.9638,cartoon_game_art,0.9214,transformer,0.0327,0.0327
+f84f5d30ee1ae21c,connector,images/connector/f84f5d30ee1ae21c.jpg,test,,0.9637,person,0.6648,transformer,0.0082,0.0004
+3f778933e21c8c2d,crystal oscillator,images/crystal oscillator/3f778933e21c8c2d.jpg,dev,3,0.9635,circuit_schematic,0.9635,relay,0.0104,0.0052
+d14eca01313517d1,heat sink,images/heat sink/d14eca01313517d1.jpg,dev,1,0.9627,logo,0.9608,connector,0.0106,0.0000
+beddce66265e8473,switch,images/switch/beddce66265e8473.jpg,dev,2,0.9626,logo,0.6787,switch,0.0234,0.0234
+0ec8165728921bb4,jumper wire,images/jumper wire/0ec8165728921bb4.jpg,dev,2,0.9623,logo,0.7948,relay,0.0218,0.0040
+755bd5d85a1486f5,switch,images/switch/755bd5d85a1486f5.jpg,dev,3,0.9613,cartoon_game_art,0.5605,switch,0.0166,0.0166
+01b5eb7d6b5b9f69,led,images/led/01b5eb7d6b5b9f69.jpg,dev,4,0.9610,logo,0.9545,led,0.0155,0.0155
+7aacc81c253fcf35,microcontroller board,images/microcontroller board/7aacc81c253fcf35.jpg,dev,0,0.9609,circuit_schematic,0.9523,relay,0.0230,0.0048
+59a350c4a6db7214,diode,images/diode/59a350c4a6db7214.jpg,dev,4,0.9608,circuit_schematic,0.9608,diode,0.0375,0.0375
+b8d27103b99200b7,jumper wire,images/jumper wire/b8d27103b99200b7.jpg,dev,2,0.9601,person,0.5544,jumper wire,0.0178,0.0178
+3cf787c1a23ddde6,switch,images/switch/3cf787c1a23ddde6.jpg,dev,4,0.9601,collage,0.8839,switch,0.0353,0.0353
+2137318d6fdefec1,battery holder,images/battery holder/2137318d6fdefec1.jpg,dev,2,0.9601,logo,0.6319,transformer,0.0249,0.0001
+481be509811a60e3,jumper wire,images/jumper wire/481be509811a60e3.jpg,dev,0,0.9600,website_screenshot,0.5290,jumper wire,0.0133,0.0133
+f800946e56493e43,jumper wire,images/jumper wire/f800946e56493e43.jpg,dev,0,0.9600,website_screenshot,0.5290,jumper wire,0.0133,0.0133
+12141489d16335bf,switch,images/switch/12141489d16335bf.jpg,dev,1,0.9598,logo,0.4951,switch,0.0283,0.0283
+3a3bdcdc4e54b202,fuse,images/fuse/3a3bdcdc4e54b202.jpg,test,,0.9596,circuit_schematic,0.9256,transistor,0.0233,0.0003
+865898ec34830aa6,inductor coil,images/inductor coil/865898ec34830aa6.jpg,test,,0.9593,circuit_schematic,0.9588,resistor,0.0099,0.0043
+60a3c87bba185d4f,capacitor,images/capacitor/60a3c87bba185d4f.jpg,dev,3,0.9582,person,0.9419,ic chip,0.0188,0.0001
+724a0fbc3ba6381a,microcontroller board,images/microcontroller board/724a0fbc3ba6381a.jpg,dev,0,0.9580,circuit_schematic,0.8769,relay,0.0100,0.0036
+f20a3d0d3681b537,crystal oscillator,images/crystal oscillator/f20a3d0d3681b537.jpg,dev,3,0.9567,circuit_schematic,0.9567,transistor,0.0283,0.0095
+26e31bb8954a052d,microcontroller board,images/microcontroller board/26e31bb8954a052d.jpg,dev,1,0.9566,text_screenshot,0.9015,microcontroller board,0.0150,0.0150
+5368231c90e037b3,switch,images/switch/5368231c90e037b3.jpg,dev,0,0.9565,text_screenshot,0.6948,transformer,0.0191,0.0007
+89a1cd95fc3045aa,jumper wire,images/jumper wire/89a1cd95fc3045aa.jpg,dev,4,0.9549,person,0.4722,jumper wire,0.0275,0.0275
+f4d5e713001fd24a,switch,images/switch/f4d5e713001fd24a.jpg,test,,0.9547,cartoon_game_art,0.9079,power supply module,0.0199,0.0027
+0d04e37ea32a3796,fuse,images/fuse/0d04e37ea32a3796.jpg,dev,0,0.9544,circuit_schematic,0.9405,relay,0.0330,0.0094
+27839cfbf4d04d71,fuse,images/fuse/27839cfbf4d04d71.jpg,dev,1,0.9534,cartoon_game_art,0.7066,relay,0.0300,0.0001
+3234afde179ee94a,diode,images/diode/3234afde179ee94a.jpg,dev,0,0.9525,logo,0.6752,power supply module,0.0168,0.0014
+2374f9ff7d5ab533,transformer,images/transformer/2374f9ff7d5ab533.jpg,dev,2,0.9521,text_screenshot,0.5299,breadboard,0.0366,0.0001
+6a447cabd788ce7e,relay,images/relay/6a447cabd788ce7e.jpg,dev,3,0.9521,logo,0.8817,relay,0.0286,0.0286
+aa2ad98a1df53661,jumper wire,images/jumper wire/aa2ad98a1df53661.jpg,dev,3,0.9513,person,0.4068,relay,0.0233,0.0104
+1cc4f9eb2e09c076,led,images/led/1cc4f9eb2e09c076.jpg,dev,1,0.9511,logo,0.9287,switch,0.0165,0.0008
+88608d26a31ce5ed,jumper wire,images/jumper wire/88608d26a31ce5ed.jpg,dev,0,0.9510,logo,0.3696,jumper wire,0.0209,0.0209
+f396796a0543937e,connector,images/connector/f396796a0543937e.jpg,dev,2,0.9510,website_screenshot,0.4908,capacitor,0.0092,0.0044
+245ed6b465822174,capacitor,images/capacitor/245ed6b465822174.jpg,dev,2,0.9504,logo,0.7136,diode,0.0283,0.0050
+376d199f106f679e,connector,images/connector/376d199f106f679e.jpg,test,,0.9490,person,0.5568,relay,0.0459,0.0002
+48e1d769695dc9ea,transformer,images/transformer/48e1d769695dc9ea.jpg,dev,2,0.9478,logo,0.5494,power supply module,0.0352,0.0006
+91281da043bd7409,switch,images/switch/91281da043bd7409.jpg,dev,1,0.9478,car,0.5523,battery holder,0.0448,0.0000
+8babb8366d414356,switch,images/switch/8babb8366d414356.jpg,dev,1,0.9474,cartoon_game_art,0.8378,relay,0.0198,0.0003
+a92e469629984735,relay,images/relay/a92e469629984735.jpg,dev,1,0.9470,circuit_schematic,0.9470,relay,0.0441,0.0441
+d45a2ebe55e33c6a,microcontroller board,images/microcontroller board/d45a2ebe55e33c6a.jpg,dev,3,0.9470,collage,0.8999,power supply module,0.0290,0.0042
+2438afa27cc97378,power supply module,images/power supply module/2438afa27cc97378.jpg,dev,1,0.9469,circuit_schematic,0.3081,microcontroller board,0.0344,0.0114
+4a5efad0f22bf52d,transistor,images/transistor/4a5efad0f22bf52d.jpg,dev,0,0.9462,circuit_schematic,0.9462,transistor,0.0370,0.0370
+b5487d252c401e1d,relay,images/relay/b5487d252c401e1d.jpg,dev,4,0.9462,circuit_schematic,0.9461,relay,0.0347,0.0347
+ed037c72d8f91761,jumper wire,images/jumper wire/ed037c72d8f91761.jpg,dev,1,0.9459,website_screenshot,0.5428,transformer,0.0303,0.0067
+61a63408867c009d,switch,images/switch/61a63408867c009d.jpg,dev,1,0.9454,cartoon_game_art,0.9192,ic chip,0.0299,0.0000
+aff53e48144d9356,crystal oscillator,images/crystal oscillator/aff53e48144d9356.jpg,dev,4,0.9447,circuit_schematic,0.9447,resistor,0.0249,0.0033
+7f89d71199e1656c,jumper wire,images/jumper wire/7f89d71199e1656c.jpg,dev,0,0.9447,logo,0.7407,relay,0.0181,0.0178
+6abd6958eed9c0b8,fuse,images/fuse/6abd6958eed9c0b8.jpg,dev,4,0.9446,person,0.5961,relay,0.0279,0.0016
+0b91d76f2ee8ec4f,crystal oscillator,images/crystal oscillator/0b91d76f2ee8ec4f.jpg,dev,0,0.9442,circuit_schematic,0.9432,crystal oscillator,0.0429,0.0429
+30df20038933ddf1,jumper wire,images/jumper wire/30df20038933ddf1.jpg,dev,4,0.9439,person,0.4862,transformer,0.0268,0.0097
+4f6e26986ccf8c71,relay,images/relay/4f6e26986ccf8c71.jpg,test,,0.9428,circuit_schematic,0.9423,relay,0.0295,0.0295
+b78dbe0f14347fdc,relay,images/relay/b78dbe0f14347fdc.jpg,test,,0.9419,circuit_schematic,0.9415,relay,0.0396,0.0396
+5d4422e1ab5cc518,transformer,images/transformer/5d4422e1ab5cc518.jpg,dev,1,0.9417,circuit_schematic,0.8938,relay,0.0164,0.0050
+88fb9ebd9bc71a32,connector,images/connector/88fb9ebd9bc71a32.jpg,dev,4,0.9417,logo,0.9389,ic chip,0.0258,0.0235
+2f825d79c62fae9b,transistor,images/transistor/2f825d79c62fae9b.jpg,dev,4,0.9416,circuit_schematic,0.9416,diode,0.0262,0.0199
+1a08678d529a8c98,switch,images/switch/1a08678d529a8c98.jpg,dev,2,0.9416,cartoon_game_art,0.9232,relay,0.0433,0.0008
+5d54ffc75bbc6c1d,resistor,images/resistor/5d54ffc75bbc6c1d.jpg,dev,0,0.9410,person,0.3588,resistor,0.0381,0.0381
+0427106f1b50ecae,microcontroller board,images/microcontroller board/0427106f1b50ecae.jpg,dev,2,0.9404,circuit_schematic,0.9352,ic chip,0.0227,0.0138
+1121876c47a60e8a,relay,images/relay/1121876c47a60e8a.jpg,dev,3,0.9399,car,0.9335,relay,0.0222,0.0222
+27882dd0f241383a,power supply module,images/power supply module/27882dd0f241383a.jpg,dev,3,0.9398,logo,0.9203,potentiometer,0.0151,0.0148
+1bcdb682173eb580,heat sink,images/heat sink/1bcdb682173eb580.jpg,dev,4,0.9381,logo,0.6901,relay,0.0565,0.0002
+c7e11d77ae0a02de,transformer,images/transformer/c7e11d77ae0a02de.jpg,dev,1,0.9372,circuit_schematic,0.9372,transformer,0.0314,0.0314
+b75c17d4e2d376e9,potentiometer,images/potentiometer/b75c17d4e2d376e9.jpg,dev,1,0.9363,collage,0.9028,jumper wire,0.0152,0.0137
+b79391b3ae71aafc,relay,images/relay/b79391b3ae71aafc.jpg,dev,0,0.9363,cartoon_game_art,0.4921,connector,0.0434,0.0061
+8f83da2a3e1be2b9,transistor,images/transistor/8f83da2a3e1be2b9.jpg,dev,1,0.9360,circuit_schematic,0.5911,capacitor,0.0200,0.0007
+82fc6e3e153fe83f,crystal oscillator,images/crystal oscillator/82fc6e3e153fe83f.jpg,dev,4,0.9346,website_screenshot,0.7107,microcontroller board,0.0301,0.0018
+42ebd10a8f56c6bf,resistor,images/resistor/42ebd10a8f56c6bf.jpg,dev,3,0.9336,cartoon_game_art,0.8206,resistor,0.0523,0.0523
+3bcb7e0409b20d93,transistor,images/transistor/3bcb7e0409b20d93.jpg,dev,3,0.9335,circuit_schematic,0.9335,transistor,0.0564,0.0564
+aee335bc51427473,fuse,images/fuse/aee335bc51427473.jpg,dev,4,0.9334,cartoon_game_art,0.4107,breadboard,0.0650,0.0000
+3eaaf5cb1f03b884,fuse,images/fuse/3eaaf5cb1f03b884.jpg,dev,2,0.9334,circuit_schematic,0.9330,relay,0.0488,0.0008
+5f0959a3f8ee733c,jumper wire,images/jumper wire/5f0959a3f8ee733c.jpg,dev,2,0.9334,logo,0.6411,relay,0.0306,0.0205
+9abc4e1a975d34d8,fuse,images/fuse/9abc4e1a975d34d8.jpg,test,,0.9319,logo,0.9301,fuse,0.0673,0.0673
+f0d60eb380fe23f3,switch,images/switch/f0d60eb380fe23f3.jpg,dev,4,0.9314,cartoon_game_art,0.6554,power supply module,0.0156,0.0109
+3188f74d96fef75d,crystal oscillator,images/crystal oscillator/3188f74d96fef75d.jpg,dev,1,0.9311,circuit_schematic,0.9308,heat sink,0.0175,0.0040
+0587f674b230f5a8,relay,images/relay/0587f674b230f5a8.jpg,dev,4,0.9310,circuit_schematic,0.9307,relay,0.0445,0.0445
+1588496d0e552df1,heat sink,images/heat sink/1588496d0e552df1.jpg,dev,0,0.9303,collage,0.9285,relay,0.0281,0.0258
+27b0e37c77ca1e5c,relay,images/relay/27b0e37c77ca1e5c.jpg,dev,4,0.9303,logo,0.9292,relay,0.0687,0.0687
+179f444b5f0eeb60,switch,images/switch/179f444b5f0eeb60.jpg,dev,1,0.9302,food,0.7532,power supply module,0.0375,0.0006
+f6d594298b55a7af,transformer,images/transformer/f6d594298b55a7af.jpg,dev,4,0.9297,circuit_schematic,0.4474,transformer,0.0545,0.0545
+f4f0809971cb7be7,battery holder,images/battery holder/f4f0809971cb7be7.jpg,dev,3,0.9294,collage,0.5298,power supply module,0.0230,0.0019
+dd0a1b28b5ee8e6d,jumper wire,images/jumper wire/dd0a1b28b5ee8e6d.jpg,dev,0,0.9285,logo,0.7148,relay,0.0301,0.0003
+4230e7550c91ca71,power supply module,images/power supply module/4230e7550c91ca71.jpg,dev,3,0.9256,text_screenshot,0.8836,crystal oscillator,0.0307,0.0066
+0e6354818346f196,led,images/led/0e6354818346f196.jpg,dev,4,0.9239,logo,0.7578,led,0.0358,0.0358
+169c14336b37526d,relay,images/relay/169c14336b37526d.jpg,dev,4,0.9224,text_screenshot,0.7653,crystal oscillator,0.0156,0.0001
+24a85fd6ecee7a6d,diode,images/diode/24a85fd6ecee7a6d.jpg,dev,2,0.9219,circuit_schematic,0.9149,diode,0.0498,0.0498
+273eb4960b0672ba,resistor,images/resistor/273eb4960b0672ba.jpg,dev,3,0.9207,circuit_schematic,0.9201,transistor,0.0150,0.0076
+dd3ed59786b2a2b3,capacitor,images/capacitor/dd3ed59786b2a2b3.jpg,dev,0,0.9204,circuit_schematic,0.8713,diode,0.0352,0.0005
+fca714e752bccbd5,battery holder,images/battery holder/fca714e752bccbd5.jpg,dev,4,0.9197,collage,0.9197,fuse,0.0506,0.0013
+18221e7be1994d50,transistor,images/transistor/18221e7be1994d50.jpg,dev,3,0.9194,logo,0.7740,ic chip,0.0201,0.0085
+ad2535c5ed7ef88e,relay,images/relay/ad2535c5ed7ef88e.jpg,dev,0,0.9171,circuit_schematic,0.9165,ic chip,0.0552,0.0073
+42ad111374c21e9b,power supply module,images/power supply module/42ad111374c21e9b.jpg,test,,0.9170,car,0.7740,relay,0.0437,0.0013
+dbdcad0148e66896,switch,images/switch/dbdcad0148e66896.jpg,dev,3,0.9147,cartoon_game_art,0.8191,switch,0.0826,0.0826
+d81f62e05d0542fb,microcontroller board,images/microcontroller board/d81f62e05d0542fb.jpg,dev,1,0.9146,cartoon_game_art,0.6115,ic chip,0.0618,0.0216
+77e3aa9c1add850d,transformer,images/transformer/77e3aa9c1add850d.jpg,dev,1,0.9133,circuit_schematic,0.9106,crystal oscillator,0.0317,0.0116
+2a6974707a36ccdb,heat sink,images/heat sink/2a6974707a36ccdb.jpg,dev,1,0.9128,collage,0.8986,transformer,0.0659,0.0070
+232e86e620024aa0,transistor,images/transistor/232e86e620024aa0.jpg,dev,4,0.9125,cartoon_game_art,0.4017,transistor,0.0664,0.0664
+34886b9379dfcae1,diode,images/diode/34886b9379dfcae1.jpg,dev,4,0.9116,circuit_schematic,0.9115,diode,0.0556,0.0556
+64b2655a7876eb8b,relay,images/relay/64b2655a7876eb8b.jpg,dev,0,0.9114,circuit_schematic,0.9114,relay,0.0656,0.0656
+66aa91671d213035,jumper wire,images/jumper wire/66aa91671d213035.jpg,dev,4,0.9091,logo,0.4120,relay,0.0433,0.0043
+87fb223d86b83922,diode,images/diode/87fb223d86b83922.jpg,dev,4,0.9073,circuit_schematic,0.8991,diode,0.0778,0.0778
+85d44ee0ca6f8831,switch,images/switch/85d44ee0ca6f8831.jpg,dev,2,0.9067,website_screenshot,0.6614,relay,0.0742,0.0000
+2dac760d6902428f,transistor,images/transistor/2dac760d6902428f.jpg,dev,4,0.9064,person,0.5390,transformer,0.0289,0.0023
+4ba2be1afd6d3c62,breadboard,images/breadboard/4ba2be1afd6d3c62.jpg,dev,1,0.9050,circuit_schematic,0.9050,breadboard,0.0833,0.0833
+92512538c7c210d8,transistor,images/transistor/92512538c7c210d8.jpg,dev,4,0.9049,person,0.4935,microcontroller board,0.0393,0.0028
+3194155e00880189,power supply module,images/power supply module/3194155e00880189.jpg,dev,3,0.9047,circuit_schematic,0.9030,power supply module,0.0508,0.0508
+fc030dc03bbec49b,crystal oscillator,images/crystal oscillator/fc030dc03bbec49b.jpg,dev,0,0.9045,circuit_schematic,0.9044,heat sink,0.0308,0.0158
+bf031ae2496fa499,led,images/led/bf031ae2496fa499.jpg,dev,0,0.9032,cartoon_game_art,0.6416,capacitor,0.0314,0.0003
+b5ed41eda86a4904,potentiometer,images/potentiometer/b5ed41eda86a4904.jpg,dev,1,0.9014,person,0.3405,battery holder,0.0278,0.0036
+2de829a474562658,switch,images/switch/2de829a474562658.jpg,dev,2,0.8993,text_screenshot,0.7177,transformer,0.0317,0.0004
+470d88d0301bbfbe,relay,images/relay/470d88d0301bbfbe.jpg,dev,3,0.8988,person,0.2953,relay,0.0996,0.0996
+88bc93a6d318e62e,potentiometer,images/potentiometer/88bc93a6d318e62e.jpg,test,,0.8976,logo,0.8928,diode,0.0371,0.0094
+5785648c716603fc,fuse,images/fuse/5785648c716603fc.jpg,dev,4,0.8975,cartoon_game_art,0.8544,transistor,0.0338,0.0056
+d22d24dd70324418,resistor,images/resistor/d22d24dd70324418.jpg,dev,2,0.8973,circuit_schematic,0.8971,power supply module,0.0576,0.0007
+0dcc4eec062e61b1,breadboard,images/breadboard/0dcc4eec062e61b1.jpg,test,,0.8957,circuit_schematic,0.8953,breadboard,0.0736,0.0736
+213d5a546afca805,resistor,images/resistor/213d5a546afca805.jpg,test,,0.8948,circuit_schematic,0.8588,resistor,0.0412,0.0412
+461b62cf20f9bf04,power supply module,images/power supply module/461b62cf20f9bf04.jpg,dev,3,0.8886,circuit_schematic,0.8820,relay,0.0732,0.0205
+62791c823a4d91b7,switch,images/switch/62791c823a4d91b7.jpg,test,,0.8858,cartoon_game_art,0.8477,relay,0.0607,0.0441
+62b60e1742d7b3f8,resistor,images/resistor/62b60e1742d7b3f8.jpg,dev,1,0.8845,circuit_schematic,0.8841,resistor,0.0272,0.0272
+78e3385dcfd14ed9,inductor coil,images/inductor coil/78e3385dcfd14ed9.jpg,dev,2,0.8837,logo,0.8261,jumper wire,0.0499,0.0002
+c235df323501f93a,heat sink,images/heat sink/c235df323501f93a.jpg,dev,4,0.8835,logo,0.6003,relay,0.1105,0.0001
+025dffd14ecb7594,microcontroller board,images/microcontroller board/025dffd14ecb7594.jpg,dev,0,0.8808,circuit_schematic,0.8808,ic chip,0.0471,0.0258
+24dd296a6402e005,crystal oscillator,images/crystal oscillator/24dd296a6402e005.jpg,test,,0.8807,circuit_schematic,0.8807,crystal oscillator,0.0704,0.0704
+d5099a317c13670d,inductor coil,images/inductor coil/d5099a317c13670d.jpg,test,,0.8803,circuit_schematic,0.8625,inductor coil,0.0615,0.0615
+499739a12f1d2743,jumper wire,images/jumper wire/499739a12f1d2743.jpg,dev,1,0.8772,circuit_schematic,0.5919,connector,0.0566,0.0025
+21a3c3a8c4b090c1,transformer,images/transformer/21a3c3a8c4b090c1.jpg,dev,0,0.8765,text_screenshot,0.4570,diode,0.0531,0.0012
+d925d03af57b2cc4,battery holder,images/battery holder/d925d03af57b2cc4.jpg,dev,3,0.8764,logo,0.8421,relay,0.0655,0.0003
+48f7e8004f3a05c7,led,images/led/48f7e8004f3a05c7.jpg,dev,1,0.8757,logo,0.6771,jumper wire,0.0325,0.0001
+62b423a665de20f6,switch,images/switch/62b423a665de20f6.jpg,dev,1,0.8736,cartoon_game_art,0.7675,power supply module,0.0415,0.0022
+096705911cc52ee1,battery holder,images/battery holder/096705911cc52ee1.jpg,dev,2,0.8731,circuit_schematic,0.8366,diode,0.0323,0.0005
+010c60e97dbad404,switch,images/switch/010c60e97dbad404.jpg,dev,3,0.8680,cartoon_game_art,0.4005,relay,0.0612,0.0074
+1564ba40b4e8b190,switch,images/switch/1564ba40b4e8b190.jpg,dev,0,0.8677,cartoon_game_art,0.4113,power supply module,0.0422,0.0163
+6ef8789e33833044,transistor,images/transistor/6ef8789e33833044.jpg,dev,0,0.8671,circuit_schematic,0.8671,transistor,0.1029,0.1029
+3633925c3432eee9,diode,images/diode/3633925c3432eee9.jpg,dev,1,0.8666,circuit_schematic,0.8648,diode,0.0797,0.0797
+a789559d1bc0739b,switch,images/switch/a789559d1bc0739b.jpg,dev,3,0.8652,text_screenshot,0.8643,battery holder,0.0834,0.0008
+e3b6cc9abfe10971,transistor,images/transistor/e3b6cc9abfe10971.jpg,dev,3,0.8648,collage,0.8644,microcontroller board,0.1037,0.0002
+fc7f6f9754053d12,connector,images/connector/fc7f6f9754053d12.jpg,dev,3,0.8625,logo,0.8615,jumper wire,0.0667,0.0618
+9fe2157297c93ec0,transistor,images/transistor/9fe2157297c93ec0.jpg,dev,1,0.8621,circuit_schematic,0.8419,relay,0.0823,0.0066
+bd972649d0e54667,led,images/led/bd972649d0e54667.jpg,dev,1,0.8616,logo,0.8402,switch,0.0248,0.0018
+33c1e12e1b899fb0,resistor,images/resistor/33c1e12e1b899fb0.jpg,dev,0,0.8613,circuit_schematic,0.8612,resistor,0.1330,0.1330
+5b5e6c51fed7d9d0,relay,images/relay/5b5e6c51fed7d9d0.jpg,dev,4,0.8583,circuit_schematic,0.8572,inductor coil,0.0429,0.0112
+3b7e9f8cec80f388,resistor,images/resistor/3b7e9f8cec80f388.jpg,dev,1,0.8571,logo,0.7039,fuse,0.0884,0.0002
+5af20526a0f4aad2,led,images/led/5af20526a0f4aad2.jpg,dev,2,0.8548,cartoon_game_art,0.4019,led,0.1083,0.1083
+357e00ab773742df,led,images/led/357e00ab773742df.jpg,dev,1,0.8523,circuit_schematic,0.7985,battery holder,0.0355,0.0019
+02286c91fd3740b8,transformer,images/transformer/02286c91fd3740b8.jpg,dev,1,0.8521,circuit_schematic,0.8355,ic chip,0.0733,0.0036
+5558892a261d027b,relay,images/relay/5558892a261d027b.jpg,dev,1,0.8512,circuit_schematic,0.8512,relay,0.1452,0.1452
+e7cdfc10e3c80ba7,led,images/led/e7cdfc10e3c80ba7.jpg,dev,4,0.8511,cartoon_game_art,0.5914,led,0.1048,0.1048
+f901bca02c522675,switch,images/switch/f901bca02c522675.jpg,test,,0.8505,cartoon_game_art,0.7817,relay,0.0596,0.0527
+c3e7b1bbfa0ba804,transformer,images/transformer/c3e7b1bbfa0ba804.jpg,dev,0,0.8504,cartoon_game_art,0.8494,transformer,0.1420,0.1420
+7ca119b525b9437d,potentiometer,images/potentiometer/7ca119b525b9437d.jpg,dev,2,0.8494,circuit_schematic,0.8441,connector,0.0938,0.0127
+93a69f6130551705,relay,images/relay/93a69f6130551705.jpg,dev,2,0.8474,circuit_schematic,0.8474,resistor,0.0445,0.0069
+ce85eaebc31c6063,transistor,images/transistor/ce85eaebc31c6063.jpg,dev,2,0.8462,cartoon_game_art,0.3727,connector,0.0415,0.0031
+2b58daa8c7cfa376,breadboard,images/breadboard/2b58daa8c7cfa376.jpg,dev,3,0.8443,circuit_schematic,0.8443,breadboard,0.1534,0.1534
+ea46f63ab620807e,crystal oscillator,images/crystal oscillator/ea46f63ab620807e.jpg,dev,2,0.8442,circuit_schematic,0.5189,ic chip,0.1198,0.0009
+181ca42a86dcd9b6,led,images/led/181ca42a86dcd9b6.jpg,dev,1,0.8441,logo,0.8188,switch,0.0275,0.0025
+651a6fb4a2dcdcf3,switch,images/switch/651a6fb4a2dcdcf3.jpg,dev,4,0.8440,logo,0.7144,switch,0.1395,0.1395
+f32d3d25b1d10437,transistor,images/transistor/f32d3d25b1d10437.jpg,dev,4,0.8425,circuit_schematic,0.8423,fuse,0.0625,0.0029
+312e6e585d8ae6e4,heat sink,images/heat sink/312e6e585d8ae6e4.jpg,test,,0.8412,logo,0.7936,heat sink,0.1217,0.1217
+f54ddd3a39b3ffaa,led,images/led/f54ddd3a39b3ffaa.jpg,dev,1,0.8368,logo,0.6421,power supply module,0.0398,0.0126
+8d7f60cb2bccebda,led,images/led/8d7f60cb2bccebda.jpg,dev,4,0.8347,logo,0.8048,led,0.1560,0.1560
+2375545778e39ad5,led,images/led/2375545778e39ad5.jpg,dev,3,0.8344,cartoon_game_art,0.3767,relay,0.0653,0.0005
+5a4a7006b2e215b6,microcontroller board,images/microcontroller board/5a4a7006b2e215b6.jpg,dev,2,0.8336,logo,0.4569,microcontroller board,0.0633,0.0633
+cbf0a4e07ded4724,battery holder,images/battery holder/cbf0a4e07ded4724.jpg,dev,2,0.8335,collage,0.8250,battery holder,0.0856,0.0856
+82507dbdf8911ea1,jumper wire,images/jumper wire/82507dbdf8911ea1.jpg,dev,3,0.8256,logo,0.3578,jumper wire,0.0836,0.0836
+17b111244d96f4e2,switch,images/switch/17b111244d96f4e2.jpg,dev,2,0.8244,cartoon_game_art,0.6810,switch,0.0337,0.0337
+6ff5c673d3f8237f,diode,images/diode/6ff5c673d3f8237f.jpg,dev,4,0.8241,circuit_schematic,0.8241,capacitor,0.0672,0.0211
+2cea3e9f9b0c866c,switch,images/switch/2cea3e9f9b0c866c.jpg,test,,0.8230,cartoon_game_art,0.7425,power supply module,0.0555,0.0028
+c61904da28e4b103,crystal oscillator,images/crystal oscillator/c61904da28e4b103.jpg,dev,0,0.8217,collage,0.3422,ic chip,0.0962,0.0028
+48790f00a1e179b0,diode,images/diode/48790f00a1e179b0.jpg,dev,0,0.8201,circuit_schematic,0.8200,diode,0.1286,0.1286
+29b60e8aed6dd932,power supply module,images/power supply module/29b60e8aed6dd932.jpg,dev,4,0.8191,logo,0.8160,led,0.1550,0.0002
+430b32244a57a71c,capacitor,images/capacitor/430b32244a57a71c.jpg,test,,0.8162,circuit_schematic,0.8161,capacitor,0.1332,0.1332
+4382948b50f61187,jumper wire,images/jumper wire/4382948b50f61187.jpg,test,,0.8150,person,0.4910,relay,0.0932,0.0026
+c636d6222ad9d914,diode,images/diode/c636d6222ad9d914.jpg,dev,0,0.8100,circuit_schematic,0.8100,resistor,0.0989,0.0671
+d00692e0dd88b608,relay,images/relay/d00692e0dd88b608.jpg,dev,2,0.8084,circuit_schematic,0.8082,relay,0.0984,0.0984
+e9f477e3f22ced92,switch,images/switch/e9f477e3f22ced92.jpg,dev,4,0.8072,cartoon_game_art,0.4756,switch,0.1149,0.1149
+63e9030daaea2ebf,potentiometer,images/potentiometer/63e9030daaea2ebf.jpg,dev,0,0.8071,circuit_schematic,0.6698,relay,0.1021,0.0002
+fa362740e6c68d39,diode,images/diode/fa362740e6c68d39.jpg,dev,0,0.8071,logo,0.5662,led,0.0993,0.0077
+a20c0e9511931d47,breadboard,images/breadboard/a20c0e9511931d47.jpg,dev,2,0.8069,circuit_schematic,0.8068,breadboard,0.1686,0.1686
+ede1bdd97719772b,diode,images/diode/ede1bdd97719772b.jpg,dev,0,0.8060,circuit_schematic,0.8060,diode,0.1665,0.1665
+cefe7b8320bd309d,transistor,images/transistor/cefe7b8320bd309d.jpg,dev,0,0.8022,circuit_schematic,0.8016,fuse,0.0918,0.0017
+22ebd02911d29a15,transistor,images/transistor/22ebd02911d29a15.jpg,dev,3,0.8011,circuit_schematic,0.6083,transistor,0.1007,0.1007
+eebf4487de9997f9,inductor coil,images/inductor coil/eebf4487de9997f9.jpg,dev,3,0.8005,circuit_schematic,0.7995,inductor coil,0.0900,0.0900
+0a3416a3959a5b25,resistor,images/resistor/0a3416a3959a5b25.jpg,dev,4,0.8004,logo,0.4129,resistor,0.0686,0.0686
+4b43dc99c97cfc72,switch,images/switch/4b43dc99c97cfc72.jpg,dev,4,0.7991,logo,0.7694,switch,0.1214,0.1214
+18e92d31dbfc077c,heat sink,images/heat sink/18e92d31dbfc077c.jpg,dev,0,0.7986,logo,0.7922,ic chip,0.0640,0.0601
+d009ec6203521fe3,crystal oscillator,images/crystal oscillator/d009ec6203521fe3.jpg,dev,3,0.7964,circuit_schematic,0.7964,crystal oscillator,0.1934,0.1934
+46b1efa3879b166d,led,images/led/46b1efa3879b166d.jpg,test,,0.7941,car,0.5570,relay,0.1808,0.0000
+23cd674b26be8e5a,led,images/led/23cd674b26be8e5a.jpg,dev,1,0.7938,logo,0.7203,battery holder,0.0462,0.0010
+8cc8c923d1f26953,led,images/led/8cc8c923d1f26953.jpg,dev,1,0.7937,logo,0.7695,switch,0.0442,0.0027
+d34f8bf5f208c552,relay,images/relay/d34f8bf5f208c552.jpg,test,,0.7924,circuit_schematic,0.7924,relay,0.0616,0.0616
+05c759b0448014c4,jumper wire,images/jumper wire/05c759b0448014c4.jpg,dev,4,0.7881,person,0.3768,jumper wire,0.1821,0.1821
+7d6a8a7c09f164a9,transformer,images/transformer/7d6a8a7c09f164a9.jpg,dev,0,0.7785,cartoon_game_art,0.7478,transistor,0.1281,0.0428
+6738f2a9df64e80e,transformer,images/transformer/6738f2a9df64e80e.jpg,dev,1,0.7784,car,0.4888,relay,0.1341,0.0397
+f631608eede93c4f,diode,images/diode/f631608eede93c4f.jpg,dev,4,0.7773,circuit_schematic,0.6894,diode,0.1675,0.1675
+348d04234606fae2,jumper wire,images/jumper wire/348d04234606fae2.jpg,dev,2,0.7767,website_screenshot,0.6344,jumper wire,0.1206,0.1206
+c22c8e1727e0f909,switch,images/switch/c22c8e1727e0f909.jpg,dev,3,0.7717,cartoon_game_art,0.5578,switch,0.1472,0.1472
+b115c21e6808e396,capacitor,images/capacitor/b115c21e6808e396.jpg,dev,3,0.7667,circuit_schematic,0.7667,capacitor,0.2109,0.2109
+5f9fad759dbd170d,led,images/led/5f9fad759dbd170d.jpg,dev,3,0.7662,logo,0.7553,fuse,0.0532,0.0013
+e90ccd90e6a5a137,fuse,images/fuse/e90ccd90e6a5a137.jpg,dev,4,0.7646,car,0.3193,power supply module,0.1223,0.0236
+a99cc000347b17a4,transistor,images/transistor/a99cc000347b17a4.jpg,dev,4,0.7611,circuit_schematic,0.7611,transistor,0.1504,0.1504
+3951676da6357f64,transformer,images/transformer/3951676da6357f64.jpg,dev,3,0.7597,cartoon_game_art,0.5375,ic chip,0.1216,0.0430
+4fce95d9bda66ad5,heat sink,images/heat sink/4fce95d9bda66ad5.jpg,dev,0,0.7594,logo,0.5219,relay,0.0960,0.0026
+a1e3b97b4a07466e,connector,images/connector/a1e3b97b4a07466e.jpg,dev,3,0.7582,logo,0.5613,relay,0.0882,0.0321
+b40e003435984baa,inductor coil,images/inductor coil/b40e003435984baa.jpg,dev,4,0.7569,circuit_schematic,0.7561,inductor coil,0.1952,0.1952
+786b687030dcf14d,crystal oscillator,images/crystal oscillator/786b687030dcf14d.jpg,dev,3,0.7561,circuit_schematic,0.7561,crystal oscillator,0.2425,0.2425
+b56f1a820dbe7d9c,switch,images/switch/b56f1a820dbe7d9c.jpg,dev,4,0.7538,cartoon_game_art,0.6000,power supply module,0.0759,0.0409
+4e2c4ca4a0df92be,heat sink,images/heat sink/4e2c4ca4a0df92be.jpg,dev,3,0.7506,circuit_schematic,0.6926,ic chip,0.1464,0.0597
+4b74efe57f8a4d26,diode,images/diode/4b74efe57f8a4d26.jpg,dev,4,0.7469,collage,0.5577,led,0.2149,0.0014
+8a071e637a431f04,battery holder,images/battery holder/8a071e637a431f04.jpg,dev,0,0.7455,logo,0.5845,switch,0.1938,0.0008
+1269b342d5057df4,inductor coil,images/inductor coil/1269b342d5057df4.jpg,test,,0.7434,circuit_schematic,0.5513,capacitor,0.0867,0.0254
+7fa0f76b9514e269,potentiometer,images/potentiometer/7fa0f76b9514e269.jpg,dev,0,0.7417,logo,0.4205,relay,0.0575,0.0118
+88f096caf30735fa,jumper wire,images/jumper wire/88f096caf30735fa.jpg,dev,4,0.7417,website_screenshot,0.2826,jumper wire,0.2078,0.2078
+65c0ba6bca6396e2,crystal oscillator,images/crystal oscillator/65c0ba6bca6396e2.jpg,test,,0.7400,circuit_schematic,0.7398,crystal oscillator,0.2478,0.2478
+e1b727ff5e7b759d,switch,images/switch/e1b727ff5e7b759d.jpg,test,,0.7391,logo,0.6560,switch,0.1985,0.1985
+083a6ff38052236b,transformer,images/transformer/083a6ff38052236b.jpg,test,,0.7386,cartoon_game_art,0.5356,transformer,0.2579,0.2579
+1e067cc2211f0196,crystal oscillator,images/crystal oscillator/1e067cc2211f0196.jpg,dev,0,0.7349,circuit_schematic,0.7329,heat sink,0.0910,0.0086
+ab91e3a378514ac6,diode,images/diode/ab91e3a378514ac6.jpg,dev,2,0.7304,circuit_schematic,0.7302,diode,0.2400,0.2400
+c89d2d8ef65dcaf8,switch,images/switch/c89d2d8ef65dcaf8.jpg,dev,2,0.7235,text_screenshot,0.5319,relay,0.1185,0.0006
+ce20646e39bf10cb,fuse,images/fuse/ce20646e39bf10cb.jpg,dev,2,0.7220,circuit_schematic,0.7218,fuse,0.2039,0.2039
+ac6e244caad56fd7,inductor coil,images/inductor coil/ac6e244caad56fd7.jpg,dev,0,0.7196,circuit_schematic,0.7185,inductor coil,0.2146,0.2146
+ef97617ff39e9885,diode,images/diode/ef97617ff39e9885.jpg,dev,2,0.7178,circuit_schematic,0.7178,diode,0.2767,0.2767
+362b85619ac3bc47,transistor,images/transistor/362b85619ac3bc47.jpg,dev,1,0.7142,circuit_schematic,0.7138,transistor,0.1193,0.1193
+44eeb7e0590a8b33,led,images/led/44eeb7e0590a8b33.jpg,dev,0,0.7090,logo,0.4529,relay,0.1701,0.0139
+d21da3bf1da33288,inductor coil,images/inductor coil/d21da3bf1da33288.jpg,dev,4,0.7084,circuit_schematic,0.4087,inductor coil,0.0746,0.0746
+ce6db1565e740b6d,led,images/led/ce6db1565e740b6d.jpg,dev,1,0.7052,logo,0.3864,relay,0.1763,0.0036
+c6ce48be06de5f90,crystal oscillator,images/crystal oscillator/c6ce48be06de5f90.jpg,test,,0.7040,circuit_schematic,0.7040,crystal oscillator,0.2877,0.2877
+4c3897671ce5b151,capacitor,images/capacitor/4c3897671ce5b151.jpg,dev,1,0.7032,circuit_schematic,0.7032,capacitor,0.1787,0.1787
+7a1b854fde135b15,led,images/led/7a1b854fde135b15.jpg,test,,0.6978,collage,0.6640,relay,0.2405,0.0144
+fa093e17e3de3c59,resistor,images/resistor/fa093e17e3de3c59.jpg,dev,2,0.6974,circuit_schematic,0.6327,resistor,0.1850,0.1850
+edaa8877f2463103,breadboard,images/breadboard/edaa8877f2463103.jpg,test,,0.6973,logo,0.4586,heat sink,0.1124,0.0005
+3ea585b2df7267f0,jumper wire,images/jumper wire/3ea585b2df7267f0.jpg,test,,0.6937,website_screenshot,0.4172,relay,0.2764,0.0013
+787687be3a8231d1,battery holder,images/battery holder/787687be3a8231d1.jpg,dev,3,0.6924,logo,0.6059,relay,0.1940,0.0042
+ebd0fc10715c15fe,transistor,images/transistor/ebd0fc10715c15fe.jpg,dev,0,0.6903,logo,0.6646,transistor,0.1294,0.1294
+cf6a9254b6e070d2,crystal oscillator,images/crystal oscillator/cf6a9254b6e070d2.jpg,dev,1,0.6889,circuit_schematic,0.6889,crystal oscillator,0.2993,0.2993
+b825371723bd8d6f,transistor,images/transistor/b825371723bd8d6f.jpg,dev,1,0.6882,circuit_schematic,0.6268,diode,0.2260,0.0565
+61a6d9bfefc21a99,ic chip,images/ic chip/61a6d9bfefc21a99.jpg,dev,1,0.6859,website_screenshot,0.2689,relay,0.2020,0.0166
+2a6ac30605df6707,switch,images/switch/2a6ac30605df6707.jpg,dev,1,0.6855,website_screenshot,0.5614,switch,0.2620,0.2620
+17ed379a7697f3e9,power supply module,images/power supply module/17ed379a7697f3e9.jpg,dev,1,0.6837,logo,0.5317,led,0.2156,0.0006
+444688d55d2add92,transformer,images/transformer/444688d55d2add92.jpg,dev,0,0.6824,circuit_schematic,0.6696,microcontroller board,0.1462,0.0906
+80e3f478b89edcb2,breadboard,images/breadboard/80e3f478b89edcb2.jpg,dev,3,0.6807,logo,0.5670,connector,0.1453,0.0305
+fa228876a6ed588d,potentiometer,images/potentiometer/fa228876a6ed588d.jpg,dev,1,0.6771,cartoon_game_art,0.2919,relay,0.1205,0.0030
+ac7cdf1faae11f83,switch,images/switch/ac7cdf1faae11f83.jpg,test,,0.6712,cartoon_game_art,0.3685,fuse,0.0811,0.0236
+775ca33efbc57498,diode,images/diode/775ca33efbc57498.jpg,test,,0.6690,circuit_schematic,0.6658,transistor,0.1528,0.1365
+be8db3d0ca9d707d,crystal oscillator,images/crystal oscillator/be8db3d0ca9d707d.jpg,dev,4,0.6619,circuit_schematic,0.6595,crystal oscillator,0.2896,0.2896
+3bfd447bc45f7477,battery holder,images/battery holder/3bfd447bc45f7477.jpg,dev,3,0.6614,collage,0.6566,battery holder,0.1850,0.1850
+777a9aa2f1872dd4,diode,images/diode/777a9aa2f1872dd4.jpg,dev,0,0.6609,website_screenshot,0.5377,relay,0.2169,0.0946
+f5309c319c765ed4,switch,images/switch/f5309c319c765ed4.jpg,test,,0.6559,cartoon_game_art,0.6016,relay,0.1652,0.1440
+ef013b4fc3152d89,resistor,images/resistor/ef013b4fc3152d89.jpg,dev,4,0.6542,text_screenshot,0.2264,power supply module,0.1875,0.0013
+01ac0f202a935cc6,led,images/led/01ac0f202a935cc6.jpg,dev,1,0.6530,logo,0.5625,relay,0.1133,0.0015
+75775c96107d90c9,diode,images/diode/75775c96107d90c9.jpg,dev,3,0.6498,circuit_schematic,0.6498,transistor,0.3139,0.0152
+52ef3a468ec148eb,heat sink,images/heat sink/52ef3a468ec148eb.jpg,dev,4,0.6495,logo,0.5803,heat sink,0.1601,0.1601
+c08cac047c50102b,switch,images/switch/c08cac047c50102b.jpg,test,,0.6463,logo,0.5069,switch,0.1883,0.1883
+df37e559c00e133e,crystal oscillator,images/crystal oscillator/df37e559c00e133e.jpg,test,,0.6448,circuit_schematic,0.6438,microcontroller board,0.2120,0.0277
+bcc02fd856f5d311,resistor,images/resistor/bcc02fd856f5d311.jpg,dev,3,0.6443,circuit_schematic,0.6416,resistor,0.2438,0.2438
+56603a289340849b,transformer,images/transformer/56603a289340849b.jpg,dev,3,0.6433,car,0.5962,transformer,0.2904,0.2904
+e8ebf96037ece5ac,power supply module,images/power supply module/e8ebf96037ece5ac.jpg,dev,4,0.6432,circuit_schematic,0.6136,microcontroller board,0.2293,0.0078
+f11cf5decc16f860,transistor,images/transistor/f11cf5decc16f860.jpg,test,,0.6415,circuit_schematic,0.6371,transistor,0.1980,0.1980
+e7fbd10c748a6993,diode,images/diode/e7fbd10c748a6993.jpg,dev,0,0.6391,website_screenshot,0.2821,battery holder,0.1884,0.0006
+f5943677fc737ab1,ic chip,images/ic chip/f5943677fc737ab1.jpg,dev,1,0.6340,logo,0.5513,ic chip,0.1523,0.1523
+84445fec913be9e5,led,images/led/84445fec913be9e5.jpg,dev,4,0.6332,collage,0.6052,connector,0.2145,0.1014
+be9052d5a712439d,transformer,images/transformer/be9052d5a712439d.jpg,dev,2,0.6330,website_screenshot,0.3667,microcontroller board,0.2927,0.0007
+d1f028d4806c3c30,resistor,images/resistor/d1f028d4806c3c30.jpg,dev,0,0.6317,circuit_schematic,0.6316,breadboard,0.2198,0.0830
+f07b950d485f9b5f,diode,images/diode/f07b950d485f9b5f.jpg,dev,2,0.6304,logo,0.3259,relay,0.3153,0.0003
+8b72492e550e401a,crystal oscillator,images/crystal oscillator/8b72492e550e401a.jpg,dev,0,0.6266,circuit_schematic,0.6265,crystal oscillator,0.3138,0.3138
+94dff628b21b75bc,led,images/led/94dff628b21b75bc.jpg,dev,1,0.6253,website_screenshot,0.4879,power supply module,0.1830,0.0001
+b759ed76550f8091,breadboard,images/breadboard/b759ed76550f8091.jpg,dev,0,0.6248,logo,0.4829,breadboard,0.2586,0.2586
+2cf71af749ffb2da,led,images/led/2cf71af749ffb2da.jpg,dev,3,0.6247,collage,0.5898,switch,0.2485,0.0366
+4d2e1e92fd0c7a04,ic chip,images/ic chip/4d2e1e92fd0c7a04.jpg,dev,0,0.6241,collage,0.6195,crystal oscillator,0.0642,0.0074
+b014fb3820e09405,transistor,images/transistor/b014fb3820e09405.jpg,dev,3,0.6238,circuit_schematic,0.6238,transistor,0.2686,0.2686
+15601777df11c9c3,led,images/led/15601777df11c9c3.jpg,test,,0.6227,circuit_schematic,0.6227,led,0.2953,0.2953
+48f8bac243b22072,switch,images/switch/48f8bac243b22072.jpg,dev,2,0.6096,logo,0.3107,switch,0.3753,0.3753
+54608cf5a948a585,relay,images/relay/54608cf5a948a585.jpg,dev,0,0.6086,circuit_schematic,0.6073,switch,0.2767,0.0220
+7d7fc2534a8ca805,transistor,images/transistor/7d7fc2534a8ca805.jpg,test,,0.6058,logo,0.4515,relay,0.1617,0.1389
+dd94f1738349069a,jumper wire,images/jumper wire/dd94f1738349069a.jpg,dev,0,0.6056,logo,0.4453,transformer,0.1101,0.0832
+cc47e87bf5f5b8e9,jumper wire,images/jumper wire/cc47e87bf5f5b8e9.jpg,dev,3,0.6052,logo,0.2696,jumper wire,0.3380,0.3380
+a96d3cff11c374f6,switch,images/switch/a96d3cff11c374f6.jpg,dev,4,0.5983,logo,0.4681,connector,0.1531,0.0531
+8261e428c7c84028,resistor,images/resistor/8261e428c7c84028.jpg,dev,1,0.5939,person,0.5867,power supply module,0.1708,0.0005
+b51c8154cf3e45ba,capacitor,images/capacitor/b51c8154cf3e45ba.jpg,dev,2,0.5929,circuit_schematic,0.5869,capacitor,0.3711,0.3711
+488990d44022bff6,power supply module,images/power supply module/488990d44022bff6.jpg,dev,2,0.5926,logo,0.5580,capacitor,0.1370,0.0624
+e9ddbf0e4f228e2c,inductor coil,images/inductor coil/e9ddbf0e4f228e2c.jpg,dev,2,0.5856,circuit_schematic,0.5838,inductor coil,0.3580,0.3580
+b18d1360222435fa,transistor,images/transistor/b18d1360222435fa.jpg,dev,2,0.5812,circuit_schematic,0.5811,diode,0.2386,0.1312
+cf8ab6ef2988bbdc,led,images/led/cf8ab6ef2988bbdc.jpg,dev,0,0.5807,cartoon_game_art,0.2078,relay,0.0665,0.0051
+cbba4233c934f8d5,led,images/led/cbba4233c934f8d5.jpg,dev,3,0.5797,logo,0.5093,relay,0.2690,0.0001
+4eaf11894e3aadd4,breadboard,images/breadboard/4eaf11894e3aadd4.jpg,dev,4,0.5776,circuit_schematic,0.5776,breadboard,0.3776,0.3776
+3f3795a58e261157,breadboard,images/breadboard/3f3795a58e261157.jpg,dev,4,0.5770,logo,0.4325,power supply module,0.0973,0.0606
+fb0c8553884e911a,potentiometer,images/potentiometer/fb0c8553884e911a.jpg,dev,0,0.5761,logo,0.5758,led,0.1893,0.0062
+33d01bff76df78cd,breadboard,images/breadboard/33d01bff76df78cd.jpg,dev,4,0.5714,logo,0.4608,relay,0.1374,0.0118
+255ef9c58b1811e8,breadboard,images/breadboard/255ef9c58b1811e8.jpg,dev,1,0.5705,circuit_schematic,0.5703,breadboard,0.4015,0.4015
+8cde49a7df13f25f,crystal oscillator,images/crystal oscillator/8cde49a7df13f25f.jpg,dev,3,0.5608,website_screenshot,0.4357,resistor,0.1098,0.0001
+3f02c07f307ffb00,inductor coil,images/inductor coil/3f02c07f307ffb00.jpg,test,,0.5602,logo,0.3864,jumper wire,0.1459,0.0030
+e70ef6347d6981cc,fuse,images/fuse/e70ef6347d6981cc.jpg,dev,4,0.5601,cartoon_game_art,0.3352,breadboard,0.4268,0.0003
+3b24c6e4ef943a3d,relay,images/relay/3b24c6e4ef943a3d.jpg,test,,0.5599,circuit_schematic,0.5584,relay,0.2777,0.2777
+b30ebf40b461b23e,switch,images/switch/b30ebf40b461b23e.jpg,dev,0,0.5589,circuit_schematic,0.5530,switch,0.4157,0.4157
+3b9c7d5eac7b760e,ic chip,images/ic chip/3b9c7d5eac7b760e.jpg,dev,1,0.5568,collage,0.5257,diode,0.1207,0.0350
+50c6ce3ba0208b20,potentiometer,images/potentiometer/50c6ce3ba0208b20.jpg,dev,3,0.5525,circuit_schematic,0.5524,breadboard,0.4291,0.0010
+b7f30f900b9b8e05,crystal oscillator,images/crystal oscillator/b7f30f900b9b8e05.jpg,dev,3,0.5519,logo,0.4853,diode,0.2153,0.0070
+9d3bef0dc9f64824,jumper wire,images/jumper wire/9d3bef0dc9f64824.jpg,test,,0.5495,cartoon_game_art,0.1938,battery holder,0.3726,0.0354
+14e2a31fac84f764,resistor,images/resistor/14e2a31fac84f764.jpg,dev,2,0.5458,circuit_schematic,0.5281,resistor,0.2715,0.2715
+79c93648a89cb925,battery holder,images/battery holder/79c93648a89cb925.jpg,test,,0.5439,collage,0.3063,switch,0.2155,0.0001
+203fa51b645cb42d,battery holder,images/battery holder/203fa51b645cb42d.jpg,dev,3,0.5428,logo,0.5263,relay,0.2647,0.1119
+c67f13dc868234c3,relay,images/relay/c67f13dc868234c3.jpg,dev,0,0.5424,circuit_schematic,0.5424,relay,0.2412,0.2412
+b6f1e792c7e26347,inductor coil,images/inductor coil/b6f1e792c7e26347.jpg,dev,0,0.5411,circuit_schematic,0.5410,crystal oscillator,0.2306,0.0088
+4fab0b66b0020c82,inductor coil,images/inductor coil/4fab0b66b0020c82.jpg,dev,0,0.5405,circuit_schematic,0.5360,inductor coil,0.3338,0.3338
+21267f498834f384,breadboard,images/breadboard/21267f498834f384.jpg,dev,4,0.5385,logo,0.3361,relay,0.1427,0.0047
+d09e16b7c4ef16bd,led,images/led/d09e16b7c4ef16bd.jpg,dev,3,0.5384,logo,0.4731,led,0.1039,0.1039
+dc8e955e725fe5fe,fuse,images/fuse/dc8e955e725fe5fe.jpg,dev,0,0.5350,cartoon_game_art,0.3725,resistor,0.1691,0.0364
+133e4354c5a06dad,transformer,images/transformer/133e4354c5a06dad.jpg,dev,1,0.5316,logo,0.5060,transistor,0.4115,0.0541
+0978192da5b38fce,breadboard,images/breadboard/0978192da5b38fce.jpg,dev,1,0.5268,circuit_schematic,0.5261,breadboard,0.3883,0.3883
+21f3a814500e16e2,capacitor,images/capacitor/21f3a814500e16e2.jpg,test,,0.5254,circuit_schematic,0.5253,capacitor,0.4118,0.4118
+4cead651a7d459f2,microcontroller board,images/microcontroller board/4cead651a7d459f2.jpg,dev,2,0.5204,collage,0.5193,power supply module,0.2010,0.1029
+ff425a3521fb9d5c,battery holder,images/battery holder/ff425a3521fb9d5c.jpg,test,,0.5176,collage,0.2492,led,0.3607,0.0007
+9026b001eb9cc190,transformer,images/transformer/9026b001eb9cc190.jpg,test,,0.5171,cartoon_game_art,0.4041,transformer,0.4525,0.4525
+f780236a931f98fc,jumper wire,images/jumper wire/f780236a931f98fc.jpg,dev,2,0.5134,logo,0.2670,connector,0.3674,0.0089
+7b3063191d43af1e,switch,images/switch/7b3063191d43af1e.jpg,dev,4,0.5129,cartoon_game_art,0.3867,relay,0.2527,0.0923
+ce53e4cf5bbae3ca,resistor,images/resistor/ce53e4cf5bbae3ca.jpg,dev,1,0.5123,logo,0.3415,relay,0.4465,0.0003
+34d4a2a29df2f3c2,breadboard,images/breadboard/34d4a2a29df2f3c2.jpg,dev,4,0.5114,logo,0.3183,relay,0.1202,0.0748
+fae5bcd4b176f869,diode,images/diode/fae5bcd4b176f869.jpg,dev,3,0.5086,circuit_schematic,0.5084,diode,0.4198,0.4198
+6181b019d710ea8d,inductor coil,images/inductor coil/6181b019d710ea8d.jpg,dev,3,0.5078,circuit_schematic,0.5077,resistor,0.2927,0.1335
+7822eb762d4f68f5,capacitor,images/capacitor/7822eb762d4f68f5.jpg,dev,1,0.5031,circuit_schematic,0.4816,power supply module,0.2483,0.0250
+919fa6141e0693a9,relay,images/relay/919fa6141e0693a9.jpg,dev,1,0.5020,circuit_schematic,0.5019,relay,0.4306,0.4306
+7bd80d4fcf2a8544,inductor coil,images/inductor coil/7bd80d4fcf2a8544.jpg,dev,1,0.4916,food,0.3613,transistor,0.2704,0.0055
+6b9da34aa3e35d77,breadboard,images/breadboard/6b9da34aa3e35d77.jpg,dev,2,0.4901,logo,0.3146,relay,0.0977,0.0106
+23d1ded9a0dd964c,power supply module,images/power supply module/23d1ded9a0dd964c.jpg,dev,3,0.4896,circuit_schematic,0.4890,transistor,0.1771,0.0101
+25db4dff521e9b74,crystal oscillator,images/crystal oscillator/25db4dff521e9b74.jpg,dev,3,0.4889,circuit_schematic,0.4889,crystal oscillator,0.5060,0.5060
+9552e433c9f6d5e0,led,images/led/9552e433c9f6d5e0.jpg,test,,0.4877,logo,0.4744,battery holder,0.2140,0.0007
+04cd1e1602d85b7f,power supply module,images/power supply module/04cd1e1602d85b7f.jpg,dev,3,0.4796,circuit_schematic,0.4792,breadboard,0.1608,0.0096
+ee65405d81fa43a5,battery holder,images/battery holder/ee65405d81fa43a5.jpg,dev,4,0.4786,logo,0.2860,battery holder,0.1815,0.1815
+c4dd651c7b86c414,transistor,images/transistor/c4dd651c7b86c414.jpg,test,,0.4757,cartoon_game_art,0.4212,ic chip,0.4476,0.0105
+c4163cef4f1400cf,switch,images/switch/c4163cef4f1400cf.jpg,dev,2,0.4756,cartoon_game_art,0.2717,power supply module,0.3370,0.0129
+c6d4c0707a5c562e,breadboard,images/breadboard/c6d4c0707a5c562e.jpg,dev,3,0.4745,circuit_schematic,0.4745,breadboard,0.4864,0.4864
+4953bc3e87962d73,fuse,images/fuse/4953bc3e87962d73.jpg,dev,1,0.4739,text_screenshot,0.2399,ic chip,0.1126,0.0554
+bdd3cc6ab5f8a80f,led,images/led/bdd3cc6ab5f8a80f.jpg,dev,4,0.4700,person,0.2434,led,0.2025,0.2025
+31cd317b39896903,transformer,images/transformer/31cd317b39896903.jpg,dev,3,0.4699,car,0.3932,transformer,0.4651,0.4651
+e19d196c33c930d1,led,images/led/e19d196c33c930d1.jpg,dev,1,0.4697,circuit_schematic,0.4695,led,0.3641,0.3641
+a7d813548fd73963,led,images/led/a7d813548fd73963.jpg,dev,3,0.4691,collage,0.1913,led,0.1602,0.1602
+8e51edcfd5382e8e,crystal oscillator,images/crystal oscillator/8e51edcfd5382e8e.jpg,dev,2,0.4664,circuit_schematic,0.4664,crystal oscillator,0.5309,0.5309
+b2ee703a126405b0,switch,images/switch/b2ee703a126405b0.jpg,dev,0,0.4661,logo,0.4547,switch,0.5156,0.5156
+498dd8a6db9b5e20,diode,images/diode/498dd8a6db9b5e20.jpg,test,,0.4647,logo,0.4350,ic chip,0.2081,0.0736
+589cd27c755b4d1a,crystal oscillator,images/crystal oscillator/589cd27c755b4d1a.jpg,dev,4,0.4640,circuit_schematic,0.4616,breadboard,0.2254,0.0065
+adbad69461720961,switch,images/switch/adbad69461720961.jpg,dev,0,0.4629,cartoon_game_art,0.2005,relay,0.2041,0.0340
+70ac5c84626c7901,power supply module,images/power supply module/70ac5c84626c7901.jpg,dev,4,0.4614,logo,0.3561,power supply module,0.2367,0.2367
+c77f015abbfd7fec,fuse,images/fuse/c77f015abbfd7fec.jpg,dev,4,0.4580,car,0.3553,relay,0.2779,0.0106
+a63977aab0a5ea3f,diode,images/diode/a63977aab0a5ea3f.jpg,dev,1,0.4557,circuit_schematic,0.4536,diode,0.5297,0.5297
+ed4857a52c245362,diode,images/diode/ed4857a52c245362.jpg,dev,0,0.4547,circuit_schematic,0.4546,diode,0.5087,0.5087
+db9fd37a81e518fb,switch,images/switch/db9fd37a81e518fb.jpg,dev,0,0.4545,logo,0.4175,switch,0.4870,0.4870
+f573d10a59349768,power supply module,images/power supply module/f573d10a59349768.jpg,dev,3,0.4541,logo,0.4533,power supply module,0.2689,0.2689
+54ebc3701fc18292,inductor coil,images/inductor coil/54ebc3701fc18292.jpg,dev,2,0.4521,circuit_schematic,0.4411,inductor coil,0.4932,0.4932
+bd27e9f93f21b382,microcontroller board,images/microcontroller board/bd27e9f93f21b382.jpg,dev,3,0.4517,circuit_schematic,0.4349,breadboard,0.2428,0.0395
+329592debc4c2ef6,potentiometer,images/potentiometer/329592debc4c2ef6.jpg,dev,0,0.4508,circuit_schematic,0.4507,switch,0.2492,0.1565
+d72470a1cbedd352,led,images/led/d72470a1cbedd352.jpg,dev,1,0.4489,logo,0.2119,crystal oscillator,0.1955,0.0578
+368e0003733a3b49,led,images/led/368e0003733a3b49.jpg,dev,4,0.4474,collage,0.3151,inductor coil,0.2987,0.0828
+ad7f9205e2d46830,diode,images/diode/ad7f9205e2d46830.jpg,dev,2,0.4440,website_screenshot,0.3472,transformer,0.3855,0.0082
+b9187c039c078dbb,resistor,images/resistor/b9187c039c078dbb.jpg,dev,3,0.4411,circuit_schematic,0.4099,fuse,0.4334,0.0456
+2e606021f973a65f,switch,images/switch/2e606021f973a65f.jpg,dev,2,0.4399,website_screenshot,0.1575,power supply module,0.3490,0.0009
+3a105f154e324bea,switch,images/switch/3a105f154e324bea.jpg,dev,4,0.4366,logo,0.3219,switch,0.4406,0.4406
+2bee079a9cb4092d,battery holder,images/battery holder/2bee079a9cb4092d.jpg,dev,1,0.4341,collage,0.4335,breadboard,0.5019,0.0237
+a8d3038aee1be89a,heat sink,images/heat sink/a8d3038aee1be89a.jpg,dev,1,0.4304,collage,0.3134,switch,0.3559,0.0034
+e09e19d7086ce271,switch,images/switch/e09e19d7086ce271.jpg,dev,4,0.4302,logo,0.3044,switch,0.2044,0.2044
+34a82f02644c773c,transformer,images/transformer/34a82f02644c773c.jpg,dev,1,0.4297,cartoon_game_art,0.3831,transformer,0.5062,0.5062
+e496131b8e61364b,jumper wire,images/jumper wire/e496131b8e61364b.jpg,dev,0,0.4253,logo,0.1912,jumper wire,0.2926,0.2926
+1ef180429ffa365a,transformer,images/transformer/1ef180429ffa365a.jpg,dev,4,0.4234,cartoon_game_art,0.2436,transformer,0.5710,0.5710
+9bfe60c7e7de9b5e,diode,images/diode/9bfe60c7e7de9b5e.jpg,dev,2,0.4205,circuit_schematic,0.4198,diode,0.2822,0.2822
+1b66fc8075afba16,power supply module,images/power supply module/1b66fc8075afba16.jpg,dev,1,0.4199,circuit_schematic,0.4196,relay,0.3591,0.1001
+3b8ecee02e0076c3,resistor,images/resistor/3b8ecee02e0076c3.jpg,dev,3,0.4177,logo,0.2693,resistor,0.3583,0.3583
+3d6be711d7784261,relay,images/relay/3d6be711d7784261.jpg,dev,4,0.4101,website_screenshot,0.1442,relay,0.5887,0.5887
+a71d6514cbbcc3e8,jumper wire,images/jumper wire/a71d6514cbbcc3e8.jpg,dev,2,0.4050,logo,0.2137,jumper wire,0.2889,0.2889
+88eab378ca9ecbca,relay,images/relay/88eab378ca9ecbca.jpg,dev,1,0.4049,circuit_schematic,0.4047,microcontroller board,0.2967,0.1599
+4bd650def0b205ec,capacitor,images/capacitor/4bd650def0b205ec.jpg,dev,3,0.4025,circuit_schematic,0.4020,capacitor,0.5625,0.5625
+6e0df521ad0fd349,transistor,images/transistor/6e0df521ad0fd349.jpg,dev,2,0.4025,logo,0.3089,diode,0.2357,0.1006
+5184134ae526ad04,fuse,images/fuse/5184134ae526ad04.jpg,dev,2,0.4024,logo,0.3958,switch,0.1707,0.0210
+f6282758251f15fd,switch,images/switch/f6282758251f15fd.jpg,dev,3,0.4013,logo,0.2452,switch,0.5364,0.5364
+4df0e38db2369fe5,switch,images/switch/4df0e38db2369fe5.jpg,dev,2,0.3972,cartoon_game_art,0.3048,battery holder,0.2684,0.2261
+49b0ed6b1a17a006,diode,images/diode/49b0ed6b1a17a006.jpg,dev,4,0.3921,logo,0.3079,diode,0.4765,0.4765
+63d0d820f4f5a07d,transformer,images/transformer/63d0d820f4f5a07d.jpg,dev,2,0.3912,cartoon_game_art,0.2238,transformer,0.2912,0.2912
+50c016a55a6866fd,led,images/led/50c016a55a6866fd.jpg,dev,2,0.3907,collage,0.3610,led,0.5974,0.5974
+9f1981c9e0f42403,transformer,images/transformer/9f1981c9e0f42403.jpg,dev,2,0.3902,circuit_schematic,0.2238,ic chip,0.5470,0.0001
+fc467e405306b6e7,microcontroller board,images/microcontroller board/fc467e405306b6e7.jpg,dev,2,0.3852,circuit_schematic,0.3852,ic chip,0.4972,0.1091
+2d50101061024494,switch,images/switch/2d50101061024494.jpg,test,,0.3825,cartoon_game_art,0.2134,switch,0.5068,0.5068
+8fc33951c1f7e604,resistor,images/resistor/8fc33951c1f7e604.jpg,test,,0.3821,circuit_schematic,0.3515,switch,0.4711,0.0001
+cbaf3cda9d7e9bbd,breadboard,images/breadboard/cbaf3cda9d7e9bbd.jpg,dev,1,0.3810,cartoon_game_art,0.2955,relay,0.2648,0.1571
+56c8b393d9d91dcb,relay,images/relay/56c8b393d9d91dcb.jpg,dev,3,0.3807,logo,0.1091,microcontroller board,0.3776,0.0274
+d5a8188d787f6165,jumper wire,images/jumper wire/d5a8188d787f6165.jpg,dev,3,0.3804,car,0.2074,led,0.3335,0.0031
+4c2e9dce9ce2a1b5,ic chip,images/ic chip/4c2e9dce9ce2a1b5.jpg,test,,0.3797,logo,0.3411,ic chip,0.5735,0.5735
+e5fa0d7e4fc467a2,power supply module,images/power supply module/e5fa0d7e4fc467a2.jpg,test,,0.3780,logo,0.3731,diode,0.4292,0.0007
+480f90098a9187c5,transistor,images/transistor/480f90098a9187c5.jpg,dev,3,0.3769,circuit_schematic,0.3762,transistor,0.5544,0.5544
+21e5b56db731fa2d,switch,images/switch/21e5b56db731fa2d.jpg,dev,4,0.3731,cartoon_game_art,0.3528,switch,0.3166,0.3166
+2951fd8c3d473ece,switch,images/switch/2951fd8c3d473ece.jpg,dev,4,0.3665,collage,0.3512,battery holder,0.3728,0.0369
+71bf50c44f37b915,connector,images/connector/71bf50c44f37b915.jpg,dev,3,0.3662,collage,0.3658,fuse,0.4788,0.0516
+cde84af58a19adf3,diode,images/diode/cde84af58a19adf3.jpg,dev,0,0.3653,circuit_schematic,0.3650,diode,0.5209,0.5209
+a3d5a0f164530c1d,battery holder,images/battery holder/a3d5a0f164530c1d.jpg,dev,4,0.3593,collage,0.3565,fuse,0.2945,0.1674
+a09a17729d7e2632,resistor,images/resistor/a09a17729d7e2632.jpg,dev,0,0.3553,circuit_schematic,0.3552,resistor,0.6351,0.6351
+8ac447d804915d1c,relay,images/relay/8ac447d804915d1c.jpg,dev,3,0.3550,car,0.3075,relay,0.6445,0.6445
+3e93a6109f37a4a3,switch,images/switch/3e93a6109f37a4a3.jpg,dev,4,0.3506,logo,0.3283,battery holder,0.2062,0.0715
+c69f4c0734912080,relay,images/relay/c69f4c0734912080.jpg,dev,3,0.3486,circuit_schematic,0.3467,relay,0.3802,0.3802
+e8f8c3875165dd2d,jumper wire,images/jumper wire/e8f8c3875165dd2d.jpg,test,,0.3435,cartoon_game_art,0.3221,jumper wire,0.6563,0.6563
+8eed403bc63874a6,led,images/led/8eed403bc63874a6.jpg,test,,0.3410,circuit_schematic,0.2266,battery holder,0.2501,0.0098
+340b39bd514fb508,breadboard,images/breadboard/340b39bd514fb508.jpg,dev,4,0.3409,circuit_schematic,0.3390,microcontroller board,0.2392,0.2380
+13b4c7c0d64d1496,relay,images/relay/13b4c7c0d64d1496.jpg,dev,0,0.3395,circuit_schematic,0.3394,inductor coil,0.3108,0.0495
+7a0ec4ab372d75be,fuse,images/fuse/7a0ec4ab372d75be.jpg,dev,4,0.3370,cartoon_game_art,0.2287,fuse,0.6361,0.6361
+af201986b86f93b8,switch,images/switch/af201986b86f93b8.jpg,dev,2,0.3365,cartoon_game_art,0.2704,power supply module,0.1844,0.0076
+fe47139b9db562d0,jumper wire,images/jumper wire/fe47139b9db562d0.jpg,test,,0.3365,person,0.2299,jumper wire,0.3166,0.3166
+26c1a2b8f51625e7,relay,images/relay/26c1a2b8f51625e7.jpg,dev,4,0.3360,cartoon_game_art,0.1216,relay,0.6627,0.6627
+2613b0e3a89dd17f,potentiometer,images/potentiometer/2613b0e3a89dd17f.jpg,dev,2,0.3338,circuit_schematic,0.3330,potentiometer,0.6161,0.6161
+ca577fbf57acb88e,fuse,images/fuse/ca577fbf57acb88e.jpg,dev,3,0.3327,logo,0.3207,fuse,0.5671,0.5671
+325b5b25692aa33e,inductor coil,images/inductor coil/325b5b25692aa33e.jpg,test,,0.3293,circuit_schematic,0.3293,inductor coil,0.6581,0.6581
+fda173584f0ae103,led,images/led/fda173584f0ae103.jpg,test,,0.3287,logo,0.3185,jumper wire,0.3182,0.0514
+70a9b6bdc5761c27,breadboard,images/breadboard/70a9b6bdc5761c27.jpg,dev,4,0.3278,logo,0.2564,resistor,0.1607,0.1460
+027247f540f2991a,fuse,images/fuse/027247f540f2991a.jpg,dev,4,0.3248,car,0.3211,fuse,0.5007,0.5007
+f63b00537a9a49b8,battery holder,images/battery holder/f63b00537a9a49b8.jpg,dev,0,0.3247,logo,0.2926,battery holder,0.5656,0.5656
+ec1fb776a3264dbb,inductor coil,images/inductor coil/ec1fb776a3264dbb.jpg,dev,0,0.3213,circuit_schematic,0.2696,capacitor,0.2861,0.2636
+2a5b00371e40577e,switch,images/switch/2a5b00371e40577e.jpg,dev,3,0.3210,circuit_schematic,0.3159,potentiometer,0.2756,0.2409
+c0032c1fbc2cbf95,battery holder,images/battery holder/c0032c1fbc2cbf95.jpg,dev,2,0.3205,logo,0.3186,relay,0.1879,0.0038
+bd198d2e1e58437c,switch,images/switch/bd198d2e1e58437c.jpg,dev,4,0.3191,logo,0.1864,switch,0.4772,0.4772
+1cd90b7b8ba014d0,ic chip,images/ic chip/1cd90b7b8ba014d0.jpg,dev,1,0.3152,circuit_schematic,0.3147,microcontroller board,0.3584,0.2479
+ab518b60d8cac768,resistor,images/resistor/ab518b60d8cac768.jpg,dev,4,0.3143,circuit_schematic,0.3125,resistor,0.5856,0.5856
+1315cb2601896751,crystal oscillator,images/crystal oscillator/1315cb2601896751.jpg,dev,0,0.3134,circuit_schematic,0.3134,crystal oscillator,0.6801,0.6801
+6e1fa3e7120d6f2b,microcontroller board,images/microcontroller board/6e1fa3e7120d6f2b.jpg,dev,1,0.3134,circuit_schematic,0.3132,microcontroller board,0.6642,0.6642
+2c18ca2cd8892665,resistor,images/resistor/2c18ca2cd8892665.jpg,test,,0.3129,logo,0.2296,relay,0.6275,0.0002
+01704803373a7998,transformer,images/transformer/01704803373a7998.jpg,dev,1,0.3087,circuit_schematic,0.3086,transformer,0.6806,0.6806
+e25b32a5fcde5a22,resistor,images/resistor/e25b32a5fcde5a22.jpg,dev,4,0.3080,logo,0.1483,diode,0.1746,0.0855
+55b27e08be38d27e,heat sink,images/heat sink/55b27e08be38d27e.jpg,dev,0,0.3055,website_screenshot,0.1594,crystal oscillator,0.5154,0.0037
+b5bf41a0bd2e498d,transformer,images/transformer/b5bf41a0bd2e498d.jpg,test,,0.3052,logo,0.0758,relay,0.1836,0.0204
+e47381bff193f272,led,images/led/e47381bff193f272.jpg,dev,2,0.3041,collage,0.1781,led,0.5777,0.5777
+a1d663954228f615,crystal oscillator,images/crystal oscillator/a1d663954228f615.jpg,dev,1,0.3032,circuit_schematic,0.2429,crystal oscillator,0.2331,0.2331
+ccd37f903bbc8bcf,heat sink,images/heat sink/ccd37f903bbc8bcf.jpg,test,,0.3010,logo,0.2707,switch,0.3260,0.0145
+a4401e9d8929ce10,capacitor,images/capacitor/a4401e9d8929ce10.jpg,test,,0.2951,circuit_schematic,0.2949,capacitor,0.6256,0.6256
+88c9d1be8601b94b,switch,images/switch/88c9d1be8601b94b.jpg,dev,3,0.2944,logo,0.2804,switch,0.5031,0.5031
+b4abd49b0a502731,relay,images/relay/b4abd49b0a502731.jpg,dev,1,0.2893,website_screenshot,0.1694,relay,0.7102,0.7102
+fdf43bd47816f78c,inductor coil,images/inductor coil/fdf43bd47816f78c.jpg,dev,2,0.2892,food,0.1930,jumper wire,0.2379,0.0054
+2541ccec0a76d926,switch,images/switch/2541ccec0a76d926.jpg,dev,2,0.2872,cartoon_game_art,0.1747,relay,0.6875,0.0009
+8766eecc8377a3b6,transformer,images/transformer/8766eecc8377a3b6.jpg,test,,0.2862,circuit_schematic,0.2862,jumper wire,0.4129,0.0421
+27b6e920248772ac,fuse,images/fuse/27b6e920248772ac.jpg,dev,1,0.2855,cartoon_game_art,0.2297,transistor,0.3670,0.2226
+e2cb8f99473c536f,led,images/led/e2cb8f99473c536f.jpg,test,,0.2853,logo,0.2752,jumper wire,0.3040,0.0587
+df63d00df0639126,switch,images/switch/df63d00df0639126.jpg,dev,0,0.2825,logo,0.2626,power supply module,0.3844,0.0033
+be2cc5bb2b9d6f22,inductor coil,images/inductor coil/be2cc5bb2b9d6f22.jpg,dev,0,0.2823,logo,0.2801,diode,0.2434,0.0115
+2a6770f0aa313ff5,heat sink,images/heat sink/2a6770f0aa313ff5.jpg,dev,3,0.2819,circuit_schematic,0.1837,transformer,0.1962,0.1431
+6c9feffaffb62685,diode,images/diode/6c9feffaffb62685.jpg,dev,0,0.2801,circuit_schematic,0.2801,transistor,0.3309,0.2882
+1389c79ccc6d3a39,transformer,images/transformer/1389c79ccc6d3a39.jpg,dev,1,0.2777,logo,0.1322,transformer,0.3365,0.3365
+377c8e5daab0530f,led,images/led/377c8e5daab0530f.jpg,dev,4,0.2759,collage,0.0894,power supply module,0.2888,0.0049
+b437c381edfe7cb3,resistor,images/resistor/b437c381edfe7cb3.jpg,dev,4,0.2752,circuit_schematic,0.1930,resistor,0.4185,0.4185
+8bde23760195c98e,transistor,images/transistor/8bde23760195c98e.jpg,dev,3,0.2749,person,0.2440,microcontroller board,0.2199,0.0046
+3ea8ba6b1dfe3d94,connector,images/connector/3ea8ba6b1dfe3d94.jpg,dev,4,0.2747,logo,0.2344,jumper wire,0.1901,0.0545
+c50bcef96bbbb1f5,inductor coil,images/inductor coil/c50bcef96bbbb1f5.jpg,dev,1,0.2741,collage,0.2727,resistor,0.4904,0.0044
+255a65e1fa03db4f,led,images/led/255a65e1fa03db4f.jpg,dev,2,0.2695,car,0.2537,power supply module,0.3234,0.0001
+dc3b0115dbcf15e0,switch,images/switch/dc3b0115dbcf15e0.jpg,dev,3,0.2687,cartoon_game_art,0.1356,breadboard,0.5702,0.0112
+15fbda3bf5af30fe,relay,images/relay/15fbda3bf5af30fe.jpg,dev,3,0.2683,person,0.1010,relay,0.7309,0.7309
+773b55a6284edcfa,crystal oscillator,images/crystal oscillator/773b55a6284edcfa.jpg,dev,1,0.2660,website_screenshot,0.2365,fuse,0.1907,0.0393
+28748e22f0f40474,battery holder,images/battery holder/28748e22f0f40474.jpg,dev,2,0.2617,car,0.1458,battery holder,0.5936,0.5936
+69f266a68abeaddf,switch,images/switch/69f266a68abeaddf.jpg,dev,3,0.2597,cartoon_game_art,0.2487,switch,0.5352,0.5352
+2254e32da80ab1d8,battery holder,images/battery holder/2254e32da80ab1d8.jpg,dev,0,0.2594,logo,0.2177,battery holder,0.5925,0.5925
+f329150c982c79a4,transformer,images/transformer/f329150c982c79a4.jpg,dev,4,0.2581,collage,0.2099,transformer,0.5649,0.5649
+ec18fa89a9c58f1c,transistor,images/transistor/ec18fa89a9c58f1c.jpg,dev,2,0.2575,circuit_schematic,0.2527,transistor,0.1604,0.1604
+163eaafb70c915e5,crystal oscillator,images/crystal oscillator/163eaafb70c915e5.jpg,dev,1,0.2541,circuit_schematic,0.2540,crystal oscillator,0.6727,0.6727
+5f8e26890a777ffc,resistor,images/resistor/5f8e26890a777ffc.jpg,dev,1,0.2534,logo,0.2490,resistor,0.5526,0.5526
+6d30d7d90a59769f,switch,images/switch/6d30d7d90a59769f.jpg,dev,0,0.2530,collage,0.1111,switch,0.6962,0.6962
+0e14469d707176dd,relay,images/relay/0e14469d707176dd.jpg,dev,0,0.2528,person,0.0898,relay,0.7220,0.7220
+1ed1ffb33696b3e7,relay,images/relay/1ed1ffb33696b3e7.jpg,dev,3,0.2516,person,0.0848,relay,0.7476,0.7476
