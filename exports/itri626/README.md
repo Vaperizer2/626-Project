@@ -33,7 +33,7 @@ fp32. On 16 test images the minimum cosine similarity between the two is 0.99997
 
 ## What the Rust app must replicate
 
-- **Model A uses bilinear resizing.** `contract.rs` currently rejects anything but `"bicubic"`. Pillow's
+- **Model A uses bilinear resizing.** The app now supports both bilinear and bicubic interpolation. Pillow's
   `BILINEAR` is the same separable `Resample.c` path as `preprocess.rs`, with filter `1 − |x|` and support 1.0
   instead of the cubic kernel with support 2.0. Feeding A a bicubic resize gives 145/418 (−3 images) and changes 7.4 %
   of the predictions.
@@ -44,8 +44,9 @@ fp32. On 16 test images the minimum cosine similarity between the two is 0.99997
 - The app's EXIF/alpha handling matches `compclass.demo.open_image`. None of the 418 test images has a non-trivial
   EXIF orientation or alpha channel, so the evaluation does not exercise that path.
 
-## Git
+## Sharing the models
 
-`*.onnx` is in `.gitignore`. The JSON files, this README and `tools/export_itri626_models.py` are trackable. The
-three `.onnx` files are ignored. A's 4.8 MB `model.onnx` and the 2.1 MB `model_multi.onnx` can be committed with
-`git add -f`. B's 112 MB `model.onnx` must not be committed.
+All ONNX graphs and their external weights are distributed in the
+[private GitHub Release](https://github.com/Vaperizer2/626-Project/releases/tag/share-2026-10-30).
+Follow [the runbook](../../docs/RUNBOOK.md) to extract `exports/` into a clone. Keep the two SigLIP graphs beside
+`model.onnx.data`. JSON metadata and export/parity reports remain tracked in Git; ONNX files remain ignored.

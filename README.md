@@ -1,5 +1,11 @@
 # compclass — electronic-component image classification across model families
 
+**Share / run:** [private GitHub repository](https://github.com/Vaperizer2/626-Project) ·
+[download models and Linux demo](https://github.com/Vaperizer2/626-Project/releases/tag/share-2026-10-30) ·
+[runbook](docs/RUNBOOK.md) · [current status](STATUS.md) · [agent handoff](AGENTS.md).
+The release includes all four model choices; cloning the source alone does not download the ONNX weights.
+Colleagues need repository access (Settings → Collaborators); send the release link after they accept the invitation.
+
 One importable package (`src/compclass`) trains, probes and evaluates every model family the project compares,
 from a CNN written from scratch to CLIP / SigLIP / DINOv2 foundation models. All families share one leakage-free
 dataset (`data/v2/manifest.json`), cluster-grouped 5-fold cross-validation and a sealed test split. The
@@ -74,7 +80,10 @@ uv run python -m compclass.demo --source 0                                      
 uv run python scripts/make_report_figures.py
 ```
 
-`exports/final/model.onnx(.data)` is not committed (1.6 GB). Recreate it with `compclass.final export` (below).
+`exports/final/model.onnx` and `model.onnx.data` are release assets inside the Linux bundle, not Git objects.
+Follow [the runbook](docs/RUNBOOK.md) to download all models into the source checkout or run the bundled demo.
+The shared SigLIP weights alone are 1,714,593,792 bytes (1.60 GiB). Exporting again requires the training inputs/caches;
+use the release for inference without rebuilding the dataset.
 
 ## Repository map
 
@@ -99,6 +108,9 @@ Further reading: [`CODEBASE.md`](CODEBASE.md) (code map, commands, gotchas), [`E
 (dated decisions and results), [`STATUS.md`](STATUS.md) (resume checkpoint).
 
 ## Reproducing each phase
+
+These are historical reproduction commands, not onboarding steps. Both held-out evaluations have already been
+used; consult the committed results instead of using those sets for further model selection.
 
 GPU phases ran on one RTX 4060 Ti (8 GB). Each command appends one JSON line per fold to its `--results` file (or to
 the config's `output.results`).

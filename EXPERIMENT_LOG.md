@@ -36,3 +36,12 @@ leakage between train and val/test — see [`legacy/README.md`](legacy/README.md
 | 2026-10-18 | Web holdout v1 — one look (`results/final/final_test_web_holdout_v1.json`, 407 Wikimedia photos) | — | acc. 0.8206 / macro-F1 0.8159 (probe-only 0.7789) | Coverage 0.853 at 0.891 accepted; ECE 0.050; weakest led / switch / transformer. Zero-shot head +4.2 pt out-of-source. Holdout now spent. |
 | 2026-10-18 | Original Kaggle download (`scripts/eval_original_kaggle.py`, `results/kaggle_original/summary.json`) | — | all 3,530 files 0.9552 (incl. training rows) | Never-seen (v2 test) files 0.8296 (n = 493); training-row files 0.9811; conflicting duplicates 0.3704 (n = 27). Legacy-protocol replay on legacy-test files 0.8772 (n = 521) vs old best 0.7132; leaked copies 1.000 (113), clean 0.8431 (408). |
 | 2026-10-18 | Deliverables: IEEE paper (`docs/paper/main.pdf`), interactive explorer (`docs/explorer/index.html`), GPUI desktop app (`apps/gpui-demo`) | — | — | GPUI headless parity 64/64 argmax vs PyTorch; window not launched in the build sandbox (no display). |
+
+
+## 2026-10-20 to 2026-10-30 — delivery and sharing
+
+October 20 added the ITRI626 fixed-split A/B/C report/notebook, A/B ONNX exports and the shared C/deployed graph.
+The desktop app moved to GPUI Kit 0.7.3 with Classify/Demo/Benchmark, model comparison and Bench themes.
+Portable glibc-2.28 Linux packaging and a NixOS/Wayland launcher followed. October 30 published the source privately
+at https://github.com/Vaperizer2/626-Project and prepared a model/demo release, runbook and agent handoff.
+This delivery work does not change the recorded research scores or reopen held-out model selection.

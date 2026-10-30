@@ -1,5 +1,8 @@
 # Codebase map
 
+For setup, model downloads, running the demo and release maintenance, use [the runbook](docs/RUNBOOK.md).
+For completed work and remaining limitations, use [STATUS.md](STATUS.md).
+
 ```
 src/compclass/
   config.py          YAML loading: `base:` inheritance, `--set a.b=v` overrides, config hash
@@ -16,7 +19,11 @@ src/compclass/
                      the training fold by GroupKFold)
   zeroshot.py        CLIP / SigLIP zero-shot with prompt templates (open_clip text towers)
   classical.py       HOG + HSV colour histogram + RBF-SVM baseline
-  export.py          ONNX export + labels.json + preprocess.json + onnxruntime parity check
+  export.py          checkpoint ONNX export + labels.json + preprocess.json + parity check
+  final.py           fit/calibrate fused SigLIP head, export, held-out evaluation
+  demo.py            Python file/folder/URL/webcam inference through onnxruntime
+apps/gpui-demo/       Rust GPUI Kit 0.7.3 desktop app, model registry A/B/C/Deployed,
+                     headless classify mode and portable Linux/NixOS launchers
 configs/             base.yaml (every knob, commented) + one file per family
 tests/test_smoke.py  CPU smoke tests on a synthetic 3-class manifest (~10 s)
 scripts/gpu_witness.py  per-model download/build/fp16 train-step benchmark + end-to-end CLI witness on the GPU PC

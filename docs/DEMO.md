@@ -15,13 +15,15 @@ onnxruntime matches PyTorch.
 per class. The final head was trained on these dev rows, so the bottom half shows what the overlay looks like. It
 says nothing about accuracy (see [Accuracy to expect](#accuracy-to-expect)).*
 
-## 1. Get the model onto the laptop
+## 1. Get the model
 
-The repo does not track the exported model (`*.onnx` and `*.onnx.data` are gitignored; together ≈1.6 GB). Copy it
-from the GPU PC over Tailscale:
+For a fresh checkout, download the private GitHub Release and extract its `exports/` folder as described in
+[the runbook](RUNBOOK.md#download-models-into-a-source-checkout). The same release contains a portable Linux
+app with all four model choices; it needs neither Python nor Rust installed.
+
+Maintainers with access to the original GPU PC can also copy the exports over Tailscale:
 
 ```bash
-cd ~/Work/Prototypes/626-Project
 mkdir -p exports/final
 rsync -avP -e "ssh -p 2222" \
   carl@carlpc2.tail498db1.ts.net:~/Projects/626-Project/exports/final/ exports/final/
@@ -38,8 +40,9 @@ uv run python -m compclass.final fit             # OOF check, calibration, absta
 uv run python -m compclass.final export --force  # model.onnx + labels.json + preprocess.json + parity report
 ```
 
-Keep `--force` if a `model.onnx` already exists. `export` reuses an existing `model.onnx`, which has the *old* head
-baked in, while it still rewrites `preprocess.json` from the new `head.npz`.
+The exporter records the `head.npz` SHA-256 and regenerates the graph when that head changes or its stamp is
+missing. `--force` deliberately bypasses reuse. Check `export_report.json` and keep the matching graph, external
+data and preprocessing files together.
 
 ## 2. Run it
 

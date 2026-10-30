@@ -20,19 +20,26 @@ and the **Deployed** fused SigLIP model. Models load on first use. The 1.7 GB Si
 by C and Deployed. The same binary also has a headless `classify` mode. It implements the ONNX contract in
 `docs/DEMO.md` §8 and mirrors the Python reference `src/compclass/demo.py`.
 
-## Quick start (on the laptop)
+## Download and run
+
+For colleagues, use the [private release](https://github.com/Vaperizer2/626-Project/releases/tag/share-2026-10-30)
+and follow the [runbook](../../docs/RUNBOOK.md). It includes all models, the CPU runtime and the demo photos.
+On ordinary x86_64 Linux run `./run.sh --tab demo`; on NixOS run `./run-nixos.sh --tab demo`.
+The first NixOS launch needs network access to fetch runtime libraries. Windows/macOS users can use the Python
+ONNX demo from source; this release's desktop binary is Linux-only.
+
+## Build from source
 
 ```bash
 # 0. one-time: a Rust toolchain (rustup is installed on Arch; it just needs a default toolchain)
 rustup default stable                   # needs Rust >= 1.92; tested with 1.99.1
 
 # 1. one-time: the onnxruntime shared library (any onnxruntime >= 1.22).
-#    target/release/libonnxruntime.so.1.31.0 is already in place on this laptop; the app finds a copy next to the
-#    binary by itself. Other options: `uv sync` in the repo (gpui-demo finds .venv/.../onnxruntime/capi/), or
+#    A library next to the binary is detected automatically. Options: `uv sync` in the repo (gpui-demo finds .venv/.../onnxruntime/capi/), or
 #      uv venv ~/.local/share/compclass-ort && uv pip install --python ~/.local/share/compclass-ort onnxruntime
 #      export ORT_DYLIB_PATH=$(ls ~/.local/share/compclass-ort/lib/python3.*/site-packages/onnxruntime/capi/libonnxruntime.so.1.*)
 
-# 2. build and run (from anywhere inside the repo: exports/ and demo_stack/ are found by walking up)
+# 2. download the models first (see ../../docs/RUNBOOK.md), then build and run
 cd apps/gpui-demo
 cargo build --release --locked --features turbojpeg   # Arch has libjpeg-turbo: bit-identical JPEG decoding to Pillow
 ./target/release/gpui-demo                            # Classify tab
@@ -213,7 +220,7 @@ with glibc 2.28 or newer (Ubuntu 20.04+, Debian 10+, Fedora 29+, RHEL 8+, Arch):
 
 ```
 dist/component-classifier-linux-x86_64/       1.8 GB: binary, onnxruntime, models A/B/C/Deployed, demo_stack,
-                                              run.sh, README.txt (for the recipient), LICENSES/, SHA256SUMS
+                                              run.sh, run-nixos.sh, README.txt (for the recipient), LICENSES/, SHA256SUMS
 dist/component-classifier-linux-x86_64.tar.gz (+ .sha256; split into 1900 MiB .part-* files if it is larger)
 ```
 
