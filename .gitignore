@@ -43,3 +43,7 @@ results/cache/
 .DS_Store
 *.swp
 data/web_holdout_v1/images/
+
+# Small report inputs; generic runs/ above excludes training outputs elsewhere.
+!results/itri626/runs/
+!results/itri626/runs/*.json

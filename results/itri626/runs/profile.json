@@ -1,0 +1,42 @@
+{
+ "A_scratch_cnn": {
+  "params": 1187636,
+  "trainable_params": 1187636,
+  "input_size": 160,
+  "checkpoint_files": [
+   "runs/itri626/scratch_cnn-4e4c6e8f6cf3/fold0/best.pt"
+  ],
+  "checkpoint_mb": 4.56,
+  "fp32_weights_mb": 4.5,
+  "gpu_ms_per_image_batch1_fp16": 0.52,
+  "gpu_ms_per_image_batch32_fp16": 0.046,
+  "cpu_ms_per_image_batch1_fp32_8threads": 1.7
+ },
+ "B_convnext_tiny": {
+  "params": 27835508,
+  "trainable_params": 27835508,
+  "input_size": 224,
+  "checkpoint_files": [
+   "runs/itri626/convnext_tiny-bb9c72a49446/fold0/best.pt"
+  ],
+  "checkpoint_mb": 106.24,
+  "fp32_weights_mb": 106.2,
+  "gpu_ms_per_image_batch1_fp16": 2.79,
+  "gpu_ms_per_image_batch32_fp16": 0.803,
+  "cpu_ms_per_image_batch1_fp32_8threads": 18.4
+ },
+ "C_siglip_so400m_linear": {
+  "params": 428248660,
+  "trainable_params": 23060,
+  "input_size": 384,
+  "checkpoint_files": [
+   "runs/itri626/siglip_so400m_linear/fold0/head.pt"
+  ],
+  "checkpoint_mb": 0.1,
+  "fp32_weights_mb": 1633.6,
+  "gpu_ms_per_image_batch1_fp16": 31.1,
+  "gpu_ms_per_image_batch32_fp16": 22.475,
+  "cpu_ms_per_image_batch1_fp32_8threads": 893.5
+ },
+ "_note": "Forward pass of a preprocessed tensor to softmax probabilities, after warm-up; excludes JPEG decode and resizing. C = frozen SigLIP So400m image tower + standardisation + linear head; its checkpoint is only the head (the frozen backbone is the public timm weight file)."
+}
