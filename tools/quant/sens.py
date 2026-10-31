@@ -87,6 +87,7 @@ def main() -> None:
     ap.add_argument("--calib", default="max")
     ap.add_argument("--n", type=int, default=64)
     ap.add_argument("--only", default="", help="comma list of config names to run")
+    ap.add_argument("--cpu", action="store_true", help="CPU EP (fp32) instead of CUDA EP with TF32 off")
     a = ap.parse_args()
     import onnxruntime as ort
 
@@ -102,7 +103,8 @@ def main() -> None:
     so.log_severity_level = 3
     res = {}
     with gpu_lock():
-        sess = ort.InferenceSession(str(graph), so, providers=[("CUDAExecutionProvider", {"use_tf32": 0})])
+        ep = ["CPUExecutionProvider"] if a.cpu else [("CUDAExecutionProvider", {"use_tf32": 0})]
+        sess = ort.InferenceSession(str(graph), so, providers=ep)
         t0 = time.perf_counter()
 
         def run(on: set[str]) -> np.ndarray:

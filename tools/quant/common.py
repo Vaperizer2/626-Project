@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -16,9 +17,10 @@ sys.path.insert(0, str(REPO / "tools/speed"))
 
 from harness import gpu_lock  # noqa: E402,F401
 
-ART = Path("/home/vaper/Work/Prototypes/626-artifacts/quant")
+ART = Path(os.environ.get("QUANT_ART", "/home/vaper/Work/Prototypes/626-artifacts/quant"))
 CALIB = ART / "calib"
-BASELINE = Path("/home/vaper/Work/Prototypes/626-artifacts/harness/candidates/baseline_fp32")
+BASELINE = Path(os.environ.get("QUANT_BASELINE",
+                               "/home/vaper/Work/Prototypes/626-artifacts/harness/candidates/baseline_fp32"))
 SPEC = SimpleNamespace(input_size=384, crop_pct=0.9, interpolation="bicubic", mean=[0.5] * 3, std=[0.5] * 3)
 
 

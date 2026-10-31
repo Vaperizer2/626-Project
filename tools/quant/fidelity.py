@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import time
 from pathlib import Path
 
@@ -18,7 +19,7 @@ import numpy as np
 
 from common import ART, BASELINE, gpu_lock, pool_images, preprocess
 
-HEAD = Path("/home/vaper/Work/Prototypes/626-Project/exports/final/head.npz")
+HEAD = Path(os.environ.get("QUANT_HEAD", "/home/vaper/Work/Prototypes/626-Project/exports/final/head.npz"))
 
 
 def session(cdir: Path, strict_fp32: bool = False):
