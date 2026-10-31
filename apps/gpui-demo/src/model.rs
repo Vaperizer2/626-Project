@@ -1,69 +1,23 @@
 //! Model directory / onnxruntime library discovery and one ONNX session per graph (`Engine`).
 
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use anyhow::{Context, Result, anyhow, bail};
 use ort::session::{Session, builder::GraphOptimizationLevel};
 use ort::value::TensorRef;
 
-use crate::contract::Contract;
+use crate::manifest::Manifest;
+use crate::registry::search_bases;
 
 /// Options shared by the GUI and the headless CLI.
 #[derive(Debug, Clone, Default)]
 pub struct ModelOptions {
-    pub model_dir: Option<PathBuf>,
+    /// `--models`: the index (exports/models.json) or its folder
+    pub models: Option<PathBuf>,
     pub ort_lib: Option<PathBuf>,
     pub threads: Option<usize>,
     pub cuda: bool,
-}
-
-/// Candidate base directories: the current directory and the executable's directory, plus their ancestors.
-fn search_bases() -> Vec<PathBuf> {
-    let mut starts = Vec::new();
-    if let Ok(cwd) = std::env::current_dir() {
-        starts.push(cwd);
-    }
-    if let Ok(exe) = std::env::current_exe()
-        && let Some(d) = exe.canonicalize().unwrap_or(exe).parent()
-    {
-        starts.push(d.to_path_buf());
-    }
-    let mut out: Vec<PathBuf> = Vec::new();
-    for s in starts {
-        for a in s.ancestors() {
-            if !out.iter().any(|p| p == a) {
-                out.push(a.to_path_buf());
-            }
-        }
-    }
-    out
-}
-
-/// Resolve the export folder: `--model-dir`, then `$COMPCLASS_MODEL_DIR`, then the first `exports/final/`
-/// containing `model.onnx` found walking up from the current directory and from the executable.
-pub fn resolve_model_dir(explicit: Option<&Path>) -> Result<PathBuf> {
-    if let Some(p) = explicit {
-        if !p.join("model.onnx").is_file() {
-            bail!("--model-dir {}: no model.onnx there", p.display());
-        }
-        return Ok(p.to_path_buf());
-    }
-    if let Some(p) = std::env::var_os("COMPCLASS_MODEL_DIR").map(PathBuf::from) {
-        if p.join("model.onnx").is_file() {
-            return Ok(p);
-        }
-        bail!("COMPCLASS_MODEL_DIR={}: no model.onnx there", p.display());
-    }
-    for b in search_bases() {
-        let c = b.join("exports").join("final");
-        if c.join("model.onnx").is_file() {
-            return Ok(c);
-        }
-    }
-    bail!(
-        "cannot find exports/final/model.onnx above the current directory or the executable; \
-         pass --model-dir <folder with model.onnx, model.onnx.data, preprocess.json, labels.json>"
-    )
 }
 
 /// `<dir>/.venv/lib/python3.*/site-packages/onnxruntime/capi/libonnxruntime.so*`
@@ -98,7 +52,7 @@ fn find_ort_in(dir: &Path) -> Option<PathBuf> {
 
 /// Resolve libonnxruntime: `--ort-lib`, `$ORT_DYLIB_PATH`, the project's uv venv
 /// (`<repo>/.venv/.../onnxruntime/capi/`), a copy next to the executable, else the system loader path.
-pub fn resolve_ort_lib(explicit: Option<&Path>, model_dir: Option<&Path>) -> PathBuf {
+pub fn resolve_ort_lib(explicit: Option<&Path>, exports: Option<&Path>) -> PathBuf {
     if let Some(p) = explicit {
         return p.to_path_buf();
     }
@@ -106,7 +60,7 @@ pub fn resolve_ort_lib(explicit: Option<&Path>, model_dir: Option<&Path>) -> Pat
         return PathBuf::from(p);
     }
     let mut bases: Vec<PathBuf> = Vec::new();
-    if let Some(m) = model_dir {
+    if let Some(m) = exports {
         let m = m.canonicalize().unwrap_or_else(|_| m.to_path_buf());
         bases.extend(m.ancestors().map(Path::to_path_buf));
     }
@@ -134,8 +88,8 @@ pub struct Runtime {
 
 impl Runtime {
     /// dlopen libonnxruntime (see [`resolve_ort_lib`]) and create the environment.
-    pub fn init(opts: &ModelOptions, model_dir: Option<&Path>) -> Result<Self> {
-        let ort_lib = resolve_ort_lib(opts.ort_lib.as_deref(), model_dir);
+    pub fn init(opts: &ModelOptions, exports: Option<&Path>) -> Result<Self> {
+        let ort_lib = resolve_ort_lib(opts.ort_lib.as_deref(), exports);
         #[cfg_attr(not(feature = "cuda"), allow(unused_mut))]
         let mut eps = Vec::new();
         #[cfg(feature = "cuda")]
@@ -177,24 +131,20 @@ impl Runtime {
     }
 }
 
-/// One loaded ONNX graph with its preprocessing contract; may serve several registry entries (one per output).
+/// One loaded ONNX graph; serves every head of its manifest (one per output).
 pub struct Engine {
     session: Session,
-    input: String,
-    pub contract: Contract,
-    pub onnx: PathBuf,
+    pub manifest: Arc<Manifest>,
 }
 
 impl Engine {
-    pub fn load(rt: &Runtime, onnx: &Path, contract_dir: &Path) -> Result<Self> {
-        let contract = Contract::load(contract_dir)?;
-        let session = rt.session(onnx)?;
-        let input = if session.inputs().iter().any(|i| i.name() == "input") {
-            "input".to_string()
-        } else {
-            session.inputs().first().map(|i| i.name().to_string()).context("model has no inputs")?
-        };
-        Ok(Self { session, input, contract, onnx: onnx.to_path_buf() })
+    pub fn load(rt: &Runtime, manifest: Arc<Manifest>) -> Result<Self> {
+        let session = rt.session(&manifest.graph)?;
+        let name = &manifest.input.name;
+        if !session.inputs().iter().any(|i| i.name() == name) {
+            bail!("{} has no input '{name}'", manifest.graph.display());
+        }
+        Ok(Self { session, manifest })
     }
 
     pub fn output_names(&self) -> Vec<String> {
@@ -203,16 +153,18 @@ impl Engine {
 
     /// One forward pass; returns the requested outputs (flattened f32) in the requested order.
     pub fn run(&mut self, tensor: &[f32], outputs: &[&str]) -> Result<Vec<Vec<f32>>> {
-        let s = self.contract.pre.input_size as usize;
-        let input = TensorRef::from_array_view(([1usize, 3, s, s], tensor)).map_err(|e| anyhow!("{e}"))?;
+        let (w, h) = self.manifest.input.size;
+        let input =
+            TensorRef::from_array_view(([1usize, 3, h as usize, w as usize], tensor)).map_err(|e| anyhow!("{e}"))?;
+        let onnx = &self.manifest.graph;
         let res = self
             .session
-            .run(ort::inputs![self.input.as_str() => input])
-            .map_err(|e| anyhow!("inference ({}): {e}", self.onnx.display()))?;
+            .run(ort::inputs![self.manifest.input.name.as_str() => input])
+            .map_err(|e| anyhow!("inference ({}): {e}", onnx.display()))?;
         outputs
             .iter()
             .map(|name| {
-                let v = res.get(name).with_context(|| format!("{} has no output '{name}'", self.onnx.display()))?;
+                let v = res.get(name).with_context(|| format!("{} has no output '{name}'", onnx.display()))?;
                 let (_, data) = v.try_extract_tensor::<f32>().map_err(|e| anyhow!("{e}"))?;
                 Ok(data.to_vec())
             })

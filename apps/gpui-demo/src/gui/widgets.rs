@@ -56,7 +56,6 @@ use super::theme::{self, Roles};
 use super::worker::ModelState;
 use crate::contract::Prediction;
 use crate::demo::Verdict;
-use crate::models::ModelKey;
 
 pub fn pct(p: f32) -> String {
     if p >= 0.995 {
@@ -157,7 +156,8 @@ pub fn prob_row(label: &str, p: f32, strong: bool, large: bool, cx: &App) -> Any
 /// Headline + top-3 + all classes. Used by the Classify result panel and the Demo detail pane.
 pub fn prediction_block(
     p: &Prediction,
-    key: ModelKey,
+    title: &str,
+    calibrated: bool,
     threshold: f32,
     verdict: Option<(Verdict, &str)>,
     labels: &[String],
@@ -193,13 +193,13 @@ pub fn prediction_block(
                     .gap_2()
                     .items_baseline()
                     .child(div().text_2xl().font_weight(FontWeight::SEMIBOLD).text_color(r.accent).child(pct(top.1)))
-                    .child(div().text_sm().text_color(r.muted_fg).child(if key.calibrated() {
+                    .child(div().text_sm().text_color(r.muted_fg).child(if calibrated {
                         "confidence · calibrated"
                     } else {
                         "confidence · softmax, not calibrated"
                     })),
             )
-            .when(!key.calibrated() && top.1 < threshold, |d| {
+            .when(!calibrated && top.1 < threshold, |d| {
                 d.child(
                     h_flex()
                         .gap_1()
@@ -254,7 +254,7 @@ pub fn prediction_block(
                 .text_xs()
                 .text_color(r.muted_fg)
                 .child(Icon::new(Lucide::Timer).xsmall())
-                .child(format!("{} · preprocess + inference {:.0} ms", key.name(), p.ms)),
+                .child(format!("{title} · preprocess + inference {:.0} ms", p.ms)),
         )
         .into_any_element()
 }

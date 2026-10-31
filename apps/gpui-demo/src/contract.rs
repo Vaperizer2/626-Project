@@ -1,78 +1,6 @@
-//! The export contract: `preprocess.json` + `labels.json` (see docs/DEMO.md, "Deploying elsewhere"),
-//! and the decision rule (top-3, UNSURE below `abstain_threshold`).
+//! The decision rule: top-3, and UNSURE below the head's abstain threshold (docs/DEMO.md).
 
-use std::path::Path;
-
-use anyhow::{Context, Result, bail};
-use serde::{Deserialize, Serialize};
-
-/// Fields of `preprocess.json` that the front end uses. Unknown keys (provenance) are ignored.
-#[derive(Debug, Clone, Deserialize)]
-pub struct Preprocess {
-    pub input_size: u32,
-    pub resize_short_side: u32,
-    pub interpolation: String,
-    pub mean: [f32; 3],
-    pub std: [f32; 3],
-    pub scale: f64,
-    pub abstain_threshold: f32,
-    #[serde(default = "default_rgb")]
-    pub color_order: String,
-    #[serde(default = "default_nchw")]
-    pub layout: String,
-    #[serde(default)]
-    pub model: Option<String>,
-}
-
-fn default_rgb() -> String {
-    "RGB".into()
-}
-fn default_nchw() -> String {
-    "NCHW".into()
-}
-
-impl Preprocess {
-    pub fn validate(&self) -> Result<()> {
-        if self.color_order != "RGB" || self.layout != "NCHW" {
-            bail!("only RGB / NCHW preprocessing is implemented (got {} / {})", self.color_order, self.layout);
-        }
-        if crate::preprocess::Filter::from_name(&self.interpolation).is_none() {
-            bail!("only interpolation \"bicubic\" or \"bilinear\" is implemented (got {:?})", self.interpolation);
-        }
-        if self.resize_short_side < self.input_size {
-            bail!("resize_short_side {} < input_size {}", self.resize_short_side, self.input_size);
-        }
-        if self.std.contains(&0.0) {
-            bail!("std must be non-zero");
-        }
-        Ok(())
-    }
-}
-
-/// `preprocess.json` + `labels.json` from an export directory.
-#[derive(Debug, Clone)]
-pub struct Contract {
-    pub pre: Preprocess,
-    pub labels: Vec<String>,
-}
-
-impl Contract {
-    pub fn load(model_dir: &Path) -> Result<Self> {
-        let pp = model_dir.join("preprocess.json");
-        let lp = model_dir.join("labels.json");
-        let pre: Preprocess =
-            serde_json::from_str(&std::fs::read_to_string(&pp).with_context(|| format!("reading {}", pp.display()))?)
-                .with_context(|| format!("parsing {}", pp.display()))?;
-        pre.validate()?;
-        let labels: Vec<String> =
-            serde_json::from_str(&std::fs::read_to_string(&lp).with_context(|| format!("reading {}", lp.display()))?)
-                .with_context(|| format!("parsing {}", lp.display()))?;
-        if labels.is_empty() {
-            bail!("{} is empty", lp.display());
-        }
-        Ok(Self { pre, labels })
-    }
-}
+use serde::Serialize;
 
 /// One classified image.
 #[derive(Debug, Clone, Serialize)]
@@ -139,18 +67,5 @@ mod tests {
         assert_eq!(unsure.label(), "UNSURE");
         assert_eq!(unsure.top3[0].0, "c1");
         assert_eq!(unsure.top3[1].0, "c2");
-    }
-
-    #[test]
-    fn real_contract_parses() {
-        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../exports/final");
-        if !dir.join("preprocess.json").exists() {
-            return; // not in the repo checkout
-        }
-        let c = Contract::load(&dir).unwrap();
-        assert_eq!(c.labels.len(), 20);
-        assert_eq!(c.pre.input_size, 384);
-        assert_eq!(c.pre.resize_short_side, 427);
-        assert_eq!(c.pre.abstain_threshold, 0.5);
     }
 }

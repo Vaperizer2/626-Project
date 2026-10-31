@@ -13,7 +13,7 @@ use anyhow::{Context, Result, bail};
 use image::{DynamicImage, ImageDecoder, ImageReader, RgbImage, RgbaImage, metadata::Orientation};
 use rayon::prelude::*;
 
-use crate::contract::Preprocess;
+use crate::manifest::{Filter, Preprocess};
 
 /// Pillow: `#define PRECISION_BITS (32 - 8 - 2)`
 const PRECISION_BITS: u32 = 22;
@@ -127,33 +127,18 @@ fn bilinear(x: f64) -> f64 {
     if x < 1.0 { 1.0 - x } else { 0.0 }
 }
 
-/// The two Pillow filters the exported models use (`preprocess.json` "interpolation").
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Filter {
-    Bicubic,
-    Bilinear,
+fn support(filter: Filter) -> f64 {
+    match filter {
+        Filter::PillowBicubic => 2.0,
+        Filter::PillowBilinear => 1.0,
+    }
 }
 
-impl Filter {
-    pub fn from_name(name: &str) -> Option<Filter> {
-        match name {
-            "bicubic" => Some(Filter::Bicubic),
-            "bilinear" => Some(Filter::Bilinear),
-            _ => None,
-        }
-    }
-    fn support(self) -> f64 {
-        match self {
-            Filter::Bicubic => 2.0,
-            Filter::Bilinear => 1.0,
-        }
-    }
-    #[inline]
-    fn eval(self, x: f64) -> f64 {
-        match self {
-            Filter::Bicubic => bicubic(x),
-            Filter::Bilinear => bilinear(x),
-        }
+#[inline]
+fn kernel(filter: Filter, x: f64) -> f64 {
+    match filter {
+        Filter::PillowBicubic => bicubic(x),
+        Filter::PillowBilinear => bilinear(x),
     }
 }
 
@@ -163,7 +148,7 @@ fn precompute_coeffs(in_size: u32, out_size: u32, filter: Filter) -> (usize, Vec
     let (in0, in1) = (0.0f64, in_size as f64);
     let scale = (in1 - in0) / out_size as f64;
     let filterscale = scale.max(1.0);
-    let support = filter.support() * filterscale;
+    let support = support(filter) * filterscale;
     let ksize = support.ceil() as usize * 2 + 1;
     let mut bounds = Vec::with_capacity(out_size as usize);
     let mut kk = vec![0i32; out_size as usize * ksize];
@@ -184,7 +169,7 @@ fn precompute_coeffs(in_size: u32, out_size: u32, filter: Filter) -> (usize, Vec
         let xmin = xmin as usize;
         let mut ww = 0.0f64;
         for (x, kx) in k.iter_mut().enumerate().take(xmax) {
-            let w = filter.eval((x as f64 + xmin as f64 - center + 0.5) * ss);
+            let w = kernel(filter, (x as f64 + xmin as f64 - center + 0.5) * ss);
             *kx = w;
             ww += w;
         }
@@ -207,7 +192,7 @@ fn clip8(v: i32) -> u8 {
 /// Bit-exact port of `PIL.Image.resize((w, h), Image.BICUBIC)` for 8-bit RGB (no box, no reducing_gap).
 #[cfg(test)]
 pub fn pillow_bicubic_resize(src: &RgbImage, out_w: u32, out_h: u32) -> RgbImage {
-    pillow_resize(src, out_w, out_h, Filter::Bicubic)
+    pillow_resize(src, out_w, out_h, Filter::PillowBicubic)
 }
 
 /// Bit-exact port of `PIL.Image.resize((w, h), filter)` for 8-bit RGB, BICUBIC or BILINEAR (same separable
@@ -275,40 +260,40 @@ pub fn pillow_resize(src: &RgbImage, out_w: u32, out_h: u32, filter: Filter) -> 
 }
 
 // ----------------------------------------------------------------------------------------- transform
-/// torchvision CenterCrop offsets: `int(round((W - S) / 2))` with Python's round-half-to-even.
-pub fn center_crop_offsets(w: u32, h: u32, size: u32) -> (u32, u32) {
-    let l = ((w - size) as f64 / 2.0).round_ties_even() as u32;
-    let t = ((h - size) as f64 / 2.0).round_ties_even() as u32;
+/// torchvision CenterCrop offsets: `int(round((W - w) / 2))` with Python's round-half-to-even.
+pub fn center_crop_offsets(w: u32, h: u32, crop_w: u32, crop_h: u32) -> (u32, u32) {
+    let l = ((w - crop_w) as f64 / 2.0).round_ties_even() as u32;
+    let t = ((h - crop_h) as f64 / 2.0).round_ties_even() as u32;
     (l, t)
 }
 
-/// RGB image -> float32 NCHW tensor data of length 3*S*S, identical to `compclass.demo.preprocess`.
+/// RGB image -> float32 NCHW tensor data of length 3*h*w, identical to `compclass.demo.preprocess`.
 pub fn to_tensor(img: &RgbImage, pre: &Preprocess) -> Result<Vec<f32>> {
-    let size = pre.input_size;
+    let Preprocess::ResizeShortCenterCrop { short, crop: (cw, ch), filter, scale, mean, std } = pre;
+    let (cw, ch) = (*cw, *ch);
     let (w, h) = img.dimensions();
     if w == 0 || h == 0 {
         bail!("empty image");
     }
-    let (nw, nh) = resized_size(w, h, pre.resize_short_side);
-    if nw < size || nh < size {
+    let (nw, nh) = resized_size(w, h, *short);
+    if nw < cw || nh < ch {
         bail!("image too small after resize ({nw}x{nh})");
     }
-    let filter = Filter::from_name(&pre.interpolation).context("unsupported interpolation")?;
-    let resized = pillow_resize(img, nw, nh, filter);
-    let (left, top) = center_crop_offsets(nw, nh, size);
+    let resized = pillow_resize(img, nw, nh, *filter);
+    let (left, top) = center_crop_offsets(nw, nh, cw, ch);
     // ToTensor: x / float32(1/scale); then (x - mean) / std, all in float32 like numpy.
-    let denom = (1.0 / pre.scale) as f32;
-    let s = size as usize;
-    let plane = s * s;
+    let denom = (1.0 / scale) as f32;
+    let (cw, ch) = (cw as usize, ch as usize);
+    let plane = cw * ch;
     let mut out = vec![0f32; 3 * plane];
     let raw = resized.as_raw();
     let stride = nw as usize * 3;
-    for y in 0..s {
+    for y in 0..ch {
         let row = &raw[(y + top as usize) * stride + left as usize * 3..];
-        for x in 0..s {
+        for x in 0..cw {
             for c in 0..3 {
                 let v = row[x * 3 + c] as f32 / denom;
-                out[c * plane + y * s + x] = (v - pre.mean[c]) / pre.std[c];
+                out[c * plane + y * cw + x] = (v - mean[c]) / std[c];
             }
         }
     }
@@ -342,11 +327,14 @@ mod tests {
     use image::Rgb;
 
     fn pre() -> Preprocess {
-        serde_json::from_str(
-            r#"{"input_size":384,"mean":[0.5,0.5,0.5],"std":[0.5,0.5,0.5],"interpolation":"bicubic",
-                "resize_short_side":427,"scale":0.00392156862745098,"abstain_threshold":0.5}"#,
-        )
-        .unwrap()
+        Preprocess::ResizeShortCenterCrop {
+            short: 427,
+            crop: (384, 384),
+            filter: Filter::PillowBicubic,
+            scale: 0.00392156862745098,
+            mean: [0.5; 3],
+            std: [0.5; 3],
+        }
     }
 
     #[test]
@@ -360,8 +348,9 @@ mod tests {
     #[test]
     fn crop_offsets_round_half_to_even() {
         // (W-S)/2 = 21.5 -> 22 (even), 20.5 -> 20 (even), 0 -> 0
-        assert_eq!(center_crop_offsets(384 + 43, 384, 384), (22, 0));
-        assert_eq!(center_crop_offsets(384 + 41, 384 + 2, 384), (20, 1));
+        assert_eq!(center_crop_offsets(384 + 43, 384, 384, 384), (22, 0));
+        assert_eq!(center_crop_offsets(384 + 41, 384 + 2, 384, 384), (20, 1));
+        assert_eq!(center_crop_offsets(427, 300, 300, 200), (64, 50), "non-square crop");
     }
 
     #[test]
@@ -379,15 +368,14 @@ mod tests {
         assert_eq!(bilinear(0.25), 0.75);
         assert_eq!(bilinear(1.0), 0.0);
         let img = RgbImage::from_pixel(300, 200, image::Rgb([7, 99, 250]));
-        let r = pillow_resize(&img, 183, 122, Filter::Bilinear);
+        let r = pillow_resize(&img, 183, 122, Filter::PillowBilinear);
         assert!(r.pixels().all(|p| p.0 == [7, 99, 250]));
         // a horizontal ramp stays monotonic and differs from the bicubic result somewhere
         let ramp = RgbImage::from_fn(64, 8, |x, _| image::Rgb([(x * 4) as u8; 3]));
-        let a = pillow_resize(&ramp, 23, 8, Filter::Bilinear);
-        let b = pillow_resize(&ramp, 23, 8, Filter::Bicubic);
+        let a = pillow_resize(&ramp, 23, 8, Filter::PillowBilinear);
+        let b = pillow_resize(&ramp, 23, 8, Filter::PillowBicubic);
         assert!(a.pixels().zip(a.pixels().skip(1)).take(22).all(|(p, q)| p.0[0] <= q.0[0]));
         assert_ne!(a.as_raw(), b.as_raw());
-        assert_eq!(Filter::from_name("nearest"), None);
     }
 
     #[test]

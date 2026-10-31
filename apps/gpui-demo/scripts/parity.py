@@ -55,7 +55,7 @@ def main() -> None:
     with tempfile.TemporaryDirectory() as td:
         for i, p in enumerate(paths):
             out = Path(td) / f"{i}.f32"
-            subprocess.run([args.bin, "preprocess", p, str(out), "--model-dir", str(model_dir)],
+            subprocess.run([args.bin, "preprocess", p, str(out), "--models", str(REPO / "exports"), "--model", "deployed"],
                            check=True, capture_output=True)
             rust = np.fromfile(out, dtype="<f4").reshape(1, 3, pre["input_size"], pre["input_size"])
             ref = demo.preprocess(demo.open_image(Path(p)), pre)
@@ -65,7 +65,7 @@ def main() -> None:
             nel += d.size
 
     # 2. probabilities vs the PyTorch reference (one process: the model is loaded once)
-    cmd = [args.bin, "classify", "--json", "--model-dir", str(model_dir)]
+    cmd = [args.bin, "classify", "--json", "--models", str(REPO / "exports"), "--model", "deployed"]
     if args.ort_lib:
         cmd += ["--ort-lib", args.ort_lib]
     t0 = time.time()

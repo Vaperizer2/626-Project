@@ -28,7 +28,7 @@ use super::worker::{Cmd, Job, JobInput, ModelState, Update};
 use super::{DemoApp, FocusUrl, Open, Paste, theme, widgets};
 use crate::contract::Prediction;
 use crate::fetch::Source;
-use crate::models::ModelKey;
+use crate::manifest::HeadId;
 
 const MAX_ENTRIES: usize = 40;
 
@@ -42,7 +42,7 @@ pub struct Entry {
     id: u64,
     name: SharedString,
     full: SharedString,
-    model: ModelKey,
+    model: HeadId,
     image: Option<Arc<RenderImage>>,
     dims: Option<(u32, u32)>,
     state: EntryState,
@@ -85,9 +85,14 @@ impl DemoApp {
         let id = c.next_id;
         c.next_id += 1;
         let (tx, mut rx) = fmpsc::unbounded();
-        let model = self.model;
-        let job =
-            Job { input, models: vec![model], display: true, cancel: Arc::new(AtomicBool::new(false)), updates: tx };
+        let Some(model) = self.model.clone() else { return };
+        let job = Job {
+            input,
+            models: vec![model.clone()],
+            display: true,
+            cancel: Arc::new(AtomicBool::new(false)),
+            updates: tx,
+        };
         let state = if self.jobs.send(Cmd::Job(job)).is_ok() {
             EntryState::Working
         } else {
@@ -480,10 +485,12 @@ impl DemoApp {
         let t = cx.theme();
         let entry = entry_ix.map(|i| &self.classify.entries[i]);
         let mut panel = v_flex().gap_5().p_5();
-        if let Some(ModelState::Failed(msg)) = self.state(self.model) {
+        if let Some(m) = &self.model
+            && let Some(ModelState::Failed(msg)) = self.state(m)
+        {
             panel = panel.child(
                 Alert::error("model-failed", SharedString::from(msg.clone()))
-                    .title(format!("{} failed to load", self.model.name())),
+                    .title(format!("{} failed to load", self.title(m))),
             );
         }
         let Some(e) = entry else {
@@ -512,8 +519,8 @@ impl DemoApp {
         match &e.state {
             EntryState::Working => {
                 panel.child(h_flex().gap_2().items_center().child(Spinner::new().color(t.primary)).child(
-                    div().text_lg().child(if matches!(self.state(e.model), Some(ModelState::Loading(_))) {
-                        format!("Loading {}…", e.model.short())
+                    div().text_lg().child(if matches!(self.state(&e.model), Some(ModelState::Loading(_))) {
+                        format!("Loading {}…", self.short(&e.model))
                     } else {
                         "Classifying…".to_string()
                     }),
@@ -524,7 +531,16 @@ impl DemoApp {
                     .title("Could not classify"),
             ),
             EntryState::Done(p, total) => {
-                panel.child(widgets::prediction_block(p, e.model, self.threshold(), None, &self.labels, cx)).child(
+                let block = widgets::prediction_block(
+                    p,
+                    &self.title(&e.model),
+                    self.calibrated(&e.model),
+                    self.threshold(),
+                    None,
+                    &self.labels(&e.model),
+                    cx,
+                );
+                panel.child(block).child(
                     div()
                         .text_xs()
                         .text_color(t.muted_foreground)
