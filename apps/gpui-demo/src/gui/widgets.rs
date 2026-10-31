@@ -290,9 +290,11 @@ pub fn model_state_chip(state: Option<&ModelState>, cx: &App) -> AnyElement {
             .child(Spinner::new().xsmall().color(r.accent))
             .child(div().text_xs().text_color(r.fg).child(format!("loading… {:.0} s", t0.elapsed().as_secs_f64())))
             .into_any_element(),
-        Some(ModelState::Ready(ms)) => {
-            pill(Lucide::CircleCheck, format!("ready · loaded in {:.1} s", ms / 1000.0), r.muted_fg)
-        }
+        Some(ModelState::Ready { ms, placement }) => pill(
+            Lucide::CircleCheck,
+            format!("ready on {} · loaded in {:.1} s", placement.primary().name(), ms / 1000.0),
+            r.muted_fg,
+        ),
         Some(ModelState::Unavailable(_)) => pill(Lucide::CircleOff, "not exported".into(), r.muted_fg),
         Some(ModelState::Failed(_)) => pill(Lucide::CircleAlert, "failed to load".into(), r.wrong),
     }

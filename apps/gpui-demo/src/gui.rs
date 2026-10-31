@@ -35,7 +35,7 @@ use gpui_kit::{
 };
 
 use crate::manifest::{HeadId, Task};
-use crate::model::ModelOptions;
+use crate::runtime::ModelOptions;
 use crate::registry::{Head, Registry};
 use widgets::Lucide;
 use worker::{Cmd, Event, ModelState};
@@ -240,7 +240,7 @@ impl DemoApp {
             );
             return;
         }
-        if !matches!(self.state(&k), Some(ModelState::Ready(_)) | Some(ModelState::Loading(_))) {
+        if !matches!(self.state(&k), Some(ModelState::Ready { .. }) | Some(ModelState::Loading(_))) {
             let _ = self.jobs.send(Cmd::Preload(k.clone()));
         }
         self.model = Some(k);
@@ -322,7 +322,11 @@ impl DemoApp {
                 let tip = match self.state(&k) {
                     Some(ModelState::Unavailable(e)) => format!("{name} — unavailable: {e}"),
                     Some(ModelState::Failed(e)) => format!("{name} — failed to load: {e}"),
-                    Some(ModelState::Ready(ms)) => format!("{name} — loaded in {:.1} s", ms / 1000.0),
+                    Some(ModelState::Ready { ms, placement }) => {
+                        let skipped: String =
+                            placement.skipped.iter().map(|(ep, why)| format!("\n{} skipped: {why}", ep.name())).collect();
+                        format!("{name} — on {placement}, loaded in {:.1} s{skipped}", ms / 1000.0)
+                    }
                     Some(ModelState::Loading(_)) => format!("{name} — loading…"),
                     _ => format!("{name} — loads on first use (Ctrl+M cycles models)"),
                 };
@@ -374,14 +378,27 @@ impl DemoApp {
 
     fn render_status_bar(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.theme();
-        let left = match &self.runtime {
-            Some((lib, provider)) => {
-                let name =
-                    std::path::Path::new(lib).file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-                format!("onnxruntime {name} · {provider} · jpeg: {}", crate::preprocess::JPEG_DECODER)
-            }
+        let mut left = Vec::new();
+        if let Some(m) = &self.model {
+            left.push(match self.state(m) {
+                Some(ModelState::Ready { placement, .. }) => {
+                    let skipped: Vec<&str> = placement.skipped.iter().map(|(ep, _)| ep.name()).collect();
+                    let mut s = format!("{} on {placement}", self.short(m));
+                    if !skipped.is_empty() {
+                        s += &format!(" ({} unavailable)", skipped.join(", "));
+                    }
+                    s
+                }
+                Some(ModelState::Loading(_)) => format!("{} loading…", self.short(m)),
+                _ => format!("{} not loaded yet", self.short(m)),
+            });
+        }
+        left.push(match &self.runtime {
+            Some((_, version)) => format!("onnxruntime {version}"),
             None => "onnxruntime not loaded yet".to_string(),
-        };
+        });
+        left.push(format!("jpeg: {}", crate::preprocess::JPEG_DECODER));
+        let left = left.join(" · ");
         let hints: Vec<gpui_kit::AnyElement> = match self.tab {
             TabKind::Classify => vec![
                 widgets::hint(&["ctrl-o"], "Open", cx).into_any_element(),
