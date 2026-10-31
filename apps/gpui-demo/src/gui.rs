@@ -625,7 +625,18 @@ pub fn run(opts: ModelOptions, demo_dir: Option<PathBuf>, gui: GuiOptions, initi
         theme::register_bundled_fonts(cx);
         theme::install(cx);
         cx.bind_keys(keymap());
-        cx.on_action(|_: &Quit, cx: &mut App| cx.quit());
+        let service = service(&opts);
+        let inference = service.0.clone();
+        let quit = move |cx: &mut App| {
+            // release every session before exit handlers run (see Inference::shutdown)
+            if !inference.shutdown(Duration::from_secs(3)) {
+                eprintln!("[gpui-demo] a model is still loading; quitting without waiting for it");
+                crate::runtime::exit_now(0);
+            }
+            cx.quit();
+        };
+        let on_quit = quit.clone();
+        cx.on_action(move |_: &Quit, cx: &mut App| on_quit(cx));
         let bounds = Bounds::centered(None, size(px(1360.), px(860.)), cx);
         let options = WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(bounds)),
@@ -637,7 +648,7 @@ pub fn run(opts: ModelOptions, demo_dir: Option<PathBuf>, gui: GuiOptions, initi
             theme::apply_initial(gui.theme, window, cx);
             window.set_window_title("Component Classifier");
             cx.new(|cx| {
-                let mut app = DemoApp::new(service(&opts), demo_dir, initial, window, cx);
+                let mut app = DemoApp::new(service, demo_dir, initial, window, cx);
                 app.tab = gui.tab;
                 if gui.autorun {
                     app.run_all(cx);
@@ -659,10 +670,11 @@ pub fn run(opts: ModelOptions, demo_dir: Option<PathBuf>, gui: GuiOptions, initi
                 eprintln!(
                     "gpui-demo: failed to open the window: {e:#} (see README troubleshooting: Wayland/X11/Vulkan)"
                 );
-                cx.quit();
+                quit(cx);
+                return;
             }
         }
-        cx.on_window_closed(|cx, _| cx.quit()).detach();
+        cx.on_window_closed(move |cx, _| quit(cx)).detach();
     });
 }
 

@@ -11,6 +11,7 @@ use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result, anyhow, bail};
 use ort::ep::ExecutionProviderDispatch;
+use sha2::Digest as _;
 use ort::ep::ArbitrarilyConfigurableExecutionProvider as _;
 use ort::session::{RunOptions, Session, builder::GraphOptimizationLevel, builder::SessionBuilder};
 use ort::value::TensorRef;
@@ -179,14 +180,14 @@ impl Runtime {
     /// Load `m`'s graph with the first providers that work. A session that fails with a GPU provider is retried
     /// without it, so a provider that registers but cannot build its part of the graph (an unsupported GPU, an
     /// engine that does not fit) still ends up as a visible skip rather than a dead model.
-    pub fn session(&self, m: &Manifest) -> Result<(Session, Placement)> {
+    pub fn session(&self, m: &Manifest, stage: &dyn Fn(LoadStage)) -> Result<(Session, Placement)> {
         let mut candidates = self.preferences(m);
         let mut skipped: Vec<(EpKind, String)> = Vec::new();
         loop {
             let mut b = self.builder(m)?;
             let mut registered = Vec::new();
             for ep in candidates.iter().filter(|e| e.kind != EpKind::Cpu) {
-                match dispatch(ep).register(&mut b) {
+                match self.provider(ep, m).register(&mut b) {
                     Ok(()) => registered.push(ep.kind),
                     Err(e) => skipped.push((ep.kind, reason(&e.to_string()))),
                 }
@@ -195,6 +196,9 @@ impl Runtime {
                 let tried: Vec<String> = skipped.iter().map(|(k, e)| format!("{}: {e}", k.name())).collect();
                 bail!("{}: none of its execution providers is available ({})", m.graph.display(), tried.join("; "));
             }
+            let building = registered.first() == Some(&EpKind::TensorRt)
+                && candidates.iter().find(|e| e.kind == EpKind::TensorRt).is_some_and(|ep| !self.engine_cached(ep, m));
+            stage(if building { LoadStage::BuildingEngine } else { LoadStage::Loading });
             match b.commit_from_file(&m.graph) {
                 Ok(session) => {
                     registered.push(EpKind::Cpu);
@@ -218,8 +222,125 @@ impl Runtime {
             return Ok(());
         }
         let mut b = self.builder(m).map_err(|e| e.to_string())?;
-        dispatch(ep).register(&mut b).map_err(|e| reason(&e.to_string()))
+        self.provider(ep, m).register(&mut b).map_err(|e| reason(&e.to_string()))
     }
+
+    /// The ort provider for one preference: the manifest's options passed through unchanged, plus, for TensorRT
+    /// with its engine cache on, the cache paths (the app's, see `engine_cache`).
+    fn provider(&self, ep: &Ep, m: &Manifest) -> ExecutionProviderDispatch {
+        match ep.kind {
+            EpKind::TensorRt => {
+                let mut p = ort::ep::TensorRT::default();
+                for (k, v) in &ep.options {
+                    p = p.with_arbitrary_config(k, v);
+                }
+                if ep.flag("trt_engine_cache_enable")
+                    && let Some(dir) = self.engine_cache(m)
+                    && std::fs::create_dir_all(&dir).is_ok()
+                {
+                    p = p.with_engine_cache_path(dir.display());
+                    if ep.flag("trt_timing_cache_enable") {
+                        p = p.with_timing_cache_path(dir.display());
+                    }
+                }
+                p.build()
+            }
+            EpKind::Cuda => {
+                let mut p = ort::ep::CUDA::default();
+                for (k, v) in &ep.options {
+                    p = p.with_arbitrary_config(k, v);
+                }
+                p.build()
+            }
+            EpKind::Cpu => ort::ep::CPU::default().build(),
+        }
+        .error_on_failure()
+    }
+
+    /// A graph's TensorRT engines live in a per-user directory named by what an engine depends on: the graph's
+    /// files, the onnxruntime and TensorRT versions and the GPU. A new graph, library or GPU never meets a stale
+    /// engine; it builds its own once.
+    pub fn engine_cache(&self, m: &Manifest) -> Option<PathBuf> {
+        let base = crate::integrity::cache_dir()?.join("tensorrt");
+        let mut graph = sha2::Sha256::new();
+        for f in m.files.iter().filter(|f| f.path == m.graph || m.external.contains(&f.path)) {
+            graph.update(f.sha256.0);
+        }
+        let graph = crate::manifest::Sha256(graph.finalize().into()).short();
+        let trt = tensorrt_version().unwrap_or_else(|| "unknown".into());
+        Some(base.join(format!("{}-{graph}-ort{}-trt{trt}-{}", m.id.as_str(), self.version, gpu_name())))
+    }
+
+    /// An engine for `m` is already built (the next session loads it instead of building one).
+    fn engine_cached(&self, ep: &Ep, m: &Manifest) -> bool {
+        ep.flag("trt_engine_cache_enable")
+            && self.engine_cache(m).and_then(|d| std::fs::read_dir(d).ok()).is_some_and(|mut it| {
+                it.any(|e| e.is_ok_and(|e| e.path().extension().is_some_and(|x| x == "engine")))
+            })
+    }
+}
+
+/// End the process without running exit handlers: for when a provider is still busy in another thread (an engine
+/// build cannot be interrupted) and its process-wide teardown would race it.
+pub fn exit_now(code: i32) -> ! {
+    #[cfg(unix)]
+    {
+        unsafe extern "C" {
+            fn _exit(code: std::ffi::c_int) -> !;
+        }
+        // SAFETY: _exit only ends the process; stdout was flushed by the caller.
+        unsafe { _exit(code) }
+    }
+    #[cfg(not(unix))]
+    std::process::exit(code)
+}
+
+/// "10.16.1" from the libnvinfer.so.10 the dynamic linker finds (the one the TensorRT provider will load).
+fn tensorrt_version() -> Option<String> {
+    #[cfg(unix)]
+    {
+        use std::ffi::{c_char, c_int, c_void};
+        unsafe extern "C" {
+            fn dlopen(file: *const c_char, mode: c_int) -> *mut c_void;
+            fn dlsym(handle: *mut c_void, name: *const c_char) -> *mut c_void;
+        }
+        const RTLD_NOW: c_int = 2;
+        // SAFETY: dlopen/dlsym with NUL-terminated names; the library stays loaded (the provider loads it anyway),
+        // and getInferLibVersion is `int32_t getInferLibVersion(void)` in NvInferRuntime.h.
+        unsafe {
+            let lib = dlopen(c"libnvinfer.so.10".as_ptr(), RTLD_NOW);
+            if lib.is_null() {
+                return None;
+            }
+            let f = dlsym(lib, c"getInferLibVersion".as_ptr());
+            if f.is_null() {
+                return None;
+            }
+            let f: extern "C" fn() -> i32 = std::mem::transmute(f);
+            let v = f();
+            Some(format!("{}.{}.{}", v / 10000, v / 100 % 100, v % 100))
+        }
+    }
+    #[cfg(not(unix))]
+    None
+}
+
+/// The first NVIDIA GPU's model as a file-name slug ("nvidia-geforce-rtx-3060-laptop-gpu"), from the driver's
+/// /proc entry; "gpu" when there is none.
+fn gpu_name() -> String {
+    let model = std::fs::read_dir("/proc/driver/nvidia/gpus")
+        .ok()
+        .and_then(|mut d| d.next())
+        .and_then(|e| e.ok())
+        .and_then(|e| std::fs::read_to_string(e.path().join("information")).ok())
+        .and_then(|t| t.lines().find_map(|l| l.strip_prefix("Model:").map(|m| m.trim().to_string())));
+    let slug: String = model
+        .unwrap_or_else(|| "gpu".into())
+        .to_ascii_lowercase()
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+        .collect();
+    slug.split('-').filter(|s| !s.is_empty()).collect::<Vec<_>>().join("-")
 }
 
 /// The cause in an onnxruntime error, without its source location ("... with error: libnvinfer.so.10: cannot
@@ -231,28 +352,6 @@ fn reason(e: &str) -> String {
     tail.trim().to_string()
 }
 
-/// The ort provider for one preference, with the manifest's options passed through unchanged.
-fn dispatch(ep: &Ep) -> ExecutionProviderDispatch {
-    match ep.kind {
-        EpKind::TensorRt => {
-            let mut p = ort::ep::TensorRT::default();
-            for (k, v) in &ep.options {
-                p = p.with_arbitrary_config(k, v);
-            }
-            p.build()
-        }
-        EpKind::Cuda => {
-            let mut p = ort::ep::CUDA::default();
-            for (k, v) in &ep.options {
-                p = p.with_arbitrary_config(k, v);
-            }
-            p.build()
-        }
-        EpKind::Cpu => ort::ep::CPU::default().build(),
-    }
-    .error_on_failure()
-}
-
 /// One loaded ONNX graph; serves every head of its manifest (one per output).
 pub struct Engine {
     session: Session,
@@ -261,8 +360,8 @@ pub struct Engine {
 }
 
 impl Engine {
-    pub fn load(rt: &Runtime, manifest: Arc<Manifest>) -> Result<Self> {
-        let (session, placement) = rt.session(&manifest)?;
+    pub fn load(rt: &Runtime, manifest: Arc<Manifest>, stage: &dyn Fn(LoadStage)) -> Result<Self> {
+        let (session, placement) = rt.session(&manifest, stage)?;
         check_io(&session, &manifest)?;
         Ok(Self { session, manifest, placement })
     }
@@ -384,8 +483,7 @@ impl Loader for OrtLoader {
         let t0 = Instant::now();
         let rt = self.runtime()?;
         let verified = crate::integrity::Stamps::load().all_verified(m);
-        stage(LoadStage::Loading);
-        let engine = Engine::load(rt, m.clone()).map_err(|e| format!("{e:#}"))?;
+        let engine = Engine::load(rt, m.clone(), stage).map_err(|e| format!("{e:#}"))?;
         let loaded = Loaded {
             ms: t0.elapsed().as_secs_f64() * 1000.0,
             placement: engine.placement.clone(),

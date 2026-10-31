@@ -44,7 +44,6 @@ impl GraphId {
     pub fn new(s: &str) -> Self {
         Self(s.into())
     }
-    #[allow(dead_code)] // the TensorRT engine cache names its directory with it in the next change
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -72,7 +71,6 @@ impl Sha256 {
         Some(Self(out))
     }
 
-    #[allow(dead_code)] // names the TensorRT engine cache in the next change
     pub fn short(&self) -> String {
         self.to_string()[..12].to_string()
     }
@@ -273,7 +271,6 @@ pub struct Ep {
     pub options: Vec<(String, String)>,
 }
 
-#[allow(dead_code)] // the TensorRT engine cache reads these in the next change
 impl Ep {
     pub fn option(&self, key: &str) -> Option<&str> {
         self.options.iter().find(|(k, _)| k == key).map(|(_, v)| v.as_str())
@@ -305,7 +302,6 @@ pub struct Manifest {
     /// the model.json this came from
     pub path: PathBuf,
     pub graph: PathBuf,
-    #[allow(dead_code)] // part of the TensorRT engine cache key in the next change
     pub external: Vec<PathBuf>,
     pub precision: Precision,
     /// every file the graph needs (graph, external data, labels)

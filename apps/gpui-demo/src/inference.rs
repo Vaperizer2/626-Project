@@ -14,7 +14,8 @@ use std::collections::{HashMap, VecDeque};
 use std::fmt;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Condvar, Mutex};
-use std::time::Instant;
+use std::thread::JoinHandle;
+use std::time::{Duration, Instant};
 
 use futures::channel::mpsc as fmpsc;
 use image::{RgbImage, RgbaImage};
@@ -71,7 +72,6 @@ pub struct Loaded {
 pub enum LoadStage {
     Verifying,
     /// TensorRT is compiling an engine (first run only when its cache works)
-    #[allow(dead_code)] // emitted by the TensorRT loader in the next change
     BuildingEngine,
     Loading,
 }
@@ -334,6 +334,16 @@ struct Core {
     events: fmpsc::UnboundedSender<ServiceEvent>,
     io: Queue<IoJob>,
     actors: Mutex<HashMap<GraphId, Arc<Queue<Msg>>>>,
+    threads: Mutex<Vec<JoinHandle<()>>>,
+}
+
+impl Core {
+    fn close(&self) {
+        self.io.close();
+        for q in self.actors.lock().expect("actors lock").values() {
+            q.close();
+        }
+    }
 }
 
 /// Closes every queue when the last `Inference` handle goes, so the worker threads end.
@@ -341,10 +351,7 @@ struct Owner(Arc<Core>);
 
 impl Drop for Owner {
     fn drop(&mut self) {
-        self.0.io.close();
-        for q in self.0.actors.lock().expect("actors lock").values() {
-            q.close();
-        }
+        self.0.close();
     }
 }
 
@@ -369,24 +376,46 @@ impl Inference {
             events,
             io: Queue::new(),
             actors: Mutex::new(HashMap::new()),
+            threads: Mutex::new(Vec::new()),
         });
+        let mut threads = Vec::new();
         for i in 0..IO_WORKERS {
             let core = core.clone();
-            std::thread::Builder::new()
-                .name(format!("io-{i}"))
-                .spawn(move || {
-                    while let Some(job) = core.io.pop() {
-                        core.prepare(job);
-                    }
-                })
-                .expect("spawn io worker");
+            let t = std::thread::Builder::new().name(format!("io-{i}")).spawn(move || {
+                while let Some(job) = core.io.pop() {
+                    core.prepare(job);
+                }
+            });
+            threads.push(t.expect("spawn io worker"));
         }
         let c = core.clone();
-        std::thread::Builder::new()
-            .name("default-head".into())
-            .spawn(move || c.resolve_default())
-            .expect("spawn default-head probe");
+        let t = std::thread::Builder::new().name("default-head".into()).spawn(move || c.resolve_default());
+        threads.push(t.expect("spawn default-head probe"));
+        core.threads.lock().expect("threads lock").extend(threads);
         (Inference { owner: Arc::new(Owner(core)) }, rx)
+    }
+
+    /// Stop taking work and wait, up to `grace`, until every worker has ended and every graph has released its
+    /// session. Call it before the process exits: onnxruntime's GPU providers tear down process-wide state in exit
+    /// handlers, and a TensorRT session still being destroyed on another thread then crashes the process. Returns
+    /// false when a worker is still busy (a load or engine build cannot be interrupted).
+    pub fn shutdown(&self, grace: Duration) -> bool {
+        let core = &self.owner.0;
+        core.close();
+        let deadline = Instant::now() + grace;
+        let threads = std::mem::take(&mut *core.threads.lock().expect("threads lock"));
+        let mut all = true;
+        for t in threads {
+            while !t.is_finished() && Instant::now() < deadline {
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            if t.is_finished() {
+                let _ = t.join();
+            } else {
+                all = false;
+            }
+        }
+        all
     }
 
     pub fn registry(&self) -> &Arc<Registry> {
@@ -451,10 +480,11 @@ impl Core {
         }
         let q = Arc::new(Queue::new());
         let (m2, q2, loader, events) = (m.clone(), q.clone(), self.loader.clone(), self.events.clone());
-        std::thread::Builder::new()
+        let t = std::thread::Builder::new()
             .name(format!("graph-{}", m.id))
             .spawn(move || actor(m2, q2, loader, events))
             .ok()?;
+        self.threads.lock().expect("threads lock").push(t);
         actors.insert(m.id.clone(), q.clone());
         Some(q)
     }
@@ -715,7 +745,6 @@ pub(crate) mod fake {
     use crate::registry::Graph as RegGraph;
     use std::collections::HashSet;
     use std::path::PathBuf;
-    use std::time::Duration;
 
     /// A graph `id` with one head `id`, a 4x4 input, two classes and `max_batch`.
     pub fn manifest(id: &str, max_batch: u16) -> Arc<Manifest> {
@@ -796,11 +825,16 @@ pub(crate) mod fake {
         /// graphs whose preferred provider does not register
         pub no_provider: HashSet<String>,
         pub seen: Arc<Mutex<Vec<Seen>>>,
+        /// graphs dropped so far
+        pub drops: Arc<AtomicUsize>,
     }
 
     impl FakeLoader {
         pub fn seen(&self) -> Vec<Seen> {
             self.seen.lock().unwrap().clone()
+        }
+        pub fn dropped(&self) -> usize {
+            self.drops.load(Ordering::SeqCst)
         }
     }
 
@@ -810,7 +844,7 @@ pub(crate) mod fake {
             if let Some(g) = self.gates.get(m.id.as_str()) {
                 g.wait();
             }
-            let graph = FakeGraph { id: m.id.to_string(), run: self.run, seen: self.seen.clone() };
+            let graph = FakeGraph { id: m.id.to_string(), run: self.run, seen: self.seen.clone(), drops: self.drops.clone() };
             let placement = Placement { registered: vec![EpKind::Cpu], skipped: vec![] };
             Ok((Box::new(graph), Loaded { ms: 1.0, placement, runtime: "fake".into(), verified: true }))
         }
@@ -824,6 +858,13 @@ pub(crate) mod fake {
         id: String,
         run: Duration,
         seen: Arc<Mutex<Vec<Seen>>>,
+        drops: Arc<AtomicUsize>,
+    }
+
+    impl Drop for FakeGraph {
+        fn drop(&mut self) {
+            self.drops.fetch_add(1, Ordering::SeqCst);
+        }
     }
 
     impl Graph for FakeGraph {
@@ -858,7 +899,6 @@ mod tests {
     use super::fake::*;
     use super::*;
     use futures::channel::mpsc::TryRecvError;
-    use std::time::Duration;
 
     const WAIT: Duration = Duration::from_secs(5);
 
@@ -1002,6 +1042,20 @@ mod tests {
         drop(c);
         drop(d);
         wait_until("the run to stop", || fake.seen().iter().any(|s| matches!(s, Seen::Stopped { .. })));
+    }
+
+    #[test]
+    fn shutdown_waits_for_every_graph_to_let_go() {
+        let fake = FakeLoader { run: Duration::from_millis(50), ..Default::default() };
+        let (inf, _ev) = Inference::spawn(registry(&[("x", 1), ("y", 1)], &["x"]), fake.clone());
+        let lane = inf.lane(Priority::Bulk, Policy::Keep);
+        let _a = lane.submit(image(1), &ids(&["x"]), None);
+        let _b = lane.submit(image(2), &ids(&["y"]), None);
+        wait_until("both graphs to run", || fake.seen().iter().filter(|s| matches!(s, Seen::Started { .. })).count() == 2);
+        assert!(inf.shutdown(WAIT), "every worker ended");
+        assert_eq!(fake.dropped(), 2, "both graphs were released before shutdown returned");
+        let mut late = lane.submit(image(3), &ids(&["x"]), None);
+        assert!(matches!(finish(&mut late).1, Finish::Failed(_)), "a stopped service refuses work");
     }
 
     #[test]
