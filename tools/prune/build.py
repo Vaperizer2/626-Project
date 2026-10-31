@@ -2,7 +2,7 @@
 
     build.py unstructured OUT --sparsity 0.5 [--targets mlp,attn]   # per-matrix lowest-|w| zeroing
     build.py semi24       OUT [--targets mlp] [--no-sparse-flag]     # 2:4 lowest-|w| along the input dim
-    build.py structured   OUT --keep 3072 [--importance magnitude|ACT.npz]   # drop MLP neurons, shrink matrices
+    build.py structured   OUT --keep 3072 [--importance magnitude|ACT.npz] [--allocation equal-mass]  # drop MLP neurons
     build.py load         OUT --base CANDIDATE --state STATE.npz     # write recovered weights into CANDIDATE's graph
 
 Targets are the Linear layers of all 27 blocks: `mlp` = fc1, fc2; `attn` = qkv, proj. The attention-pool head is
@@ -55,19 +55,45 @@ def zero_out(W: so400m.Weights, lins: list[str], keep_fn) -> dict:
 
 
 def neuron_importance(W: so400m.Weights, how: str) -> np.ndarray:
-    """[DEPTH, hidden] score per MLP neuron: ||fc2 row|| times ||fc1 column|| or the mean |GELU output|."""
+    """[DEPTH, hidden] score per MLP neuron: ||fc2 row|| times ||fc1 column|| ("magnitude") or times a GELU-output
+    statistic from `recover.py calibrate` ("ACT.npz" = mean |a|, "ACT.npz:rms_act", "ACT.npz:max_act", "ACT.npz:fluct" = std of a)."""
     out_norm = np.stack([np.linalg.norm(W.w(f"blocks.{i}.mlp.fc2"), axis=1) for i in range(so400m.DEPTH)])
     if how == "magnitude":
         return out_norm * np.stack([np.linalg.norm(W.w(f"blocks.{i}.mlp.fc1"), axis=0)
                                     for i in range(so400m.DEPTH)])
-    return out_norm * np.load(how)["mean_abs_act"]
+    path, _, stat = how.partition(":")
+    act = np.load(path)
+    if stat == "fluct":
+        return out_norm * np.sqrt(np.maximum(act["rms_act"] ** 2 - act["mean_act"] ** 2, 0))
+    return out_norm * act[stat or "mean_abs_act"]
 
 
-def shrink_mlp(W: so400m.Weights, keep: int, score: np.ndarray) -> dict:
+def equal_mass_widths(score: np.ndarray, total: int) -> list[int]:
+    """Per-block widths (multiples of 64, summing to at most `total`) that drop the same share of each block's
+    importance mass; found by bisection on that share."""
+    s = -np.sort(-score, axis=1)
+    cum = np.cumsum(s, 1) / s.sum(1, keepdims=True)
+
+    def widths(eps: float) -> list[int]:
+        return [min(score.shape[1], int(np.ceil((np.searchsorted(c, 1 - eps) + 1) / 64) * 64)) for c in cum]
+
+    lo, hi = 0.0, 1.0
+    for _ in range(60):
+        mid = (lo + hi) / 2
+        lo, hi = (mid, hi) if sum(widths(mid)) > total else (lo, mid)
+    return widths(hi)
+
+
+def shrink_mlp(W: so400m.Weights, widths: list[int], score: np.ndarray, mean_act: np.ndarray | None) -> dict:
+    """Keep the top-`widths[i]` neurons of block i; with `mean_act`, fold each dropped neuron's mean output into the
+    fc2 bias (FLAP-style bias compensation)."""
     kept = {}
-    for i in range(so400m.DEPTH):
+    for i, keep in enumerate(widths):
         idx = np.sort(np.argsort(-score[i], kind="stable")[:keep])
         fc1, fc2 = f"blocks.{i}.mlp.fc1", f"blocks.{i}.mlp.fc2"
+        if mean_act is not None:
+            drop = np.setdiff1d(np.arange(score.shape[1]), idx)
+            W.set_b(fc2, W.b(fc2) + mean_act[i][drop] @ W.w(fc2)[drop, :])
         W.set_w(fc1, W.w(fc1)[:, idx])
         W.set_b(fc1, W.b(fc1)[idx])
         W.set_w(fc2, W.w(fc2)[idx, :])
@@ -87,6 +113,10 @@ def main() -> None:
     sub.choices["semi24"].add_argument("--no-sparse-flag", action="store_true")
     sub.choices["structured"].add_argument("--keep", type=int, required=True)
     sub.choices["structured"].add_argument("--importance", default="magnitude")
+    sub.choices["structured"].add_argument("--allocation", choices=("uniform", "equal-mass"), default="uniform",
+                                           help="equal-mass: same total width, per-block widths drop equal importance")
+    sub.choices["structured"].add_argument("--bias-comp", action="store_true",
+                                           help="fold dropped neurons' mean output (ACT.npz mean_act) into fc2 bias")
     sub.choices["load"].add_argument("--base", type=Path, required=True)
     sub.choices["load"].add_argument("--state", type=Path, required=True)
     sub.choices["load"].add_argument("--prefixes", default="blocks.")
@@ -103,8 +133,13 @@ def main() -> None:
         rt = so400m.trt_runtime(sparse=not a.no_sparse_flag)
     elif a.cmd == "structured":
         assert a.keep % 64 == 0, "keep a tensor-core friendly hidden width"
-        stats = shrink_mlp(W, a.keep, neuron_importance(W, a.importance))
-        note = f"MLP hidden 4304 -> {a.keep} per block by {Path(a.importance).name} importance"
+        score = neuron_importance(W, a.importance)
+        widths = ([a.keep] * so400m.DEPTH if a.allocation == "uniform"
+                  else equal_mass_widths(score, a.keep * so400m.DEPTH))
+        mean_act = np.load(a.importance.partition(":")[0])["mean_act"] if a.bias_comp else None
+        stats = {"widths": widths, "kept": shrink_mlp(W, widths, score, mean_act)}
+        note = (f"MLP hidden 4304 -> {a.allocation} widths (mean {np.mean(widths):.0f}) by "
+                f"{Path(a.importance).name} importance{', bias-compensated' if a.bias_comp else ''}")
         rt = so400m.trt_runtime()
     else:
         sd = dict(np.load(a.state))
