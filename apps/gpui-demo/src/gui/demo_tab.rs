@@ -27,9 +27,10 @@ use image::RgbImage;
 
 use super::worker::{self, Cmd, Job, JobInput, Update};
 use super::{DemoApp, theme, widgets};
-use crate::contract::Prediction;
+use crate::classification::{Classification, HeadOutput};
 use crate::demo::{DemoStack, Verdict};
 use crate::manifest::HeadId;
+use crate::models::Timing;
 
 /// Cards are at least this wide; the grid fits as many columns as the window allows and widens them evenly.
 const CARD_MIN_W: f32 = 176.;
@@ -39,7 +40,7 @@ const DETAIL_W: f32 = 440.;
 
 pub enum ItemResult {
     Working,
-    Done(Prediction),
+    Done(Classification, Timing),
     Failed(String),
 }
 
@@ -94,9 +95,9 @@ impl DemoState {
         let (Some(s), Some(model)) = (self.stack(), model) else { return (0, 0, 0) };
         let (mut ok, mut n, mut unsure) = (0, 0, 0);
         for (im, it) in s.images.iter().zip(&self.items) {
-            if let Some(ItemResult::Done(p)) = it.results.get(model) {
+            if let Some(ItemResult::Done(c, _)) = it.results.get(model) {
                 n += 1;
-                match im.judge(&p.top3[0].0, p.unsure) {
+                match im.judge(c.best_label(), c.abstained()) {
                     Verdict::Correct => ok += 1,
                     Verdict::Unsure => unsure += 1,
                     Verdict::Wrong => {}
@@ -173,8 +174,8 @@ impl DemoApp {
                     .update(cx, |this, cx| {
                         if let Some(it) = this.demo.items.get_mut(i) {
                             match u {
-                                Update::Result(k, Ok(p)) => {
-                                    it.results.insert(k, ItemResult::Done(p));
+                                Update::Result(k, Ok((HeadOutput::Classify(c), timing))) => {
+                                    it.results.insert(k, ItemResult::Done(c, timing));
                                 }
                                 Update::Result(k, Err(e)) => {
                                     it.results.insert(k, ItemResult::Failed(e));
@@ -393,8 +394,8 @@ impl DemoApp {
         for (si, section) in stack.sections.iter().enumerate() {
             let idx = stack.section_indices(section);
             let (ok, n) = idx.iter().fold((0, 0), |(ok, n), &i| match self.selected_result(&self.demo.items[i]) {
-                Some(ItemResult::Done(p)) => {
-                    (ok + usize::from(stack.images[i].judge(&p.top3[0].0, p.unsure) == Verdict::Correct), n + 1)
+                Some(ItemResult::Done(c, _)) => {
+                    (ok + usize::from(stack.images[i].judge(c.best_label(), c.abstained()) == Verdict::Correct), n + 1)
                 }
                 _ => (ok, n),
             });
@@ -450,7 +451,7 @@ impl DemoApp {
         let it = &self.demo.items[i];
         let sel = self.demo.selected == i;
         let verdict = match self.selected_result(it) {
-            Some(ItemResult::Done(p)) => Some(im.judge(&p.top3[0].0, p.unsure)),
+            Some(ItemResult::Done(c, _)) => Some(im.judge(c.best_label(), c.abstained())),
             _ => None,
         };
         let result: AnyElement = match self.selected_result(it) {
@@ -460,9 +461,9 @@ impl DemoApp {
                 .child(Spinner::new().xsmall().color(t.muted_foreground))
                 .child(div().text_xs().text_color(t.muted_foreground).child("classifying…"))
                 .into_any_element(),
-            Some(ItemResult::Done(p)) => {
-                let v = im.judge(&p.top3[0].0, p.unsure);
-                let text = if p.unsure { "unsure".to_string() } else { p.top3[0].0.clone() };
+            Some(ItemResult::Done(c, _)) => {
+                let v = im.judge(c.best_label(), c.abstained());
+                let text = if c.abstained() { "unsure".to_string() } else { c.best_label().to_string() };
                 h_flex()
                     .gap_1()
                     .items_center()
@@ -470,7 +471,7 @@ impl DemoApp {
                     .text_xs()
                     .child(Icon::new(widgets::verdict_icon(v)).xsmall().text_color(r.verdict(v).0))
                     .child(div().flex_1().min_w_0().truncate().text_color(r.fg).child(text))
-                    .child(div().flex_none().text_color(r.muted_fg).child(widgets::pct(p.top3[0].1)))
+                    .child(div().flex_none().text_color(r.muted_fg).child(widgets::pct(c.best().1)))
                     .into_any_element()
             }
             Some(ItemResult::Failed(_)) => h_flex()
@@ -563,22 +564,14 @@ impl DemoApp {
                     div()
                         .text_xs()
                         .text_color(t.muted_foreground)
-                        .child(format!("Reference run (Deployed, CLI): {p} {}", widgets::pct(c))),
+                        .child(format!("Reference prediction in demo_stack.json: {p} {}", widgets::pct(c))),
                 )
             });
         let short = self.model.as_ref().map(|m| self.short(m)).unwrap_or_default();
         let result: AnyElement = match (self.selected_result(it), &self.model) {
-            (Some(ItemResult::Done(p)), Some(m)) => {
-                let v = im.judge(&p.top3[0].0, p.unsure);
-                widgets::prediction_block(
-                    p,
-                    &self.title(m),
-                    self.calibrated(m),
-                    self.threshold(),
-                    Some((v, im.true_text())),
-                    &self.labels(m),
-                    cx,
-                )
+            (Some(ItemResult::Done(c, timing)), Some(m)) => {
+                let v = im.judge(c.best_label(), c.abstained());
+                widgets::prediction_block(c, timing, &self.title(m), Some((v, im.true_text())), cx)
             }
             (Some(ItemResult::Working), _) => h_flex()
                 .gap_2()

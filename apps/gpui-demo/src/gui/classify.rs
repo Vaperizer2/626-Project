@@ -26,15 +26,17 @@ use gpui_kit::{
 use super::widgets::Lucide;
 use super::worker::{Cmd, Job, JobInput, ModelState, Update};
 use super::{DemoApp, FocusUrl, Open, Paste, theme, widgets};
-use crate::contract::Prediction;
+use crate::classification::{Classification, HeadOutput};
 use crate::fetch::Source;
 use crate::manifest::HeadId;
+use crate::models::Timing;
 
 const MAX_ENTRIES: usize = 40;
 
 pub enum EntryState {
     Working,
-    Done(Prediction, f64),
+    /// the answer, its timing, and the request's wall time incl. read and decode
+    Done(Classification, Timing, f64),
     Failed(String),
 }
 
@@ -116,10 +118,12 @@ impl DemoApp {
                                     e.image = Some(img);
                                     e.dims = Some(dims);
                                 }
-                                Update::Result(_, Ok(p)) => e.state = EntryState::Done(p, 0.0),
+                                Update::Result(_, Ok((HeadOutput::Classify(c), timing))) => {
+                                    e.state = EntryState::Done(c, timing, 0.0)
+                                }
                                 Update::Result(_, Err(msg)) | Update::Failed(msg) => e.state = EntryState::Failed(msg),
                                 Update::Done(total) => {
-                                    if let EntryState::Done(_, t) = &mut e.state {
+                                    if let EntryState::Done(_, _, t) = &mut e.state {
                                         *t = total;
                                     }
                                 }
@@ -304,13 +308,13 @@ impl DemoApp {
                     .child(Icon::new(IconName::CircleAlert).xsmall())
                     .child("could not read")
                     .into_any_element(),
-                EntryState::Done(p, _) if p.unsure => h_flex()
+                EntryState::Done(c, ..) if c.abstained() => h_flex()
                     .gap_1()
                     .items_center()
                     .child(widgets::verdict_tag(crate::demo::Verdict::Unsure, true, cx))
-                    .child(div().text_xs().text_color(t.muted_foreground).truncate().child(p.top3[0].0.clone()))
+                    .child(div().text_xs().text_color(t.muted_foreground).truncate().child(c.best_label().to_string()))
                     .into_any_element(),
-                EntryState::Done(p, _) => h_flex()
+                EntryState::Done(c, ..) => h_flex()
                     .gap_2()
                     .justify_between()
                     .min_w_0()
@@ -319,9 +323,9 @@ impl DemoApp {
                             .text_color(t.foreground)
                             .font_weight(FontWeight::MEDIUM)
                             .truncate()
-                            .child(p.top3[0].0.clone()),
+                            .child(c.best_label().to_string()),
                     )
-                    .child(div().flex_none().text_xs().text_color(t.muted_foreground).child(widgets::pct(p.top3[0].1)))
+                    .child(div().flex_none().text_xs().text_color(t.muted_foreground).child(widgets::pct(c.best().1)))
                     .into_any_element(),
             };
             h_flex()
@@ -530,16 +534,8 @@ impl DemoApp {
                 Alert::error(("classify-error", e.id as usize), SharedString::from(msg.clone()))
                     .title("Could not classify"),
             ),
-            EntryState::Done(p, total) => {
-                let block = widgets::prediction_block(
-                    p,
-                    &self.title(&e.model),
-                    self.calibrated(&e.model),
-                    self.threshold(),
-                    None,
-                    &self.labels(&e.model),
-                    cx,
-                );
+            EntryState::Done(c, timing, total) => {
+                let block = widgets::prediction_block(c, timing, &self.title(&e.model), None, cx);
                 panel.child(block).child(
                     div()
                         .text_xs()

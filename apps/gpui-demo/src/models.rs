@@ -9,18 +9,11 @@ use std::time::Instant;
 use anyhow::bail;
 use image::RgbImage;
 
-use crate::contract::{Prediction, decide};
-use crate::manifest::{Calibration, Decision, GraphId, HeadId, Preprocess, Readout, Task};
+use crate::classification::{HeadOutput, read_head};
+use crate::manifest::{GraphId, HeadId, Preprocess, Task};
 use crate::model::{Engine, ModelOptions, Runtime};
 use crate::preprocess::to_tensor;
 use crate::registry::Registry;
-
-pub fn softmax(z: &[f32]) -> Vec<f32> {
-    let m = z.iter().copied().fold(f32::NEG_INFINITY, f32::max);
-    let e: Vec<f32> = z.iter().map(|v| (v - m).exp()).collect();
-    let s: f32 = e.iter().sum();
-    e.into_iter().map(|v| v / s).collect()
-}
 
 /// Owned by one thread (sessions need `&mut` to run).
 pub struct Models {
@@ -30,10 +23,26 @@ pub struct Models {
     engines: HashMap<GraphId, Result<Engine, String>>,
 }
 
+/// Where one head's time went on one image. Heads that share a forward pass share its preprocessing and run.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Timing {
+    pub preprocess_ms: f64,
+    pub run_ms: f64,
+    /// heads read from this forward pass
+    pub shared_by: usize,
+}
+
+impl Timing {
+    /// preprocessing + inference: the span the Python demo reports as `ms`
+    pub fn ms(&self) -> f64 {
+        self.preprocess_ms + self.run_ms
+    }
+}
+
 /// Result of one head on one image.
 pub struct ModelRun {
     pub head: HeadId,
-    pub result: Result<Prediction, String>,
+    pub result: Result<(HeadOutput, Timing), String>,
 }
 
 impl Models {
@@ -152,28 +161,17 @@ impl Models {
                     t.readout.output()
                 })
                 .collect();
+            let preprocess_ms = t0.elapsed().as_secs_f64() * 1000.0;
             let outs = prof!("onnx::run (registry)", engine.run(&tensor, &names));
-            let ms = t0.elapsed().as_secs_f64() * 1000.0;
+            let timing = Timing {
+                preprocess_ms,
+                run_ms: t0.elapsed().as_secs_f64() * 1000.0 - preprocess_ms,
+                shared_by: specs.len(),
+            };
             match outs {
                 Ok(outs) => {
                     for (spec, out) in specs.iter().zip(outs) {
-                        let Task::Classify(t) = &spec.task;
-                        let probs = match (&t.readout, t.calibration) {
-                            (Readout::Probs { .. }, _) => out,
-                            (Readout::Logits { .. }, Calibration::Temperature { t, in_graph: false }) => {
-                                softmax(&out.iter().map(|z| z / t).collect::<Vec<_>>())
-                            }
-                            (Readout::Logits { .. }, _) => softmax(&out),
-                        };
-                        let thr = match t.decision {
-                            Decision::Abstain { below } => below.get(),
-                            Decision::Commit { .. } => 0.0,
-                        };
-                        let result = if probs.len() != t.labels.len() {
-                            Err(format!("{} probabilities for {} labels", probs.len(), t.labels.len()))
-                        } else {
-                            Ok(decide(&probs, t.labels.names(), thr, ms))
-                        };
+                        let result = read_head(&spec.task, &out).map(|o| (o, timing));
                         runs.push(ModelRun { head: spec.id.clone(), result });
                     }
                 }

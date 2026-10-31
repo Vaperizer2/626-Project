@@ -270,27 +270,6 @@ impl DemoApp {
         cx.notify();
     }
 
-    fn threshold(&self) -> f32 {
-        0.5
-    }
-
-    /// Whether `id` abstains on calibrated probabilities (the others always answer).
-    fn calibrated(&self, id: &HeadId) -> bool {
-        self.head(id).is_some_and(|h| {
-            let Task::Classify(c) = &h.spec.task;
-            matches!(c.decision, crate::manifest::Decision::Abstain { .. })
-        })
-    }
-
-    fn labels(&self, id: &HeadId) -> Vec<String> {
-        self.head(id)
-            .map(|h| {
-                let Task::Classify(c) = &h.spec.task;
-                c.labels.names().to_vec()
-            })
-            .unwrap_or_default()
-    }
-
     // ------------------------------------------------------------------------------------------ chrome
     fn render_title_bar(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.theme();

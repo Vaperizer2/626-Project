@@ -26,9 +26,10 @@ use super::demo_tab::ItemResult;
 use super::widgets::Lucide;
 use super::worker::{Cmd, Job, JobInput, ModelState, Update};
 use super::{DemoApp, theme, widgets};
-use crate::contract::Prediction;
+use crate::classification::{Classification, HeadOutput};
 use crate::demo::Verdict;
 use crate::manifest::HeadId;
+use crate::models::Timing;
 
 struct BenchRun {
     queue: VecDeque<usize>,
@@ -42,7 +43,7 @@ pub struct BenchState {
     run: Option<BenchRun>,
     /// columns of the last run
     models: Vec<HeadId>,
-    results: HashMap<(usize, HeadId), Result<Prediction, String>>,
+    results: HashMap<(usize, HeadId), Result<(Classification, Timing), String>>,
     only_disagree: bool,
     wall_s: Option<f64>,
     cancelled: bool,
@@ -83,18 +84,18 @@ impl BenchState {
 /// Aggregate `results` for `model` over `stack`.
 pub fn stats(
     stack: &crate::demo::DemoStack,
-    results: &HashMap<(usize, HeadId), Result<Prediction, String>>,
+    results: &HashMap<(usize, HeadId), Result<(Classification, Timing), String>>,
     model: &HeadId,
 ) -> Stats {
     let mut s = Stats::default();
     let (mut conf, mut ms) = (0f32, 0f64);
     for (i, im) in stack.images.iter().enumerate() {
         match results.get(&(i, model.clone())) {
-            Some(Ok(p)) => {
+            Some(Ok((c, timing))) => {
                 s.judged += 1;
-                conf += p.top3[0].1;
-                ms += p.ms;
-                match im.judge(&p.top3[0].0, p.unsure) {
+                conf += c.best().1;
+                ms += timing.ms();
+                match im.judge(c.best_label(), c.abstained()) {
                     Verdict::Correct => s.correct += 1,
                     Verdict::Unsure => s.unsure += 1,
                     Verdict::Wrong => {}
@@ -111,16 +112,16 @@ pub fn stats(
     s
 }
 
-/// Do the models' answers (top-1 label, or UNSURE) differ on image `i`?
+/// Do the models' answers (the committed class, or abstaining) differ on image `i`?
 pub fn disagree(
-    results: &HashMap<(usize, HeadId), Result<Prediction, String>>,
+    results: &HashMap<(usize, HeadId), Result<(Classification, Timing), String>>,
     i: usize,
     models: &[HeadId],
 ) -> bool {
-    let answers: HashSet<&str> = models
+    let answers: HashSet<Option<&str>> = models
         .iter()
         .filter_map(|k| results.get(&(i, k.clone())).and_then(|r| r.as_ref().ok()))
-        .map(|p| if p.unsure { "UNSURE" } else { p.top3[0].0.as_str() })
+        .map(|(c, _)| c.committed().map(|i| c.labels.name(i)))
         .collect();
     answers.len() > 1
 }
@@ -186,9 +187,10 @@ impl DemoApp {
                     .update(cx, |this, cx| {
                         match u {
                             Update::Result(k, r) => {
+                                let r = r.map(|(HeadOutput::Classify(c), timing)| (c, timing));
                                 // share with the Demo tab so its cards show the result too
-                                if let (Ok(p), Some(it)) = (&r, this.demo.items.get_mut(i)) {
-                                    it.results.insert(k.clone(), ItemResult::Done(p.clone()));
+                                if let (Ok((c, timing)), Some(it)) = (&r, this.demo.items.get_mut(i)) {
+                                    it.results.insert(k.clone(), ItemResult::Done(c.clone(), *timing));
                                 }
                                 this.bench.results.insert((i, k), r);
                             }
@@ -212,7 +214,7 @@ impl DemoApp {
         cx.notify();
     }
 
-    /// "one pass shared by C and Deployed" when other benchmarked heads read the same graph as `k`.
+    /// "one pass shared by X and Y" when other benchmarked heads read the same graph as `k`.
     fn shared_pass(&self, k: &HeadId) -> Option<String> {
         let sib = self.registry.as_ref()?.siblings(k);
         let names: Vec<String> = sib.iter().filter(|s| self.bench.models.contains(s)).map(|s| self.short(s)).collect();
@@ -480,11 +482,11 @@ impl DemoApp {
                         .border_color(r.border);
                     let body = v_flex().flex_1().min_w_0().px_2().gap_1().justify_center();
                     match self.bench.results.get(&(i, k.clone())) {
-                        Some(Ok(p)) => {
-                            let v = im.judge(&p.top3[0].0, p.unsure);
+                        Some(Ok((out, _))) => {
+                            let v = im.judge(out.best_label(), out.abstained());
                             let c = r.verdict(v).0;
-                            let label =
-                                if p.unsure { format!("unsure · {}", p.top3[0].0) } else { p.top3[0].0.clone() };
+                            let (best, p) = (out.best_label(), out.best().1);
+                            let label = if out.abstained() { format!("unsure · {best}") } else { best.to_string() };
                             cell.bg(r.surface)
                                 .child(div().w(px(4.)).h_full().flex_none().bg(c))
                                 .child(
@@ -501,7 +503,7 @@ impl DemoApp {
                                                     .text_sm()
                                                     .font_weight(FontWeight::MEDIUM)
                                                     .truncate()
-                                                    .when(p.unsure, |d| d.text_color(r.muted_fg))
+                                                    .when(out.abstained(), |d| d.text_color(r.muted_fg))
                                                     .child(label),
                                             )
                                             .child(
@@ -509,11 +511,11 @@ impl DemoApp {
                                                     .flex_none()
                                                     .text_xs()
                                                     .text_color(r.muted_fg)
-                                                    .child(widgets::pct(p.top3[0].1)),
+                                                    .child(widgets::pct(p)),
                                             ),
                                     )
                                     .child(widgets::bar(
-                                        p.top3[0].1,
+                                        p,
                                         r.bar_muted,
                                         px(3.),
                                         &r,
@@ -625,15 +627,25 @@ impl DemoApp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::contract::decide;
+    use crate::classification::read_head;
     use crate::demo::DemoStack;
+    use crate::manifest::{Calibration, ClassifyTask, Decision, Labels, Prob, Readout, Task};
     use std::path::Path;
+    use std::sync::Arc;
 
-    fn pred(label_ix: usize, p: f32) -> Prediction {
-        let labels: Vec<String> = ["led", "diode", "resistor"].iter().map(|s| s.to_string()).collect();
+    /// A calibrated head that abstains below 0.5, answering class `label_ix` with probability `p`.
+    fn pred(label_ix: usize, p: f32) -> (Classification, Timing) {
+        let labels = Labels::new(["led", "diode", "resistor"].iter().map(|s| s.to_string()).collect()).unwrap();
+        let task = Task::Classify(ClassifyTask {
+            readout: Readout::Probs { output: "probs".into() },
+            labels: Arc::new(labels),
+            calibration: Calibration::Temperature { t: 1.0, in_graph: true },
+            decision: Decision::Abstain { below: Prob::new(0.5).unwrap() },
+        });
         let mut probs = vec![(1.0 - p) / 2.0; 3];
         probs[label_ix] = p;
-        decide(&probs, &labels, 0.5, 10.0)
+        let HeadOutput::Classify(c) = read_head(&task, &probs).unwrap();
+        (c, Timing { preprocess_ms: 2.0, run_ms: 8.0, shared_by: 1 })
     }
 
     #[test]

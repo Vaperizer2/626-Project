@@ -19,7 +19,7 @@ macro_rules! prof {
     };
 }
 
-mod contract;
+mod classification;
 mod demo;
 mod fetch;
 mod gui;
@@ -39,6 +39,7 @@ use std::time::Instant;
 
 use anyhow::{Context, Result, anyhow, bail};
 
+use crate::classification::HeadOutput;
 use crate::fetch::Source;
 use crate::manifest::{HeadId, Task};
 use crate::model::ModelOptions;
@@ -167,6 +168,9 @@ fn heads(a: &Args, reg: &Registry) -> Result<Vec<HeadId>> {
     Ok(out)
 }
 
+/// The `label` of an abstaining head in classify output (the Python demo's spelling).
+const UNSURE: &str = "UNSURE";
+
 #[derive(serde::Serialize)]
 struct JsonRow<'a> {
     source: &'a str,
@@ -211,28 +215,29 @@ fn run_classify(a: &Args) -> Result<u8> {
         };
         for r in runs {
             match r.result {
-                Ok(p) => {
+                Ok((HeadOutput::Classify(c), timing)) => {
+                    let label = c.committed().map_or(UNSURE, |i| c.labels.name(i));
+                    let top3: Vec<(&str, f32)> = c.top(3).into_iter().map(|(i, p)| (c.labels.name(i), p)).collect();
                     if a.json {
                         rows.push(serde_json::to_value(JsonRow {
                             source: s,
                             model: r.head.as_str(),
-                            label: Some(p.label()),
-                            top3: p.top3.iter().map(|(l, v)| (l.as_str(), *v)).collect(),
-                            unsure: p.unsure,
-                            ms: (p.ms * 10.0).round() / 10.0,
-                            probs: p.probs.clone(),
+                            label: Some(label),
+                            top3,
+                            unsure: c.abstained(),
+                            ms: (timing.ms() * 10.0).round() / 10.0,
+                            probs: c.probs.to_vec(),
                             error: None,
                         })?);
                     } else {
-                        let top: Vec<String> = p.top3.iter().map(|(l, v)| format!("{l} {v:.3}")).collect();
+                        let top: Vec<String> = top3.iter().map(|(l, v)| format!("{l} {v:.3}")).collect();
                         writeln!(
                             stdout.lock(),
-                            "{s}\t{}\t{}\t{:.3}\ttop3: {}\t{:.0} ms",
+                            "{s}\t{}\t{label}\t{:.3}\ttop3: {}\t{:.0} ms",
                             r.head,
-                            p.label(),
-                            p.top3[0].1,
+                            c.best().1,
                             top.join(", "),
-                            p.ms
+                            timing.ms()
                         )?;
                     }
                 }

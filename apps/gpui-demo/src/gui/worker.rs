@@ -15,11 +15,11 @@ use gpui_kit::RenderImage;
 use image::RgbImage;
 use rayon::prelude::*;
 
-use crate::contract::Prediction;
+use crate::classification::HeadOutput;
 use crate::fetch::Source;
 use crate::manifest::HeadId;
 use crate::model::ModelOptions;
-use crate::models::Models;
+use crate::models::{Models, Timing};
 use crate::preprocess;
 use crate::registry::Registry;
 
@@ -45,7 +45,7 @@ pub struct Job {
 
 pub enum Update {
     Image(Arc<RenderImage>, (u32, u32)),
-    Result(HeadId, Result<Prediction, String>),
+    Result(HeadId, Result<(HeadOutput, Timing), String>),
     /// the input could not be read or decoded
     Failed(String),
     /// all results sent; total wall time of the job in ms
