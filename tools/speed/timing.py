@@ -174,6 +174,7 @@ def run_time(path: str) -> dict:
                     rlat.append(rr.rounds(1, RUNS_REF)[0])
             bad, cos = r1.check(single[:1])
             b1 = {**stats(np.array(lat), 1), "warmup_runs": warm, "n_bad_outputs": bad, "cos_vs_plain_run": cos}
+            rr = rsess = None  # batch 8 is unpaired; two So400m-size sessions plus batch-8 buffers overflow 6 GB
             b8 = None
             if max_batch(c) >= MAX_BATCH:
                 r8 = Runner(sess, X, c.dim, C)
@@ -181,7 +182,7 @@ def run_time(path: str) -> dict:
                 lat8 = r8.rounds(ROUNDS, RUNS_B8)
                 bad, cos = r8.check(single)
                 b8 = {**stats(lat8, MAX_BATCH), "n_bad_outputs": bad, "min_cos_vs_batch1": cos, "valid": bad == 0}
-        del sess, rsess
+        del sess
     pair = None
     if paired:
         ratios = np.median(lat, 1) / np.median(rlat, 1)
