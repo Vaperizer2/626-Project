@@ -24,10 +24,9 @@ mod demo;
 mod fetch;
 mod gui;
 mod inference;
-#[allow(dead_code)] // runtime and integrity fields; read once the EP and checksum steps land
+mod integrity;
 mod manifest;
 mod preprocess;
-#[allow(dead_code)]
 mod registry;
 mod runtime;
 
@@ -46,9 +45,10 @@ use crate::inference::{
     Finish, GraphState, ImageInput, Inference, LoadStage, Policy, Priority, RequestHandle, RunError, ServiceEvent,
     Timing, Update,
 };
-use crate::manifest::{HeadId, Task};
+use crate::manifest::{HeadId, Precision, Task};
 use crate::manifest::EpKind;
-use crate::runtime::{ModelOptions, OrtLoader, Runtime};
+use crate::inference::Loader as _;
+use crate::runtime::{ModelOptions, OrtLoader};
 use crate::registry::Registry;
 
 const HELP: &str = "\
@@ -58,7 +58,9 @@ USAGE:
     gpui-demo [OPTIONS] [IMAGE|URL ...]                 open the window
     gpui-demo classify [OPTIONS] [--json] IMAGE|URL ... headless; one line (or JSON object) per image
     gpui-demo preprocess IMAGE OUT.f32 [--model HEAD]  write the model input tensor (little-endian f32)
-    gpui-demo models                                    list the models and whether each is available
+    gpui-demo models [--check]                          list the models, whether each is available and which
+                                                        execution providers register; --check also verifies
+                                                        every file's sha256 and loads each graph
 
 OPTIONS:
     --models PATH     the model index exports/models.json, or its folder (default: $COMPCLASS_MODELS,
@@ -92,6 +94,7 @@ struct Args {
     mode: String,
     opts: ModelOptions,
     json: bool,
+    check: bool,
     models: Vec<String>,
     demo_dir: Option<PathBuf>,
     gui: gui::GuiOptions,
@@ -129,6 +132,7 @@ fn parse_args() -> Result<Args> {
                 a.opts.eps = Some(list);
             }
             "--json" => a.json = true,
+            "--check" => a.check = true,
             "--demo-dir" => a.demo_dir = Some(PathBuf::from(value("--demo-dir")?)),
             "--tab" => {
                 a.gui.tab = match value("--tab")?.to_ascii_lowercase().as_str() {
@@ -211,7 +215,14 @@ fn service(a: &Args, reg: &Arc<Registry>) -> Inference {
                     eprintln!("[gpui-demo] {g} ({}): building the TensorRT engine (first run only)", heads.join(", "))
                 }
                 GraphState::Ready(l) => {
-                    eprintln!("[gpui-demo] {g} ({}) ready in {:.0} ms on {} ({})", heads.join(", "), l.ms, l.placement, l.runtime);
+                    let checked = if l.verified { "checksums verified" } else { "checksums not verified: models --check" };
+                    eprintln!(
+                        "[gpui-demo] {g} ({}) ready in {:.0} ms on {} ({}; {checked})",
+                        heads.join(", "),
+                        l.ms,
+                        l.placement,
+                        l.runtime
+                    );
                     for (ep, why) in &l.placement.skipped {
                         eprintln!("[gpui-demo]   {} skipped: {why}", ep.name());
                     }
@@ -329,11 +340,12 @@ fn run_models(a: &Args) -> Result<u8> {
             Err(e) => println!("{:9} {:30} unavailable  {e}", h.id(), h.spec.title),
         }
     }
-    let rt = match Runtime::init(&a.opts, reg.index_path().parent()) {
+    let loader = OrtLoader::new(&a.opts, reg.index_path().parent());
+    let rt = match loader.runtime() {
         Ok(rt) => rt,
         Err(e) => {
-            println!("execution providers: unknown, {e:#}");
-            return Ok(0);
+            println!("execution providers: unknown, {e}");
+            return Ok(if a.check { 1 } else { 0 });
         }
     };
     println!("onnxruntime {} ({})", rt.version, rt.ort_lib.display());
@@ -347,9 +359,52 @@ fn run_models(a: &Args) -> Result<u8> {
                 Err(e) => format!("{} does not ({e})", ep.kind.name()),
             })
             .collect();
-        println!("{:9} {}", m.id, probes.join("; "));
+        let precision = match m.precision {
+            Precision::Fp32 => "fp32",
+            Precision::Fp16 => "fp16",
+            Precision::Int8Qdq => "int8 QDQ",
+        };
+        println!("{:9} {precision} graph; {}", m.id, probes.join("; "));
     }
-    Ok(0)
+    if !a.check {
+        return Ok(0);
+    }
+    // --check: hash every file against its manifest, then load the graph the way the app does
+    let mut stamps = integrity::Stamps::load();
+    let mut bad = 0;
+    for g in reg.graphs() {
+        let m = &g.manifest;
+        if let Err(e) = &g.availability {
+            bad += 1;
+            println!("{:9} UNAVAILABLE  {e}", m.id);
+            continue;
+        }
+        let t0 = Instant::now();
+        match integrity::check(m, &mut stamps) {
+            integrity::Check::Ok { bytes } => {
+                let hashed = format!("sha256 ok ({:.1} MB in {:.1} s)", bytes as f64 / 1e6, t0.elapsed().as_secs_f64());
+                match loader.load(m, &|_| {}) {
+                    Ok((_, l)) => println!("{:9} READY  {hashed}; loaded in {:.0} ms on {}", m.id, l.ms, l.placement),
+                    Err(e) => {
+                        bad += 1;
+                        println!("{:9} FAILED  {hashed}; load: {e}", m.id);
+                    }
+                }
+            }
+            integrity::Check::Mismatch { file, expected, found } => {
+                bad += 1;
+                println!("{:9} CHECKSUM  {}: sha256 {found}, the manifest says {expected}", m.id, file.display());
+            }
+            integrity::Check::Unreadable { file, error } => {
+                bad += 1;
+                println!("{:9} UNREADABLE  {}: {error}", m.id, file.display());
+            }
+        }
+    }
+    if let Err(e) = stamps.save() {
+        eprintln!("[gpui-demo] could not save the checksum stamps: {e}");
+    }
+    Ok(if bad > 0 { 1 } else { 0 })
 }
 
 fn run_preprocess(a: &Args) -> Result<u8> {

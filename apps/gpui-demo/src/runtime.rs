@@ -381,14 +381,16 @@ impl OrtLoader {
 
 impl Loader for OrtLoader {
     fn load(&self, m: &Arc<Manifest>, stage: &dyn Fn(LoadStage)) -> std::result::Result<(Box<dyn Graph>, Loaded), String> {
-        let rt = self.runtime()?;
-        stage(LoadStage::Loading);
         let t0 = Instant::now();
+        let rt = self.runtime()?;
+        let verified = crate::integrity::Stamps::load().all_verified(m);
+        stage(LoadStage::Loading);
         let engine = Engine::load(rt, m.clone()).map_err(|e| format!("{e:#}"))?;
         let loaded = Loaded {
             ms: t0.elapsed().as_secs_f64() * 1000.0,
             placement: engine.placement.clone(),
             runtime: format!("onnxruntime {}", rt.version),
+            verified,
         };
         Ok((Box::new(engine), loaded))
     }

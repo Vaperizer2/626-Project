@@ -44,6 +44,7 @@ impl GraphId {
     pub fn new(s: &str) -> Self {
         Self(s.into())
     }
+    #[allow(dead_code)] // the TensorRT engine cache names its directory with it in the next change
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -71,6 +72,7 @@ impl Sha256 {
         Some(Self(out))
     }
 
+    #[allow(dead_code)] // names the TensorRT engine cache in the next change
     pub fn short(&self) -> String {
         self.to_string()[..12].to_string()
     }
@@ -114,9 +116,6 @@ impl Labels {
     }
     pub fn name(&self, i: usize) -> &str {
         &self.0[i]
-    }
-    pub fn names(&self) -> &[String] {
-        &self.0
     }
 }
 
@@ -274,6 +273,7 @@ pub struct Ep {
     pub options: Vec<(String, String)>,
 }
 
+#[allow(dead_code)] // the TensorRT engine cache reads these in the next change
 impl Ep {
     pub fn option(&self, key: &str) -> Option<&str> {
         self.options.iter().find(|(k, _)| k == key).map(|(_, v)| v.as_str())
@@ -305,6 +305,7 @@ pub struct Manifest {
     /// the model.json this came from
     pub path: PathBuf,
     pub graph: PathBuf,
+    #[allow(dead_code)] // part of the TensorRT engine cache key in the next change
     pub external: Vec<PathBuf>,
     pub precision: Precision,
     /// every file the graph needs (graph, external data, labels)
@@ -313,23 +314,11 @@ pub struct Manifest {
     /// never empty
     pub heads: Vec<HeadSpec>,
     pub runtime: RuntimeSpec,
-    pub provenance: BTreeMap<String, serde_json::Value>,
-}
-
-impl Manifest {
-    pub fn dir(&self) -> &Path {
-        self.path.parent().unwrap_or(Path::new("."))
-    }
-
-    pub fn file(&self, path: &Path) -> Option<&FileEntry> {
-        self.files.iter().find(|f| f.path == path)
-    }
 }
 
 /// The index: manifests in UI order and the default heads in order of preference.
 #[derive(Debug)]
 pub struct Index {
-    pub path: PathBuf,
     pub default: Vec<HeadId>,
     pub manifests: Vec<PathBuf>,
 }
@@ -359,8 +348,9 @@ struct WireManifest {
     input: WireInput,
     heads: Vec<WireHead>,
     runtime: WireRuntime,
-    #[serde(default)]
-    provenance: BTreeMap<String, serde_json::Value>,
+    /// free-form, for people (the export reports); the app never reads it
+    #[serde(default, rename = "provenance")]
+    _provenance: serde_json::Value,
 }
 
 #[derive(Deserialize)]
@@ -644,7 +634,6 @@ fn from_wire(w: WireManifest, path: &Path, dir: &Path) -> Result<Manifest, Strin
         input,
         heads,
         runtime: RuntimeSpec { opt_level, providers },
-        provenance: w.provenance,
     })
 }
 
@@ -660,7 +649,6 @@ pub fn parse_index(path: &Path) -> Result<Index, ManifestError> {
     }
     let dir = path.parent().unwrap_or(Path::new("."));
     Ok(Index {
-        path: path.to_path_buf(),
         default: w.default.iter().map(|s| HeadId::new(s)).collect(),
         manifests: w.manifests.iter().map(|m| dir.join(m)).collect(),
     })
