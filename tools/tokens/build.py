@@ -95,6 +95,8 @@ RECIPES = {
     "tokens_res252_trtfp16": Recipe("H1 lower resolution, 324 tokens", 252),
     "tokens_res224_trtfp16": Recipe("H1 lower resolution, 256 tokens", 224),
     "tokens_torch384_trtfp16": Recipe("control: torch rebuild, no merging", 384, merge=const(0)),
+    "tokens_torch308_trtfp16": Recipe("control: torch rebuild at 308, no merging (export vs edited graph)", 308,
+                                      merge=const(0)),
     "tokens_tome384_r16_trtfp16": Recipe("H2 ToMe r=16 every block at 384", 384, merge=const(16)),
     "tokens_evit384_k70_trtfp16": Recipe("H3 EViT keep 70% at blocks 6, 13, 20 at 384", 384,
                                          merge=at(b6=219, b13=153, b20=107), mode="evit"),
