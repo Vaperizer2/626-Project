@@ -7,7 +7,6 @@
 //!   + model_multi.json                which output is which (see `MultiSpec`)
 //! exports/itri626/A_scratch_cnn/      model.onnx + preprocess.json + labels.json       (A, 160 px)
 //! exports/itri626/B_convnext_tiny/    model.onnx + preprocess.json + labels.json       (B, 224 px)
-//! exports/itri626/C_siglip_linear/    head.json: folded linear head on a named output of model.onnx (fallback for C)
 //! ```
 //!
 //! When `model_multi.onnx` exists, Deployed and C use that one graph, so the 1.7 GB SigLIP weights are loaded
@@ -83,47 +82,6 @@ impl ModelKey {
     }
 }
 
-/// A linear head applied to one graph output: `softmax((W x + b) / temperature)`.
-#[derive(Debug, Clone, Deserialize)]
-pub struct LinearHead {
-    /// graph output that feeds the head (e.g. pooled image features)
-    #[serde(alias = "input", alias = "feature_output", alias = "output")]
-    pub feature: String,
-    /// `[classes][dim]`
-    #[serde(alias = "weight", alias = "W")]
-    pub w: Vec<Vec<f32>>,
-    pub b: Vec<f32>,
-    #[serde(default = "one")]
-    pub temperature: f32,
-    /// L2-normalise the features first (SigLIP embeddings usually are)
-    #[serde(default)]
-    pub l2_normalize: bool,
-    #[serde(default)]
-    pub abstain_threshold: Option<f32>,
-}
-
-fn one() -> f32 {
-    1.0
-}
-
-impl LinearHead {
-    pub fn apply(&self, feat: &[f32]) -> Result<Vec<f32>> {
-        let dim = self.w.first().map(Vec::len).unwrap_or(0);
-        if feat.len() != dim || self.b.len() != self.w.len() {
-            bail!("head shape mismatch: features {} vs W {}x{} / b {}", feat.len(), self.w.len(), dim, self.b.len());
-        }
-        let norm = if self.l2_normalize { feat.iter().map(|v| v * v).sum::<f32>().sqrt().max(1e-12) } else { 1.0 };
-        let t = if self.temperature > 0.0 { self.temperature } else { 1.0 };
-        let logits: Vec<f32> = self
-            .w
-            .iter()
-            .zip(&self.b)
-            .map(|(row, b)| (row.iter().zip(feat).map(|(w, x)| w * x / norm).sum::<f32>() + b) / t)
-            .collect();
-        Ok(softmax(&logits))
-    }
-}
-
 pub fn softmax(z: &[f32]) -> Vec<f32> {
     let m = z.iter().copied().fold(f32::NEG_INFINITY, f32::max);
     let e: Vec<f32> = z.iter().map(|v| (v - m).exp()).collect();
@@ -138,8 +96,6 @@ pub enum Readout {
     Probs(String),
     /// the named output holds logits
     Logits(String),
-    /// a linear head on a feature output
-    Head(Box<LinearHead>),
 }
 
 impl Readout {
@@ -147,14 +103,12 @@ impl Readout {
         match self {
             Readout::Probs(o) => format!("output {o}"),
             Readout::Logits(o) => format!("softmax(output {o})"),
-            Readout::Head(h) => format!("linear head on output {}", h.feature),
         }
     }
 
     fn output(&self) -> &str {
         match self {
             Readout::Probs(o) | Readout::Logits(o) => o,
-            Readout::Head(h) => &h.feature,
         }
     }
 }
@@ -305,21 +259,9 @@ pub fn discover(final_dir: &Path) -> Vec<Entry> {
         eprintln!("[gpui-demo] ignoring model_multi.json: {e}");
     }
     if let std::collections::hash_map::Entry::Vacant(slot) = specs.entry(ModelKey::C) {
-        let hj = itri.join("C_siglip_linear").join("head.json");
-        let c = if hj.is_file() {
-            read_json::<LinearHead>(&hj).map_err(|e| format!("{e:#}")).map(|head| ModelSpec {
-                key: ModelKey::C,
-                onnx: final_dir.join("model.onnx"),
-                contract_dir: final_dir.to_path_buf(),
-                threshold: head.abstain_threshold,
-                readout: Readout::Head(Box::new(head)),
-            })
-        } else {
-            Err(multi_err.clone().unwrap_or_else(|| {
-                format!("not exported yet: needs {} or {}", final_dir.join("model_multi.json").display(), hj.display())
-            }))
-        };
-        slot.insert(c);
+        slot.insert(Err(multi_err.clone().unwrap_or_else(|| {
+            format!("not exported yet: needs {}", final_dir.join("model_multi.json").display())
+        })));
     }
     for (key, sub) in [(ModelKey::A, "A_scratch_cnn"), (ModelKey::B, "B_convnext_tiny")] {
         let dir = itri.join(sub);
@@ -503,7 +445,6 @@ impl Models {
                         let probs = match &spec.readout {
                             Readout::Probs(_) => Ok(out),
                             Readout::Logits(_) => Ok(softmax(&out)),
-                            Readout::Head(h) => h.apply(&out),
                         };
                         let thr = spec.threshold.unwrap_or(engine.contract.pre.abstain_threshold);
                         let result = probs
@@ -599,16 +540,6 @@ mod tests {
         let e = read_json::<MultiSpec>(&p).unwrap().entries();
         assert!(e.iter().any(|x| x.0 == ModelKey::C && matches!(&x.1, Readout::Probs(n) if n == "probs_c")));
         assert!(e.iter().any(|x| x.0 == ModelKey::Deployed && matches!(&x.1, Readout::Probs(n) if n == "probs")));
-    }
-
-    #[test]
-    fn linear_head_softmax() {
-        let h: LinearHead =
-            serde_json::from_str(r#"{"feature":"emb","W":[[1,0],[0,1],[0,0]],"b":[0,0,0],"temperature":1}"#).unwrap();
-        let p = h.apply(&[2.0, 0.0]).unwrap();
-        assert!((p.iter().sum::<f32>() - 1.0).abs() < 1e-6);
-        assert!(p[0] > p[1] && p[1] > 0.0);
-        assert!(h.apply(&[1.0]).is_err());
     }
 
     #[test]
