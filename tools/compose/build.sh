@@ -20,8 +20,8 @@ start)
   rsync -a --delete --exclude model.onnx.data "$ART/tokens/candidates/$src/" "carlpc2:$R/src/$src/"
   # token candidates point every weight at the baseline data file (tools/tokens/build.py relink)
   ssh carlpc2 "cp --reflink=auto /home/carl/626-runs/harness/candidates/baseline_fp32/model.onnx.data $R/src/$src/ \
-    && QUANT_GIT_SHA=$sha setsid nohup bash $R/repo/tools/compose/remote_build.sh $R/src/$src $id \
-       > $R/logs/$id.log 2>&1 < /dev/null &"
+    && { QUANT_GIT_SHA=$sha setsid nohup bash $R/repo/tools/compose/remote_build.sh $R/src/$src $id \
+       > $R/logs/$id.log 2>&1 < /dev/null & }"
   echo "started $id from $src @ $sha; log carlpc2:$R/logs/$id.log"
   ;;
 fetch)
