@@ -6,6 +6,9 @@ set -uo pipefail
 H=/home/vaper/Work/Prototypes/626-wt/harness/tools/speed
 ART=/home/vaper/Work/Prototypes/626-artifacts
 mkdir -p "$ART/tokens/logs"
+# fit_probe grid-searches with n_jobs=-1 (15 loky workers on 20 cores), which alone overflows 6 GB. Four workers
+# give the same fits (lbfgs is deterministic; checked on the res336 embeddings) in about 1 min and 1.5 GB.
+export LOKY_MAX_CPU_COUNT=4
 step() {
   until [ "$(free -g | awk '/^Mem:/ {print $7}')" -ge 4 ]; do sleep 20; done
   systemd-run --user --scope --quiet -p MemoryMax=6G -p MemorySwapMax=2G "$H/speed" "$@"
