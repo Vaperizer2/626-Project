@@ -3,7 +3,8 @@
 //!   gpui-demo [OPTIONS] [IMAGE|URL ...]               open the window (optionally classifying the given images)
 //!   gpui-demo classify [OPTIONS] [--json] IMAGE|URL ...  headless: print predictions, no window
 //!   gpui-demo preprocess IMAGE OUT.f32 [--model HEAD]    dump the [1,3,H,W] float32 input tensor (parity tests)
-//!   gpui-demo models                                     list the model registry and what is available
+//!   gpui-demo models [--check]                           list the model registry and what is available
+//!   gpui-demo bench [--model HEAD] IMAGE ...             latency by stage and streamed FPS through the service
 
 /// Profile a block with hotpath when built with `--features hotpath`; otherwise expands to the block itself.
 #[cfg(feature = "hotpath")]
@@ -42,10 +43,10 @@ use futures::StreamExt;
 use crate::classification::HeadOutput;
 use crate::fetch::Source;
 use crate::inference::{
-    Finish, GraphState, ImageInput, Inference, LoadStage, Policy, Priority, RequestHandle, RunError, ServiceEvent,
-    Timing, Update,
+    Finish, GraphState, ImageInput, Inference, LoadStage, Loaded, Policy, Priority, RequestHandle, RunError,
+    ServiceEvent, Timing, Update,
 };
-use crate::manifest::{HeadId, Precision, Task};
+use crate::manifest::{GraphId, HeadId, Precision, Task};
 use crate::manifest::EpKind;
 use crate::inference::Loader as _;
 use crate::runtime::{ModelOptions, OrtLoader};
@@ -58,6 +59,9 @@ USAGE:
     gpui-demo [OPTIONS] [IMAGE|URL ...]                 open the window
     gpui-demo classify [OPTIONS] [--json] IMAGE|URL ... headless; one line (or JSON object) per image
     gpui-demo preprocess IMAGE OUT.f32 [--model HEAD]  write the model input tensor (little-endian f32)
+    gpui-demo bench [--model HEAD] [--rounds N] [--warmup N] IMAGE ...
+                                                        time one model through the inference service:
+                                                        per-image latency by stage, then streamed FPS
     gpui-demo models [--check]                          list the models, whether each is available and which
                                                         execution providers register; --check also verifies
                                                         every file's sha256 and loads each graph
@@ -96,6 +100,8 @@ struct Args {
     opts: ModelOptions,
     json: bool,
     check: bool,
+    rounds: usize,
+    warmup: usize,
     models: Vec<String>,
     demo_dir: Option<PathBuf>,
     gui: gui::GuiOptions,
@@ -104,9 +110,9 @@ struct Args {
 
 fn parse_args() -> Result<Args> {
     let mut it = std::env::args().skip(1).peekable();
-    let mut a = Args { mode: "gui".into(), ..Default::default() };
+    let mut a = Args { mode: "gui".into(), rounds: 5, warmup: 5, ..Default::default() };
     if let Some(first) = it.peek()
-        && (first == "classify" || first == "preprocess" || first == "models")
+        && (first == "classify" || first == "preprocess" || first == "models" || first == "bench")
     {
         a.mode = it.next().unwrap();
     }
@@ -134,6 +140,8 @@ fn parse_args() -> Result<Args> {
             }
             "--json" => a.json = true,
             "--check" => a.check = true,
+            "--rounds" => a.rounds = value("--rounds")?.parse().context("--rounds")?,
+            "--warmup" => a.warmup = value("--warmup")?.parse().context("--warmup")?,
             "--demo-dir" => a.demo_dir = Some(PathBuf::from(value("--demo-dir")?)),
             "--tab" => {
                 a.gui.tab = match value("--tab")?.to_ascii_lowercase().as_str() {
@@ -203,12 +211,20 @@ struct JsonRow<'a> {
     timing: Timing,
 }
 
-/// Start the service with onnxruntime behind it; graph load events go to stderr, the start-up default head to the
-/// returned channel.
-fn service(a: &Args, reg: &Arc<Registry>) -> (Inference, std::sync::mpsc::Receiver<HeadId>) {
+/// The service with onnxruntime behind it, the start-up default head, and each graph's load once it is ready.
+struct Service {
+    inf: Inference,
+    default: std::sync::mpsc::Receiver<HeadId>,
+    loaded: Arc<std::sync::Mutex<Vec<(GraphId, Loaded)>>>,
+}
+
+/// Start the service; graph load events also go to stderr.
+fn service(a: &Args, reg: &Arc<Registry>) -> Service {
     let (inf, mut events) = Inference::spawn(reg.clone(), OrtLoader::new(&a.opts, reg.index_path().parent()));
     let reg = reg.clone();
-    let (default_tx, default_rx) = std::sync::mpsc::channel();
+    let (default_tx, default) = std::sync::mpsc::channel();
+    let loaded = Arc::new(std::sync::Mutex::new(Vec::new()));
+    let seen = loaded.clone();
     std::thread::spawn(move || {
         while let Some(ev) = futures::executor::block_on(events.next()) {
             let (g, state) = match ev {
@@ -227,6 +243,7 @@ fn service(a: &Args, reg: &Arc<Registry>) -> (Inference, std::sync::mpsc::Receiv
                     eprintln!("[gpui-demo] {g} ({}): building the TensorRT engine (first run only)", heads.join(", "))
                 }
                 GraphState::Ready(l) => {
+                    seen.lock().expect("loaded lock").push((g.clone(), l.clone()));
                     let checked = if l.verified { "checksums verified" } else { "checksums not verified: models --check" };
                     eprintln!(
                         "[gpui-demo] {g} ({}) ready in {:.0} ms on {} ({}; {checked})",
@@ -244,7 +261,7 @@ fn service(a: &Args, reg: &Arc<Registry>) -> (Inference, std::sync::mpsc::Receiv
             }
         }
     });
-    (inf, default_rx)
+    Service { inf, default, loaded }
 }
 
 /// One request's outcome: every head's result (or the input's failure).
@@ -268,7 +285,7 @@ fn run_classify(a: &Args) -> Result<u8> {
         bail!("classify needs at least one image path or URL");
     }
     let reg = registry(a)?;
-    let (inf, default) = service(a, &reg);
+    let Service { inf, default, .. } = service(a, &reg);
     let keys = if a.models.is_empty() {
         // the first default whose preferred provider registers here, as in the window
         vec![default.recv().context("no model is available")?]
@@ -339,6 +356,110 @@ fn run_classify(a: &Args) -> Result<u8> {
     }
     end(&inf);
     Ok(if failures > 0 { 2 } else { 0 })
+}
+
+/// Median, 10th and 90th percentile (nearest rank), min and max.
+fn spread(mut v: Vec<f64>) -> serde_json::Value {
+    if v.is_empty() {
+        return serde_json::Value::Null;
+    }
+    v.sort_by(f64::total_cmp);
+    let at = |q: f64| v[((v.len() - 1) as f64 * q).round() as usize];
+    let r = |x: f64| (x * 1000.0).round() / 1000.0;
+    serde_json::json!({"median": r(at(0.5)), "p10": r(at(0.1)), "p90": r(at(0.9)), "min": r(v[0]), "max": r(v[v.len() - 1]), "n": v.len()})
+}
+
+/// `bench`: one head through the service. Latency: every image submitted alone and awaited, read and decoded from
+/// its file each time; `--warmup` runs first, unrecorded, then `--rounds` passes over the images. Stream: rounds x
+/// images submitted at once to a bulk lane, FPS = images / wall time from the first submit to the last result.
+fn run_bench(a: &Args) -> Result<u8> {
+    let reg = registry(a)?;
+    let Service { inf, default, loaded } = service(a, &reg);
+    let head = if a.models.is_empty() {
+        default.recv().context("no model is available")?
+    } else {
+        match heads(a, &reg)?.as_slice() {
+            [h] => h.clone(),
+            _ => bail!("bench takes one --model"),
+        }
+    };
+    let sources: Vec<Source> =
+        a.rest.iter().map(|s| Source::parse(s).context("empty source")).collect::<Result<_>>()?;
+    if sources.is_empty() {
+        bail!("bench needs at least one image");
+    }
+    let keys = [head.clone()];
+    let interactive = inf.lane(Priority::Interactive, Policy::Keep);
+    let mut errors = 0usize;
+    let mut answers: Vec<String> = Vec::new();
+    let mut one = |src: &Source, record: bool, answers: &mut Vec<String>| -> Option<(f64, Timing)> {
+        let t0 = Instant::now();
+        let mut h = interactive.submit(ImageInput::Source(src.clone()), &keys, None);
+        let (results, failed) = collect(&mut h);
+        let wall = t0.elapsed().as_secs_f64() * 1000.0;
+        match (failed, results.into_iter().next()) {
+            (None, Some((_, Ok(HeadOutput::Classify(c)), timing))) => {
+                if record {
+                    answers.push(c.committed().map_or(UNSURE, |i| c.labels.name(i)).to_string());
+                }
+                Some((wall, timing))
+            }
+            _ => {
+                errors += 1;
+                None
+            }
+        }
+    };
+    let mut scratch = Vec::new();
+    for i in 0..a.warmup {
+        one(&sources[i % sources.len()], false, &mut scratch);
+    }
+    let mut stages: [Vec<f64>; 6] = Default::default();
+    for round in 0..a.rounds {
+        for src in &sources {
+            if let Some((wall, t)) = one(src, round == 0, &mut answers) {
+                for (v, x) in stages.iter_mut().zip([t.decode_ms, t.preprocess_ms, t.queue_ms, t.run_ms, t.post_ms, wall]) {
+                    v.push(x);
+                }
+            }
+        }
+    }
+    let bulk = inf.lane(Priority::Bulk, Policy::Keep);
+    let t0 = Instant::now();
+    let mut handles: Vec<RequestHandle> = (0..a.rounds)
+        .flat_map(|_| sources.iter())
+        .map(|src| bulk.submit(ImageInput::Source(src.clone()), &keys, None))
+        .collect();
+    let mut streamed = 0usize;
+    for h in &mut handles {
+        match collect(h) {
+            (r, None) if r.iter().all(|x| x.1.is_ok()) => streamed += 1,
+            _ => errors += 1,
+        }
+    }
+    let stream_s = t0.elapsed().as_secs_f64();
+    let graph = reg.head(&head).expect("resolved head").manifest().id.clone();
+    let load = loaded.lock().expect("loaded lock").iter().find(|(g, _)| *g == graph).map(|(_, l)| l.clone());
+    let [decode, preprocess, queue, run, post, e2e] = stages;
+    let report = serde_json::json!({
+        "head": head.as_str(),
+        "graph": graph.as_str(),
+        "providers": load.as_ref().map(|l| l.placement.to_string()),
+        "skipped": load.as_ref().map(|l| l.placement.skipped.iter().map(|(k, w)| format!("{}: {w}", k.name())).collect::<Vec<_>>()),
+        "runtime": load.as_ref().map(|l| l.runtime.clone()),
+        "load_ms": load.as_ref().map(|l| l.ms),
+        "images": sources.len(),
+        "warmup": a.warmup,
+        "rounds": a.rounds,
+        "errors": errors,
+        "latency_ms": {"read_decode": spread(decode), "preprocess": spread(preprocess), "queue": spread(queue),
+                       "run": spread(run), "readout": spread(post), "end_to_end": spread(e2e)},
+        "stream": {"images": streamed, "wall_s": (stream_s * 1000.0).round() / 1000.0, "fps": streamed as f64 / stream_s},
+        "answers": answers,
+    });
+    println!("{}", serde_json::to_string_pretty(&report)?);
+    end(&inf);
+    Ok(if errors > 0 { 2 } else { 0 })
 }
 
 /// Release every session before the process exits (see `Inference::shutdown`); if a load is still running, leave
@@ -478,6 +599,7 @@ fn main() -> ExitCode {
     };
     let r = match args.mode.as_str() {
         "classify" => run_classify(&args),
+        "bench" => run_bench(&args),
         "models" => run_models(&args),
         "preprocess" => run_preprocess(&args),
         _ => {
