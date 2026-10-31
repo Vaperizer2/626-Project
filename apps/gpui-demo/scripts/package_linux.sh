@@ -10,8 +10,9 @@
 # Needs on the build machine: rustup/cargo, cargo-zigbuild (`cargo install cargo-zigbuild`), zig (on PATH, or
 # `python -m ziglang` from `uv pip install ziglang==0.14.1` with CARGO_ZIGBUILD_PYTHON_PATH=<that python>),
 # cmake + nasm (libjpeg-turbo), python3, binutils (readelf/objdump/strip), tar, gzip, split, sha256sum.
-# Inputs: exports/final, exports/itri626/{A_scratch_cnn,B_convnext_tiny}, apps/gpui-demo/demo_stack and an
-# onnxruntime 1.31 library (ORT_LIB, default apps/gpui-demo/target/release/libonnxruntime.so.1.31.0).
+# Inputs: exports/{final,fast}, exports/itri626/{A_scratch_cnn,B_convnext_tiny}, apps/gpui-demo/demo_stack and a
+# CPU onnxruntime 1.31 library (ORT_LIB, default apps/gpui-demo/target/release/libonnxruntime.so.1.31.0). The GPU
+# runtime is not bundled (several GB); run.sh finds an installed one (packaging/gpu-env.sh).
 #
 # Usage: apps/gpui-demo/scripts/package_linux.sh [--skip-build] [--no-archive]
 # Env:   GLIBC=2.28  PART_MIB=1900  CARGO_BUILD_JOBS=4  CARGO_TARGET_DIR=dist/.build-target  ORT_LIB=...  DIST=<repo>/dist
@@ -66,7 +67,7 @@ done
 [ -f "$ORT_LIB" ] || die "onnxruntime library not found: $ORT_LIB (set ORT_LIB)"
 for f in "$REPO/exports/final/model.onnx.data" "$REPO/exports/final/model_multi.onnx" \
     "$REPO/exports/itri626/A_scratch_cnn/model.onnx" "$REPO/exports/itri626/B_convnext_tiny/model.onnx" \
-    "$APP/demo_stack/demo_stack.json"; do
+    "$REPO/exports/fast/model.onnx" "$REPO/exports/fast/model.onnx.data" "$APP/demo_stack/demo_stack.json"; do
     [ -f "$f" ] || die "missing input $f"
 done
 
@@ -87,8 +88,15 @@ for m in A_scratch_cnn B_convnext_tiny; do
     mkdir -p "$OUT/exports/itri626/$m"
     for f in model.onnx model.json preprocess.json labels.json; do cp "$REPO/exports/itri626/$m/$f" "$OUT/exports/itri626/$m/"; done
 done
+# the fast model (440 MB): its TensorRT engine is built on the user's GPU on first use; without TensorRT the app
+# starts on Deployed and fast still runs on CUDA
+mkdir -p "$OUT/exports/fast"
+for f in model.onnx model.onnx.data model.json preprocess.json runtime.json labels.json; do
+    cp --reflink=auto "$REPO/exports/fast/$f" "$OUT/exports/fast/"
+done
 cp -r "$APP/demo_stack" "$OUT/demo_stack"
 cp "$APP/packaging/run.sh" "$OUT/run.sh" && cp "$APP/packaging/run-nixos.sh" "$OUT/run-nixos.sh" && chmod 755 "$OUT/run.sh" "$OUT/run-nixos.sh" "$OUT/gpui-demo"
+cp "$APP/packaging/gpu-env.sh" "$OUT/gpu-env.sh"
 cp "$APP/packaging/README.txt" "$OUT/README.txt"
 
 # ---------------------------------------------------------------------------------------------- 4. licences

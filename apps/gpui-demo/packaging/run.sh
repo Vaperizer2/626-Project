@@ -11,9 +11,17 @@ HERE=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 BIN="$HERE/gpui-demo"
 
 # Explicit paths (an environment variable already set by the caller wins).
-export ORT_DYLIB_PATH="${ORT_DYLIB_PATH:-$HERE/libonnxruntime.so.1.31.0}"
 export COMPCLASS_MODELS="${COMPCLASS_MODELS:-$HERE/exports}"
 export COMPCLASS_DEMO_DIR="${COMPCLASS_DEMO_DIR:-$HERE/demo_stack}"
+
+# onnxruntime: an installed onnxruntime-gpu (CUDA, and TensorRT for the fast model) when there is one, else the
+# bundled CPU library. gpu-env.sh says which in one line.
+ORT_CPU="$HERE/libonnxruntime.so.1.31.0"
+. "$HERE/gpu-env.sh"
+if [ -n "$GPU_LIBPATH" ]; then
+    export LD_LIBRARY_PATH="$GPU_LIBPATH${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+fi
+echo "run.sh: onnxruntime on $GPU_STATE" >&2
 
 if [ "$(uname -m)" != "x86_64" ]; then
     echo "run.sh: this bundle is built for x86_64 Linux; this machine is $(uname -m)." >&2

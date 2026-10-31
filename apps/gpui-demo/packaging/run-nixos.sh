@@ -106,7 +106,12 @@ fi
 LIBPATH="$LIBPATH:$HERE"
 
 # ---------------------------------------------------------------- environment for the app
-export ORT_DYLIB_PATH="${ORT_DYLIB_PATH:-$HERE/libonnxruntime.so.1.31.0}"
+# onnxruntime: an installed onnxruntime-gpu (pip CUDA/cuDNN/TensorRT libraries beside it) when there is one, else the
+# bundled CPU library; the NVIDIA driver's libcuda comes from /run/opengl-driver/lib above.
+ORT_CPU="$HERE/libonnxruntime.so.1.31.0"
+. "$HERE/gpu-env.sh"
+[ -z "$GPU_LIBPATH" ] || LIBPATH="$GPU_LIBPATH:$LIBPATH"
+say "onnxruntime on $GPU_STATE"
 export COMPCLASS_MODELS="${COMPCLASS_MODELS:-$HERE/exports}"
 export COMPCLASS_DEMO_DIR="${COMPCLASS_DEMO_DIR:-$HERE/demo_stack}"
 # Cursor themes on NixOS live in the profiles, not /usr/share/icons.
@@ -144,7 +149,9 @@ if [ "$DOCTOR" = 1 ]; then
     echo "loader        $LOADER"
     echo "library path  $LIBPATH" | tr ':' '\n' | sed '2,$s/^/              /'
     echo "WAYLAND       ${WAYLAND_DISPLAY:-<unset>}   DISPLAY ${DISPLAY:-<unset>}   XDG_RUNTIME_DIR ${XDG_RUNTIME_DIR:-<unset>}"
-    for l in libwayland-client.so.0 libxkbcommon.so.0 libxcb.so.1 libEGL.so.1 libvulkan.so.1 libstdc++.so.6; do
+    echo "onnxruntime   $ORT_DYLIB_PATH ($GPU_STATE)"
+    for l in libwayland-client.so.0 libxkbcommon.so.0 libxcb.so.1 libEGL.so.1 libvulkan.so.1 libstdc++.so.6 \
+        libcudart.so.13 libcudnn.so.9 libnvinfer.so.10 libcuda.so.1; do
         f=""; IFS=: read -ra D <<< "$LIBPATH"; for d in "${D[@]}"; do [ -e "$d/$l" ] && { f="$d/$l"; break; }; done
         printf '  %-24s %s\n' "$l" "${f:-NOT FOUND}"
     done
