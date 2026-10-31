@@ -21,6 +21,7 @@ ROWS = {
     "compose_int8_res308": ("tokens + int8", "INT8 recipe on res308, calibrated on the 308 px graph"),
     "compose_int8_tome308": ("tokens + int8", "INT8 recipe on the 308 px ToMe graph, calibrated on it"),
     "compose_int8_tome308_noopt": ("tokens + int8", "compose_int8_tome308 with ORT graph optimizations off"),
+    "compose_int8_tome308_to128b23": ("tokens + int8", "noopt ToMe INT8 plus a 256->128 merge after block 23"),
 }
 
 
