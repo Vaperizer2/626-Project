@@ -256,7 +256,7 @@ def git_state() -> dict:
         return subprocess.run(["git", "-C", str(REPO), *a], capture_output=True, text=True).stdout.strip()
 
     return {"git_sha": git("rev-parse", "HEAD"),
-            "git_dirty": bool(git("status", "--porcelain", "--", "tools/speed", "src/compclass"))}
+            "git_dirty": bool(git("status", "--porcelain", "--", "tools/speed", "src/compclass", ":!*.md"))}
 
 
 def append_result(rec: dict) -> dict:
