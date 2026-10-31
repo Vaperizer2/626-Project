@@ -2272,7 +2272,6 @@ dependencies = [
  "gpui-kit",
  "hotpath",
  "image",
- "ndarray",
  "ort",
  "rayon",
  "serde",

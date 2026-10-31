@@ -38,7 +38,7 @@ use anyhow::{Context, Result, bail};
 
 use crate::contract::Contract;
 use crate::fetch::Source;
-use crate::model::{Classifier, ModelOptions, resolve_model_dir};
+use crate::model::ModelOptions;
 use crate::models::{ModelKey, Models};
 
 const HELP: &str = "\
@@ -61,7 +61,7 @@ OPTIONS:
     --threads N       onnxruntime intra-op threads (default: onnxruntime's choice)
     --cuda            request the CUDA execution provider (build with --features cuda)
     --json            classify: print a JSON array instead of text lines
-    --model KEYS      classify with these registry models instead of the deployed model.onnx:
+    --model KEYS      classify with these registry models (default: deployed):
                       a, b, c, deployed (comma-separated) or all. See `gpui-demo models`.
     --demo-dir DIR    window: folder with demo_stack.json (default: $COMPCLASS_DEMO_DIR, else the
                       first demo_stack/ found walking up from the current directory, then the executable)
@@ -147,8 +147,7 @@ fn parse_args() -> Result<Args> {
 #[derive(serde::Serialize)]
 struct JsonRow<'a> {
     source: &'a str,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    model: Option<&'a str>,
+    model: &'a str,
     label: Option<&'a str>,
     top3: Vec<(&'a str, f32)>,
     unsure: bool,
@@ -157,77 +156,14 @@ struct JsonRow<'a> {
     error: Option<String>,
 }
 
+/// `classify`: lazy engines, one forward pass per graph and image; the deployed model unless `--model` says otherwise.
 fn run_classify(a: &Args) -> Result<u8> {
     if a.rest.is_empty() {
         bail!("classify needs at least one image path or URL");
     }
-    let mut clf = Classifier::load(&a.opts)?;
-    eprintln!(
-        "[gpui-demo] model {} loaded in {:.0} ms (onnxruntime {}, {}; jpeg decoder: {})",
-        clf.model_dir.join("model.onnx").display(),
-        clf.load_ms,
-        clf.ort_lib.display(),
-        clf.provider,
-        preprocess::JPEG_DECODER
-    );
-    let mut failures = 0u8;
-    let mut rows = Vec::new();
-    let stdout = std::io::stdout();
-    for s in &a.rest {
-        let result = Source::parse(s)
-            .context("empty source")
-            .and_then(|src| prof!("cli::read", src.read()))
-            .and_then(|bytes| prof!("cli::decode", preprocess::decode(&bytes)))
-            .and_then(|img| clf.predict(&img));
-        match result {
-            Ok(p) => {
-                if a.json {
-                    rows.push(serde_json::to_value(JsonRow {
-                        source: s,
-                        model: None,
-                        label: Some(p.label()),
-                        top3: p.top3.iter().map(|(l, v)| (l.as_str(), *v)).collect(),
-                        unsure: p.unsure,
-                        ms: (p.ms * 10.0).round() / 10.0,
-                        probs: p.probs.clone(),
-                        error: None,
-                    })?);
-                } else {
-                    let top: Vec<String> = p.top3.iter().map(|(l, v)| format!("{l} {v:.3}")).collect();
-                    writeln!(
-                        stdout.lock(),
-                        "{s}\t{}\t{:.3}\ttop3: {}\t{:.0} ms",
-                        p.label(),
-                        p.top3[0].1,
-                        top.join(", "),
-                        p.ms
-                    )?;
-                }
-            }
-            Err(e) => {
-                failures = failures.saturating_add(1);
-                if a.json {
-                    rows.push(serde_json::json!({"source": s, "label": null, "top3": [], "unsure": false,
-                                                 "ms": 0.0, "probs": [], "error": format!("{e:#}")}));
-                } else {
-                    writeln!(stdout.lock(), "{s}\tERROR\t{e:#}")?;
-                }
-            }
-        }
-    }
-    if a.json {
-        println!("{}", serde_json::to_string_pretty(&rows)?);
-    }
-    Ok(if failures > 0 { 2 } else { 0 })
-}
-
-/// `classify --model ...`: the registry path (lazy engines; one forward pass per graph and image).
-fn run_classify_models(a: &Args) -> Result<u8> {
-    if a.rest.is_empty() {
-        bail!("classify needs at least one image path or URL");
-    }
+    let keys = if a.models.is_empty() { vec![ModelKey::Deployed] } else { a.models.clone() };
     let mut models = Models::new(&a.opts)?;
-    for &k in &a.models {
+    for &k in &keys {
         match models.ensure(k) {
             Ok(ms) => eprintln!("[gpui-demo] model {} ({}) ready in {ms:.0} ms", k.id(), k.name()),
             Err(e) => eprintln!("[gpui-demo] model {} ({}) unavailable: {e}", k.id(), k.name()),
@@ -245,8 +181,8 @@ fn run_classify_models(a: &Args) -> Result<u8> {
             .and_then(|src| prof!("cli::read (registry)", src.read()))
             .and_then(|b| prof!("cli::decode (registry)", preprocess::decode(&b)));
         let runs = match img {
-            Ok(img) => models.predict(&img, &a.models, &|| false),
-            Err(e) => a.models.iter().map(|&key| models::ModelRun { key, result: Err(format!("{e:#}")) }).collect(),
+            Ok(img) => models.predict(&img, &keys, &|| false),
+            Err(e) => keys.iter().map(|&key| models::ModelRun { key, result: Err(format!("{e:#}")) }).collect(),
         };
         for r in runs {
             match r.result {
@@ -254,7 +190,7 @@ fn run_classify_models(a: &Args) -> Result<u8> {
                     if a.json {
                         rows.push(serde_json::to_value(JsonRow {
                             source: s,
-                            model: Some(r.key.id()),
+                            model: r.key.id(),
                             label: Some(p.label()),
                             top3: p.top3.iter().map(|(l, v)| (l.as_str(), *v)).collect(),
                             unsure: p.unsure,
@@ -306,11 +242,12 @@ fn run_models(a: &Args) -> Result<u8> {
 
 fn run_preprocess(a: &Args) -> Result<u8> {
     let [img, out] = a.rest.as_slice() else { bail!("usage: gpui-demo preprocess IMAGE OUT.f32 [--model KEY]") };
-    let dir = match a.models.as_slice() {
-        [] => resolve_model_dir(a.opts.model_dir.as_deref())?,
-        [k] => Models::new(&a.opts)?.spec(*k).map_err(|e| anyhow::anyhow!("{e}"))?.contract_dir.clone(),
+    let key = match a.models.as_slice() {
+        [] => ModelKey::Deployed,
+        [k] => *k,
         _ => bail!("preprocess takes one --model"),
     };
+    let dir = Models::new(&a.opts)?.spec(key).map_err(|e| anyhow::anyhow!("{e}"))?.contract_dir.clone();
     let c = Contract::load(&dir)?;
     let t0 = Instant::now();
     let bytes = Source::parse(img).context("empty source")?.read()?;
@@ -346,7 +283,6 @@ fn main() -> ExitCode {
         }
     };
     let r = match args.mode.as_str() {
-        "classify" if !args.models.is_empty() => run_classify_models(&args),
         "classify" => run_classify(&args),
         "models" => run_models(&args),
         "preprocess" => run_preprocess(&args),
