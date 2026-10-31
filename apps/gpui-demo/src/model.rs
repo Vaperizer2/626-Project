@@ -1,15 +1,12 @@
-//! Model directory / onnxruntime library discovery and the ONNX classifier.
+//! Model directory / onnxruntime library discovery and one ONNX session per graph (`Engine`).
 
 use std::path::{Path, PathBuf};
-use std::time::Instant;
 
 use anyhow::{Context, Result, anyhow, bail};
-use image::RgbImage;
 use ort::session::{Session, builder::GraphOptimizationLevel};
 use ort::value::TensorRef;
 
-use crate::contract::{Contract, Prediction, decide};
-use crate::preprocess::to_tensor;
+use crate::contract::Contract;
 
 /// Options shared by the GUI and the headless CLI.
 #[derive(Debug, Clone, Default)]
@@ -177,66 +174,6 @@ impl Runtime {
         builder
             .commit_from_file(onnx)
             .map_err(|e| anyhow!("loading {}: {e} (are its external weights next to it and complete?)", onnx.display()))
-    }
-}
-
-/// The ONNX model plus its contract. `Session::run` needs `&mut self`, so share it behind a Mutex.
-pub struct Classifier {
-    session: Session,
-    pub contract: Contract,
-    pub model_dir: PathBuf,
-    pub ort_lib: PathBuf,
-    pub provider: String,
-    pub load_ms: f64,
-    _runtime: Runtime,
-}
-
-impl Classifier {
-    /// The deployed model (`<model dir>/model.onnx`, output `probs`): the default of `classify`/`preprocess`.
-    pub fn load(opts: &ModelOptions) -> Result<Self> {
-        let t0 = Instant::now();
-        let model_dir = resolve_model_dir(opts.model_dir.as_deref())?;
-        let contract = Contract::load(&model_dir)?;
-        let runtime = Runtime::init(opts, Some(&model_dir))?;
-        let onnx = model_dir.join("model.onnx");
-        let session = runtime.session(&onnx)?;
-        let input_ok = session.inputs().iter().any(|i| i.name() == "input");
-        let output_ok = session.outputs().iter().any(|o| o.name() == "probs");
-        if !input_ok || !output_ok {
-            bail!("{} does not have input 'input' and output 'probs'", onnx.display());
-        }
-        Ok(Self {
-            session,
-            contract,
-            model_dir,
-            ort_lib: runtime.ort_lib.clone(),
-            provider: runtime.provider.clone(),
-            load_ms: t0.elapsed().as_secs_f64() * 1000.0,
-            _runtime: runtime,
-        })
-    }
-
-    pub fn threshold(&self) -> f32 {
-        self.contract.pre.abstain_threshold
-    }
-
-    /// Run the model on one preprocessed tensor; returns the 20 calibrated probabilities.
-    pub fn probs_from_tensor(&mut self, tensor: &[f32]) -> Result<Vec<f32>> {
-        let s = self.contract.pre.input_size as usize;
-        let input = TensorRef::from_array_view(([1usize, 3, s, s], tensor)).map_err(|e| anyhow!("{e}"))?;
-        let outputs = self.session.run(ort::inputs!["input" => input]).map_err(|e| anyhow!("inference: {e}"))?;
-        let probs = outputs.get("probs").context("model returned no 'probs' output")?;
-        let (_, data) = probs.try_extract_tensor::<f32>().map_err(|e| anyhow!("{e}"))?;
-        Ok(data.to_vec())
-    }
-
-    /// Preprocess + infer + decision rule. `ms` covers preprocessing and inference, like the Python demo.
-    pub fn predict(&mut self, img: &RgbImage) -> Result<Prediction> {
-        let t0 = Instant::now();
-        let tensor = prof!("preprocess::to_tensor", to_tensor(img, &self.contract.pre))?;
-        let probs = prof!("onnx::run", self.probs_from_tensor(&tensor))?;
-        let ms = t0.elapsed().as_secs_f64() * 1000.0;
-        Ok(decide(&probs, &self.contract.labels, self.threshold(), ms))
     }
 }
 

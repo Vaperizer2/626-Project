@@ -34,8 +34,7 @@ hotpath-alloc = ["hotpath", "hotpath/hotpath-alloc"]
 gpui-kit = "=0.7.3"
 # onnxruntime bindings; load-dynamic = dlopen libonnxruntime.so at runtime (no build-time download);
 # api-22 = require only the ORT 1.22 C API so any onnxruntime >= 1.22 works.
-ort = { version = "=2.0.0-rc.14", default-features = false, features = ["std", "ndarray", "load-dynamic", "api-22"] }
-ndarray = "0.17"
+ort = { version = "=2.0.0-rc.14", default-features = false, features = ["std", "load-dynamic", "api-22"] }
 image = { version = "0.25.10", default-features = false, features = ["jpeg", "png", "webp", "gif", "bmp", "tiff", "rayon"] }
 rayon = "1"
 futures = "0.3"
