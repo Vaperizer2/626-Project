@@ -123,7 +123,8 @@ def smooth(src: Path, stats_path: Path, dst: Path, alpha: float) -> None:
 def smoothed_stats(stats, divided: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
     """The smoothed graph's activation statistics, derived exactly from the source graph's: every smoothed
     activation is the source one divided per channel by s. Only ``top[:, 0]`` (the per-image max) survives the
-    division, so the result supports the ``max`` calibrator alone; deeper ranks are NaN and percentiles refuse."""
+    division, so smoothed activations support the ``max`` calibrator alone (deeper ranks are NaN and percentiles
+    refuse); unsmoothed ones (fc2 inputs, the attention pool) keep their full statistics."""
     out = {"acts": stats["acts"]}
     for x in stats["acts"]:
         c, t = stats[f"cmax/{x}"], stats[f"top/{x}"]
