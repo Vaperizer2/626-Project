@@ -2,10 +2,8 @@
 
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
 
 use futures::StreamExt;
-use futures::channel::mpsc as fmpsc;
 use gpui_kit::component::{
     ActiveTheme as _, Icon, IconName, Sizable as _, WindowExt as _,
     alert::Alert,
@@ -24,12 +22,12 @@ use gpui_kit::{
 };
 
 use super::widgets::Lucide;
-use super::worker::{Cmd, Job, JobInput, ModelState, Update};
-use super::{DemoApp, FocusUrl, Open, Paste, theme, widgets};
+use super::images::{DISPLAY_MAX_SIDE, render};
+use super::{DemoApp, FocusUrl, ModelState, Open, Paste, theme, widgets};
 use crate::classification::{Classification, HeadOutput};
 use crate::fetch::Source;
+use crate::inference::{Finish, ImageInput, RequestHandle, Ticket, Timing, Update};
 use crate::manifest::HeadId;
-use crate::models::Timing;
 
 const MAX_ENTRIES: usize = 40;
 
@@ -48,6 +46,8 @@ pub struct Entry {
     image: Option<Arc<RenderImage>>,
     dims: Option<(u32, u32)>,
     state: EntryState,
+    /// dropping the entry (evicted from the list) cancels its request
+    _ticket: Ticket,
 }
 
 pub struct ClassifyState {
@@ -74,33 +74,38 @@ impl ClassifyState {
     pub fn busy(&self) -> bool {
         self.entries.iter().any(|e| matches!(e.state, EntryState::Working))
     }
+
+    /// The newest entry has an answer, its wall time and its display picture.
+    #[cfg(test)]
+    pub fn done(&self) -> bool {
+        self.entries.first().is_some_and(|e| matches!(e.state, EntryState::Done(_, _, ms) if ms > 0.0) && e.image.is_some())
+    }
 }
 
 impl DemoApp {
     pub(super) fn submit_source(&mut self, src: Source, cx: &mut Context<Self>) {
         let (name, full) = (src.display_name(), src.full());
-        self.submit(JobInput::Source(src), name, full, cx);
+        self.submit(ImageInput::Source(src), name, full, cx);
     }
 
-    fn submit(&mut self, input: JobInput, name: String, full: String, cx: &mut Context<Self>) {
+    fn submit(&mut self, input: ImageInput, name: String, full: String, cx: &mut Context<Self>) {
+        let Some(model) = self.model.clone() else { return };
+        let RequestHandle { updates: mut rx, ticket } =
+            self.interactive.submit(input, std::slice::from_ref(&model), Some(DISPLAY_MAX_SIDE));
         let c = &mut self.classify;
         let id = c.next_id;
         c.next_id += 1;
-        let (tx, mut rx) = fmpsc::unbounded();
-        let Some(model) = self.model.clone() else { return };
-        let job = Job {
-            input,
-            models: vec![model.clone()],
-            display: true,
-            cancel: Arc::new(AtomicBool::new(false)),
-            updates: tx,
+        let entry = Entry {
+            id,
+            name: name.into(),
+            full: full.into(),
+            model,
+            image: None,
+            dims: None,
+            state: EntryState::Working,
+            _ticket: ticket,
         };
-        let state = if self.jobs.send(Cmd::Job(job)).is_ok() {
-            EntryState::Working
-        } else {
-            EntryState::Failed("inference thread is not running".into())
-        };
-        c.entries.insert(0, Entry { id, name: name.into(), full: full.into(), model, image: None, dims: None, state });
+        c.entries.insert(0, entry);
         while c.entries.len() > MAX_ENTRIES {
             if let Some(e) = c.entries.pop() {
                 self.to_drop.extend(e.image);
@@ -114,19 +119,22 @@ impl DemoApp {
                     .update(cx, |this, cx| {
                         if let Some(e) = this.classify.entries.iter_mut().find(|e| e.id == id) {
                             match update {
-                                Update::Image(img, dims) => {
-                                    e.image = Some(img);
-                                    e.dims = Some(dims);
+                                Update::Decoded { size, display } => {
+                                    e.image = display.map(render);
+                                    e.dims = Some(size);
                                 }
-                                Update::Result(_, Ok((HeadOutput::Classify(c), timing))) => {
+                                Update::Head { result: Ok(HeadOutput::Classify(c)), timing, .. } => {
                                     e.state = EntryState::Done(c, timing, 0.0)
                                 }
-                                Update::Result(_, Err(msg)) | Update::Failed(msg) => e.state = EntryState::Failed(msg),
-                                Update::Done(total) => {
+                                Update::Head { result: Err(err), .. } | Update::Done(Finish::Failed(err)) => {
+                                    e.state = EntryState::Failed(err.to_string())
+                                }
+                                Update::Done(Finish::Complete { wall_ms }) => {
                                     if let EntryState::Done(_, _, t) = &mut e.state {
-                                        *t = total;
+                                        *t = wall_ms;
                                     }
                                 }
+                                Update::Done(Finish::Cancelled | Finish::Superseded) => {}
                             }
                         }
                         cx.notify();
@@ -192,7 +200,7 @@ impl DemoApp {
         for entry in item.entries() {
             match entry {
                 ClipboardEntry::Image(image) => {
-                    self.submit(JobInput::Bytes(image.bytes.clone()), "pasted image".into(), "clipboard".into(), cx);
+                    self.submit(ImageInput::Bytes(image.bytes.clone()), "pasted image".into(), "clipboard".into(), cx);
                     return;
                 }
                 ClipboardEntry::ExternalPaths(paths) => {
@@ -490,7 +498,7 @@ impl DemoApp {
         let entry = entry_ix.map(|i| &self.classify.entries[i]);
         let mut panel = v_flex().gap_5().p_5();
         if let Some(m) = &self.model
-            && let Some(ModelState::Failed(msg)) = self.state(m)
+            && let ModelState::Failed(msg) = self.state(m)
         {
             panel = panel.child(
                 Alert::error("model-failed", SharedString::from(msg.clone()))
@@ -523,7 +531,7 @@ impl DemoApp {
         match &e.state {
             EntryState::Working => {
                 panel.child(h_flex().gap_2().items_center().child(Spinner::new().color(t.primary)).child(
-                    div().text_lg().child(if matches!(self.state(&e.model), Some(ModelState::Loading(_))) {
+                    div().text_lg().child(if matches!(self.state(&e.model), ModelState::Loading { .. }) {
                         format!("Loading {}…", self.short(&e.model))
                     } else {
                         "Classifying…".to_string()

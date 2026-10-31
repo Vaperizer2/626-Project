@@ -156,6 +156,11 @@ impl Registry {
         Ok(reg)
     }
 
+    /// No models, and why (the index could not be read).
+    pub fn empty(reason: String) -> Self {
+        Self { index: PathBuf::new(), graphs: vec![], heads: vec![], default: vec![], problems: vec![reason] }
+    }
+
     pub fn index_path(&self) -> &Path {
         &self.index
     }

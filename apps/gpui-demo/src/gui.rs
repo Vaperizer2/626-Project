@@ -4,22 +4,23 @@
 //! model picker) · the active tab · Kit `StatusBar` (model / onnxruntime state, shortcuts as `Kbd`).
 //!
 //! One view (`DemoApp`) owns all state; each tab's state and rendering lives in its own module
-//! (`classify`, `demo_tab`, `bench`). Inference, model loading, image reading and decoding all run on
-//! background threads (`worker`); results come back over channels that GPUI tasks await.
+//! (`classify`, `demo_tab`, `bench`). Inference, model loading, image reading and decoding all run in the
+//! inference service (`crate::inference`); results come back over channels that GPUI tasks await.
 
 mod bench;
 mod classify;
 mod demo_tab;
 mod theme;
+mod images;
 mod widgets;
-mod worker;
 
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::{Arc, mpsc};
-use std::time::Duration;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use futures::StreamExt;
+use futures::channel::mpsc as fmpsc;
 use gpui_kit::component::{
     ActiveTheme as _, Icon, IconName, Sizable as _, Theme, ThemeMode, TitleBar,
     alert::Alert,
@@ -34,11 +35,11 @@ use gpui_kit::{
     WindowOptions, actions, div, prelude::*, px, size,
 };
 
-use crate::manifest::{HeadId, Task};
-use crate::runtime::ModelOptions;
+use crate::inference::{GraphState, Inference, Lane, LoadStage, Loaded, Policy, Priority, ServiceEvent};
+use crate::manifest::{GraphId, HeadId, Task};
 use crate::registry::{Head, Registry};
+use crate::runtime::{ModelOptions, OrtLoader};
 use widgets::Lucide;
-use worker::{Cmd, Event, ModelState};
 
 actions!(
     gpui_demo,
@@ -88,17 +89,39 @@ impl TabKind {
     }
 }
 
+/// What the UI shows for one head: its graph's state, or why it cannot be used at all.
+#[derive(Clone, Debug)]
+pub enum ModelState {
+    Unavailable(String),
+    Idle,
+    Loading { since: Instant, stage: LoadStage },
+    Ready(Loaded),
+    Failed(String),
+}
+
+impl ModelState {
+    pub fn usable(&self) -> bool {
+        !matches!(self, ModelState::Unavailable(_) | ModelState::Failed(_))
+    }
+}
+
 pub struct DemoApp {
     focus: FocusHandle,
     tab: TabKind,
-    jobs: mpsc::Sender<Cmd>,
-    registry: Option<Arc<Registry>>,
-    /// selected head for Classify and Demo (none only when no model index was found)
+    inference: Inference,
+    /// Classify submissions and single Demo classifications
+    interactive: Lane,
+    /// Demo "Run all" and the benchmark
+    bulk: Lane,
+    /// selected head for Classify and Demo (none only when no model is available)
     model: Option<HeadId>,
-    states: HashMap<HeadId, ModelState>,
-    /// the model index could not be read at all
+    /// the user picked a model, so the start-up default no longer applies
+    model_chosen: bool,
+    graphs: HashMap<GraphId, GraphState>,
+    /// the preferred default heads passed over at start-up, and why
+    passed_over: Vec<(HeadId, String)>,
+    /// why there is no model at all (the index could not be read, or none of its manifests parsed)
     registry_error: Option<String>,
-    runtime: Option<(String, String)>,
     classify: classify::ClassifyState,
     demo: demo_tab::DemoState,
     bench: bench::BenchState,
@@ -109,31 +132,12 @@ pub struct DemoApp {
 
 impl DemoApp {
     pub fn new(
-        opts: ModelOptions,
+        (inference, mut events): (Inference, fmpsc::UnboundedReceiver<ServiceEvent>),
         demo_dir: Option<PathBuf>,
         initial: Vec<String>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
-        let (registry, registry_error) =
-            match Registry::locate(opts.models.as_deref()).and_then(|i| Registry::load(&i)) {
-                Ok(r) => (Some(Arc::new(r)), None),
-                Err(e) => {
-                    eprintln!("[gpui-demo] {e}");
-                    (None, Some(e.to_string()))
-                }
-            };
-        let mut states = HashMap::new();
-        for h in registry.iter().flat_map(|r| r.heads()) {
-            let st = match h.available() {
-                Ok(()) => ModelState::Idle,
-                Err(e) => ModelState::Unavailable(e.to_string()),
-            };
-            states.insert(h.id().clone(), st);
-        }
-        let model = registry.as_ref().and_then(|r| r.first_default());
-        let (jobs, mut events) = worker::spawn(opts, registry.clone());
-        // Load-state events from the inference thread.
         cx.spawn(async move |this, cx| {
             while let Some(ev) = events.next().await {
                 if this.update(cx, |this, cx| this.on_event(ev, cx)).is_err() {
@@ -154,25 +158,27 @@ impl DemoApp {
         })
         .detach();
         let (classify, subs) = classify::ClassifyState::new(window, cx);
+        // until the start-up probe picks the default, the fallback (the last default) is selected; nothing loads yet
+        let reg = inference.registry();
+        let model = reg.default_order().last().cloned().or_else(|| reg.first_default());
+        let registry_error = (reg.heads().next().is_none()).then(|| reg.problems().join("\n"));
         let mut this = Self {
             focus: cx.focus_handle(),
             tab: TabKind::Classify,
-            jobs,
-            registry,
+            interactive: inference.lane(Priority::Interactive, Policy::Keep),
+            bulk: inference.lane(Priority::Bulk, Policy::Keep),
+            inference,
             model,
-            states,
+            model_chosen: false,
+            graphs: HashMap::new(),
+            passed_over: Vec::new(),
             registry_error,
-            runtime: None,
             classify,
             demo: demo_tab::DemoState::default(),
             bench: bench::BenchState::default(),
             to_drop: Vec::new(),
             _subscriptions: subs,
         };
-        // Warm up the default model while the window appears.
-        if let Some(m) = this.model.clone() {
-            let _ = this.jobs.send(Cmd::Preload(m));
-        }
         this.demo_init(demo_dir, cx);
         for s in initial {
             if let Some(src) = crate::fetch::Source::parse(&s) {
@@ -182,38 +188,57 @@ impl DemoApp {
         this
     }
 
+    fn registry(&self) -> &Arc<Registry> {
+        self.inference.registry()
+    }
+
     fn is_busy(&self) -> bool {
-        self.states.values().any(|s| matches!(s, ModelState::Loading(_)))
+        self.graphs.values().any(|s| matches!(s, GraphState::Loading { .. }))
             || self.classify.busy()
             || self.demo.running()
             || self.bench.running()
     }
 
-    fn on_event(&mut self, ev: Event, cx: &mut Context<Self>) {
+    fn on_event(&mut self, ev: ServiceEvent, cx: &mut Context<Self>) {
         match ev {
-            Event::Model(k, st) => {
-                self.states.insert(k, st);
+            ServiceEvent::Graph(g, st) => {
+                self.graphs.insert(g, st);
             }
-            Event::Runtime(lib, provider) => self.runtime = Some((lib, provider)),
+            ServiceEvent::Default { head, passed_over } => {
+                if !self.model_chosen {
+                    self.inference.preload(&head);
+                    self.model = Some(head);
+                }
+                self.passed_over = passed_over;
+            }
         }
         cx.notify();
     }
 
-    fn state(&self, k: &HeadId) -> Option<&ModelState> {
-        self.states.get(k)
+    fn state(&self, k: &HeadId) -> ModelState {
+        let Some(h) = self.head(k) else { return ModelState::Unavailable("unknown model".into()) };
+        if let Err(e) = h.available() {
+            return ModelState::Unavailable(e.to_string());
+        }
+        match self.graphs.get(&h.manifest().id) {
+            None => ModelState::Idle,
+            Some(GraphState::Loading { since, stage }) => ModelState::Loading { since: *since, stage: *stage },
+            Some(GraphState::Ready(l)) => ModelState::Ready(l.clone()),
+            Some(GraphState::Failed(e)) => ModelState::Failed(e.clone()),
+        }
     }
 
     fn model_usable(&self, k: &HeadId) -> bool {
-        self.state(k).is_none_or(ModelState::usable)
+        self.state(k).usable()
     }
 
     /// Every head in UI order (manifest order, then head order).
     fn head_ids(&self) -> Vec<HeadId> {
-        self.registry.as_ref().map(|r| r.ids()).unwrap_or_default()
+        self.registry().ids()
     }
 
     fn head(&self, id: &HeadId) -> Option<Head<'_>> {
-        self.registry.as_ref().and_then(|r| r.head(id))
+        self.registry().head(id)
     }
 
     fn title(&self, id: &HeadId) -> String {
@@ -225,9 +250,10 @@ impl DemoApp {
     }
 
     fn select_model(&mut self, k: HeadId, window: &mut Window, cx: &mut Context<Self>) {
-        if !self.model_usable(&k) {
-            let why = match self.state(&k) {
-                Some(ModelState::Unavailable(e)) | Some(ModelState::Failed(e)) => e.clone(),
+        let state = self.state(&k);
+        if !state.usable() {
+            let why = match state {
+                ModelState::Unavailable(e) | ModelState::Failed(e) => e,
                 _ => String::new(),
             };
             use gpui_kit::component::WindowExt as _;
@@ -240,10 +266,11 @@ impl DemoApp {
             );
             return;
         }
-        if !matches!(self.state(&k), Some(ModelState::Ready { .. }) | Some(ModelState::Loading(_))) {
-            let _ = self.jobs.send(Cmd::Preload(k.clone()));
+        if matches!(state, ModelState::Idle) {
+            self.inference.preload(&k);
         }
         self.model = Some(k);
+        self.model_chosen = true;
         cx.notify();
     }
 
@@ -320,15 +347,18 @@ impl DemoApp {
                 let usable = self.model_usable(&k);
                 let name = self.title(&k);
                 let tip = match self.state(&k) {
-                    Some(ModelState::Unavailable(e)) => format!("{name} — unavailable: {e}"),
-                    Some(ModelState::Failed(e)) => format!("{name} — failed to load: {e}"),
-                    Some(ModelState::Ready { ms, placement }) => {
+                    ModelState::Unavailable(e) => format!("{name} — unavailable: {e}"),
+                    ModelState::Failed(e) => format!("{name} — failed to load: {e}"),
+                    ModelState::Ready(l) => {
                         let skipped: String =
-                            placement.skipped.iter().map(|(ep, why)| format!("\n{} skipped: {why}", ep.name())).collect();
-                        format!("{name} — on {placement}, loaded in {:.1} s{skipped}", ms / 1000.0)
+                            l.placement.skipped.iter().map(|(ep, why)| format!("\n{} skipped: {why}", ep.name())).collect();
+                        format!("{name} — on {}, loaded in {:.1} s{skipped}", l.placement, l.ms / 1000.0)
                     }
-                    Some(ModelState::Loading(_)) => format!("{name} — loading…"),
-                    _ => format!("{name} — loads on first use (Ctrl+M cycles models)"),
+                    ModelState::Loading { stage: LoadStage::BuildingEngine, .. } => {
+                        format!("{name} — building its TensorRT engine (first run only)")
+                    }
+                    ModelState::Loading { .. } => format!("{name} — loading…"),
+                    ModelState::Idle => format!("{name} — loads on first use (Ctrl+M cycles models)"),
                 };
                 let selected = self.model.as_ref() == Some(&k);
                 Button::new(SharedString::from(format!("model-{k}")))
@@ -368,7 +398,7 @@ impl DemoApp {
                     .when(self.tab != TabKind::Bench, |d| {
                         d.child(div().text_xs().text_color(t.muted_foreground).child("Model"))
                             .child(models)
-                            .child(widgets::model_state_chip(self.model.as_ref().and_then(|m| self.state(m)), cx))
+                            .children(self.model.as_ref().map(|m| widgets::model_state_chip(&self.state(m), cx)))
                     })
                     .when(self.tab == TabKind::Bench, |d| {
                         d.child(div().text_xs().text_color(t.muted_foreground).child("Runs every available model"))
@@ -380,23 +410,27 @@ impl DemoApp {
         let t = cx.theme();
         let mut left = Vec::new();
         if let Some(m) = &self.model {
-            left.push(match self.state(m) {
-                Some(ModelState::Ready { placement, .. }) => {
-                    let skipped: Vec<&str> = placement.skipped.iter().map(|(ep, _)| ep.name()).collect();
-                    let mut s = format!("{} on {placement}", self.short(m));
-                    if !skipped.is_empty() {
-                        s += &format!(" ({} unavailable)", skipped.join(", "));
-                    }
-                    s
+            let short = self.short(m);
+            match self.state(m) {
+                ModelState::Ready(l) => {
+                    let skipped: Vec<&str> = l.placement.skipped.iter().map(|(ep, _)| ep.name()).collect();
+                    left.push(if skipped.is_empty() {
+                        format!("{short} on {}", l.placement)
+                    } else {
+                        format!("{short} on {} ({} unavailable)", l.placement, skipped.join(", "))
+                    });
+                    left.push(l.runtime);
                 }
-                Some(ModelState::Loading(_)) => format!("{} loading…", self.short(m)),
-                _ => format!("{} not loaded yet", self.short(m)),
-            });
+                ModelState::Loading { since, stage: LoadStage::BuildingEngine } => left.push(format!(
+                    "{short}: building the TensorRT engine, first run only ({:.0} s)",
+                    since.elapsed().as_secs_f64()
+                )),
+                ModelState::Loading { .. } => left.push(format!("{short} loading…")),
+                ModelState::Idle => left.push(format!("{short} loads on first use")),
+                ModelState::Failed(_) => left.push(format!("{short} failed to load")),
+                ModelState::Unavailable(_) => left.push(format!("{short} unavailable")),
+            }
         }
-        left.push(match &self.runtime {
-            Some((_, version)) => format!("onnxruntime {version}"),
-            None => "onnxruntime not loaded yet".to_string(),
-        });
         left.push(format!("jpeg: {}", crate::preprocess::JPEG_DECODER));
         let left = left.join(" · ");
         let hints: Vec<gpui_kit::AnyElement> = match self.tab {
@@ -448,6 +482,16 @@ impl Render for DemoApp {
                 .pt_3()
                 .child(Alert::error("registry-error", SharedString::from(e)).title("Model index not found").small())
         });
+        let fallback_alert = (!self.passed_over.is_empty()).then(|| {
+            let why: Vec<String> =
+                self.passed_over.iter().map(|(h, why)| format!("{} is not the default here: {why}.", self.title(h))).collect();
+            let using = self.model.as_ref().map(|m| self.title(m)).unwrap_or_default();
+            div().px_4().pt_3().child(
+                Alert::warning("default-fallback", SharedString::from(why.join(" ")))
+                    .title(format!("Using {using}"))
+                    .small(),
+            )
+        });
         div()
             .id("root")
             .track_focus(&self.focus)
@@ -488,6 +532,7 @@ impl Render for DemoApp {
             .child(self.render_title_bar(cx))
             .child(self.render_tab_row(cx))
             .children(registry_alert)
+            .children(fallback_alert)
             .child(div().flex_1().min_h_0().child(body))
             .child(self.render_status_bar(cx))
     }
@@ -549,6 +594,17 @@ pub fn keymap() -> Vec<KeyBinding> {
     ]
 }
 
+/// The model index (an empty one when it cannot be read, with the reason) and the service over it, backed by
+/// onnxruntime. Reading the index is a few small files; nothing is loaded until a model is used.
+fn service(opts: &ModelOptions) -> (Inference, fmpsc::UnboundedReceiver<ServiceEvent>) {
+    let registry = match Registry::locate(opts.models.as_deref()).and_then(|i| Registry::load(&i)) {
+        Ok(r) => r,
+        Err(e) => Registry::empty(e.to_string()),
+    };
+    let exports = registry.index_path().parent().map(PathBuf::from);
+    Inference::spawn(Arc::new(registry), OrtLoader::new(opts, exports.as_deref()))
+}
+
 /// Open the window. `initial` are image paths / URLs to classify straight away.
 pub fn run(opts: ModelOptions, demo_dir: Option<PathBuf>, gui: GuiOptions, initial: Vec<String>) {
     let unset = |v: &str| std::env::var_os(v).is_none_or(|s| s.is_empty());
@@ -576,7 +632,7 @@ pub fn run(opts: ModelOptions, demo_dir: Option<PathBuf>, gui: GuiOptions, initi
             theme::apply_initial(gui.theme, window, cx);
             window.set_window_title("Component Classifier");
             cx.new(|cx| {
-                let mut app = DemoApp::new(opts, demo_dir, initial, window, cx);
+                let mut app = DemoApp::new(service(&opts), demo_dir, initial, window, cx);
                 app.tab = gui.tab;
                 if gui.autorun {
                     app.run_all(cx);

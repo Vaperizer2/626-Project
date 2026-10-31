@@ -5,14 +5,17 @@
 
 use std::fmt;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, OnceLock};
+use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result, anyhow, bail};
 use ort::ep::ExecutionProviderDispatch;
 use ort::ep::ArbitrarilyConfigurableExecutionProvider as _;
-use ort::session::{Session, builder::GraphOptimizationLevel, builder::SessionBuilder};
+use ort::session::{RunOptions, Session, builder::GraphOptimizationLevel, builder::SessionBuilder};
 use ort::value::TensorRef;
 
+use crate::inference::{Graph, LoadStage, Loaded, Loader, RunFailure};
 use crate::manifest::{Ep, EpKind, Manifest, OptLevel};
 use crate::registry::search_bases;
 
@@ -260,34 +263,139 @@ pub struct Engine {
 impl Engine {
     pub fn load(rt: &Runtime, manifest: Arc<Manifest>) -> Result<Self> {
         let (session, placement) = rt.session(&manifest)?;
-        let name = &manifest.input.name;
-        if !session.inputs().iter().any(|i| i.name() == name) {
-            bail!("{} has no input '{name}'", manifest.graph.display());
-        }
+        check_io(&session, &manifest)?;
         Ok(Self { session, manifest, placement })
     }
+}
 
-    pub fn output_names(&self) -> Vec<String> {
-        self.session.outputs().iter().map(|o| o.name().to_string()).collect()
+/// Load-time rules: the input has the manifest's name, float32 and [N, 3, H, W] (N dynamic or at most
+/// batch.max); every readout output exists, is float32 and its last dimension (when fixed) is the label count.
+/// After this nothing checks per prediction.
+fn check_io(session: &Session, m: &Manifest) -> Result<()> {
+    let graph = m.graph.display();
+    let input = session
+        .inputs()
+        .iter()
+        .find(|i| i.name() == m.input.name)
+        .with_context(|| format!("{graph} has no input '{}'", m.input.name))?;
+    if input.dtype().tensor_type() != Some(ort::value::TensorElementType::Float32) {
+        bail!("{graph}: input '{}' is {:?}, the app feeds float32", m.input.name, input.dtype());
+    }
+    let (w, h) = m.input.size;
+    if let Some(shape) = input.dtype().tensor_shape() {
+        let want = [i64::from(m.input.max_batch), 3, i64::from(h), i64::from(w)];
+        let ok = shape.len() == 4
+            && (shape[0] < 0 || shape[0] >= want[0])
+            && shape[1..].iter().zip(&want[1..]).all(|(&d, &x)| d < 0 || d == x);
+        if !ok {
+            bail!("{graph}: input shape {:?} does not take [{}, 3, {h}, {w}]", &shape[..], m.input.max_batch);
+        }
+    }
+    for head in &m.heads {
+        let crate::manifest::Task::Classify(t) = &head.task;
+        let name = t.readout.output();
+        let out = session
+            .outputs()
+            .iter()
+            .find(|o| o.name() == name)
+            .with_context(|| format!("{graph} has no output '{name}' (head {})", head.id))?;
+        if out.dtype().tensor_type() != Some(ort::value::TensorElementType::Float32) {
+            bail!("{graph}: output '{name}' is {:?}, the app reads float32", out.dtype());
+        }
+        if let Some(&last) = out.dtype().tensor_shape().and_then(|s| s.last())
+            && last >= 0
+            && last as usize != t.labels.len()
+        {
+            bail!("{graph}: output '{name}' has {last} values for {} labels", t.labels.len());
+        }
+    }
+    Ok(())
+}
+
+impl Graph for Engine {
+    fn run(
+        &mut self,
+        x: &[f32],
+        n: usize,
+        outputs: &[&str],
+        alive: &(dyn Fn() -> bool + Sync),
+    ) -> std::result::Result<Vec<Vec<f32>>, RunFailure> {
+        let err = |e: String| RunFailure::Error(e);
+        let (w, h) = self.manifest.input.size;
+        let input = TensorRef::from_array_view(([n, 3, h as usize, w as usize], x)).map_err(|e| err(e.to_string()))?;
+        let opts = RunOptions::new().map_err(|e| err(e.to_string()))?;
+        let finished = AtomicBool::new(false);
+        let stopped = AtomicBool::new(false);
+        let onnx = &self.manifest.graph;
+        let session = &mut self.session;
+        let name = self.manifest.input.name.as_str();
+        // a watcher stops the run once nobody waits for it (RunOptions::terminate); polled every 5 ms
+        std::thread::scope(|scope| {
+            scope.spawn(|| {
+                while !finished.load(Ordering::Acquire) {
+                    if !alive() {
+                        stopped.store(true, Ordering::Release);
+                        let _ = opts.terminate();
+                        return;
+                    }
+                    std::thread::sleep(Duration::from_millis(5));
+                }
+            });
+            let res = session.run_with_options(ort::inputs![name => input], &opts);
+            finished.store(true, Ordering::Release);
+            if stopped.load(Ordering::Acquire) {
+                return Err(RunFailure::Stopped);
+            }
+            let res = res.map_err(|e| err(format!("inference ({}): {e}", onnx.display())))?;
+            outputs
+                .iter()
+                .map(|name| {
+                    let v = res.get(name).ok_or_else(|| err(format!("{} has no output '{name}'", onnx.display())))?;
+                    let (_, data) = v.try_extract_tensor::<f32>().map_err(|e| err(e.to_string()))?;
+                    Ok(data.to_vec())
+                })
+                .collect()
+        })
+    }
+}
+
+/// The app's `Loader`: onnxruntime is loaded on first use (a load or a provider probe).
+pub struct OrtLoader {
+    opts: ModelOptions,
+    exports: Option<PathBuf>,
+    runtime: OnceLock<std::result::Result<Runtime, String>>,
+}
+
+impl OrtLoader {
+    pub fn new(opts: &ModelOptions, exports: Option<&Path>) -> Self {
+        Self { opts: opts.clone(), exports: exports.map(Path::to_path_buf), runtime: OnceLock::new() }
     }
 
-    /// One forward pass over `n` images (`x` is `[n, 3, H, W]` float32); returns the requested outputs, each
-    /// flattened `[n, ...]`, in the requested order.
-    pub fn run(&mut self, x: &[f32], n: usize, outputs: &[&str]) -> Result<Vec<Vec<f32>>> {
-        let (w, h) = self.manifest.input.size;
-        let input = TensorRef::from_array_view(([n, 3, h as usize, w as usize], x)).map_err(|e| anyhow!("{e}"))?;
-        let onnx = &self.manifest.graph;
-        let res = self
-            .session
-            .run(ort::inputs![self.manifest.input.name.as_str() => input])
-            .map_err(|e| anyhow!("inference ({}): {e}", onnx.display()))?;
-        outputs
-            .iter()
-            .map(|name| {
-                let v = res.get(name).with_context(|| format!("{} has no output '{name}'", onnx.display()))?;
-                let (_, data) = v.try_extract_tensor::<f32>().map_err(|e| anyhow!("{e}"))?;
-                Ok(data.to_vec())
-            })
-            .collect()
+    pub fn runtime(&self) -> std::result::Result<&Runtime, String> {
+        self.runtime
+            .get_or_init(|| Runtime::init(&self.opts, self.exports.as_deref()).map_err(|e| format!("{e:#}")))
+            .as_ref()
+            .map_err(Clone::clone)
+    }
+}
+
+impl Loader for OrtLoader {
+    fn load(&self, m: &Arc<Manifest>, stage: &dyn Fn(LoadStage)) -> std::result::Result<(Box<dyn Graph>, Loaded), String> {
+        let rt = self.runtime()?;
+        stage(LoadStage::Loading);
+        let t0 = Instant::now();
+        let engine = Engine::load(rt, m.clone()).map_err(|e| format!("{e:#}"))?;
+        let loaded = Loaded {
+            ms: t0.elapsed().as_secs_f64() * 1000.0,
+            placement: engine.placement.clone(),
+            runtime: format!("onnxruntime {}", rt.version),
+        };
+        Ok((Box::new(engine), loaded))
+    }
+
+    fn probe(&self, m: &Manifest) -> std::result::Result<(), String> {
+        let rt = self.runtime()?;
+        let ep = rt.preferences(m).into_iter().next().ok_or("the manifest lists no execution provider")?;
+        rt.probe(&ep, m).map_err(|e| format!("{} does not register here: {e}", ep.kind.name()))
     }
 }
