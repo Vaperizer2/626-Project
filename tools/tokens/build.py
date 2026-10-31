@@ -97,6 +97,10 @@ RECIPES = {
     "tokens_tome384_r16_trtfp16": Recipe("H2 ToMe r=16 every block at 384", 384, merge=const(16)),
     "tokens_evit384_k70_trtfp16": Recipe("H3 EViT keep 70% at blocks 6, 13, 20 at 384", 384,
                                          merge=at(b6=219, b13=153, b20=107), mode="evit"),
+    "tokens_tome336_r8_trtfp16": Recipe("H2 ToMe r=8 every block at 336", 336, merge=const(8)),
+    "tokens_evit336_k70_trtfp16": Recipe("H3 EViT keep 70% at blocks 6, 13, 20 at 336", 336,
+                                         merge=at(b6=173, b13=121, b20=85), mode="evit"),
+    "tokens_center336_trtfp16": Recipe("H3 native-scale centre crop, 576 tokens", 336, pos="center"),
 }
 
 
