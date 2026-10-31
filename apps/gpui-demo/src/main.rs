@@ -74,8 +74,9 @@ OPTIONS:
                       and/or cpu, comma-separated (default: each model's manifest; usually
                       cuda,cpu, and tensorrt,cuda,cpu for the fast model)
     --json            classify: print a JSON array instead of text lines
-    --model HEADS     classify with these models (comma-separated head ids, or all; default: the
-                      index's default head). See `gpui-demo models` for the ids.
+    --model HEADS     classify with these models (comma-separated head ids, or all). Default: the
+                      first of the index's defaults whose preferred execution provider registers here
+                      (fast with TensorRT, else deployed). See `gpui-demo models` for the ids.
     --demo-dir DIR    window: folder with demo_stack.json (default: $COMPCLASS_DEMO_DIR, else the
                       first demo_stack/ found walking up from the current directory, then the executable)
     --tab TAB         window: start on classify (default), demo or benchmark
@@ -202,13 +203,24 @@ struct JsonRow<'a> {
     timing: Timing,
 }
 
-/// Start the service with onnxruntime behind it; graph load events go to stderr.
-fn service(a: &Args, reg: &Arc<Registry>) -> Inference {
+/// Start the service with onnxruntime behind it; graph load events go to stderr, the start-up default head to the
+/// returned channel.
+fn service(a: &Args, reg: &Arc<Registry>) -> (Inference, std::sync::mpsc::Receiver<HeadId>) {
     let (inf, mut events) = Inference::spawn(reg.clone(), OrtLoader::new(&a.opts, reg.index_path().parent()));
     let reg = reg.clone();
+    let (default_tx, default_rx) = std::sync::mpsc::channel();
     std::thread::spawn(move || {
         while let Some(ev) = futures::executor::block_on(events.next()) {
-            let ServiceEvent::Graph(g, state) = ev else { continue };
+            let (g, state) = match ev {
+                ServiceEvent::Graph(g, state) => (g, state),
+                ServiceEvent::Default { head, passed_over } => {
+                    for (h, why) in &passed_over {
+                        eprintln!("[gpui-demo] {h} is not the default here: {why}; using {head}");
+                    }
+                    let _ = default_tx.send(head);
+                    continue;
+                }
+            };
             let heads: Vec<String> = reg.graph(&g).map_or(vec![], |g| g.manifest.heads.iter().map(|h| h.id.to_string()).collect());
             match state {
                 GraphState::Loading { stage: LoadStage::BuildingEngine, .. } => {
@@ -232,7 +244,7 @@ fn service(a: &Args, reg: &Arc<Registry>) -> Inference {
             }
         }
     });
-    inf
+    (inf, default_rx)
 }
 
 /// One request's outcome: every head's result (or the input's failure).
@@ -256,8 +268,13 @@ fn run_classify(a: &Args) -> Result<u8> {
         bail!("classify needs at least one image path or URL");
     }
     let reg = registry(a)?;
-    let keys = heads(a, &reg)?;
-    let inf = service(a, &reg);
+    let (inf, default) = service(a, &reg);
+    let keys = if a.models.is_empty() {
+        // the first default whose preferred provider registers here, as in the window
+        vec![default.recv().context("no model is available")?]
+    } else {
+        heads(a, &reg)?
+    };
     let lane = inf.lane(Priority::Bulk, Policy::Keep);
     let mut requests: Vec<(&String, Option<RequestHandle>)> = a
         .rest
@@ -320,7 +337,18 @@ fn run_classify(a: &Args) -> Result<u8> {
     if a.json {
         println!("{}", serde_json::to_string_pretty(&rows)?);
     }
+    end(&inf);
     Ok(if failures > 0 { 2 } else { 0 })
+}
+
+/// Release every session before the process exits (see `Inference::shutdown`); if a load is still running, leave
+/// without exit handlers rather than race its provider's teardown.
+fn end(inf: &Inference) {
+    if !inf.shutdown(std::time::Duration::from_secs(30)) {
+        eprintln!("[gpui-demo] a model is still loading; exiting without waiting for it");
+        let _ = std::io::stdout().flush();
+        runtime::exit_now(0);
+    }
 }
 
 /// The heads and their files, then per graph which of its execution providers register here (a probe: the

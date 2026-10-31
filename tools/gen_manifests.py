@@ -53,8 +53,12 @@ MODELS = [
          heads=[classify("c", "C · SigLIP ViT + linear head", "C · SigLIP + linear", "probs_c", False),
                 classify("deployed", "Deployed (fused SigLIP)", "Deployed", "probs", True)],
          providers=GPU_THEN_CPU, opt_level=LEGACY_OPT_LEVEL),
+    # providers, optimisation level and batch come from its runtime.json (TensorRT fp16 + int8, engine cache)
+    dict(dir="fast", id="fast", graph="model.onnx", external=["model.onnx.data"], precision="int8_qdq",
+         heads=[classify("fast", "Fast (fused SigLIP, 308 px INT8)", "Fast", "probs", True)]),
 ]
-DEFAULT = ["deployed"]
+# The first default whose preferred provider registers is the app's start-up head; the last needs only its files.
+DEFAULT = ["fast", "deployed"]
 PROVENANCE_KEYS = ["model", "report_model", "trunk", "config_hash", "fold", "checkpoint_sha256", "manifest_fingerprint"]
 DETAIL_FILES = ["model_multi.json", "export_report.json", "fit_report.json", "runtime.json"]
 
@@ -148,6 +152,12 @@ def build(exports: Path, spec: dict) -> dict:
 
     io = recorded_io(d, spec["graph"])
     actual = graph_io(d / spec["graph"])
+    if io is None and actual is None and (d / "model.json").is_file():
+        # nothing recorded and no onnx module: keep the IO the committed manifest states, and say so
+        old = load(d / "model.json")
+        h, w = old["input"]["size"]
+        io = (old["input"]["name"], [old["input"]["batch"]["max"], 3, h, w], [x["task"]["readout"]["output"] for x in old["heads"]])
+        print(f"{d}: graph IO not checked (no recorded IO, no onnx module); kept from model.json", file=sys.stderr)
     if actual is not None:
         (in_name, in_dtype, in_shape), = actual[0]
         check(in_dtype == "FLOAT", f"{spec['graph']}: input dtype {in_dtype}, the app feeds float32")
