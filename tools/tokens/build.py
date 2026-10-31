@@ -87,6 +87,7 @@ RECIPES = {
     "tokens_res252_trtfp16": Recipe("H1 lower resolution, 324 tokens", 252),
     "tokens_res224_trtfp16": Recipe("H1 lower resolution, 256 tokens", 224),
     "tokens_torch384_trtfp16": Recipe("control: torch rebuild, no merging", 384, merge=const(0)),
+    "tokens_tome384_r16_trtfp16": Recipe("H2 ToMe r=16 every block at 384", 384, merge=const(16)),
 }
 
 
