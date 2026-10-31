@@ -49,6 +49,11 @@ def const(r: int, first: int = 0) -> tuple[int, ...]:
     return tuple(r if i >= first else 0 for i in range(DEPTH))
 
 
+def at(**blocks: int) -> tuple[int, ...]:
+    """Tokens removed after the attention of the named blocks only, for example at(b6=219, b13=153)."""
+    return tuple(blocks.get(f"b{i}", 0) for i in range(DEPTH))
+
+
 @dataclass(frozen=True)
 class Recipe:
     """size: input px. The stride-14 patch conv floors, so the grid is size // 14 (the deployed 384 px gives 27 and
@@ -56,11 +61,13 @@ class Recipe:
     'interp' (bicubic, antialiased, as timm.resample_abs_pos_embed; same field of view, coarser pixels) or
     'center' (the central grid x grid slice at the deployed pixel scale; a tighter crop, no resampling).
     merge: tokens merged after each block's attention (siglip.bipartite_merge); None keeps the deployed graph,
-    an all-zero schedule exports the torch rebuild unchanged (the control for the merge recipes)."""
+    an all-zero schedule exports the torch rebuild unchanged (the control for the merge recipes).
+    mode: 'tome' merges matched tokens, 'evit' fuses the least-attended ones (siglip.fuse_inattentive)."""
     hypothesis: str
     size: int
     pos: str = "interp"
     merge: tuple[int, ...] | None = None
+    mode: str = "tome"
 
     @property
     def grid(self) -> int:
@@ -88,6 +95,8 @@ RECIPES = {
     "tokens_res224_trtfp16": Recipe("H1 lower resolution, 256 tokens", 224),
     "tokens_torch384_trtfp16": Recipe("control: torch rebuild, no merging", 384, merge=const(0)),
     "tokens_tome384_r16_trtfp16": Recipe("H2 ToMe r=16 every block at 384", 384, merge=const(16)),
+    "tokens_evit384_k70_trtfp16": Recipe("H3 EViT keep 70% at blocks 6, 13, 20 at 384", 384,
+                                         merge=at(b6=219, b13=153, b20=107), mode="evit"),
 }
 
 
@@ -132,7 +141,7 @@ def exported_graph(r: Recipe) -> onnx.ModelProto:
     w = siglip.onnx_weights(BASELINE / "model.onnx")
     if r.pos != "interp":
         w["pos_embed"] = resample_pos(w["pos_embed"], r)
-    model = siglip.Trunk(w, r.size, r.merge).eval()
+    model = siglip.Trunk(w, r.size, r.merge, r.mode).eval()
     del w
     with torch.no_grad():
         m = siglip.export(model, r.size)
@@ -181,7 +190,7 @@ def build(cid: str) -> Path:
     sha = os.environ.get("TOKENS_SHA") or subprocess.run(
         ["git", "-C", str(Path(__file__).parent), "rev-parse", "--short", "HEAD"], capture_output=True, text=True).stdout.strip()
     pre = json.loads((BASELINE / "preprocess.json").read_text())
-    how = "baseline graph edited" if r.merge is None else f"torch rebuild, merge {list(r.merge)}"
+    how = "baseline graph edited" if r.merge is None else f"torch rebuild, {r.mode} {list(r.merge)}"
     pre |= {"input_size": r.size, "crop_pct": r.crop_pct, "resize_short_side": round(r.size / r.crop_pct),
             "zero_shot_fusion": True, "tokens_per_block": r.tokens(),
             "built_from": f"baseline_fp32 weights, {r.grid}x{r.grid} patches, pos_embed {r.pos}, {how} "
@@ -235,7 +244,7 @@ def check(cid: str) -> dict:
         if r.pos != "interp":
             w["pos_embed"] = resample_pos(w["pos_embed"], r)
         with torch.no_grad():
-            t = siglip.Trunk(w, r.size, r.merge).eval()(torch.from_numpy(X)).numpy()
+            t = siglip.Trunk(w, r.size, r.merge, r.mode).eval()(torch.from_numpy(X)).numpy()
         rep["max_abs_diff_onnx_vs_torch"] = float(np.abs(t - b).max())
     (OUT / cid / "check.json").write_text(json.dumps(rep, indent=1))
     print(json.dumps(rep))
