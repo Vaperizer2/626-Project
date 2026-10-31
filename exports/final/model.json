@@ -1,0 +1,118 @@
+{
+ "schema": "model-manifest/1",
+ "id": "final",
+ "graph": {
+  "file": "model_multi.onnx",
+  "external_data": [
+   "model.onnx.data"
+  ],
+  "precision": "fp32"
+ },
+ "files": {
+  "labels.json": {
+   "bytes": 307,
+   "sha256": "bb7bd956f6d7cd0645b381ee858006ef33bd16ede6107b926d9eb8a65eb2011e"
+  },
+  "model.onnx.data": {
+   "bytes": 1714593792,
+   "sha256": "a6d11a2daff233b26518ce022d0a8ac6edc7ac79222e0f26325f29ba5ea92c98"
+  },
+  "model_multi.onnx": {
+   "bytes": 2129342,
+   "sha256": "b211af57f4296cc130f1fc2b80db71e63ef5ab00c01cad1343da3ef955f86e37"
+  }
+ },
+ "input": {
+  "name": "input",
+  "dtype": "f32",
+  "layout": "NCHW",
+  "size": [
+   384,
+   384
+  ],
+  "batch": {
+   "max": 1
+  },
+  "preprocess": {
+   "kind": "resize_short_center_crop",
+   "resize_short_side": 427,
+   "filter": "pillow_bicubic",
+   "color": "RGB",
+   "scale": 0.00392156862745098,
+   "mean": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "std": [
+    0.5,
+    0.5,
+    0.5
+   ]
+  }
+ },
+ "heads": [
+  {
+   "id": "c",
+   "title": "C · SigLIP ViT + linear head",
+   "short": "C · SigLIP + linear",
+   "task": {
+    "kind": "classify",
+    "readout": {
+     "kind": "probs",
+     "output": "probs_c"
+    },
+    "labels": "labels.json",
+    "calibration": {
+     "kind": "none"
+    },
+    "decision": {
+     "kind": "commit",
+     "low_confidence_below": 0.5
+    }
+   }
+  },
+  {
+   "id": "deployed",
+   "title": "Deployed (fused SigLIP)",
+   "short": "Deployed",
+   "task": {
+    "kind": "classify",
+    "readout": {
+     "kind": "probs",
+     "output": "probs"
+    },
+    "labels": "labels.json",
+    "calibration": {
+     "kind": "temperature",
+     "t": 0.8976628184318542,
+     "in_graph": true
+    },
+    "decision": {
+     "kind": "abstain",
+     "below": 0.5
+    }
+   }
+  }
+ ],
+ "runtime": {
+  "graph_optimization_level": "ORT_ENABLE_LAYOUT",
+  "providers": [
+   {
+    "ep": "cuda"
+   },
+   {
+    "ep": "cpu"
+   }
+  ]
+ },
+ "provenance": {
+  "model": "siglip_so400m_384",
+  "manifest_fingerprint": "431315e87d2612cb",
+  "details": [
+   "model_multi.json",
+   "export_report.json",
+   "fit_report.json"
+  ]
+ }
+}

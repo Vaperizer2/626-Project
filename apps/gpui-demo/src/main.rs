@@ -23,6 +23,8 @@ mod contract;
 mod demo;
 mod fetch;
 mod gui;
+#[allow(dead_code)] // wired in by the registry in the next change
+mod manifest;
 mod model;
 mod models;
 mod preprocess;
