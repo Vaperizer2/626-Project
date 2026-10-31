@@ -2,8 +2,8 @@
 
 The graph gets extra outputs per GEMM activation x [1, T, C]: per-channel max |x| over tokens (for SmoothQuant and
 the max calibrator), the TOPK largest |x| over the whole tensor (for percentile calibrators) and its shape (T differs
-per block once tokens are merged). Reductions run on
-the GPU inside the session, so only a few KB per tensor leave the device. Images are the pool calibration split
+per block once tokens are merged). Reductions run on the GPU inside the session, so only a few KB per tensor leave
+the device. Images are the pool calibration split
 (disjoint from every development and test image; see calib_set.py), preprocessed as the preprocess.json next to
 <model.onnx> declares.
 
