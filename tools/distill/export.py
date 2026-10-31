@@ -1,11 +1,12 @@
 """Export a distilled student as a speed-harness candidate, and screen students on development-fold CV.
 
-    uv run python tools/distill/export.py export --run RUN --dest CANDIDATE_DIR --commit SHA [--provider trt-fp16]
+    uv run python tools/distill/export.py export --run RUN --dest CANDIDATE_DIR --commit SHA
     uv run python tools/distill/export.py screen --run RUN [--run RUN ...] --manifest data/v2/manifest.json \
         --head exports/final/head.npz
 
 ``export`` writes model.onnx (input ``pixel_values`` [N,3,S,S] -> output ``embedding`` [N,1152], dynamic batch),
-preprocess.json (zero_shot_fusion: the embedding lives in the SigLIP So400m pooled space), runtime.json, labels.json
+preprocess.json (zero_shot_fusion: the embedding lives in the SigLIP So400m pooled space), runtime.json (CUDA EP;
+other EPs via the harness's variants.py runtime), labels.json
 and export_report.json (PyTorch vs onnxruntime parity on pool-val views).
 
 ``screen`` is UNOFFICIAL: PyTorch fp32 embeddings of the dev rows (the harness's eval preprocessing), then the
@@ -74,13 +75,7 @@ def cmd_export(a) -> None:
         "built_from": f"wip/distill {a.commit}: student {ck['student']} ({STUDENTS[ck['student']].timm_name}) "
                       f"distilled from {TEACHER_KEY} on pool {pool['created_utc']} ({pool['n_kept']} images "
                       f"disjoint from data/v2 and web_holdout_v1)"}, indent=1))
-    runtime = {"provider": "CUDAExecutionProvider", "options": {}}
-    if a.provider == "trt-fp16":
-        runtime = {"provider": "TensorrtExecutionProvider",
-                   "options": {"trt_fp16_enable": True, "trt_engine_cache_enable": True,
-                               "trt_engine_cache_path": "trt_cache", "trt_timing_cache_enable": True,
-                               "trt_timing_cache_path": "trt_cache"}}
-    (dest / "runtime.json").write_text(json.dumps(runtime, indent=1))
+    (dest / "runtime.json").write_text(json.dumps({"provider": "CUDAExecutionProvider", "options": {}}, indent=1))
     (dest / "labels.json").write_text(Path(a.labels).read_text())
     (dest / "export_report.json").write_text(json.dumps(rep, indent=1))
     print(json.dumps(rep, indent=1))
@@ -152,7 +147,6 @@ def main(argv: list[str] | None = None) -> None:
     e.add_argument("--dest", required=True)
     e.add_argument("--pool", required=True)
     e.add_argument("--labels", required=True)
-    e.add_argument("--provider", choices=["cuda", "trt-fp16"], default="cuda")
     e.add_argument("--commit", required=True, help="wip/distill commit the training and export code came from")
     s = sub.add_parser("screen")
     s.add_argument("--run", nargs="+", required=True)

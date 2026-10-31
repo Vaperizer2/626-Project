@@ -170,7 +170,7 @@ def main(argv: list[str] | None = None) -> None:
             opt.step()
             ema.update(model, step=step)
             step += 1
-            agg["loss"] += float(loss)
+            agg["loss"] += loss.item()
             for k, v in parts.items():
                 agg[k] += v
             if step % 200 == 0:
