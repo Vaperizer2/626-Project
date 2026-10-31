@@ -102,6 +102,8 @@ RECIPES = {
     "tokens_evit336_k70_trtfp16": Recipe("H3 EViT keep 70% at blocks 6, 13, 20 at 336", 336,
                                          merge=at(b6=173, b13=121, b20=85), mode="evit"),
     "tokens_center336_trtfp16": Recipe("H3 native-scale centre crop, 576 tokens", 336, pos="center"),
+    "tokens_center266_trtfp16": Recipe("H3 native-scale centre crop, 361 tokens (3 tiles, pixel scale kept)", 266,
+                                       pos="center"),
     "tokens_tome308_r6_trtfp16": Recipe("H2 ToMe r=6 every block at 308 (mean tokens = res280's 400)", 308,
                                         merge=const(6)),
     "tokens_tome308_to384b2_trtfp16": Recipe("H2 tile-aligned ToMe at 308: 484 -> 384 tokens after block 2", 308,
