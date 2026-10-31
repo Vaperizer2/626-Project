@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -23,6 +24,9 @@ TRT_FP16 = {"trt_fp16_enable": True, "trt_engine_cache_enable": True, "trt_engin
 
 
 def git_sha() -> str:
+    """This checkout's commit; QUANT_GIT_SHA names it for the copy synced to carlpc2, which has no .git."""
+    if os.environ.get("QUANT_GIT_SHA"):
+        return os.environ["QUANT_GIT_SHA"]
     return subprocess.run(["git", "-C", str(REPO), "rev-parse", "--short", "HEAD"], capture_output=True,
                           text=True).stdout.strip()
 
