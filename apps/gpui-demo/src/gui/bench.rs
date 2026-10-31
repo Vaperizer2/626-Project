@@ -1,13 +1,10 @@
-//! Benchmark tab: every available model over the demo stack, live (one image at a time, all models per image,
-//! cancellable), then per-model accuracy / mean confidence / latency and a per-image matrix.
+//! Benchmark tab: every available model over the demo stack, live (the whole stack is submitted at once, all models
+//! per image, cancellable), then per-model accuracy / mean confidence / latency and a per-image matrix.
 
-use std::collections::{HashMap, HashSet, VecDeque};
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 
 use futures::StreamExt;
-use futures::channel::mpsc as fmpsc;
 use gpui_kit::component::{
     ActiveTheme as _, Disableable as _, Icon, IconName, Sizable as _,
     alert::Alert,
@@ -24,26 +21,34 @@ use gpui_kit::{
 
 use super::demo_tab::ItemResult;
 use super::widgets::Lucide;
-use super::worker::{Cmd, Job, JobInput, ModelState, Update};
-use super::{DemoApp, theme, widgets};
+use super::{DemoApp, ModelState, theme, widgets};
 use crate::classification::{Classification, HeadOutput};
 use crate::demo::Verdict;
+use crate::inference::{Finish, ImageInput, RequestHandle, Ticket, Timing, Update};
 use crate::manifest::HeadId;
-use crate::models::Timing;
 
+/// One benchmark run: every image was submitted at once; dropping the run cancels what has not run yet.
 struct BenchRun {
-    queue: VecDeque<usize>,
+    id: u64,
     total: usize,
-    current: Option<usize>,
-    cancel: Arc<AtomicBool>,
+    finished: HashSet<usize>,
     started: Instant,
+    _tickets: Vec<Ticket>,
+}
+
+impl BenchRun {
+    /// The first image still waiting for its results.
+    fn current(&self) -> Option<usize> {
+        (0..self.total).find(|i| !self.finished.contains(i))
+    }
 }
 
 pub struct BenchState {
     run: Option<BenchRun>,
+    next_id: u64,
     /// columns of the last run
     models: Vec<HeadId>,
-    results: HashMap<(usize, HeadId), Result<(Classification, Timing), String>>,
+    pub(super) results: HashMap<(usize, HeadId), Result<(Classification, Timing), String>>,
     only_disagree: bool,
     wall_s: Option<f64>,
     cancelled: bool,
@@ -54,6 +59,7 @@ impl Default for BenchState {
     fn default() -> Self {
         Self {
             run: None,
+            next_id: 1,
             models: Vec::new(),
             results: HashMap::new(),
             only_disagree: false,
@@ -136,87 +142,87 @@ impl DemoApp {
         if models.is_empty() {
             return;
         }
-        self.bench.models = models;
+        self.bench.models = models.clone();
         self.bench.results.clear();
         self.bench.wall_s = None;
         self.bench.cancelled = false;
-        self.bench.run = Some(BenchRun {
-            queue: (0..n).collect(),
-            total: n,
-            current: None,
-            cancel: Arc::new(AtomicBool::new(false)),
-            started: Instant::now(),
-        });
-        self.bench_next(cx);
+        let id = self.bench.next_id;
+        self.bench.next_id += 1;
+        let mut tickets = Vec::new();
+        for i in 0..n {
+            let input = match (self.demo.items.get(i).and_then(|it| it.rgb.clone()), self.demo.stack()) {
+                (Some(rgb), _) => ImageInput::Decoded(rgb),
+                (None, Some(s)) => ImageInput::Source(crate::fetch::Source::File(s.path(i))),
+                (None, None) => return,
+            };
+            let RequestHandle { updates: mut rx, ticket } = self.bulk.submit(input, &models, None);
+            tickets.push(ticket);
+            cx.spawn(async move |this, cx| {
+                while let Some(u) = rx.next().await {
+                    let alive = this
+                        .update(cx, |this, cx| {
+                            if this.bench.run.as_ref().is_none_or(|r| r.id != id) {
+                                return;
+                            }
+                            match u {
+                                Update::Head { head, result, timing } => {
+                                    let r = result.map(|HeadOutput::Classify(c)| (c, timing)).map_err(|e| e.to_string());
+                                    // share with the Demo tab so its cards show the result too
+                                    if let (Ok((c, timing)), Some(it)) = (&r, this.demo.items.get_mut(i)) {
+                                        it.results.insert(head.clone(), ItemResult::Done(c.clone(), *timing));
+                                    }
+                                    this.bench.results.insert((i, head), r);
+                                }
+                                Update::Done(Finish::Failed(e)) => {
+                                    for k in this.bench.models.clone() {
+                                        this.bench.results.insert((i, k), Err(e.to_string()));
+                                    }
+                                    this.bench_progress(i, cx);
+                                }
+                                Update::Done(_) => this.bench_progress(i, cx),
+                                Update::Decoded { .. } => {}
+                            }
+                            cx.notify();
+                        })
+                        .is_ok();
+                    if !alive {
+                        break;
+                    }
+                }
+            })
+            .detach();
+        }
+        self.bench.run = Some(BenchRun { id, total: n, finished: HashSet::new(), started: Instant::now(), _tickets: tickets });
+        cx.notify();
     }
 
     pub(super) fn bench_cancel(&mut self, cx: &mut Context<Self>) {
-        if let Some(run) = self.bench.run.as_mut() {
-            run.cancel.store(true, Ordering::Relaxed);
+        if let Some(run) = self.bench.run.take() {
+            self.bench.wall_s = Some(run.started.elapsed().as_secs_f64());
             self.bench.cancelled = true;
             cx.notify();
         }
     }
 
-    fn bench_next(&mut self, cx: &mut Context<Self>) {
+    /// Image `i` has all its results; follow the run in the matrix and close it after the last image.
+    fn bench_progress(&mut self, i: usize, cx: &mut Context<Self>) {
         let Some(run) = self.bench.run.as_mut() else { return };
-        let next = if run.cancel.load(Ordering::Relaxed) { None } else { run.queue.pop_front() };
-        let Some(i) = next else {
+        run.finished.insert(i);
+        let (done, next) = (run.finished.len() >= run.total, run.current());
+        if done {
             self.bench.wall_s = Some(run.started.elapsed().as_secs_f64());
             self.bench.run = None;
-            return cx.notify();
-        };
-        run.current = Some(i);
-        let cancel = run.cancel.clone();
-        let input = match (self.demo.items.get(i).and_then(|it| it.rgb.clone()), self.demo.stack()) {
-            (Some(rgb), _) => JobInput::Decoded(rgb),
-            (None, Some(s)) => JobInput::Source(crate::fetch::Source::File(s.path(i))),
-            (None, None) => return,
-        };
-        let (tx, mut rx) = fmpsc::unbounded();
-        let job = Job { input, models: self.bench.models.clone(), display: false, cancel, updates: tx };
-        if self.jobs.send(Cmd::Job(job)).is_err() {
-            self.bench.run = None;
-            return;
         }
-        let row = self.bench_row_index(i);
-        self.bench.scroll.scroll_to_item(row);
-        cx.spawn(async move |this, cx| {
-            while let Some(u) = rx.next().await {
-                let alive = this
-                    .update(cx, |this, cx| {
-                        match u {
-                            Update::Result(k, r) => {
-                                let r = r.map(|(HeadOutput::Classify(c), timing)| (c, timing));
-                                // share with the Demo tab so its cards show the result too
-                                if let (Ok((c, timing)), Some(it)) = (&r, this.demo.items.get_mut(i)) {
-                                    it.results.insert(k.clone(), ItemResult::Done(c.clone(), *timing));
-                                }
-                                this.bench.results.insert((i, k), r);
-                            }
-                            Update::Failed(e) => {
-                                for k in this.bench.models.clone() {
-                                    this.bench.results.insert((i, k), Err(e.clone()));
-                                }
-                            }
-                            Update::Image(..) => {}
-                            Update::Done(_) => this.bench_next(cx),
-                        }
-                        cx.notify();
-                    })
-                    .is_ok();
-                if !alive {
-                    break;
-                }
-            }
-        })
-        .detach();
+        if let Some(next) = next {
+            let row = self.bench_row_index(next);
+            self.bench.scroll.scroll_to_item(row);
+        }
         cx.notify();
     }
 
     /// "one pass shared by X and Y" when other benchmarked heads read the same graph as `k`.
     fn shared_pass(&self, k: &HeadId) -> Option<String> {
-        let sib = self.registry.as_ref()?.siblings(k);
+        let sib = self.registry().siblings(k);
         let names: Vec<String> = sib.iter().filter(|s| self.bench.models.contains(s)).map(|s| self.short(s)).collect();
         (names.len() > 1).then(|| format!("one pass shared by {}", names.join(" and ")))
     }
@@ -249,14 +255,14 @@ impl DemoApp {
             .head_ids()
             .into_iter()
             .filter_map(|k| match self.state(&k) {
-                Some(ModelState::Unavailable(_)) => Some(format!("{} (not exported)", self.short(&k))),
-                Some(ModelState::Failed(_)) => Some(format!("{} (failed to load)", self.short(&k))),
+                    ModelState::Unavailable(_) => Some(format!("{} (not exported)", self.short(&k))),
+                ModelState::Failed(_) => Some(format!("{} (failed to load)", self.short(&k))),
                 _ => None,
             })
             .collect();
         let roles = theme::roles(cx);
         let progress = running.map(|r| {
-            let done = r.total - r.queue.len() - usize::from(r.current.is_some());
+            let done = r.finished.len();
             h_flex()
                 .gap_2()
                 .items_center()
@@ -334,7 +340,7 @@ impl DemoApp {
                             .outline()
                             .icon(IconName::Square)
                             .label("Stop")
-                            .tooltip("Stop after the current image (Esc)")
+                            .tooltip("Stop: drop the images not classified yet (Esc)")
                             .on_click(cx.listener(|this, _, _, cx| this.bench_cancel(cx)))
                     } else {
                         Button::new("bench-run")
@@ -453,7 +459,7 @@ impl DemoApp {
         let t = cx.theme();
         let r = theme::roles(cx);
         let stack = self.demo.stack().expect("stack");
-        let current = self.bench.run.as_ref().and_then(|r| r.current);
+        let current = self.bench.run.as_ref().and_then(BenchRun::current);
         let head = h_flex()
             .px_4()
             .py_2()
@@ -645,7 +651,7 @@ mod tests {
         let mut probs = vec![(1.0 - p) / 2.0; 3];
         probs[label_ix] = p;
         let HeadOutput::Classify(c) = read_head(&task, &probs).unwrap();
-        (c, Timing { preprocess_ms: 2.0, run_ms: 8.0, shared_by: 1 })
+        (c, Timing { preprocess_ms: 2.0, run_ms: 8.0, shared_by: 1, ..Default::default() })
     }
 
     #[test]

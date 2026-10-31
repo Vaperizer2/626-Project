@@ -1,9 +1,10 @@
-//! Headless smoke tests with GPUI Kit's test harness (`gpui-kit` feature `test-support`, a test platform: no
-//! display, no GPU). They build the real window view, render every tab, and switch tabs by clicking the Kit TabBar.
-//! No model is loaded: the index lists model A, whose ONNX file is absent, so it shows as unavailable instead of
-//! loading weights; a second test points `--models` at nothing and expects the error alert.
+//! Headless tests with GPUI Kit's test harness (`gpui-kit` feature `test-support`, a test platform: no display, no
+//! GPU). They build the real window view over the real inference service, with the fake loader from
+//! `inference::fake` behind it: one renders every tab over an index whose graph file is absent, one runs the
+//! benchmark and a Classify submission on fake models, one opens with no index at all.
 
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::time::Duration;
 
 use gpui_kit::test::TestWindowExt as _;
@@ -12,7 +13,9 @@ use gpui_kit::{
 };
 
 use super::{DemoApp, TabKind};
-use crate::runtime::ModelOptions;
+use crate::inference::Inference;
+use crate::inference::fake::{FakeLoader, registry};
+use crate::registry::Registry;
 
 fn stack_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("demo_stack")
@@ -31,7 +34,7 @@ fn index_without_graphs(tag: &str) -> PathBuf {
     tmp
 }
 
-fn open(cx: &mut TestAppContext, models: PathBuf) -> (AnyWindowHandle, Entity<DemoApp>) {
+fn open(cx: &mut TestAppContext, registry: Arc<Registry>) -> (AnyWindowHandle, Entity<DemoApp>) {
     // The app's inference and thumbnail threads are real OS threads that wake GPUI tasks; tell the
     // deterministic test scheduler that this is expected.
     cx.executor().allow_parking();
@@ -40,13 +43,13 @@ fn open(cx: &mut TestAppContext, models: PathBuf) -> (AnyWindowHandle, Entity<De
         super::theme::install(cx);
     });
     cx.update(|cx| cx.bind_keys(super::keymap()));
-    let opts = ModelOptions { models: Some(models), ..Default::default() };
+    let service = Inference::spawn(registry, FakeLoader::default());
     let (handle, view) = cx.update(|cx| {
         let bounds = Bounds { origin: Point::default(), size: size(px(1360.), px(860.)) };
         gpui_kit::open_window(
             WindowOptions { window_bounds: Some(WindowBounds::Windowed(bounds)), ..Default::default() },
             cx,
-            |window, cx| cx.new(|cx| DemoApp::new(opts, Some(stack_dir()), Vec::new(), window, cx)),
+            |window, cx| cx.new(|cx| DemoApp::new(service, Some(stack_dir()), Vec::new(), window, cx)),
         )
         .expect("open test window")
     });
@@ -67,7 +70,7 @@ fn open(cx: &mut TestAppContext, models: PathBuf) -> (AnyWindowHandle, Entity<De
 #[gpui_kit::test]
 async fn window_renders_every_tab(cx: &mut TestAppContext) {
     let index = index_without_graphs("tabs");
-    let (handle, view) = open(cx, index.clone());
+    let (handle, view) = open(cx, Arc::new(Registry::load(&index.join("models.json")).unwrap()));
     cx.update(|cx| {
         let v = view.read(cx);
         assert!(v.registry_error.is_none());
@@ -120,12 +123,113 @@ async fn window_renders_every_tab(cx: &mut TestAppContext) {
 }
 
 #[gpui_kit::test]
+async fn benchmark_and_classify_run_through_the_service(cx: &mut TestAppContext) {
+    if !stack_dir().join(crate::demo::STACK_FILE).is_file() {
+        return;
+    }
+    let (_handle, view) = open(cx, registry(&[("x", 1), ("y", 4)], &["y", "x"]));
+    let wait = |cx: &mut TestAppContext, what: &str, done: &dyn Fn(&DemoApp) -> bool| {
+        for _ in 0..200 {
+            cx.run_until_parked();
+            if cx.update(|cx| done(view.read(cx))) {
+                return;
+            }
+            std::thread::sleep(Duration::from_millis(25));
+        }
+        panic!("timed out waiting for {what}");
+    };
+    wait(cx, "the default head", &|v| v.model.as_ref().is_some_and(|m| m.as_str() == "y"));
+    cx.update(|cx| view.update(cx, |v, cx| v.bench_start(cx)));
+    wait(cx, "the benchmark to finish", &|v| !v.bench.running());
+    cx.update(|cx| {
+        let v = view.read(cx);
+        let n = v.demo.items.len();
+        assert_eq!(v.bench.results.len(), 2 * n, "every image × every head");
+        assert!(v.bench.results.values().all(|r| r.is_ok()));
+        let stack = v.demo.stack().unwrap();
+        for h in ["x", "y"] {
+            let s = super::bench::stats(stack, &v.bench.results, &crate::manifest::HeadId::new(h));
+            assert_eq!(s.judged, n, "{h} judged every image");
+        }
+    });
+    let picture = stack_dir().join("01_battery_holder.jpg");
+    cx.update(|cx| view.update(cx, |v, cx| v.submit_source(crate::fetch::Source::File(picture), cx)));
+    wait(cx, "the Classify result", &|v| !v.classify.busy());
+    cx.update(|cx| assert!(view.read(cx).classify.done(), "the entry has an answer and its picture"));
+}
+
+#[gpui_kit::test]
 async fn missing_index_is_reported(cx: &mut TestAppContext) {
-    let (handle, view) = open(cx, std::env::temp_dir().join("gpui-demo-no-model-here"));
+    let (handle, view) = open(cx, Arc::new(Registry::empty("no exports/models.json found".into())));
     cx.update(|cx| assert!(view.read(cx).registry_error.is_some(), "a missing index must be reported"));
     cx.update_window(handle, |_, window, cx| {
         window.render_frame(cx);
         assert!(window.try_find("open").is_some(), "the window still renders without models");
     })
     .unwrap();
+}
+
+/// The Benchmark tab over the shipped exports with onnxruntime on the CPU EP matches the golden classify rows
+/// (top-1, abstain flag, probabilities within 1e-6). Needs the exports and ORT_DYLIB_PATH; about 30 s.
+///     ORT_DYLIB_PATH=... cargo test --release -- --ignored real_benchmark
+#[gpui_kit::test]
+#[ignore]
+async fn real_benchmark_matches_the_golden_rows(cx: &mut TestAppContext) {
+    let exports = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../exports");
+    let reg = Arc::new(Registry::load(&exports.join("models.json")).unwrap());
+    let opts = crate::runtime::ModelOptions { eps: Some(vec![crate::manifest::EpKind::Cpu]), ..Default::default() };
+    let service = Inference::spawn(reg, crate::runtime::OrtLoader::new(&opts, Some(&exports)));
+    cx.executor().allow_parking();
+    cx.update(|cx| {
+        gpui_kit::init(cx);
+        super::theme::install(cx);
+    });
+    let (_handle, view) = cx.update(|cx| {
+        let bounds = Bounds { origin: Point::default(), size: size(px(1360.), px(860.)) };
+        gpui_kit::open_window(
+            WindowOptions { window_bounds: Some(WindowBounds::Windowed(bounds)), ..Default::default() },
+            cx,
+            |window, cx| cx.new(|cx| DemoApp::new(service, Some(stack_dir()), Vec::new(), window, cx)),
+        )
+        .unwrap()
+    });
+    let wait = |cx: &mut TestAppContext, secs: u64, done: &dyn Fn(&DemoApp) -> bool| {
+        let t0 = std::time::Instant::now();
+        while t0.elapsed() < Duration::from_secs(secs) {
+            cx.run_until_parked();
+            if cx.update(|cx| done(view.read(cx))) {
+                return;
+            }
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        panic!("timed out");
+    };
+    wait(cx, 30, &|v| v.demo.items.iter().all(|i| i.rgb.is_some()));
+    cx.update(|cx| view.update(cx, |v, cx| v.bench_start(cx)));
+    wait(cx, 600, &|v| !v.bench.running());
+    let golden: Vec<serde_json::Value> = serde_json::from_str(
+        &std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../results/demo/golden/classify_all.json"))
+            .unwrap(),
+    )
+    .unwrap();
+    cx.update(|cx| {
+        let v = view.read(cx);
+        let stack = v.demo.stack().unwrap();
+        let mut compared = 0;
+        for row in &golden {
+            let file = Path::new(row["source"].as_str().unwrap()).file_name().unwrap().to_str().unwrap();
+            let i = stack.images.iter().position(|im| im.file == file).unwrap();
+            let head = crate::manifest::HeadId::new(row["model"].as_str().unwrap());
+            let (c, _) = v.bench.results[&(i, head.clone())].as_ref().unwrap();
+            let label = c.committed().map_or("UNSURE", |k| c.labels.name(k));
+            assert_eq!(label, row["label"].as_str().unwrap(), "{file} {head}");
+            assert_eq!(c.abstained(), row["unsure"].as_bool().unwrap(), "{file} {head}");
+            let probs: Vec<f64> = row["probs"].as_array().unwrap().iter().map(|p| p.as_f64().unwrap()).collect();
+            let worst = c.probs.iter().zip(&probs).map(|(a, b)| (f64::from(*a) - b).abs()).fold(0.0, f64::max);
+            assert!(worst <= 1e-6, "{file} {head}: max |dp| {worst}");
+            compared += 1;
+        }
+        assert_eq!(compared, 112);
+        eprintln!("benchmark tab: {compared} cells match the golden rows");
+    });
 }

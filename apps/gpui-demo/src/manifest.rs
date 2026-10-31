@@ -41,6 +41,9 @@ impl fmt::Display for HeadId {
 pub struct GraphId(Arc<str>);
 
 impl GraphId {
+    pub fn new(s: &str) -> Self {
+        Self(s.into())
+    }
     pub fn as_str(&self) -> &str {
         &self.0
     }
@@ -632,7 +635,7 @@ fn from_wire(w: WireManifest, path: &Path, dir: &Path) -> Result<Manifest, Strin
         providers.push(Ep { kind, options });
     }
     Ok(Manifest {
-        id: GraphId(w.id.as_str().into()),
+        id: GraphId::new(&w.id),
         path: path.to_path_buf(),
         graph,
         external,

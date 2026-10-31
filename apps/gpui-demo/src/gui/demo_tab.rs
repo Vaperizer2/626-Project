@@ -1,13 +1,11 @@
 //! Demo tab: the curated stack as a sectioned thumbnail grid, a detail pane with the result against the true
 //! label and the photo's attribution, "Run all" with progress and an accuracy summary, keyboard stepping.
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
 
 use futures::StreamExt;
-use futures::channel::mpsc as fmpsc;
 use gpui_kit::component::{
     ActiveTheme as _, Disableable as _, Icon, IconName, Sizable as _,
     alert::Alert,
@@ -25,12 +23,12 @@ use gpui_kit::{
 };
 use image::RgbImage;
 
-use super::worker::{self, Cmd, Job, JobInput, Update};
+use super::images;
 use super::{DemoApp, theme, widgets};
 use crate::classification::{Classification, HeadOutput};
 use crate::demo::{DemoStack, Verdict};
+use crate::inference::{Finish, ImageInput, Priority, RequestHandle, Ticket, Timing, Update};
 use crate::manifest::HeadId;
-use crate::models::Timing;
 
 /// Cards are at least this wide; the grid fits as many columns as the window allows and widens them evenly.
 const CARD_MIN_W: f32 = 176.;
@@ -39,7 +37,8 @@ const GRID_PAD: f32 = 16.;
 const DETAIL_W: f32 = 440.;
 
 pub enum ItemResult {
-    Working,
+    /// submitted; the token tells this request's late "cancelled" apart from a newer request's
+    Working(u64),
     Done(Classification, Timing),
     Failed(String),
 }
@@ -51,13 +50,16 @@ pub struct Item {
     pub rgb: Option<Arc<RgbImage>>,
     pub load_error: Option<String>,
     pub results: HashMap<HeadId, ItemResult>,
+    /// the latest single classification of this image (a new one replaces and cancels it)
+    single: Option<Ticket>,
 }
 
+/// "Run all": the whole stack was submitted at once; dropping the run cancels what has not run yet.
 struct RunState {
-    model: HeadId,
-    queue: VecDeque<usize>,
+    token: u64,
     total: usize,
-    cancel: Arc<AtomicBool>,
+    done: usize,
+    _tickets: Vec<Ticket>,
 }
 
 pub struct DemoState {
@@ -65,18 +67,19 @@ pub struct DemoState {
     pub items: Vec<Item>,
     pub selected: usize,
     run: Option<RunState>,
+    next_token: u64,
     scroll: ScrollHandle,
 }
 
 impl Default for DemoState {
     fn default() -> Self {
-        Self { stack: None, items: Vec::new(), selected: 0, run: None, scroll: ScrollHandle::new() }
+        Self { stack: None, items: Vec::new(), selected: 0, run: None, next_token: 1, scroll: ScrollHandle::new() }
     }
 }
 
 impl DemoState {
     pub fn running(&self) -> bool {
-        self.run.is_some() || self.items.iter().any(|i| i.results.values().any(|r| matches!(r, ItemResult::Working)))
+        self.run.is_some() || self.items.iter().any(|i| i.results.values().any(|r| matches!(r, ItemResult::Working(_))))
     }
 
     pub fn stack(&self) -> Option<&DemoStack> {
@@ -115,7 +118,7 @@ impl DemoApp {
             eprintln!("[gpui-demo] demo stack: {} images in {}", s.images.len(), s.dir.display());
             self.demo.items = (0..s.images.len()).map(|_| Item::default()).collect();
             let paths: Vec<PathBuf> = (0..s.images.len()).map(|i| s.path(i)).collect();
-            let mut rx = worker::load_thumbnails(paths);
+            let mut rx = images::load_thumbnails(paths);
             cx.spawn(async move |this, cx| {
                 while let Some((i, r)) = rx.next().await {
                     let alive = this
@@ -145,54 +148,43 @@ impl DemoApp {
         self.demo.stack = Some(stack);
     }
 
-    /// Classify image `i` with `model`. `advance`: continue the running "Run all" when it finishes.
-    fn demo_classify(
-        &mut self,
-        i: usize,
-        model: HeadId,
-        advance: bool,
-        cancel: Arc<AtomicBool>,
-        cx: &mut Context<Self>,
-    ) {
-        let Some(stack) = self.demo.stack() else { return };
-        let path = stack.path(i);
-        let Some(it) = self.demo.items.get_mut(i) else { return };
+    /// Submit image `i` for `model`; its card shows the result. Bulk submissions count towards the running
+    /// "Run all" with `token`.
+    fn demo_submit(&mut self, i: usize, model: HeadId, priority: Priority, cx: &mut Context<Self>) -> Option<(u64, Ticket)> {
+        let path = self.demo.stack()?.path(i);
+        let token = self.demo.next_token;
+        self.demo.next_token += 1;
+        let it = self.demo.items.get_mut(i)?;
         let input = match &it.rgb {
-            Some(rgb) => JobInput::Decoded(rgb.clone()),
-            None => JobInput::Source(crate::fetch::Source::File(path)),
+            Some(rgb) => ImageInput::Decoded(rgb.clone()),
+            None => ImageInput::Source(crate::fetch::Source::File(path)),
         };
-        let (tx, mut rx) = fmpsc::unbounded();
-        let job = Job { input, models: vec![model.clone()], display: false, cancel, updates: tx };
-        if self.jobs.send(Cmd::Job(job)).is_err() {
-            it.results.insert(model, ItemResult::Failed("inference thread is not running".into()));
-            return;
-        }
-        it.results.insert(model.clone(), ItemResult::Working);
+        let lane = if priority == Priority::Bulk { &self.bulk } else { &self.interactive };
+        let RequestHandle { updates: mut rx, ticket } = lane.submit(input, std::slice::from_ref(&model), None);
+        it.results.insert(model.clone(), ItemResult::Working(token));
         cx.spawn(async move |this, cx| {
             while let Some(u) = rx.next().await {
                 let alive = this
                     .update(cx, |this, cx| {
-                        if let Some(it) = this.demo.items.get_mut(i) {
-                            match u {
-                                Update::Result(k, Ok((HeadOutput::Classify(c), timing))) => {
-                                    it.results.insert(k, ItemResult::Done(c, timing));
-                                }
-                                Update::Result(k, Err(e)) => {
-                                    it.results.insert(k, ItemResult::Failed(e));
-                                }
-                                Update::Failed(e) => {
-                                    it.results.insert(model.clone(), ItemResult::Failed(e));
-                                }
-                                Update::Image(..) => {}
-                                Update::Done(_) => {
-                                    if matches!(it.results.get(&model), Some(ItemResult::Working)) {
-                                        it.results.remove(&model); // cancelled before it ran
-                                    }
-                                    if advance {
-                                        this.demo_next(cx);
-                                    }
-                                }
+                        let Some(it) = this.demo.items.get_mut(i) else { return };
+                        match u {
+                            Update::Head { head, result: Ok(HeadOutput::Classify(c)), timing } => {
+                                it.results.insert(head, ItemResult::Done(c, timing));
                             }
+                            Update::Head { head, result: Err(e), .. } => {
+                                it.results.insert(head, ItemResult::Failed(e.to_string()));
+                            }
+                            Update::Done(Finish::Failed(e)) => {
+                                it.results.insert(model.clone(), ItemResult::Failed(e.to_string()));
+                                this.demo_progress(token, i, cx);
+                            }
+                            Update::Done(_) => {
+                                if matches!(it.results.get(&model), Some(ItemResult::Working(t)) if *t == token) {
+                                    it.results.remove(&model); // cancelled before it ran
+                                }
+                                this.demo_progress(token, i, cx);
+                            }
+                            Update::Decoded { .. } => {}
                         }
                         cx.notify();
                     })
@@ -204,6 +196,7 @@ impl DemoApp {
         })
         .detach();
         cx.notify();
+        Some((token, ticket))
     }
 
     /// Item `it`'s result for the selected head.
@@ -217,12 +210,15 @@ impl DemoApp {
         }
         let i = self.demo.selected;
         let Some(model) = self.model.clone() else { return };
-        if matches!(self.demo.items.get(i).and_then(|it| it.results.get(&model)), Some(ItemResult::Working)) {
+        if matches!(self.demo.items.get(i).and_then(|it| it.results.get(&model)), Some(ItemResult::Working(_))) {
             return;
         }
-        self.demo_classify(i, model, false, Arc::new(AtomicBool::new(false)), cx);
+        if let Some((_, ticket)) = self.demo_submit(i, model, Priority::Interactive, cx) {
+            self.demo.items[i].single = Some(ticket);
+        }
     }
 
+    /// Submit the whole stack at once; the graph takes the images as fast as it can (batched when it allows).
     pub(super) fn demo_run_all(&mut self, cx: &mut Context<Self>) {
         let Some(n) = self.demo.stack().map(|s| s.images.len()) else { return };
         if self.demo.run.is_some() {
@@ -232,35 +228,31 @@ impl DemoApp {
         for it in &mut self.demo.items {
             it.results.remove(&model);
         }
-        self.demo.run =
-            Some(RunState { model, queue: (0..n).collect(), total: n, cancel: Arc::new(AtomicBool::new(false)) });
-        self.demo_next(cx);
+        let token = self.demo.next_token;
+        let tickets = (0..n).filter_map(|i| self.demo_submit(i, model.clone(), Priority::Bulk, cx)).map(|t| t.1).collect();
+        // the run counts the requests submitted from `token` on
+        self.demo.run = Some(RunState { token, total: n, done: 0, _tickets: tickets });
+        cx.notify();
     }
 
-    fn demo_next(&mut self, cx: &mut Context<Self>) {
+    /// Request `token` for image `i` finished; when it belongs to the running "Run all", follow it in the grid.
+    fn demo_progress(&mut self, token: u64, i: usize, cx: &mut Context<Self>) {
         let Some(run) = self.demo.run.as_mut() else { return };
-        if run.cancel.load(Ordering::Relaxed) {
+        if token < run.token || token >= run.token + run.total as u64 {
+            return;
+        }
+        run.done += 1;
+        if run.done >= run.total {
             self.demo.run = None;
-            return cx.notify();
         }
-        match run.queue.pop_front() {
-            Some(i) => {
-                let (model, cancel) = (run.model.clone(), run.cancel.clone());
-                self.demo.selected = i;
-                let ci = self.demo.child_index(i);
-                self.demo.scroll.scroll_to_item(ci);
-                self.demo_classify(i, model, true, cancel, cx);
-            }
-            None => {
-                self.demo.run = None;
-                cx.notify();
-            }
-        }
+        self.demo.selected = i;
+        let ci = self.demo.child_index(i);
+        self.demo.scroll.scroll_to_item(ci);
+        cx.notify();
     }
 
     pub(super) fn demo_cancel(&mut self, cx: &mut Context<Self>) {
-        if let Some(run) = self.demo.run.take() {
-            run.cancel.store(true, Ordering::Relaxed);
+        if self.demo.run.take().is_some() {
             cx.notify();
         }
     }
@@ -319,7 +311,7 @@ impl DemoApp {
         let short = self.model.as_ref().map(|m| self.short(m)).unwrap_or_default();
         let running = self.demo.run.as_ref();
         let progress = running.map(|run| {
-            let done = (run.total - run.queue.len()).saturating_sub(1); // one image is in flight
+            let done = run.done;
             h_flex()
                 .gap_2()
                 .items_center()
@@ -370,7 +362,7 @@ impl DemoApp {
                             .outline()
                             .icon(IconName::Square)
                             .label("Stop")
-                            .tooltip("Stop after the current image (Esc)")
+                            .tooltip("Stop: drop the images not classified yet (Esc)")
                             .on_click(cx.listener(|this, _, _, cx| this.demo_cancel(cx)))
                     } else {
                         Button::new("demo-run")
@@ -455,7 +447,7 @@ impl DemoApp {
             _ => None,
         };
         let result: AnyElement = match self.selected_result(it) {
-            Some(ItemResult::Working) => h_flex()
+            Some(ItemResult::Working(_)) => h_flex()
                 .gap_1()
                 .items_center()
                 .child(Spinner::new().xsmall().color(t.muted_foreground))
@@ -573,7 +565,7 @@ impl DemoApp {
                 let v = im.judge(c.best_label(), c.abstained());
                 widgets::prediction_block(c, timing, &self.title(m), Some((v, im.true_text())), cx)
             }
-            (Some(ItemResult::Working), _) => h_flex()
+            (Some(ItemResult::Working(_)), _) => h_flex()
                 .gap_2()
                 .items_center()
                 .py_4()

@@ -23,9 +23,9 @@ mod classification;
 mod demo;
 mod fetch;
 mod gui;
+mod inference;
 #[allow(dead_code)] // runtime and integrity fields; read once the EP and checksum steps land
 mod manifest;
-mod models;
 mod preprocess;
 #[allow(dead_code)]
 mod registry;
@@ -38,13 +38,17 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use anyhow::{Context, Result, anyhow, bail};
+use futures::StreamExt;
 
 use crate::classification::HeadOutput;
 use crate::fetch::Source;
+use crate::inference::{
+    Finish, GraphState, ImageInput, Inference, LoadStage, Policy, Priority, RequestHandle, RunError, ServiceEvent,
+    Timing, Update,
+};
 use crate::manifest::{HeadId, Task};
 use crate::manifest::EpKind;
-use crate::runtime::{ModelOptions, Runtime};
-use crate::models::Models;
+use crate::runtime::{ModelOptions, OrtLoader, Runtime};
 use crate::registry::Registry;
 
 const HELP: &str = "\
@@ -191,65 +195,99 @@ struct JsonRow<'a> {
     ms: f64,
     probs: Vec<f32>,
     error: Option<String>,
+    timing: Timing,
 }
 
-/// `classify`: lazy engines, one forward pass per graph and image; the deployed model unless `--model` says otherwise.
+/// Start the service with onnxruntime behind it; graph load events go to stderr.
+fn service(a: &Args, reg: &Arc<Registry>) -> Inference {
+    let (inf, mut events) = Inference::spawn(reg.clone(), OrtLoader::new(&a.opts, reg.index_path().parent()));
+    let reg = reg.clone();
+    std::thread::spawn(move || {
+        while let Some(ev) = futures::executor::block_on(events.next()) {
+            let ServiceEvent::Graph(g, state) = ev else { continue };
+            let heads: Vec<String> = reg.graph(&g).map_or(vec![], |g| g.manifest.heads.iter().map(|h| h.id.to_string()).collect());
+            match state {
+                GraphState::Loading { stage: LoadStage::BuildingEngine, .. } => {
+                    eprintln!("[gpui-demo] {g} ({}): building the TensorRT engine (first run only)", heads.join(", "))
+                }
+                GraphState::Ready(l) => {
+                    eprintln!("[gpui-demo] {g} ({}) ready in {:.0} ms on {} ({})", heads.join(", "), l.ms, l.placement, l.runtime);
+                    for (ep, why) in &l.placement.skipped {
+                        eprintln!("[gpui-demo]   {} skipped: {why}", ep.name());
+                    }
+                }
+                GraphState::Failed(e) => eprintln!("[gpui-demo] {g} ({}) failed to load: {e}", heads.join(", ")),
+                GraphState::Loading { .. } => {}
+            }
+        }
+    });
+    inf
+}
+
+/// One request's outcome: every head's result (or the input's failure).
+fn collect(h: &mut RequestHandle) -> (Vec<(HeadId, Result<HeadOutput, RunError>, Timing)>, Option<RunError>) {
+    let mut heads = Vec::new();
+    while let Some(u) = futures::executor::block_on(h.updates.next()) {
+        match u {
+            Update::Decoded { .. } => {}
+            Update::Head { head, result, timing } => heads.push((head, result, timing)),
+            Update::Done(Finish::Failed(e)) => return (heads, Some(e)),
+            Update::Done(_) => break,
+        }
+    }
+    (heads, None)
+}
+
+/// `classify`: every image is submitted at once to one bulk lane, so decoding overlaps inference; rows come out in
+/// input order, heads in `--model` order (default: the index's default head).
 fn run_classify(a: &Args) -> Result<u8> {
     if a.rest.is_empty() {
         bail!("classify needs at least one image path or URL");
     }
     let reg = registry(a)?;
     let keys = heads(a, &reg)?;
-    let mut models = Models::new(reg.clone(), &a.opts);
-    for k in &keys {
-        let title = &reg.head(k).expect("resolved head").spec.title;
-        match models.ensure(k) {
-            Ok((ms, placement)) => {
-                eprintln!("[gpui-demo] model {k} ({title}) ready in {ms:.0} ms on {placement}");
-                for (ep, why) in &placement.skipped {
-                    eprintln!("[gpui-demo]   {} skipped: {why}", ep.name());
-                }
-            }
-            Err(e) => eprintln!("[gpui-demo] model {k} ({title}) unavailable: {e}"),
-        }
-    }
-    if let Some((lib, version)) = models.runtime_info() {
-        eprintln!("[gpui-demo] onnxruntime {version} ({lib}); jpeg decoder: {}", preprocess::JPEG_DECODER);
-    }
+    let inf = service(a, &reg);
+    let lane = inf.lane(Priority::Bulk, Policy::Keep);
+    let mut requests: Vec<(&String, Option<RequestHandle>)> = a
+        .rest
+        .iter()
+        .map(|s| (s, Source::parse(s).map(|src| lane.submit(ImageInput::Source(src), &keys, None))))
+        .collect();
     let mut failures = 0u8;
     let mut rows = Vec::new();
     let stdout = std::io::stdout();
-    for s in &a.rest {
-        let img = Source::parse(s)
-            .context("empty source")
-            .and_then(|src| prof!("cli::read (registry)", src.read()))
-            .and_then(|b| prof!("cli::decode (registry)", preprocess::decode(&b)));
-        let runs = match img {
-            Ok(img) => models.predict(&img, &keys, &|| false),
-            Err(e) => keys.iter().map(|k| models::ModelRun { head: k.clone(), result: Err(format!("{e:#}")) }).collect(),
+    for (s, handle) in &mut requests {
+        let (mut results, failed) = match handle {
+            Some(h) => collect(h),
+            None => (vec![], Some(RunError::Read("empty source".into()))),
         };
-        for r in runs {
-            match r.result {
+        results.sort_by_key(|r| keys.iter().position(|k| *k == r.0));
+        let outcome: Vec<(HeadId, Result<(HeadOutput, Timing), String>)> = match failed {
+            Some(e) => keys.iter().map(|k| (k.clone(), Err(e.to_string()))).collect(),
+            None => results.into_iter().map(|(k, r, t)| (k, r.map(|o| (o, t)).map_err(|e| e.to_string()))).collect(),
+        };
+        for (head, r) in outcome {
+            match r {
                 Ok((HeadOutput::Classify(c), timing)) => {
                     let label = c.committed().map_or(UNSURE, |i| c.labels.name(i));
                     let top3: Vec<(&str, f32)> = c.top(3).into_iter().map(|(i, p)| (c.labels.name(i), p)).collect();
                     if a.json {
                         rows.push(serde_json::to_value(JsonRow {
                             source: s,
-                            model: r.head.as_str(),
+                            model: head.as_str(),
                             label: Some(label),
                             top3,
                             unsure: c.abstained(),
                             ms: (timing.ms() * 10.0).round() / 10.0,
                             probs: c.probs.to_vec(),
                             error: None,
+                            timing,
                         })?);
                     } else {
                         let top: Vec<String> = top3.iter().map(|(l, v)| format!("{l} {v:.3}")).collect();
                         writeln!(
                             stdout.lock(),
-                            "{s}\t{}\t{label}\t{:.3}\ttop3: {}\t{:.0} ms",
-                            r.head,
+                            "{s}\t{head}\t{label}\t{:.3}\ttop3: {}\t{:.0} ms",
                             c.best().1,
                             top.join(", "),
                             timing.ms()
@@ -259,10 +297,10 @@ fn run_classify(a: &Args) -> Result<u8> {
                 Err(e) => {
                     failures = failures.saturating_add(1);
                     if a.json {
-                        rows.push(serde_json::json!({"source": s, "model": r.head.as_str(), "label": null, "top3": [],
+                        rows.push(serde_json::json!({"source": s, "model": head.as_str(), "label": null, "top3": [],
                                                      "unsure": false, "ms": 0.0, "probs": [], "error": e}));
                     } else {
-                        writeln!(stdout.lock(), "{s}\t{}\tERROR\t{e}", r.head)?;
+                        writeln!(stdout.lock(), "{s}\t{head}\tERROR\t{e}")?;
                     }
                 }
             }

@@ -53,9 +53,9 @@ impl gpui_kit::AssetSource for AppAssets {
 }
 
 use super::theme::{self, Roles};
-use super::worker::ModelState;
+use super::ModelState;
 use crate::classification::{Answer, Classification};
-use crate::models::Timing;
+use crate::inference::{LoadStage, Timing};
 use crate::demo::Verdict;
 
 pub fn pct(p: f32) -> String {
@@ -258,7 +258,7 @@ pub fn prediction_block(
 }
 
 /// Compact model state: spinner while loading, otherwise a short pill.
-pub fn model_state_chip(state: Option<&ModelState>, cx: &App) -> AnyElement {
+pub fn model_state_chip(state: &ModelState, cx: &App) -> AnyElement {
     let r = theme::roles(cx);
     let pill = |icon: Lucide, text: String, color: Hsla| {
         h_flex()
@@ -277,8 +277,8 @@ pub fn model_state_chip(state: Option<&ModelState>, cx: &App) -> AnyElement {
             .into_any_element()
     };
     match state {
-        None | Some(ModelState::Idle) => pill(Lucide::Circle, "loads on first use".into(), r.muted_fg),
-        Some(ModelState::Loading(t0)) => h_flex()
+        ModelState::Idle => pill(Lucide::Circle, "loads on first use".into(), r.muted_fg),
+        ModelState::Loading { since, stage } => h_flex()
             .gap_1()
             .items_center()
             .px_2()
@@ -288,15 +288,21 @@ pub fn model_state_chip(state: Option<&ModelState>, cx: &App) -> AnyElement {
             .border_color(r.accent.opacity(0.5))
             .bg(r.accent_soft)
             .child(Spinner::new().xsmall().color(r.accent))
-            .child(div().text_xs().text_color(r.fg).child(format!("loading… {:.0} s", t0.elapsed().as_secs_f64())))
+            .child(div().text_xs().text_color(r.fg).child(match stage {
+                LoadStage::BuildingEngine => format!(
+                    "building TensorRT engine, first run only · {:.0} s",
+                    since.elapsed().as_secs_f64()
+                ),
+                LoadStage::Verifying | LoadStage::Loading => format!("loading… {:.0} s", since.elapsed().as_secs_f64()),
+            }))
             .into_any_element(),
-        Some(ModelState::Ready { ms, placement }) => pill(
+        ModelState::Ready(l) => pill(
             Lucide::CircleCheck,
-            format!("ready on {} · loaded in {:.1} s", placement.primary().name(), ms / 1000.0),
+            format!("ready on {} · loaded in {:.1} s", l.placement.primary().name(), l.ms / 1000.0),
             r.muted_fg,
         ),
-        Some(ModelState::Unavailable(_)) => pill(Lucide::CircleOff, "not exported".into(), r.muted_fg),
-        Some(ModelState::Failed(_)) => pill(Lucide::CircleAlert, "failed to load".into(), r.wrong),
+        ModelState::Unavailable(_) => pill(Lucide::CircleOff, "not exported".into(), r.muted_fg),
+        ModelState::Failed(_) => pill(Lucide::CircleAlert, "failed to load".into(), r.wrong),
     }
 }
 
