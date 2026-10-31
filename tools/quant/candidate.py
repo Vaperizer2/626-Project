@@ -1,6 +1,6 @@
 """Write quant-track candidates: a graph (baseline or QDQ) plus preprocess.json and runtime.json.
 
-    candidate.py static1 <dst> '<runtime.json as JSON>'   # baseline graph with batch fixed to 1
+    candidate.py static1 <dst> '<runtime.json as JSON>' [--src DIR]  # graph with batch fixed to 1
     candidate.py padheads <dst> '<runtime.json as JSON>' [--src DIR]  # + attention head dim zero-padded 72 -> 80
 """
 
@@ -47,13 +47,14 @@ def write(dst: Path, runtime: dict, note: str, src: Path = BASELINE) -> None:
     subprocess.run(["cp", str(src / "labels.json"), str(dst / "labels.json")], check=True)
 
 
-def static1(dst: Path, runtime: dict) -> None:
+def static1(dst: Path, runtime: dict, src: Path = BASELINE) -> None:
     dst.mkdir(parents=True, exist_ok=False)
-    m = fix_batch(onnx.load(BASELINE / "model.onnx", load_external_data=False))
+    m = fix_batch(onnx.load(src / "model.onnx", load_external_data=False))
     onnx.save(m, dst / "model.onnx")
-    subprocess.run(["cp", "--reflink=auto", str(BASELINE / "model.onnx.data"), str(dst / "model.onnx.data")],
-                   check=True)
-    write(dst, runtime, "batch fixed to 1, runtime options")
+    for loc in {e.value for t in m.graph.initializer if t.data_location == onnx.TensorProto.EXTERNAL
+                for e in t.external_data if e.key == "location"}:
+        subprocess.run(["cp", "--reflink=auto", str(src / loc), str(dst / loc)], check=True)
+    write(dst, runtime, "batch fixed to 1, runtime options", src)
 
 
 def padheads(dst: Path, runtime: dict, src: Path = BASELINE, pad: int = 80) -> None:
@@ -99,12 +100,10 @@ def main() -> None:
         p = sub.add_parser(name)
         p.add_argument("dst", type=Path)
         p.add_argument("runtime_json")
-    sub.choices["padheads"].add_argument("--src", type=Path, default=BASELINE)
+    for p in sub.choices.values():
+        p.add_argument("--src", type=Path, default=BASELINE)
     a = ap.parse_args()
-    if a.cmd == "padheads":
-        padheads(a.dst, json.loads(a.runtime_json), a.src)
-    else:
-        static1(a.dst, json.loads(a.runtime_json))
+    {"padheads": padheads, "static1": static1}[a.cmd](a.dst, json.loads(a.runtime_json), a.src)
 
 
 if __name__ == "__main__":

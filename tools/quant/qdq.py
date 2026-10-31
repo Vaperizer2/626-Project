@@ -33,8 +33,11 @@ D = 1152
 DEFAULT_EXCLUDE = "blocks.0.,blocks.26.,attn_pool."
 
 
-def roles(m: onnx.ModelProto) -> dict[str, onnx.NodeProto]:
-    """GEMM role (``blocks.<i>.attn.qkv`` ...) -> MatMul node, from the bias initializer its Add consumes."""
+def gemm_table(m: onnx.ModelProto) -> dict[str, tuple[onnx.NodeProto, str]]:
+    """GEMM role (``blocks.<i>.attn.qkv`` ...) -> (MatMul node, the bias initializer its Add consumes). The role is
+    the bias name without the exporter's spelling: the deployed graph's ``trunk.blocks.3.mlp.fc2.bias`` and the
+    torch rebuild's (tools/tokens/siglip.py) ``blocks__3__mlp__fc2__bias`` are both ``blocks.3.mlp.fc2``."""
+    inits = {t.name for t in m.graph.initializer}
     cons = {}
     for n in m.graph.node:
         for i in n.input:
@@ -42,9 +45,13 @@ def roles(m: onnx.ModelProto) -> dict[str, onnx.NodeProto]:
     out = {}
     for n in gemms(m):
         add = next(c for c in cons[n.output[0]] if c.op_type == "Add")
-        bias = next(i for i in add.input if i.startswith("trunk."))
-        out[re.sub(r"^trunk\.|\.bias$", "", bias)] = n
+        bias = next(i for i in add.input if i in inits)
+        out[re.sub(r"^trunk\.|\.bias$", "", bias.replace("__", "."))] = (n, bias)
     return out
+
+
+def roles(m: onnx.ModelProto) -> dict[str, onnx.NodeProto]:
+    return {k: n for k, (n, _) in gemm_table(m).items()}
 
 
 def load(src: Path) -> tuple[onnx.ModelProto, dict[str, np.ndarray]]:
@@ -76,7 +83,8 @@ def cmax(stats, act: str) -> np.ndarray:
 def smooth(src: Path, stats_path: Path, dst: Path, alpha: float) -> None:
     m, w = load(src)
     stats = np.load(stats_path)
-    r = roles(m)
+    table = gemm_table(m)
+    r = {k: n for k, (n, _) in table.items()}
     ln = {n.output[0]: n for n in m.graph.node if n.op_type == "LayerNormalization"}
     factors = {}
 
@@ -109,7 +117,7 @@ def smooth(src: Path, stats_path: Path, dst: Path, alpha: float) -> None:
         wq = w[qkv.input[1]].copy()
         wq[:, 2 * D:] /= s
         set_init(m, qkv.input[1], wq)
-        bias = f"trunk.blocks.{b}.attn.qkv.bias"
+        bias = table[f"blocks.{b}.attn.qkv"][1]
         bq = w[bias].copy()
         bq[2 * D:] /= s
         set_init(m, bias, bq)
@@ -125,7 +133,7 @@ def smoothed_stats(stats, divided: dict[str, np.ndarray]) -> dict[str, np.ndarra
     activation is the source one divided per channel by s. Only ``top[:, 0]`` (the per-image max) survives the
     division, so smoothed activations support the ``max`` calibrator alone (deeper ranks are NaN and percentiles
     refuse); unsmoothed ones (fc2 inputs, the attention pool) keep their full statistics."""
-    out = {"acts": stats["acts"]}
+    out = {"acts": stats["acts"], **{k: stats[k] for k in stats.files if k.startswith("shape/")}}
     for x in stats["acts"]:
         c, t = stats[f"cmax/{x}"], stats[f"top/{x}"]
         if x in divided:
@@ -137,7 +145,8 @@ def smoothed_stats(stats, divided: dict[str, np.ndarray]) -> dict[str, np.ndarra
 
 
 def tokens(role: str) -> int:
-    """Rows of the GEMM's activation: 729 patch tokens, except the attention pool's single-query tail."""
+    """Rows of the GEMM's activation in the deployed 384 px graph, for statistics without ``shape/`` entries: 729
+    patch tokens, except the attention pool's single-query tail."""
     return 1 if role in ("attn_pool.proj", "attn_pool.mlp.fc1", "attn_pool.mlp.fc2") else 729
 
 
@@ -148,7 +157,9 @@ def amax(stats, act: str, calib: str, n_tokens: int = 729) -> float:
     if np.isnan(top).any():
         raise SystemExit(f"{act}: only per-image maxima known (smoothed statistics); use --calib max")
     q = float(calib.removeprefix("p")) / 100
-    n_img, numel = len(top), stats[f"cmax/{act}"].shape[1] * n_tokens
+    shape = f"shape/{act}"
+    numel = int(np.prod(stats[shape][1:])) if shape in stats.files else stats[f"cmax/{act}"].shape[1] * n_tokens
+    n_img = len(top)
     rank = int(round((1 - q) * n_img * numel))
     pooled = np.sort(top.ravel())[::-1]
     if rank >= len(pooled):
