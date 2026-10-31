@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# The harness venv's python with TensorRT's libraries on the library path, as tools/speed/speed runs it; without
+# them onnxruntime cannot load its TensorRT provider (libnvinfer.so.10).
+set -euo pipefail
+VENV=/home/vaper/Work/Prototypes/626-artifacts/harness/venv
+export LD_LIBRARY_PATH="$VENV/lib/python3.12/site-packages/tensorrt_libs${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+exec "$VENV/bin/python" "$@"
