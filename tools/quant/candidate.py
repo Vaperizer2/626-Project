@@ -1,7 +1,7 @@
 """Write quant-track candidates: a graph (baseline or QDQ) plus preprocess.json and runtime.json.
 
     candidate.py static1 <dst> '<runtime.json as JSON>'   # baseline graph with batch fixed to 1
-    candidate.py padheads <dst> '<runtime.json as JSON>'  # + attention head dim zero-padded 72 -> PAD (exact)
+    candidate.py padheads <dst> '<runtime.json as JSON>' [--src DIR]  # + attention head dim zero-padded 72 -> 80
 """
 
 from __future__ import annotations
@@ -39,12 +39,12 @@ def fix_batch(m: onnx.ModelProto) -> onnx.ModelProto:
     return m
 
 
-def write(dst: Path, runtime: dict, note: str) -> None:
-    pre = json.loads((BASELINE / "preprocess.json").read_text())
-    pre["built_from"] = f"{BASELINE} ({note}; tools/quant @ {git_sha()})"
+def write(dst: Path, runtime: dict, note: str, src: Path = BASELINE) -> None:
+    pre = json.loads((src / "preprocess.json").read_text())
+    pre["built_from"] = f"{src} ({note}; tools/quant @ {git_sha()})"
     (dst / "preprocess.json").write_text(json.dumps(pre, indent=1))
     (dst / "runtime.json").write_text(json.dumps(runtime, indent=1))
-    subprocess.run(["cp", str(BASELINE / "labels.json"), str(dst / "labels.json")], check=True)
+    subprocess.run(["cp", str(src / "labels.json"), str(dst / "labels.json")], check=True)
 
 
 def static1(dst: Path, runtime: dict) -> None:
@@ -56,13 +56,13 @@ def static1(dst: Path, runtime: dict) -> None:
     write(dst, runtime, "batch fixed to 1, runtime options")
 
 
-def padheads(dst: Path, runtime: dict, pad: int = 80) -> None:
+def padheads(dst: Path, runtime: dict, src: Path = BASELINE, pad: int = 80) -> None:
     """Zero-pad every block's attention head dim from 72 to ``pad``. Padded q/k columns add 0 to q.k, padded v
     columns produce output columns that meet zero rows of the proj weight, so the math is unchanged; the softmax
     scale stays 1/sqrt(72). The attention pool keeps its own reshape constants and is not padded."""
     from qdq import load, roles, set_init
 
-    m, w = load(BASELINE)
+    m, w = load(src)
     g = m.graph
     heads, hd = 16, 72
     new = {"val_15": [-1, 729, 3, heads, pad], "val_47": [-1, 729, pad], "val_50": [-1, heads, pad, 729],
@@ -89,7 +89,7 @@ def padheads(dst: Path, runtime: dict, pad: int = 80) -> None:
     dst.mkdir(parents=True, exist_ok=False)
     onnx.save(m, dst / "model.onnx", save_as_external_data=True, all_tensors_to_one_file=True,
               location="model.onnx.data", size_threshold=1024)
-    write(dst, runtime, f"batch fixed to 1, attention head dim zero-padded 72 -> {pad}, runtime options")
+    write(dst, runtime, f"batch fixed to 1, attention head dim zero-padded 72 -> {pad}, runtime options", src)
 
 
 def main() -> None:
@@ -99,8 +99,12 @@ def main() -> None:
         p = sub.add_parser(name)
         p.add_argument("dst", type=Path)
         p.add_argument("runtime_json")
+    sub.choices["padheads"].add_argument("--src", type=Path, default=BASELINE)
     a = ap.parse_args()
-    {"static1": static1, "padheads": padheads}[a.cmd](a.dst, json.loads(a.runtime_json))
+    if a.cmd == "padheads":
+        padheads(a.dst, json.loads(a.runtime_json), a.src)
+    else:
+        static1(a.dst, json.loads(a.runtime_json))
 
 
 if __name__ == "__main__":
