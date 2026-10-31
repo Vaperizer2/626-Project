@@ -11,7 +11,7 @@ use image::RgbImage;
 
 use crate::classification::{HeadOutput, read_head};
 use crate::manifest::{GraphId, HeadId, Preprocess, Task};
-use crate::model::{Engine, ModelOptions, Runtime};
+use crate::runtime::{Engine, ModelOptions, Placement, Runtime};
 use crate::preprocess::to_tensor;
 use crate::registry::Registry;
 
@@ -56,9 +56,10 @@ impl Models {
         Ok(h.manifest().id.clone())
     }
 
+    /// (library path, version) once onnxruntime is loaded.
     pub fn runtime_info(&self) -> Option<(String, String)> {
         match &self.runtime {
-            Some(Ok(rt)) => Some((rt.ort_lib.display().to_string(), rt.provider.clone())),
+            Some(Ok(rt)) => Some((rt.ort_lib.display().to_string(), rt.version.clone())),
             _ => None,
         }
     }
@@ -67,11 +68,12 @@ impl Models {
         self.graph_of(head).ok().and_then(|g| self.engines.get(&g)).is_some_and(|e| e.is_ok())
     }
 
-    /// Load (once) the graph behind `head`; returns its load time in ms (0 if it was already loaded).
-    pub fn ensure(&mut self, head: &HeadId) -> Result<f64, String> {
+    /// Load (once) the graph behind `head`; returns its load time in ms (0 if it was already loaded) and the
+    /// providers its session registered.
+    pub fn ensure(&mut self, head: &HeadId) -> Result<(f64, Placement), String> {
         let gid = self.graph_of(head)?;
         if let Some(e) = self.engines.get(&gid) {
-            return e.as_ref().map(|_| 0.0).map_err(Clone::clone);
+            return e.as_ref().map(|e| (0.0, e.placement.clone())).map_err(Clone::clone);
         }
         if self.runtime.is_none() {
             let base = self.registry.index_path().parent().map(|p| p.to_path_buf());
@@ -102,7 +104,7 @@ impl Models {
             })
             .map_err(|e| format!("{e:#}"));
         let ms = t0.elapsed().as_secs_f64() * 1000.0;
-        let r = engine.as_ref().map(|_| ms).map_err(Clone::clone);
+        let r = engine.as_ref().map(|e| (ms, e.placement.clone())).map_err(Clone::clone);
         self.engines.insert(gid, engine);
         r
     }
@@ -162,7 +164,7 @@ impl Models {
                 })
                 .collect();
             let preprocess_ms = t0.elapsed().as_secs_f64() * 1000.0;
-            let outs = prof!("onnx::run (registry)", engine.run(&tensor, &names));
+            let outs = prof!("onnx::run (registry)", engine.run(&tensor, 1, &names));
             let timing = Timing {
                 preprocess_ms,
                 run_ms: t0.elapsed().as_secs_f64() * 1000.0 - preprocess_ms,

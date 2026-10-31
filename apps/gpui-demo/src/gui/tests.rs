@@ -12,7 +12,7 @@ use gpui_kit::{
 };
 
 use super::{DemoApp, TabKind};
-use crate::model::ModelOptions;
+use crate::runtime::ModelOptions;
 
 fn stack_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("demo_stack")

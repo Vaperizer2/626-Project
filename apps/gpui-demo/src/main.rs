@@ -25,11 +25,11 @@ mod fetch;
 mod gui;
 #[allow(dead_code)] // runtime and integrity fields; read once the EP and checksum steps land
 mod manifest;
-mod model;
 mod models;
 mod preprocess;
 #[allow(dead_code)]
 mod registry;
+mod runtime;
 
 use std::io::Write;
 use std::path::PathBuf;
@@ -42,7 +42,8 @@ use anyhow::{Context, Result, anyhow, bail};
 use crate::classification::HeadOutput;
 use crate::fetch::Source;
 use crate::manifest::{HeadId, Task};
-use crate::model::ModelOptions;
+use crate::manifest::EpKind;
+use crate::runtime::{ModelOptions, Runtime};
 use crate::models::Models;
 use crate::registry::Registry;
 
@@ -63,7 +64,9 @@ OPTIONS:
                       <repo>/.venv/.../onnxruntime/capi/libonnxruntime.so*, else next to the
                       executable, else the system library path)
     --threads N       onnxruntime intra-op threads (default: onnxruntime's choice)
-    --cuda            request the CUDA execution provider (build with --features cuda)
+    --ep LIST         execution providers for every model, in order of preference: tensorrt, cuda
+                      and/or cpu, comma-separated (default: each model's manifest; usually
+                      cuda,cpu, and tensorrt,cuda,cpu for the fast model)
     --json            classify: print a JSON array instead of text lines
     --model HEADS     classify with these models (comma-separated head ids, or all; default: the
                       index's default head). See `gpui-demo models` for the ids.
@@ -113,7 +116,14 @@ fn parse_args() -> Result<Args> {
             "--models" => a.opts.models = Some(PathBuf::from(value("--models")?)),
             "--ort-lib" => a.opts.ort_lib = Some(PathBuf::from(value("--ort-lib")?)),
             "--threads" => a.opts.threads = Some(value("--threads")?.parse().context("--threads")?),
-            "--cuda" => a.opts.cuda = true,
+            "--ep" => {
+                let list = value("--ep")?
+                    .split(',')
+                    .filter(|e| !e.trim().is_empty())
+                    .map(|e| EpKind::parse(e).with_context(|| format!("--ep {e:?}: expected tensorrt, cuda or cpu")))
+                    .collect::<Result<Vec<_>>>()?;
+                a.opts.eps = Some(list);
+            }
             "--json" => a.json = true,
             "--demo-dir" => a.demo_dir = Some(PathBuf::from(value("--demo-dir")?)),
             "--tab" => {
@@ -194,12 +204,17 @@ fn run_classify(a: &Args) -> Result<u8> {
     for k in &keys {
         let title = &reg.head(k).expect("resolved head").spec.title;
         match models.ensure(k) {
-            Ok(ms) => eprintln!("[gpui-demo] model {k} ({title}) ready in {ms:.0} ms"),
+            Ok((ms, placement)) => {
+                eprintln!("[gpui-demo] model {k} ({title}) ready in {ms:.0} ms on {placement}");
+                for (ep, why) in &placement.skipped {
+                    eprintln!("[gpui-demo]   {} skipped: {why}", ep.name());
+                }
+            }
             Err(e) => eprintln!("[gpui-demo] model {k} ({title}) unavailable: {e}"),
         }
     }
-    if let Some((lib, provider)) = models.runtime_info() {
-        eprintln!("[gpui-demo] onnxruntime {lib}, {provider}; jpeg decoder: {}", preprocess::JPEG_DECODER);
+    if let Some((lib, version)) = models.runtime_info() {
+        eprintln!("[gpui-demo] onnxruntime {version} ({lib}); jpeg decoder: {}", preprocess::JPEG_DECODER);
     }
     let mut failures = 0u8;
     let mut rows = Vec::new();
@@ -259,6 +274,8 @@ fn run_classify(a: &Args) -> Result<u8> {
     Ok(if failures > 0 { 2 } else { 0 })
 }
 
+/// The heads and their files, then per graph which of its execution providers register here (a probe: the
+/// provider library is loaded, no session is built).
 fn run_models(a: &Args) -> Result<u8> {
     let reg = registry(a)?;
     for h in reg.heads() {
@@ -273,6 +290,26 @@ fn run_models(a: &Args) -> Result<u8> {
             ),
             Err(e) => println!("{:9} {:30} unavailable  {e}", h.id(), h.spec.title),
         }
+    }
+    let rt = match Runtime::init(&a.opts, reg.index_path().parent()) {
+        Ok(rt) => rt,
+        Err(e) => {
+            println!("execution providers: unknown, {e:#}");
+            return Ok(0);
+        }
+    };
+    println!("onnxruntime {} ({})", rt.version, rt.ort_lib.display());
+    for g in reg.graphs() {
+        let m = &g.manifest;
+        let probes: Vec<String> = rt
+            .preferences(m)
+            .iter()
+            .map(|ep| match rt.probe(ep, m) {
+                Ok(()) => format!("{} registers", ep.kind.name()),
+                Err(e) => format!("{} does not ({e})", ep.kind.name()),
+            })
+            .collect();
+        println!("{:9} {}", m.id, probes.join("; "));
     }
     Ok(0)
 }

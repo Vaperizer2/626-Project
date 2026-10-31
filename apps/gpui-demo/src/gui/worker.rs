@@ -18,7 +18,7 @@ use rayon::prelude::*;
 use crate::classification::HeadOutput;
 use crate::fetch::Source;
 use crate::manifest::HeadId;
-use crate::model::ModelOptions;
+use crate::runtime::{ModelOptions, Placement};
 use crate::models::{Models, Timing};
 use crate::preprocess;
 use crate::registry::Registry;
@@ -57,7 +57,8 @@ pub enum ModelState {
     Unavailable(String),
     Idle,
     Loading(Instant),
-    Ready(f64),
+    /// loaded in `ms` with the providers its session registered
+    Ready { ms: f64, placement: Placement },
     Failed(String),
 }
 
@@ -69,7 +70,7 @@ impl ModelState {
 
 pub enum Event {
     Model(HeadId, ModelState),
-    /// onnxruntime library path and execution provider (after the first model load)
+    /// onnxruntime library path and version (after the first model load)
     Runtime(String, String),
 }
 
@@ -108,9 +109,9 @@ fn run(
             }
             Cmd::Job(job) => run_job(models.as_mut(), job, &events),
         }
-        if !runtime_sent && let Some((lib, provider)) = models.as_ref().and_then(Models::runtime_info) {
+        if !runtime_sent && let Some((lib, version)) = models.as_ref().and_then(Models::runtime_info) {
             runtime_sent = true;
-            let _ = events.unbounded_send(Event::Runtime(lib, provider));
+            let _ = events.unbounded_send(Event::Runtime(lib, version));
         }
     }
 }
@@ -168,9 +169,12 @@ fn ensure(m: &mut Models, head: &HeadId, events: &fmpsc::UnboundedSender<Event>)
         let _ = events.unbounded_send(Event::Model(k.clone(), ModelState::Loading(Instant::now())));
     }
     let state = match m.ensure(head) {
-        Ok(ms) => {
-            eprintln!("[gpui-demo] {head} loaded in {ms:.0} ms");
-            ModelState::Ready(ms)
+        Ok((ms, placement)) => {
+            eprintln!("[gpui-demo] {head} loaded in {ms:.0} ms on {placement}");
+            for (ep, why) in &placement.skipped {
+                eprintln!("[gpui-demo]   {} skipped: {why}", ep.name());
+            }
+            ModelState::Ready { ms, placement }
         }
         Err(e) => {
             eprintln!("[gpui-demo] {head} failed to load: {e}");
