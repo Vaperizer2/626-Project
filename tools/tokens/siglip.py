@@ -9,6 +9,10 @@ and fold the r best-matched A tokens into their B partners as a size-weighted me
 to the logits (proportional attention), the MAP pooling included. The scatter in the reference implementation
 becomes GatherElements plus a one-hot [B, r] matmul, ops TensorRT runs without falling back, and the size weights
 are fractions (each <= 1) so fp16 cannot overflow on SigLIP's large residual activations.
+
+Dropping ('evit') follows EViT (Liang et al., ICLR 2022): keep the tokens that receive the most attention and fuse
+the rest into one attention-weighted token. SigLIP has no CLS token, so a token's importance is the attention it
+receives, averaged over heads and queries.
 """
 
 from __future__ import annotations
@@ -53,14 +57,15 @@ def resample_pos(pos: torch.Tensor, grid: int) -> torch.Tensor:
 
 
 class Trunk(torch.nn.Module):
-    """pixel_values [N,3,S,S] -> pooled embedding [N,1152]. ``merge[i]`` tokens are merged after block i's
-    attention; token counts are static per block, so the exported graph has static shapes past the batch."""
+    """pixel_values [N,3,S,S] -> pooled embedding [N,1152]. After block i's attention the token count drops by
+    ``merge[i]``, by ToMe merging (mode 'tome') or EViT dropping ('evit'). Counts are static per block, so the
+    exported graph has static shapes past the batch."""
 
-    def __init__(self, w: dict[str, np.ndarray], size: int, merge: tuple[int, ...]):
+    def __init__(self, w: dict[str, np.ndarray], size: int, merge: tuple[int, ...], mode: str = "tome"):
         super().__init__()
         self.depth = sum(1 for k in w if k.startswith("blocks.") and k.endswith(".norm1.weight"))
         assert len(merge) == self.depth, f"merge schedule needs {self.depth} entries"
-        self.grid, self.merge = size // 14, merge
+        self.grid, self.merge, self.mode = size // 14, merge, mode
         for k, v in w.items():
             t = torch.from_numpy(v.copy())
             if k == "pos_embed":
@@ -83,13 +88,17 @@ class Trunk(torch.nn.Module):
         s = (q * SCALE) @ (k * SCALE).transpose(-1, -2)
         if logsize is not None:
             s = s + logsize[:, None, None, :]
-        return s.softmax(-1) @ v
+        p = s.softmax(-1)
+        return p @ v, p
 
-    def attn(self, x, t, i, logsize):
+    def attn(self, x, t, i, logsize, reduce: bool):
         qkv = self.lin(x, f"blocks.{i}.attn.qkv").reshape(-1, t, 3, HEADS, HEAD_DIM).permute(2, 0, 3, 1, 4)
         q, k, v = qkv[0], qkv[1], qkv[2]
-        o = self.attend(q, k, v, logsize).transpose(1, 2).reshape(-1, t, WIDTH)
-        return self.lin(o, f"blocks.{i}.attn.proj"), k.mean(1)
+        o, p = self.attend(q, k, v, logsize)
+        o = self.lin(o.transpose(1, 2).reshape(-1, t, WIDTH), f"blocks.{i}.attn.proj")
+        if not reduce:
+            return o, None
+        return o, k.mean(1) if self.mode == "tome" else p.mean((1, 2))
 
     def forward(self, pixel_values):
         t = self.grid * self.grid
@@ -98,30 +107,32 @@ class Trunk(torch.nn.Module):
         size = None
         for i, r in enumerate(self.merge):
             logsize = None if size is None else size[..., 0].log()
-            a, metric = self.attn(self.ln(x, f"blocks.{i}.norm1"), t, i, logsize)
+            a, metric = self.attn(self.ln(x, f"blocks.{i}.norm1"), t, i, logsize, r > 0)
             x = x + a
             if r:
                 if size is None:
                     size = torch.ones_like(x[..., :1])
-                x, size = bipartite_merge(x, size, metric, t, r)
+                reduce = bipartite_merge if self.mode == "tome" else fuse_inattentive
+                x, size = reduce(x, size, metric, t, r)
                 t -= r
             x = x + self.mlp(self.ln(x, f"blocks.{i}.norm2"), f"blocks.{i}.mlp")
         x = self.ln(x, "norm")
         kv = self.lin(x, "attn_pool.kv").reshape(-1, t, 2, HEADS, HEAD_DIM).permute(2, 0, 3, 1, 4)
         q = self.lin(self.p("attn_pool.latent"), "attn_pool.q").reshape(1, 1, HEADS, HEAD_DIM).transpose(1, 2)
-        o = self.attend(q, kv[0], kv[1], None if size is None else size[..., 0].log())
+        o, _ = self.attend(q, kv[0], kv[1], None if size is None else size[..., 0].log())
         o = self.lin(o.transpose(1, 2).reshape(-1, 1, WIDTH), "attn_pool.proj")
         o = o + self.mlp(self.ln(o, "attn_pool.norm"), "attn_pool.mlp")
         return o[:, 0]
+
+
+def take(v, idx):
+    return v.gather(1, idx[..., None].expand(-1, -1, v.shape[-1]))
 
 
 def bipartite_merge(x, size, metric, t: int, r: int):
     """ToMe merge of r tokens out of t (static ints). x holds size-weighted token means, size their counts."""
     tb = t // 2
     assert 0 < r <= (t + 1) // 2
-
-    def take(v, idx):
-        return v.gather(1, idx[..., None].expand(-1, -1, v.shape[-1]))
 
     m = metric / metric.norm(dim=-1, keepdim=True)
     node_max, node_idx = (m[:, ::2] @ m[:, 1::2].transpose(-1, -2)).max(-1)
@@ -134,6 +145,17 @@ def bipartite_merge(x, size, metric, t: int, r: int):
     s_dst = sb + to_dst @ s_src
     merged = xb * (sb / s_dst) + to_dst @ (take(xa, src) * (s_src / take(s_dst, dst)))
     return torch.cat([take(xa, unm), merged], 1), torch.cat([take(sa, unm), s_dst], 1)
+
+
+def fuse_inattentive(x, size, importance, t: int, r: int):
+    """EViT: keep the t - r - 1 most-attended tokens, fuse the other r + 1 into one, weighted by attention."""
+    assert 0 < r < t - 1
+    order = importance.argsort(-1, descending=True)
+    keep, drop = order[:, :t - r - 1], order[:, t - r - 1:]
+    w = take(importance[..., None], drop)
+    fused = (take(x, drop) * (w / w.sum(1, keepdim=True))).sum(1, keepdim=True)
+    return (torch.cat([take(x, keep), fused], 1),
+            torch.cat([take(size, keep), take(size, drop).sum(1, keepdim=True)], 1))
 
 
 def export(model: Trunk, size: int) -> onnx.ModelProto:
