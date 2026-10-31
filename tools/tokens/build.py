@@ -108,6 +108,10 @@ RECIPES = {
                                              merge=at(b2=100)),
     "tokens_tome308_to384b2_to256b14_trtfp16": Recipe("H2 tile-aligned ToMe at 308: 484 -> 384 (block 2) -> 256 (block 14)",
                                                       308, merge=at(b2=100, b14=128)),
+    "tokens_tome308_to384b6_trtfp16": Recipe("H2 tile-aligned ToMe at 308: 484 -> 384 tokens after block 6", 308,
+                                             merge=at(b6=100)),
+    "tokens_evit308_to384b2_trtfp16": Recipe("H3 tile-aligned EViT at 308: keep 383 + 1 fused after block 2", 308,
+                                             merge=at(b2=100), mode="evit"),
 }
 
 
