@@ -65,7 +65,7 @@ CV accuracy 0.8268 ± 0.0151, about 110 ms):
 | SigLIP2 B/16, CUDA fp32 | 93.8 M | 256 | 0.7397 ± 0.0188 | −8.72 pt | 269 / 50, p < 1e-4 | 11.28 | 10.5x |
 | SigLIP2 B/16, TensorRT fp16 | 93.8 M | 256 | 0.7397 ± 0.0187 | −8.72 pt | 269 / 50, p < 1e-4 | 2.28 | 48x |
 | MobileCLIP2-S0, CUDA fp32 | 12.0 M | 256 | 0.6433 ± 0.0326 | −18.35 pt | 520 / 59, p < 1e-4 | 4.27 | 26x |
-| MobileCLIP2-S0, TensorRT fp16 | 12.0 M | 256 | 0.6425 ± 0.0321 | −18.43 pt | 521 / 58, p < 1e-4 | 7.26 | 15x |
+| MobileCLIP2-S0, TensorRT fp16 | 12.0 M | 256 | 0.6425 ± 0.0321 | −18.43 pt | 521 / 58, p < 1e-4 | 7.26 | 16x |
 
 All four are REJECT. The B/16 student reaches 0.926 cosine to the teacher on held-out pool images but 0.844 on
 development images (0.859 in-scope). Fidelity is worst on classes the pool covers thinly (switch 0.79, fuse 0.81)
