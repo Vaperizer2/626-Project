@@ -27,9 +27,9 @@ from common import TEACHER_DIM, build_student, distill_loss, is_pool_val, load_p
 class StudentViews(Dataset):
     """Item i of epoch e: image ``images[i]`` through a random cached view; returns (pixels, teacher row)."""
 
-    def __init__(self, pool_dir: Path, rows, images: np.ndarray, view_rows: list[np.ndarray], views: list[np.ndarray],
+    def __init__(self, rows, images: np.ndarray, view_rows: list[np.ndarray], views: list[np.ndarray],
                  pre: dict, seed: int, eval_view: bool = False):
-        self.dir, self.rows, self.images, self.view_rows, self.views = pool_dir, rows, images, view_rows, views
+        self.rows, self.images, self.view_rows, self.views = rows, images, view_rows, views
         self.pre, self.seed, self.eval_view, self.epoch = pre, seed, eval_view, 0
 
     def __len__(self) -> int:
@@ -39,10 +39,19 @@ class StudentViews(Dataset):
         k = self.images[i]
         j = 0 if self.eval_view else np.random.default_rng((self.seed, self.epoch, i)).integers(len(self.views[k]))
         row = self.rows[k]
-        im = Image.open(self.dir / row["path"]).convert("RGB")
+        im = Image.open(row["path"]).convert("RGB")
         x = to_tensor(render_view(im, row["id"], int(self.views[k][j]), self.pre["input_size"]),
                       self.pre["mean"], self.pre["std"])
         return x, int(self.view_rows[k][j])
+
+
+def load_source(pool_dir: Path, teacher_dir: Path):
+    """Pool rows (paths made absolute) with their cached teacher embeddings and per-image view lists."""
+    rows, _ = load_pool(pool_dir)
+    rows = [{**r, "path": str(pool_dir / r["path"])} for r in rows]
+    T, view_rows, views, ids = load_teacher(teacher_dir, len(rows))
+    assert list(ids) == [r["id"] for r in rows], f"{teacher_dir} does not match {pool_dir}"
+    return rows, T, view_rows, views
 
 
 def load_teacher(teacher_dir: Path, n_images: int):
@@ -97,32 +106,42 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--component-repeat", type=int, default=2, help="in-domain images per epoch, vs 1 for generic")
     ap.add_argument("--smoke", action="store_true", help="~512 train / 128 val images, to check the loop runs")
+    ap.add_argument("--init", help="final.pt of an earlier run to start from")
+    ap.add_argument("--extra-pool", help="second pool trained on alongside --pool (paths may be absolute)")
+    ap.add_argument("--extra-teacher", help="teacher cache of --extra-pool")
+    ap.add_argument("--extra-repeat", type=int, default=1, help="visits per epoch of each --extra-pool image")
     a = ap.parse_args(argv)
 
     from timm.optim import param_groups_layer_decay
     from timm.utils import ModelEmaV3
 
     torch.manual_seed(a.seed)
-    out, pool_dir = Path(a.out), Path(a.pool)
+    out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)
-    rows, _ = load_pool(pool_dir)
-    T, view_rows, views, ids = load_teacher(Path(a.teacher), len(rows))
-    assert list(ids) == [r["id"] for r in rows], "teacher cache does not match the pool"
+    rows, T, view_rows, views = load_source(Path(a.pool), Path(a.teacher))
+    n_main, mu, sd = len(rows), T.float().mean(0), T.float().std(0)
     val = np.array([is_pool_val(r["id"]) for r in rows])
     cached = np.array([len(v) > 0 for v in views])
     comp = np.array([r["domain"] == "component" for r in rows])
     train_imgs = np.concatenate([np.flatnonzero(~val & cached)] + [np.flatnonzero(~val & cached & comp)] *
                                 (a.component_repeat - 1))
     val_imgs = np.flatnonzero(val & cached)
+    if a.extra_pool:  # e.g. the training-fold dev images of one fold (fold_pool.py); never used as pool-val
+        xr, xT, xvr, xv = load_source(Path(a.extra_pool), Path(a.extra_teacher))
+        rows, views = rows + xr, views + xv
+        view_rows = view_rows + [v + len(T) for v in xvr]
+        T = torch.cat([T, xT])
+        train_imgs = np.concatenate([train_imgs] + [np.arange(n_main, len(rows))] * a.extra_repeat)
     if a.smoke:
         train_imgs, val_imgs = train_imgs[:: len(train_imgs) // 512], val_imgs[:128]
-    mu, sd = T.float().mean(0), T.float().std(0)
     dev = torch.device("cuda")
     W = torch.from_numpy(np.load(a.text_weights)).float().to(dev)
     mu_d, sd_d = mu.to(dev), sd.to(dev)
 
     kw = {"drop_path_rate": a.drop_path} if a.drop_path else {}
     model, pre = build_student(a.student, **kw)
+    if a.init:
+        model.load_state_dict(torch.load(a.init, map_location="cpu", weights_only=False)["model"])
     if a.grad_checkpointing:
         model.backbone.set_grad_checkpointing(True)
     model.to(dev)
@@ -135,10 +154,10 @@ def main(argv: list[str] | None = None) -> None:
     opt = torch.optim.AdamW(groups, betas=(0.9, 0.999))
     ema = ModelEmaV3(model, decay=a.ema)
 
-    ds = StudentViews(pool_dir, rows, train_imgs, view_rows, views, pre, a.seed)
+    ds = StudentViews(rows, train_imgs, view_rows, views, pre, a.seed)
     dl = DataLoader(ds, batch_size=a.batch, shuffle=True, num_workers=a.workers, pin_memory=True, drop_last=True,
                     persistent_workers=False)
-    val_dl = DataLoader(StudentViews(pool_dir, rows, val_imgs, view_rows, views, pre, a.seed, eval_view=True),
+    val_dl = DataLoader(StudentViews(rows, val_imgs, view_rows, views, pre, a.seed, eval_view=True),
                         batch_size=128, num_workers=a.workers)
     total = a.epochs * len(dl)
     start_epoch, step = 0, 0
