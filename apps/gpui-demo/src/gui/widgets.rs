@@ -54,7 +54,8 @@ impl gpui_kit::AssetSource for AppAssets {
 
 use super::theme::{self, Roles};
 use super::worker::ModelState;
-use crate::contract::Prediction;
+use crate::classification::{Answer, Classification};
+use crate::models::Timing;
 use crate::demo::Verdict;
 
 pub fn pct(p: f32) -> String {
@@ -155,18 +156,15 @@ pub fn prob_row(label: &str, p: f32, strong: bool, large: bool, cx: &App) -> Any
 
 /// Headline + top-3 + all classes. Used by the Classify result panel and the Demo detail pane.
 pub fn prediction_block(
-    p: &Prediction,
+    c: &Classification,
+    timing: &Timing,
     title: &str,
-    calibrated: bool,
-    threshold: f32,
     verdict: Option<(Verdict, &str)>,
-    labels: &[String],
     cx: &App,
 ) -> AnyElement {
     let r = theme::roles(cx);
-    let top = &p.top3[0];
-    let headline = if p.unsure {
-        v_flex()
+    let headline = match c.answer {
+        Answer::Abstain { best, p, below } => v_flex()
             .gap_1()
             .child(caption("Prediction", cx))
             .child(
@@ -179,27 +177,26 @@ pub fn prediction_block(
             )
             .child(div().text_sm().text_color(r.muted_fg).child(format!(
                 "Top probability {} is below the {} threshold, so the model abstains. Best guess: {}.",
-                pct(top.1),
-                pct(threshold),
-                top.0
-            )))
-    } else {
-        v_flex()
+                pct(p),
+                pct(below),
+                c.labels.name(best)
+            ))),
+        Answer::Class { idx, p, low_confidence } => v_flex()
             .gap_1()
             .child(caption("Prediction", cx))
-            .child(div().text_3xl().font_weight(FontWeight::BOLD).text_color(r.fg).child(top.0.clone()))
+            .child(div().text_3xl().font_weight(FontWeight::BOLD).text_color(r.fg).child(c.labels.name(idx).to_string()))
             .child(
                 h_flex()
                     .gap_2()
                     .items_baseline()
-                    .child(div().text_2xl().font_weight(FontWeight::SEMIBOLD).text_color(r.accent).child(pct(top.1)))
-                    .child(div().text_sm().text_color(r.muted_fg).child(if calibrated {
+                    .child(div().text_2xl().font_weight(FontWeight::SEMIBOLD).text_color(r.accent).child(pct(p)))
+                    .child(div().text_sm().text_color(r.muted_fg).child(if c.calibrated {
                         "confidence · calibrated"
                     } else {
                         "confidence · softmax, not calibrated"
                     })),
             )
-            .when(!calibrated && top.1 < threshold, |d| {
+            .when(low_confidence, |d| {
                 d.child(
                     h_flex()
                         .gap_1()
@@ -207,9 +204,9 @@ pub fn prediction_block(
                         .text_xs()
                         .text_color(r.muted_fg)
                         .child(Icon::new(IconName::Info).xsmall())
-                        .child("Low confidence. Only the deployed model is calibrated and abstains; this one always answers."),
+                        .child("Low confidence. This model is not calibrated, so it never abstains; it always answers."),
                 )
-            })
+            }),
     };
     let verdict_row = verdict.map(|(v, truth)| {
         h_flex()
@@ -218,15 +215,15 @@ pub fn prediction_block(
             .child(verdict_tag(v, false, cx))
             .child(div().text_sm().text_color(r.muted_fg).child(format!("True label: {truth}")))
     });
-    let mut order: Vec<usize> = (0..p.probs.len()).collect();
-    order.sort_by(|&a, &b| p.probs[b].partial_cmp(&p.probs[a]).unwrap_or(std::cmp::Ordering::Equal));
-    let rest = order.iter().skip(3).map(|&i| {
+    let ranked = c.top(c.labels.len());
+    let strong = c.committed();
+    let rest = ranked.iter().skip(3).map(|&(i, p)| {
         h_flex()
             .justify_between()
             .text_xs()
             .text_color(r.muted_fg)
-            .child(div().truncate().child(labels.get(i).cloned().unwrap_or_else(|| format!("class {i}"))))
-            .child(div().child(format!("{:.1}%", p.probs[i] * 100.0)))
+            .child(div().truncate().child(c.labels.name(i).to_string()))
+            .child(div().child(format!("{:.1}%", p * 100.0)))
     });
     v_flex()
         .gap_5()
@@ -236,7 +233,7 @@ pub fn prediction_block(
             v_flex()
                 .gap_3()
                 .child(caption("Top 3", cx))
-                .children(p.top3.iter().enumerate().map(|(i, (l, v))| prob_row(l, *v, i == 0 && !p.unsure, true, cx))),
+                .children(ranked.iter().take(3).map(|&(i, p)| prob_row(c.labels.name(i), p, strong == Some(i), true, cx))),
         )
         .child(
             v_flex()
@@ -254,7 +251,8 @@ pub fn prediction_block(
                 .text_xs()
                 .text_color(r.muted_fg)
                 .child(Icon::new(Lucide::Timer).xsmall())
-                .child(format!("{title} · preprocess + inference {:.0} ms", p.ms)),
+                .child(format!("{title} · preprocess + inference {:.0} ms", timing.ms()))
+                .when(timing.shared_by > 1, |d| d.child(format!("· one pass for {} heads", timing.shared_by))),
         )
         .into_any_element()
 }
