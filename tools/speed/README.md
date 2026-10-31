@@ -190,8 +190,9 @@ features recorded on carlpc2 (torch, fp16 autocast):
 | CV accuracy, mean ± sd over 5 folds | 0.8268 ± 0.0151 (folds 0.8008 0.8270 0.8330 0.8350 0.8383) |
 | CV macro-F1 | 0.8254 ± 0.0149 |
 | pooled out-of-fold accuracy (recorded deployed fit: 0.8264) | 0.8268 |
-| batch-1 latency, median (p10 to p90), standalone runs | 116.4 ms (116.1 to 123.9) and 119.0 ms (118.7 to 119.1) in two runs |
-| batch-8 throughput | 8.6 to 9.6 img/s |
+| batch-1 latency, median (p10 to p90), three standalone runs | 109.1 ms (108.6 to 109.7), 116.4 ms (116.1 to 123.9), 118.9 ms (118.7 to 119.1) |
+| batch-8 throughput, same three runs | 9.6, 8.7, 8.6 img/s |
+| execution provider | CUDA EP, onnxruntime defaults (TF32 on), all 1048 nodes on CUDA |
 
 The trunk cut is exact. On CPU in strict fp32, deployed graph vs candidate + `head.npz` in numpy: probabilities
 agree to 1.2e-7, and batch-1 vs batch-4 embeddings are identical. On CUDA EP they agree to 7.8e-4 (TF32), with
@@ -212,23 +213,32 @@ stepping between about 900 and 1530 MHz every few seconds. That sets the noise, 
   0.03%. More runs per side would not help.
 - Absolute baseline medians drifted from 109.0 to 120.9 ms (11%) over one afternoon. A blocked A-then-B protocol
   gave TensorRT round ratios spread 13% inside one run, because blocks straddled clock steps.
+- The laptop shares one power budget between CPU and GPU. In one run another agent's CPU-heavy head fit (load
+  1.5 to 7.1) cut GPU power to 63 W and slowed both models by about 35%; the paired ratio stayed at 0.9637
+  against 0.9630 and 0.9634 in quiet runs.
 - Alternating single runs (the frozen protocol) gives each pair one clock state. An A/A check (the baseline
   against a copy with a no-op option) measured 1.0003 and 0.9999. Per-round ratios agree within 0.3% inside a
-  run. One candidate's paired ratio moved at most 0.2% between sessions for fp16 and truncated graphs, 0.9% for
-  TensorRT (2.3% counting a session at a cooler GPU state), and 1.2% for strict fp32.
+  run, except for strict fp32. Over three sessions per candidate, the paired ratio moved 0.07% for the truncated
+  graphs, 0.5% for fp16, 1.1% for TensorRT (2.3% counting a development session at a cooler GPU state) and 2.8%
+  for strict fp32, whose CUDA-core kernels hold the clock at its 900 MHz floor.
 - Hence N = 5 rounds x 60 pairs (300 candidate + 300 baseline runs). Pairing per run handles the clock steps.
   300 pairs keep the median ratio insensitive to the few pairs that straddle a step, and 5 rounds give the
   in-run spread check. `compare` requires a ratio at least 3% from 1 before it calls a difference beyond noise.
 
-**Variants measured** (CV accuracy ± sd; paired batch-1 ratio to the baseline over two sessions; verdict):
+**Variants measured.** Columns: CV accuracy ± sd, macro-F1, paired batch-1 ratio to the baseline (range over
+three sessions), batch-1 median of the final session, batch-8 over the three sessions, and the verdict.
 
-| candidate | change | CV acc | macro-F1 | batch-1 (ratio) | batch-8 | verdict |
-|---|---|---|---|---|---|---|
-| baseline_fp16 | fp16 weights and math, CUDA EP | 0.8288 ± 0.0170 | 0.8271 | 65.0 ms (0.573 to 0.574) | 16.5 to 18.2 img/s | ACCEPTABLE |
-| baseline_trt_fp16 | TensorRT EP, fp16, profile 1..8 | 0.8280 ± 0.0134 | 0.8264 | 27.0 ms (0.228 to 0.230) | invalid (see gotchas) | ACCEPTABLE |
-| baseline_fp32_notf32 | CUDA EP `use_tf32=0` | 0.8244 ± 0.0155 | 0.8233 | 185 ms (1.466 to 1.483) | 5.1 to 5.3 img/s | ACCEPTABLE (slower) |
-| degraded_drop1block | last block removed | 0.8149 ± 0.0165 | 0.8130 | 114 ms (0.963) | 9.2 to 9.4 img/s | REJECT |
-| degraded_drop4blocks | last 4 blocks removed | 0.7512 ± 0.0180 | 0.7482 | 102 ms (0.853) | 10.2 to 10.4 img/s | REJECT |
+| candidate | change | CV acc | macro-F1 | ratio | batch-1 | batch-8 | verdict |
+|---|---|---|---|---|---|---|---|
+| baseline_fp16 | fp16 weights and math, CUDA EP | 0.8288 ± 0.0170 | 0.8271 ± 0.0167 | 0.5715 to 0.5744 | 62.9 ms | 16.9 to 17.3 img/s | ACCEPTABLE |
+| baseline_trt_fp16 | TensorRT EP, fp16, profile 1..8 | 0.8280 ± 0.0134 | 0.8264 ± 0.0132 | 0.2274 to 0.2300 | 26.6 ms | invalid (gotchas) | ACCEPTABLE |
+| baseline_fp32_notf32 | CUDA EP `use_tf32=0` | 0.8244 ± 0.0155 | 0.8233 ± 0.0156 | 1.4655 to 1.5071 | 203.2 ms | 5.1 img/s | ACCEPTABLE, slower |
+| degraded_drop1block | last block removed | 0.8149 ± 0.0165 | 0.8130 ± 0.0162 | 0.9630 to 0.9637 | 153.6 ms (power-starved run) | 9.1 to 9.4 img/s | REJECT |
+| degraded_drop4blocks | last 4 blocks removed | 0.7512 ± 0.0180 | 0.7482 ± 0.0176 | 0.8527 to 0.8533 | 103.0 ms | 10.2 to 10.6 img/s | REJECT |
+
+McNemar against the baseline (B wrong where A right / the reverse, exact p): fp16 5/10 (0.30), TensorRT fp16 6/9
+(0.61), strict fp32 9/3 (0.15), drop1block 82/52 (0.012), drop4blocks 253/63 (4e-28). TensorRT fp16 against fp16:
+ratio 0.398, McNemar 14/12 (0.85), ACCEPTABLE.
 
 The truncated graphs confirm the latency is the work: removing 1 and 4 of 27 blocks gives ratios 0.963 and
 0.853, against 26/27 = 0.963 and 23/27 = 0.852.

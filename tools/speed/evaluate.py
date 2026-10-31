@@ -1,10 +1,11 @@
 """eval: development-fold CV accuracy of the deployed head recipe on a candidate's own embeddings.
 
 Embeddings come from the candidate's ONNX graph on its own execution provider, one image per run (the deployed
-batch size, and the configuration ``time`` measures), so precision and quantisation error reach the score. Per fold, the head is fitted exactly as ``compclass.final.cmd_fit`` does for its
-out-of-fold check: ``features.fit_probe`` (standardise + logistic regression, C by grouped 3-fold CV on the
-training rows), fused with the fixed zero-shot text head (T=50, w=0.25, the deployed text embeddings) when the
-candidate declares ``zero_shot_fusion``. Temperature and the abstain threshold do not change the argmax; they
+batch size, and the configuration ``time`` measures), so precision and quantisation error reach the score. Per
+fold, the head is fitted exactly as ``compclass.final.cmd_fit`` does for its out-of-fold check:
+``features.fit_probe`` (standardise + logistic regression, C by grouped 3-fold CV on the training rows), fused
+with the fixed zero-shot text head (T=50, w=0.25, the deployed text embeddings) when the candidate declares
+``zero_shot_fusion``. Temperature and the abstain threshold do not change the argmax; they
 are refitted on the out-of-fold scores and reported for information.
 """
 
