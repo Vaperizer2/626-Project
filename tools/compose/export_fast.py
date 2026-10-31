@@ -119,13 +119,17 @@ def write_export(c, head: dict, report: dict, out: Path) -> None:
     (out / "fit_report.json").write_text(json.dumps(report, indent=1, default=float))
 
 
-def session(model: Path, provider: str, options: dict, cache: Path | None):
+def session(model: Path, provider: str, options: dict, cache: Path | None, runtime: dict):
     import onnxruntime as ort
 
     ort.preload_dlls()
     so = ort.SessionOptions()
     so.log_severity_level = 3
+    so.graph_optimization_level = getattr(ort.GraphOptimizationLevel,
+                                          runtime.get("graph_optimization_level", "ORT_ENABLE_ALL"))
     so.add_session_config_entry("session.record_ep_graph_assignment_info", "1")
+    for k, v in runtime.get("session_config", {}).items():
+        so.add_session_config_entry(k, str(v))
     opts = dict(options)
     if provider == "TensorrtExecutionProvider":
         cache.mkdir(parents=True, exist_ok=True)
@@ -162,21 +166,21 @@ def parity(c, out: Path, head: dict, F_harness: np.ndarray, n: int, n_exact: int
     rep = {"images": f"dev rows {idx[0]}:{idx[-1] + 1}:{idx[1] - idx[0]} ({len(idx)})", "tolerance": TOL}
     ep, opts = c.runtime["provider"], c.runtime["options"]
     with gpu_lock():
-        s = session(out / "model.onnx", ep, opts, work / "trt_cache_export")
+        s = session(out / "model.onnx", ep, opts, work / "trt_cache_export", c.runtime)
         rep["ep_assignment"] = {k: {"nodes": v["nodes"], "subgraphs": v["subgraphs"]}
                                 for k, v in ep_assignment(s).items()}
         P = run(s, "input", "probs", X)
         L = run(s, "input", "logits", X)
         del s
-        s = session(c.dir / "model.onnx", ep, opts, work / "trt_cache_trunk")
+        s = session(c.dir / "model.onnx", ep, opts, work / "trt_cache_trunk", c.runtime)
         F = run(s, INPUT, OUTPUT, X)
         del s
         cuda = {"use_tf32": 0}
         Xe = X[:n_exact]
-        s = session(out / "model.onnx", "CUDAExecutionProvider", cuda, None)
+        s = session(out / "model.onnx", "CUDAExecutionProvider", cuda, None, c.runtime)
         Pe = run(s, "input", "probs", Xe)
         del s
-        s = session(c.dir / "model.onnx", "CUDAExecutionProvider", cuda, None)
+        s = session(c.dir / "model.onnx", "CUDAExecutionProvider", cuda, None, c.runtime)
         Fe = run(s, INPUT, OUTPUT, Xe)
         del s
     rep["runtime"] = agreement(P, python_probs(F, head))
