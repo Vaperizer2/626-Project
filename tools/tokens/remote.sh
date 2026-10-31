@@ -15,7 +15,7 @@ for id in "$@"; do
     | grep -v -e Warning -e 'warnings.warn' -e 'DeprecationWarning'
   d="$ART/tokens/candidates/$id"
   rm -rf "$d" && mkdir -p "$d"
-  scp -q "carlpc2:$R/candidates/$id/{model.onnx,preprocess.json,runtime.json,labels.json,check.json}" "$d/"
+  rsync -a --exclude model.onnx.data "carlpc2:$R/candidates/$id/" "$d/"
   cp --reflink=auto "$ART/harness/candidates/baseline_fp32/model.onnx.data" "$d/model.onnx.data"
   ssh carlpc2 "rm -f $R/candidates/$id/model.onnx.data"
 done
