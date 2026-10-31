@@ -90,6 +90,7 @@ RECIPES = {
     "tokens_res384_trtfp16": Recipe("control: surgery at the deployed grid is the identity", 384),
     "tokens_res336_trtfp16": Recipe("H1 lower resolution, 576 tokens", 336),
     "tokens_res308_trtfp16": Recipe("H1 lower resolution, 484 tokens", 308),
+    "tokens_res294_trtfp16": Recipe("H1 lower resolution, 441 tokens (between the 308 pass and 280 fail)", 294),
     "tokens_res280_trtfp16": Recipe("H1 lower resolution, 400 tokens", 280),
     "tokens_res252_trtfp16": Recipe("H1 lower resolution, 324 tokens", 252),
     "tokens_res224_trtfp16": Recipe("H1 lower resolution, 256 tokens", 224),
@@ -101,6 +102,8 @@ RECIPES = {
     "tokens_evit336_k70_trtfp16": Recipe("H3 EViT keep 70% at blocks 6, 13, 20 at 336", 336,
                                          merge=at(b6=173, b13=121, b20=85), mode="evit"),
     "tokens_center336_trtfp16": Recipe("H3 native-scale centre crop, 576 tokens", 336, pos="center"),
+    "tokens_tome308_r6_trtfp16": Recipe("H2 ToMe r=6 every block at 308 (mean tokens = res280's 400)", 308,
+                                        merge=const(6)),
 }
 
 
