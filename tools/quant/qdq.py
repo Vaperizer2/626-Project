@@ -87,6 +87,7 @@ def smooth(src: Path, stats_path: Path, dst: Path, alpha: float) -> None:
                          "act_max_after": float((a / s).max())}
         return s
 
+    divided = {}
     blocks = sorted({int(k.split(".")[1]) for k in r if k.startswith("blocks.")})
     for b in blocks:
         for gemm in ("attn.qkv", "mlp.fc1"):
@@ -94,12 +95,14 @@ def smooth(src: Path, stats_path: Path, dst: Path, alpha: float) -> None:
             n = r[role]
             norm = ln[n.input[0]]
             s = s_for(role)
+            divided[n.input[0]] = s
             set_init(m, norm.input[1], w[norm.input[1]] / s)
             set_init(m, norm.input[2], w[norm.input[2]] / s)
             w[n.input[1]] = w[n.input[1]] * s[:, None]
             set_init(m, n.input[1], w[n.input[1]])
         role = f"blocks.{b}.attn.proj"
         s = s_for(role)
+        divided[r[role].input[0]] = s
         qkv = r[f"blocks.{b}.attn.qkv"]
         wq = w[qkv.input[1]].copy()
         wq[:, 2 * D:] /= s
@@ -112,6 +115,22 @@ def smooth(src: Path, stats_path: Path, dst: Path, alpha: float) -> None:
     rt = json.loads((src / "runtime.json").read_text()) if (src / "runtime.json").exists() else {}
     save(m, src, dst, f"SmoothQuant alpha={alpha} folded into LayerNorm and V, float32", rt,
          {"smooth_alpha": alpha, "stats": str(stats_path), "factors": factors})
+    np.savez(dst / "stats_max.npz", **smoothed_stats(stats, divided))
+
+
+def smoothed_stats(stats, divided: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
+    """The smoothed graph's activation statistics, derived exactly from the source graph's: every smoothed
+    activation is the source one divided per channel by s. Only ``top[:, 0]`` (the per-image max) survives the
+    division, so the result supports the ``max`` calibrator alone; deeper ranks are NaN and percentiles refuse."""
+    out = {"acts": stats["acts"]}
+    for x in stats["acts"]:
+        c, t = stats[f"cmax/{x}"], stats[f"top/{x}"]
+        if x in divided:
+            c = c / divided[x]
+            t = np.full_like(t, np.nan)
+            t[:, 0] = c.max(1)
+        out[f"cmax/{x}"], out[f"top/{x}"] = c, t
+    return out
 
 
 def tokens(role: str) -> int:
@@ -123,6 +142,8 @@ def amax(stats, act: str, calib: str, n_tokens: int = 729) -> float:
     top = stats[f"top/{act}"]
     if calib == "max":
         return float(top[:, 0].max())
+    if np.isnan(top).any():
+        raise SystemExit(f"{act}: only per-image maxima known (smoothed statistics); use --calib max")
     q = float(calib.removeprefix("p")) / 100
     n_img, numel = len(top), stats[f"cmax/{act}"].shape[1] * n_tokens
     rank = int(round((1 - q) * n_img * numel))
