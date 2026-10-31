@@ -4,9 +4,11 @@
         SmoothQuant, folded exactly into the fp32 graph: for the qkv and fc1 GEMMs the per-input-channel factor s
         divides that block's LayerNorm gamma/beta and multiplies the weight rows; for attn.proj it divides the V
         columns of qkv (weight and bias) and multiplies the proj weight rows. Still a float32 graph.
-    qdq.py qdq <src_dir> <stats.npz> <dst_dir> [--calib max|p99.99|...] [--exclude PAT,...] [--runtime JSON]
+    qdq.py qdq <src_dir> <stats.npz> <dst_dir> [--calib max|p99.99|...] [--calib-override PAT=CALIB,...]
+               [--exclude PAT,...] [--runtime JSON]
         Weights: int8 initializers, symmetric per output channel (DequantizeLinear axis=1).
-        Activations: per-tensor symmetric scale amax/127 from the pool statistics of <src_dir>'s graph.
+        Activations: per-tensor symmetric scale amax/127 from the pool statistics of <src_dir>'s graph, with
+        --calib for every GEMM except roles matching an override pattern (first match wins).
         GEMMs whose role matches an --exclude substring stay in floating point (TensorRT runs them in fp16).
 
 GEMM roles are named from the bias they feed, e.g. ``blocks.3.mlp.fc2`` or ``attn_pool.kv``.
@@ -153,7 +155,8 @@ def amax(stats, act: str, calib: str, n_tokens: int = 729) -> float:
     return float(pooled[rank])
 
 
-def qdq(src: Path, stats_path: Path, dst: Path, calib: str, exclude: list[str], runtime: dict) -> None:
+def qdq(src: Path, stats_path: Path, dst: Path, calib: str, exclude: list[str], runtime: dict,
+        overrides: dict[str, str] | None = None) -> None:
     m, w = load(src)
     stats = np.load(stats_path)
     g = m.graph
@@ -163,7 +166,7 @@ def qdq(src: Path, stats_path: Path, dst: Path, calib: str, exclude: list[str], 
     scales = {}
     for role, n in chosen.items():
         x, wname = n.input[0], n.input[1]
-        a = amax(stats, x, calib, tokens(role))
+        a = amax(stats, x, next((c for p, c in (overrides or {}).items() if p in role), calib), tokens(role))
         scales[role] = a
         sa = f"q.{role}.act_scale"
         g.initializer.extend([numpy_helper.from_array(np.array(a / 127, np.float32), sa),
@@ -192,9 +195,10 @@ def qdq(src: Path, stats_path: Path, dst: Path, calib: str, exclude: list[str], 
     g.initializer.extend(keep)
     onnx.checker.check_model(m, full_check=False)
     rt = runtime or {"provider": "TensorrtExecutionProvider", "options": {**TRT_FP16, "trt_int8_enable": True}}
-    save(m, src, dst, f"INT8 QDQ on {len(chosen)}/{len(r)} GEMMs, act {calib}, exclude {','.join(exclude)}", rt,
-         {"calib": calib, "exclude": exclude, "stats": str(stats_path), "quantized": sorted(chosen),
-          "fp": sorted(set(r) - set(chosen)), "act_amax": scales})
+    note = f"act {calib}" + "".join(f", {p} {c}" for p, c in (overrides or {}).items())
+    save(m, src, dst, f"INT8 QDQ on {len(chosen)}/{len(r)} GEMMs, {note}, exclude {','.join(exclude)}", rt,
+         {"calib": calib, "calib_overrides": overrides or {}, "exclude": exclude, "stats": str(stats_path),
+          "quantized": sorted(chosen), "fp": sorted(set(r) - set(chosen)), "act_amax": scales})
     print(f"{dst}: {len(chosen)} INT8 GEMMs, {len(r) - len(chosen)} kept floating point")
 
 
@@ -209,6 +213,7 @@ def main() -> None:
     sub.choices["smooth"].add_argument("--alpha", type=float, required=True)
     q = sub.choices["qdq"]
     q.add_argument("--calib", default="max")
+    q.add_argument("--calib-override", default="", help="PAT=CALIB,... e.g. mlp.fc2=p99.999")
     q.add_argument("--exclude", default=DEFAULT_EXCLUDE)
     q.add_argument("--runtime", default="")
     a = ap.parse_args()
@@ -216,7 +221,8 @@ def main() -> None:
         smooth(a.src, a.stats, a.dst, a.alpha)
     else:
         qdq(a.src, a.stats, a.dst, a.calib, [p for p in a.exclude.split(",") if p],
-            json.loads(a.runtime) if a.runtime else {})
+            json.loads(a.runtime) if a.runtime else {},
+            dict(kv.split("=", 1) for kv in a.calib_override.split(",") if kv))
 
 
 if __name__ == "__main__":
