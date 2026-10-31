@@ -1,7 +1,8 @@
 """Recover a pruned So400m by feature distillation onto the deployed teacher's cached pool embeddings (carlpc2).
 
     recover.py check     --candidate DIR                   # cosine to the teacher cache on pool-val eval views
-    recover.py calibrate --candidate DIR --out ACT.npz     # mean |GELU output| per MLP neuron, component pool images
+    recover.py calibrate --candidate DIR --out ACT.npz     # GELU output statistics per MLP neuron, component pool
+    recover.py probe     --candidate DIR --act ACT.npz     # unrecovered fidelity per importance statistic/allocation
     recover.py train     --candidate DIR --out RUN [--steps 1800 --batch 16 --lr 3e-5 --train mlp]
 
 The student is DIR's graph weights in timm's `vit_so400m_patch14_siglip_384` (MLP widths taken from DIR). Data is
@@ -107,13 +108,20 @@ def cmd_check(a, dev) -> None:
 
 @torch.no_grad()
 def cmd_calibrate(a, dev) -> None:
+    """Per MLP neuron: mean a, mean |a| and RMS over all tokens, and the per-image max |a| averaged over images."""
     pool = Pool()
     m = build(a.candidate).to(dev).eval()
     imgs = np.random.default_rng(0).permutation(np.flatnonzero(pool.comp & ~pool.val))[:a.n]
-    acc = [torch.zeros(b.mlp.fc1.out_features, dtype=torch.float64, device=dev) for b in m.blocks]
+    acc = {k: [torch.zeros(b.mlp.fc1.out_features, dtype=torch.float64, device=dev) for b in m.blocks]
+           for k in ("sum", "abs", "sq", "max")}
+
     def hook(i):
         def f(mod, inp, out):
-            acc[i].add_(out.abs().float().sum((0, 1)))
+            acc["sum"][i].add_(out.float().sum((0, 1)))
+            o = out.abs().float()
+            acc["abs"][i].add_(o.sum((0, 1)))
+            acc["sq"][i].add_(o.pow(2).sum((0, 1)))
+            acc["max"][i].add_(o.amax(1).sum(0))
         return f
 
     for i, b in enumerate(m.blocks):
@@ -123,10 +131,40 @@ def cmd_calibrate(a, dev) -> None:
         with torch.autocast(dev.type, dtype=torch.bfloat16):
             m(x.to(dev))
         n_tok += x.shape[0] * (SIZE // 14) ** 2
-    act = torch.stack(acc).cpu().numpy() / n_tok
-    np.savez(a.out, mean_abs_act=act, image_ids=np.array([pool.rows[k]["id"] for k in imgs]))
-    print(f"{a.out}: {len(imgs)} component pool images; mean |act| quantiles per block (p10, p50, p90): "
-          f"{np.round(np.quantile(act, [0.1, 0.5, 0.9], axis=1).T[[0, 13, 26]], 4).tolist()}")
+    st = {k: torch.stack(v).cpu().numpy() for k, v in acc.items()}
+    np.savez(a.out, mean_act=st["sum"] / n_tok, mean_abs_act=st["abs"] / n_tok, rms_act=np.sqrt(st["sq"] / n_tok), max_act=st["max"] / len(imgs),
+             image_ids=np.array([pool.rows[k]["id"] for k in imgs]))
+    print(f"{a.out}: {len(imgs)} component pool images", flush=True)
+
+
+@torch.no_grad()
+def cmd_probe(a, dev) -> None:
+    """Pool-val fidelity of the unrecovered model under each importance statistic and width allocation, by zeroing
+    the fc2 inputs of dropped neurons (equivalent to removing them)."""
+    import build as B
+
+    pool = Pool()
+    m = build(a.candidate).to(dev)
+    fc2 = [b.mlp.fc2.weight.clone() for b in m.blocks]
+    out_norm = torch.stack([w.norm(dim=0) for w in fc2]).cpu().numpy()
+    fc1_norm = torch.stack([b.mlp.fc1.weight.norm(dim=1) for b in m.blocks]).cpu().numpy()
+    act = np.load(a.act)
+    fluct = np.sqrt(np.maximum(act["rms_act"] ** 2 - act["mean_act"] ** 2, 0))
+    b2 = [b.mlp.fc2.bias.clone() for b in m.blocks]
+    val = val_images(pool, a.n)
+    for stat, comp in (("mean_abs_act", False), ("mean_abs_act", True), ("fluct", False), ("fluct", True)):
+        score = out_norm * (fluct if stat == "fluct" else act[stat])
+        widths = B.equal_mass_widths(score, a.keep * len(m.blocks))
+        for i, b in enumerate(m.blocks):
+            drop = torch.from_numpy(np.argsort(-score[i], kind="stable")[widths[i]:])
+            w = fc2[i].clone()
+            bias = b2[i] + (w[:, drop] @ torch.from_numpy(act["mean_act"][i][drop.numpy()]).float().to(w.device)
+                            if comp else 0)
+            w[:, drop] = 0
+            b.mlp.fc2.weight.copy_(w)
+            b.mlp.fc2.bias.copy_(bias)
+        print(json.dumps({"stat": stat, "bias_comp": comp, "alloc": "equal-mass", "keep": a.keep,
+                          **fidelity(m, pool, val, dev, a.workers)}), flush=True)
 
 
 def cmd_train(a, dev) -> None:
@@ -206,8 +244,8 @@ def cmd_train(a, dev) -> None:
                 break
         if step >= a.steps:
             break
-    rec = {"step": step, "train_s": round(time.time() - t0), "val": fidelity(m, pool, val_images(pool, None), dev,
-                                                                                a.workers)}
+    rec = {"step": step, "train_s": round(time.time() - t0), "val": fidelity(m, pool, val_images(pool, a.final_val_n),
+                                                                                dev, a.workers)}
     print(json.dumps(rec), flush=True)
     log.write(json.dumps(rec) + "\n")
     m.cpu()
@@ -222,14 +260,18 @@ def cmd_train(a, dev) -> None:
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
-    for name in ("check", "calibrate", "train"):
+    for name in ("check", "calibrate", "probe", "train"):
         p = sub.add_parser(name)
         p.add_argument("--candidate", type=Path, required=True)
         p.add_argument("--workers", type=int, default=8)
         p.add_argument("--cpu", action="store_true")
+        p.add_argument("--threads", type=int, default=4, help="CPU threads with --cpu (carlpc2 is shared)")
     sub.choices["check"].add_argument("--n", type=int, default=256)
     sub.choices["calibrate"].add_argument("--out", type=Path, required=True)
     sub.choices["calibrate"].add_argument("--n", type=int, default=512)
+    sub.choices["probe"].add_argument("--act", type=Path, required=True)
+    sub.choices["probe"].add_argument("--keep", type=int, default=3072)
+    sub.choices["probe"].add_argument("--n", type=int, default=32)
     t = sub.choices["train"]
     t.add_argument("--out", type=Path, required=True)
     t.add_argument("--steps", type=int, default=1800)
@@ -240,11 +282,14 @@ def main() -> None:
     t.add_argument("--component-repeat", type=int, default=2)
     t.add_argument("--val-n", type=int, default=256)
     t.add_argument("--val-every", type=int, default=300)
+    t.add_argument("--final-val-n", type=int, default=None, help="pool-val images scored at the end (default all)")
     t.add_argument("--max-minutes", type=float, default=60)
     t.add_argument("--seed", type=int, default=0)
     a = ap.parse_args()
     dev = torch.device("cpu" if a.cpu else "cuda")
-    {"check": cmd_check, "calibrate": cmd_calibrate, "train": cmd_train}[a.cmd](a, dev)
+    if a.cpu:
+        torch.set_num_threads(a.threads)
+    {"check": cmd_check, "calibrate": cmd_calibrate, "probe": cmd_probe, "train": cmd_train}[a.cmd](a, dev)
 
 
 if __name__ == "__main__":
