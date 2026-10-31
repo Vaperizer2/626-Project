@@ -107,7 +107,7 @@ LIBPATH="$LIBPATH:$HERE"
 
 # ---------------------------------------------------------------- environment for the app
 export ORT_DYLIB_PATH="${ORT_DYLIB_PATH:-$HERE/libonnxruntime.so.1.31.0}"
-export COMPCLASS_MODEL_DIR="${COMPCLASS_MODEL_DIR:-$HERE/exports/final}"
+export COMPCLASS_MODELS="${COMPCLASS_MODELS:-$HERE/exports}"
 export COMPCLASS_DEMO_DIR="${COMPCLASS_DEMO_DIR:-$HERE/demo_stack}"
 # Cursor themes on NixOS live in the profiles, not /usr/share/icons.
 export XCURSOR_PATH="${XCURSOR_PATH:-$HOME/.icons:$HOME/.local/share/icons:$HOME/.nix-profile/share/icons:/etc/profiles/per-user/${USER:-$(id -un)}/share/icons:/run/current-system/sw/share/icons}"

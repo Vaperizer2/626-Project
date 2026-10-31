@@ -32,7 +32,7 @@ impl HeadId {
 
 impl fmt::Display for HeadId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.0)
+        f.pad(&self.0)
     }
 }
 
@@ -48,7 +48,7 @@ impl GraphId {
 
 impl fmt::Display for GraphId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.0)
+        f.pad(&self.0)
     }
 }
 
@@ -710,7 +710,9 @@ mod tests {
     }"#;
 
     fn parse_text(text: &str) -> Result<Manifest, String> {
-        let dir = std::env::temp_dir().join(format!("gpui-demo-manifest-{}", std::process::id()));
+        static N: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+        let n = N.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let dir = std::env::temp_dir().join(format!("gpui-demo-manifest-{}-{n}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(dir.join("labels.json"), r#"["a","b"]"#).unwrap();
         let w: WireManifest = serde_json::from_str(text).map_err(|e| e.to_string())?;

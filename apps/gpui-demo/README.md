@@ -63,7 +63,7 @@ export folder must contain `model.onnx` **and** `model.onnx.data` (1,714,593,792
 
 | option | meaning |
 |---|---|
-| `--model-dir DIR` | deployed export folder. Default: `$COMPCLASS_MODEL_DIR`, else the first `exports/final/` with a `model.onnx` found walking up from the current directory, then from the executable's directory. The other models are looked up relative to it (`../itri626/`). |
+| `--models PATH` | the model index `exports/models.json` or its folder. Default: `$COMPCLASS_MODELS`, else the first `exports/models.json` found walking up from the current directory, then from the executable's directory. |
 | `--model KEYS` | `classify` (and `preprocess`): use registry models instead of `model.onnx`: `a`, `b`, `c`, `deployed`, comma-separated, or `all`. JSON rows then carry a `model` field. Without `--model`, `classify` behaves exactly as before. |
 | `--demo-dir DIR` | folder with `demo_stack.json`. Default: `$COMPCLASS_DEMO_DIR`, else the first `demo_stack/` (or `apps/gpui-demo/demo_stack/`) found walking up from the current directory, then from the executable. |
 | `--tab TAB` | window: start on `classify` (default), `demo` or `benchmark`. |
@@ -250,7 +250,7 @@ How the bundle stays portable:
   text system at start-up (`theme::register_bundled_fonts`), so the type hierarchy is the same on machines
   whose UI font is a variable font or that lack Noto Sans.
 * **Paths**: the app already finds `exports/`, `demo_stack/` and `libonnxruntime` relative to its executable;
-  `run.sh` additionally sets `ORT_DYLIB_PATH`, `COMPCLASS_MODEL_DIR` and `COMPCLASS_DEMO_DIR` to the bundle
+  `run.sh` additionally sets `ORT_DYLIB_PATH`, `COMPCLASS_MODELS` and `COMPCLASS_DEMO_DIR` to the bundle
   (caller-set values win), passes all arguments through, and explains a missing display.
 * **Models**: only the files the app reads: `exports/final/{model.onnx, model.onnx.data, model_multi.onnx,
   model_multi.json, preprocess.json, labels.json}`. `model.onnx` (2 MB) is required for model-folder detection

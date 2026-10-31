@@ -2,7 +2,7 @@
 //!
 //!   gpui-demo [OPTIONS] [IMAGE|URL ...]               open the window (optionally classifying the given images)
 //!   gpui-demo classify [OPTIONS] [--json] IMAGE|URL ...  headless: print predictions, no window
-//!   gpui-demo preprocess IMAGE OUT.f32 [--model-dir D]   dump the [1,3,S,S] float32 input tensor (parity tests)
+//!   gpui-demo preprocess IMAGE OUT.f32 [--model HEAD]    dump the [1,3,H,W] float32 input tensor (parity tests)
 //!   gpui-demo models                                     list the model registry and what is available
 
 /// Profile a block with hotpath when built with `--features hotpath`; otherwise expands to the block itself.
@@ -23,23 +23,27 @@ mod contract;
 mod demo;
 mod fetch;
 mod gui;
-#[allow(dead_code)] // wired in by the registry in the next change
+#[allow(dead_code)] // runtime and integrity fields; read once the EP and checksum steps land
 mod manifest;
 mod model;
 mod models;
 mod preprocess;
+#[allow(dead_code)]
+mod registry;
 
 use std::io::Write;
 use std::path::PathBuf;
 use std::process::ExitCode;
+use std::sync::Arc;
 use std::time::Instant;
 
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result, anyhow, bail};
 
-use crate::contract::Contract;
 use crate::fetch::Source;
+use crate::manifest::{HeadId, Task};
 use crate::model::ModelOptions;
-use crate::models::{ModelKey, Models};
+use crate::models::Models;
+use crate::registry::Registry;
 
 const HELP: &str = "\
 gpui-demo - classify electronic components in pictures (GPUI + onnxruntime)
@@ -47,22 +51,21 @@ gpui-demo - classify electronic components in pictures (GPUI + onnxruntime)
 USAGE:
     gpui-demo [OPTIONS] [IMAGE|URL ...]                 open the window
     gpui-demo classify [OPTIONS] [--json] IMAGE|URL ... headless; one line (or JSON object) per image
-    gpui-demo preprocess IMAGE OUT.f32 [--model-dir DIR] [--model KEY]
-                                                        write the model input tensor (little-endian f32)
-    gpui-demo models [--model-dir DIR]                  list the four models and whether each is available
+    gpui-demo preprocess IMAGE OUT.f32 [--model HEAD]  write the model input tensor (little-endian f32)
+    gpui-demo models                                    list the models and whether each is available
 
 OPTIONS:
-    --model-dir DIR   folder with model.onnx(+.data), preprocess.json, labels.json
-                      (default: $COMPCLASS_MODEL_DIR, else the first exports/final/ found walking up
-                      from the current directory, then from the executable)
+    --models PATH     the model index exports/models.json, or its folder (default: $COMPCLASS_MODELS,
+                      else the first exports/models.json found walking up from the current directory,
+                      then from the executable)
     --ort-lib PATH    libonnxruntime.so to load (default: $ORT_DYLIB_PATH, else
                       <repo>/.venv/.../onnxruntime/capi/libonnxruntime.so*, else next to the
                       executable, else the system library path)
     --threads N       onnxruntime intra-op threads (default: onnxruntime's choice)
     --cuda            request the CUDA execution provider (build with --features cuda)
     --json            classify: print a JSON array instead of text lines
-    --model KEYS      classify with these registry models (default: deployed):
-                      a, b, c, deployed (comma-separated) or all. See `gpui-demo models`.
+    --model HEADS     classify with these models (comma-separated head ids, or all; default: the
+                      index's default head). See `gpui-demo models` for the ids.
     --demo-dir DIR    window: folder with demo_stack.json (default: $COMPCLASS_DEMO_DIR, else the
                       first demo_stack/ found walking up from the current directory, then the executable)
     --tab TAB         window: start on classify (default), demo or benchmark
@@ -81,7 +84,7 @@ struct Args {
     mode: String,
     opts: ModelOptions,
     json: bool,
-    models: Vec<ModelKey>,
+    models: Vec<String>,
     demo_dir: Option<PathBuf>,
     gui: gui::GuiOptions,
     rest: Vec<String>,
@@ -106,7 +109,7 @@ fn parse_args() -> Result<Args> {
                 println!("gpui-demo {} (jpeg decoder: {})", env!("CARGO_PKG_VERSION"), preprocess::JPEG_DECODER);
                 std::process::exit(0);
             }
-            "--model-dir" => a.opts.model_dir = Some(PathBuf::from(value("--model-dir")?)),
+            "--models" => a.opts.models = Some(PathBuf::from(value("--models")?)),
             "--ort-lib" => a.opts.ort_lib = Some(PathBuf::from(value("--ort-lib")?)),
             "--threads" => a.opts.threads = Some(value("--threads")?.parse().context("--threads")?),
             "--cuda" => a.opts.cuda = true,
@@ -124,24 +127,44 @@ fn parse_args() -> Result<Args> {
             "--dark" => a.gui.theme = Some(true),
             "--light" => a.gui.theme = Some(false),
             "--model" => {
-                let v = value("--model")?;
-                for k in v.split(',').filter(|k| !k.trim().is_empty()) {
-                    if k.trim() == "all" {
-                        a.models.extend(ModelKey::ALL);
-                    } else {
-                        a.models.push(
-                            ModelKey::parse(k)
-                                .with_context(|| format!("unknown model {k:?} (a, b, c, deployed, all)"))?,
-                        );
-                    }
-                }
-                a.models.dedup();
+                a.models.extend(value("--model")?.split(',').map(str::trim).filter(|k| !k.is_empty()).map(String::from))
             }
             s if s.starts_with("--") => bail!("unknown option {s} (see --help)"),
             _ => a.rest.push(arg),
         }
     }
     Ok(a)
+}
+
+fn registry(a: &Args) -> Result<Arc<Registry>> {
+    let index = Registry::locate(a.opts.models.as_deref())?;
+    let reg = Registry::load(&index)?;
+    for p in reg.problems() {
+        eprintln!("[gpui-demo] {p}");
+    }
+    Ok(Arc::new(reg))
+}
+
+/// `--model` names resolved against the registry (`all` = every head); none = the index's default head.
+fn heads(a: &Args, reg: &Registry) -> Result<Vec<HeadId>> {
+    let known = || reg.ids().iter().map(|h| h.to_string()).collect::<Vec<_>>().join(", ");
+    let mut out: Vec<HeadId> = Vec::new();
+    for name in &a.models {
+        let ids = if name == "all" {
+            reg.ids()
+        } else {
+            vec![reg.find(name).with_context(|| format!("unknown model {name:?} (known: {}; or all)", known()))?]
+        };
+        for id in ids {
+            if !out.contains(&id) {
+                out.push(id);
+            }
+        }
+    }
+    if out.is_empty() {
+        out.push(reg.first_default().context("the model index has no heads")?);
+    }
+    Ok(out)
 }
 
 #[derive(serde::Serialize)]
@@ -161,12 +184,14 @@ fn run_classify(a: &Args) -> Result<u8> {
     if a.rest.is_empty() {
         bail!("classify needs at least one image path or URL");
     }
-    let keys = if a.models.is_empty() { vec![ModelKey::Deployed] } else { a.models.clone() };
-    let mut models = Models::new(&a.opts)?;
-    for &k in &keys {
+    let reg = registry(a)?;
+    let keys = heads(a, &reg)?;
+    let mut models = Models::new(reg.clone(), &a.opts);
+    for k in &keys {
+        let title = &reg.head(k).expect("resolved head").spec.title;
         match models.ensure(k) {
-            Ok(ms) => eprintln!("[gpui-demo] model {} ({}) ready in {ms:.0} ms", k.id(), k.name()),
-            Err(e) => eprintln!("[gpui-demo] model {} ({}) unavailable: {e}", k.id(), k.name()),
+            Ok(ms) => eprintln!("[gpui-demo] model {k} ({title}) ready in {ms:.0} ms"),
+            Err(e) => eprintln!("[gpui-demo] model {k} ({title}) unavailable: {e}"),
         }
     }
     if let Some((lib, provider)) = models.runtime_info() {
@@ -182,7 +207,7 @@ fn run_classify(a: &Args) -> Result<u8> {
             .and_then(|b| prof!("cli::decode (registry)", preprocess::decode(&b)));
         let runs = match img {
             Ok(img) => models.predict(&img, &keys, &|| false),
-            Err(e) => keys.iter().map(|&key| models::ModelRun { key, result: Err(format!("{e:#}")) }).collect(),
+            Err(e) => keys.iter().map(|k| models::ModelRun { head: k.clone(), result: Err(format!("{e:#}")) }).collect(),
         };
         for r in runs {
             match r.result {
@@ -190,7 +215,7 @@ fn run_classify(a: &Args) -> Result<u8> {
                     if a.json {
                         rows.push(serde_json::to_value(JsonRow {
                             source: s,
-                            model: r.key.id(),
+                            model: r.head.as_str(),
                             label: Some(p.label()),
                             top3: p.top3.iter().map(|(l, v)| (l.as_str(), *v)).collect(),
                             unsure: p.unsure,
@@ -203,7 +228,7 @@ fn run_classify(a: &Args) -> Result<u8> {
                         writeln!(
                             stdout.lock(),
                             "{s}\t{}\t{}\t{:.3}\ttop3: {}\t{:.0} ms",
-                            r.key.id(),
+                            r.head,
                             p.label(),
                             p.top3[0].1,
                             top.join(", "),
@@ -214,10 +239,10 @@ fn run_classify(a: &Args) -> Result<u8> {
                 Err(e) => {
                     failures = failures.saturating_add(1);
                     if a.json {
-                        rows.push(serde_json::json!({"source": s, "model": r.key.id(), "label": null, "top3": [],
+                        rows.push(serde_json::json!({"source": s, "model": r.head.as_str(), "label": null, "top3": [],
                                                      "unsure": false, "ms": 0.0, "probs": [], "error": e}));
                     } else {
-                        writeln!(stdout.lock(), "{s}\t{}\tERROR\t{e}", r.key.id())?;
+                        writeln!(stdout.lock(), "{s}\t{}\tERROR\t{e}", r.head)?;
                     }
                 }
             }
@@ -230,29 +255,35 @@ fn run_classify(a: &Args) -> Result<u8> {
 }
 
 fn run_models(a: &Args) -> Result<u8> {
-    let models = Models::new(&a.opts)?;
-    for (k, spec) in &models.entries {
-        match spec {
-            Ok(s) => println!("{:9} {:30} available  {} [{}]", k.id(), k.name(), s.onnx.display(), s.readout_name()),
-            Err(e) => println!("{:9} {:30} unavailable  {e}", k.id(), k.name()),
+    let reg = registry(a)?;
+    for h in reg.heads() {
+        let Task::Classify(t) = &h.spec.task;
+        match h.available() {
+            Ok(()) => println!(
+                "{:9} {:30} available  {} [output {}]",
+                h.id(),
+                h.spec.title,
+                h.manifest().graph.display(),
+                t.readout.output()
+            ),
+            Err(e) => println!("{:9} {:30} unavailable  {e}", h.id(), h.spec.title),
         }
     }
     Ok(0)
 }
 
 fn run_preprocess(a: &Args) -> Result<u8> {
-    let [img, out] = a.rest.as_slice() else { bail!("usage: gpui-demo preprocess IMAGE OUT.f32 [--model KEY]") };
-    let key = match a.models.as_slice() {
-        [] => ModelKey::Deployed,
-        [k] => *k,
+    let [img, out] = a.rest.as_slice() else { bail!("usage: gpui-demo preprocess IMAGE OUT.f32 [--model HEAD]") };
+    let reg = registry(a)?;
+    let head = match heads(a, &reg)?.as_slice() {
+        [h] => h.clone(),
         _ => bail!("preprocess takes one --model"),
     };
-    let dir = Models::new(&a.opts)?.spec(key).map_err(|e| anyhow::anyhow!("{e}"))?.contract_dir.clone();
-    let c = Contract::load(&dir)?;
+    let manifest = reg.head(&head).ok_or_else(|| anyhow!("unknown model {head}"))?.manifest().clone();
     let t0 = Instant::now();
     let bytes = Source::parse(img).context("empty source")?.read()?;
     let rgb = preprocess::decode(&bytes)?;
-    let t = preprocess::to_tensor(&rgb, &c.pre)?;
+    let t = preprocess::to_tensor(&rgb, &manifest.input.pre)?;
     let mut buf = Vec::with_capacity(t.len() * 4);
     for v in &t {
         buf.extend_from_slice(&v.to_le_bytes());

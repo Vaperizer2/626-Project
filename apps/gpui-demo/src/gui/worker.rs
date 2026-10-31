@@ -17,9 +17,11 @@ use rayon::prelude::*;
 
 use crate::contract::Prediction;
 use crate::fetch::Source;
+use crate::manifest::HeadId;
 use crate::model::ModelOptions;
-use crate::models::{ModelKey, Models};
+use crate::models::Models;
 use crate::preprocess;
+use crate::registry::Registry;
 
 pub const DISPLAY_MAX_SIDE: u32 = 1280;
 /// Demo grid thumbnails: decoded once at 2x the card size (sharp on HiDPI, cheap to sample).
@@ -34,7 +36,7 @@ pub enum JobInput {
 
 pub struct Job {
     pub input: JobInput,
-    pub models: Vec<ModelKey>,
+    pub models: Vec<HeadId>,
     /// send a display texture of the decoded picture first
     pub display: bool,
     pub cancel: Arc<AtomicBool>,
@@ -43,7 +45,7 @@ pub struct Job {
 
 pub enum Update {
     Image(Arc<RenderImage>, (u32, u32)),
-    Result(ModelKey, Result<Prediction, String>),
+    Result(HeadId, Result<Prediction, String>),
     /// the input could not be read or decoded
     Failed(String),
     /// all results sent; total wall time of the job in ms
@@ -66,55 +68,42 @@ impl ModelState {
 }
 
 pub enum Event {
-    /// model registry discovered (or the export folder is missing), with the class names
-    Registry(Result<Registry, String>),
-    Model(ModelKey, ModelState),
+    Model(HeadId, ModelState),
     /// onnxruntime library path and execution provider (after the first model load)
     Runtime(String, String),
 }
 
-pub struct Registry {
-    pub models: Vec<(ModelKey, Result<String, String>)>,
-    pub labels: Vec<String>,
-    pub backbone: Option<String>,
-}
-
 pub enum Cmd {
-    Preload(ModelKey),
+    Preload(HeadId),
     Job(Job),
 }
 
-pub fn spawn(opts: ModelOptions) -> (mpsc::Sender<Cmd>, fmpsc::UnboundedReceiver<Event>) {
+pub fn spawn(
+    opts: ModelOptions,
+    registry: Option<Arc<Registry>>,
+) -> (mpsc::Sender<Cmd>, fmpsc::UnboundedReceiver<Event>) {
     let (tx, rx) = mpsc::channel::<Cmd>();
     let (etx, erx) = fmpsc::unbounded();
     std::thread::Builder::new()
         .name("inference".into())
-        .spawn(move || run(opts, rx, etx))
+        .spawn(move || run(opts, registry, rx, etx))
         .expect("spawn inference thread");
     (tx, erx)
 }
 
-fn run(opts: ModelOptions, rx: mpsc::Receiver<Cmd>, events: fmpsc::UnboundedSender<Event>) {
-    let mut models = match Models::new(&opts) {
-        Ok(m) => {
-            let list = m.entries.iter().map(|(k, s)| (*k, s.as_ref().map(|s| s.readout_name()).map_err(Clone::clone)));
-            let (labels, backbone) = m.labels();
-            let _ = events.unbounded_send(Event::Registry(Ok(Registry { models: list.collect(), labels, backbone })));
-            Some(m)
-        }
-        Err(e) => {
-            let msg = format!("{e:#}");
-            eprintln!("[gpui-demo] {msg}");
-            let _ = events.unbounded_send(Event::Registry(Err(msg)));
-            None
-        }
-    };
+fn run(
+    opts: ModelOptions,
+    registry: Option<Arc<Registry>>,
+    rx: mpsc::Receiver<Cmd>,
+    events: fmpsc::UnboundedSender<Event>,
+) {
+    let mut models = registry.map(|r| Models::new(r, &opts));
     let mut runtime_sent = false;
     while let Ok(cmd) = rx.recv() {
         match cmd {
-            Cmd::Preload(key) => {
+            Cmd::Preload(head) => {
                 if let Some(m) = models.as_mut() {
-                    ensure(m, key, &events);
+                    ensure(m, &head, &events);
                 }
             }
             Cmd::Job(job) => run_job(models.as_mut(), job, &events),
@@ -150,12 +139,12 @@ fn run_job(models: Option<&mut Models>, job: Job, events: &fmpsc::UnboundedSende
         let _ = job.updates.unbounded_send(Update::Image(tex, rgb.dimensions()));
     }
     let Some(m) = models else {
-        for &k in &job.models {
-            let _ = job.updates.unbounded_send(Update::Result(k, Err("model folder not found".into())));
+        for k in &job.models {
+            let _ = job.updates.unbounded_send(Update::Result(k.clone(), Err("model index not found".into())));
         }
         return done(&job);
     };
-    for &k in &job.models {
+    for k in &job.models {
         if job.cancel.load(Ordering::Relaxed) {
             break;
         }
@@ -164,27 +153,27 @@ fn run_job(models: Option<&mut Models>, job: Job, events: &fmpsc::UnboundedSende
     let cancel = job.cancel.clone();
     let runs = prof!("job::predict", m.predict(&rgb, &job.models, &|| cancel.load(Ordering::Relaxed)));
     for r in runs {
-        let _ = job.updates.unbounded_send(Update::Result(r.key, r.result));
+        let _ = job.updates.unbounded_send(Update::Result(r.head, r.result));
     }
     done(&job)
 }
 
-/// Load `key` (and report every registry entry that shares its graph) unless it is already loaded.
-fn ensure(m: &mut Models, key: ModelKey, events: &fmpsc::UnboundedSender<Event>) {
-    if m.is_loaded(key) || m.spec(key).is_err() {
+/// Load `head` (and report every head that shares its graph) unless it is already loaded or unavailable.
+fn ensure(m: &mut Models, head: &HeadId, events: &fmpsc::UnboundedSender<Event>) {
+    if m.is_loaded(head) || m.registry.head(head).is_none_or(|h| h.available().is_err()) {
         return;
     }
-    let siblings = m.siblings(key);
-    for &k in &siblings {
-        let _ = events.unbounded_send(Event::Model(k, ModelState::Loading(Instant::now())));
+    let siblings = m.registry.siblings(head);
+    for k in &siblings {
+        let _ = events.unbounded_send(Event::Model(k.clone(), ModelState::Loading(Instant::now())));
     }
-    let state = match m.ensure(key) {
+    let state = match m.ensure(head) {
         Ok(ms) => {
-            eprintln!("[gpui-demo] {} loaded in {ms:.0} ms", key.name());
+            eprintln!("[gpui-demo] {head} loaded in {ms:.0} ms");
             ModelState::Ready(ms)
         }
         Err(e) => {
-            eprintln!("[gpui-demo] {} failed to load: {e}", key.name());
+            eprintln!("[gpui-demo] {head} failed to load: {e}");
             ModelState::Failed(e)
         }
     };

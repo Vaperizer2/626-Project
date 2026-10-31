@@ -28,7 +28,7 @@ use super::worker::{Cmd, Job, JobInput, ModelState, Update};
 use super::{DemoApp, theme, widgets};
 use crate::contract::Prediction;
 use crate::demo::Verdict;
-use crate::models::ModelKey;
+use crate::manifest::HeadId;
 
 struct BenchRun {
     queue: VecDeque<usize>,
@@ -41,8 +41,8 @@ struct BenchRun {
 pub struct BenchState {
     run: Option<BenchRun>,
     /// columns of the last run
-    models: Vec<ModelKey>,
-    results: HashMap<(usize, ModelKey), Result<Prediction, String>>,
+    models: Vec<HeadId>,
+    results: HashMap<(usize, HeadId), Result<Prediction, String>>,
     only_disagree: bool,
     wall_s: Option<f64>,
     cancelled: bool,
@@ -83,13 +83,13 @@ impl BenchState {
 /// Aggregate `results` for `model` over `stack`.
 pub fn stats(
     stack: &crate::demo::DemoStack,
-    results: &HashMap<(usize, ModelKey), Result<Prediction, String>>,
-    model: ModelKey,
+    results: &HashMap<(usize, HeadId), Result<Prediction, String>>,
+    model: &HeadId,
 ) -> Stats {
     let mut s = Stats::default();
     let (mut conf, mut ms) = (0f32, 0f64);
     for (i, im) in stack.images.iter().enumerate() {
-        match results.get(&(i, model)) {
+        match results.get(&(i, model.clone())) {
             Some(Ok(p)) => {
                 s.judged += 1;
                 conf += p.top3[0].1;
@@ -113,13 +113,13 @@ pub fn stats(
 
 /// Do the models' answers (top-1 label, or UNSURE) differ on image `i`?
 pub fn disagree(
-    results: &HashMap<(usize, ModelKey), Result<Prediction, String>>,
+    results: &HashMap<(usize, HeadId), Result<Prediction, String>>,
     i: usize,
-    models: &[ModelKey],
+    models: &[HeadId],
 ) -> bool {
     let answers: HashSet<&str> = models
         .iter()
-        .filter_map(|k| results.get(&(i, *k)).and_then(|r| r.as_ref().ok()))
+        .filter_map(|k| results.get(&(i, k.clone())).and_then(|r| r.as_ref().ok()))
         .map(|p| if p.unsure { "UNSURE" } else { p.top3[0].0.as_str() })
         .collect();
     answers.len() > 1
@@ -131,7 +131,7 @@ impl DemoApp {
             return self.bench_cancel(cx);
         }
         let Some(n) = self.demo.stack().map(|s| s.images.len()) else { return };
-        let models: Vec<ModelKey> = ModelKey::ALL.into_iter().filter(|k| self.model_usable(*k)).collect();
+        let models: Vec<HeadId> = self.head_ids().into_iter().filter(|k| self.model_usable(k)).collect();
         if models.is_empty() {
             return;
         }
@@ -188,7 +188,7 @@ impl DemoApp {
                             Update::Result(k, r) => {
                                 // share with the Demo tab so its cards show the result too
                                 if let (Ok(p), Some(it)) = (&r, this.demo.items.get_mut(i)) {
-                                    it.results.insert(k, ItemResult::Done(p.clone()));
+                                    it.results.insert(k.clone(), ItemResult::Done(p.clone()));
                                 }
                                 this.bench.results.insert((i, k), r);
                             }
@@ -210,6 +210,13 @@ impl DemoApp {
         })
         .detach();
         cx.notify();
+    }
+
+    /// "one pass shared by C and Deployed" when other benchmarked heads read the same graph as `k`.
+    fn shared_pass(&self, k: &HeadId) -> Option<String> {
+        let sib = self.registry.as_ref()?.siblings(k);
+        let names: Vec<String> = sib.iter().filter(|s| self.bench.models.contains(s)).map(|s| self.short(s)).collect();
+        (names.len() > 1).then(|| format!("one pass shared by {}", names.join(" and ")))
     }
 
     fn bench_rows(&self) -> Vec<usize> {
@@ -235,12 +242,13 @@ impl DemoApp {
         };
         let n = stack.images.len();
         let running = self.bench.run.as_ref();
-        let available: Vec<ModelKey> = ModelKey::ALL.into_iter().filter(|k| self.model_usable(*k)).collect();
-        let unavailable: Vec<String> = ModelKey::ALL
+        let available: Vec<HeadId> = self.head_ids().into_iter().filter(|k| self.model_usable(k)).collect();
+        let unavailable: Vec<String> = self
+            .head_ids()
             .into_iter()
-            .filter_map(|k| match self.state(k) {
-                Some(ModelState::Unavailable(_)) => Some(format!("{} (not exported)", k.short())),
-                Some(ModelState::Failed(_)) => Some(format!("{} (failed to load)", k.short())),
+            .filter_map(|k| match self.state(&k) {
+                Some(ModelState::Unavailable(_)) => Some(format!("{} (not exported)", self.short(&k))),
+                Some(ModelState::Failed(_)) => Some(format!("{} (failed to load)", self.short(&k))),
                 _ => None,
             })
             .collect();
@@ -339,7 +347,7 @@ impl DemoApp {
         let models = if self.bench.models.is_empty() { available.clone() } else { self.bench.models.clone() };
         let best = models
             .iter()
-            .map(|&k| stats(stack, &self.bench.results, k))
+            .map(|k| stats(stack, &self.bench.results, k))
             .filter(|s| s.judged > 0)
             .map(|s| s.correct)
             .max();
@@ -348,7 +356,7 @@ impl DemoApp {
             .gap_3()
             .px_4()
             .pt_4()
-            .children(models.iter().map(|&k| self.render_stats_card(k, n, best, cx)));
+            .children(models.iter().map(|k| self.render_stats_card(k, n, best, cx)));
         v_flex()
             .size_full()
             .bg(roles.canvas)
@@ -358,7 +366,7 @@ impl DemoApp {
             .into_any_element()
     }
 
-    fn render_stats_card(&self, k: ModelKey, n: usize, best: Option<usize>, cx: &App) -> impl IntoElement {
+    fn render_stats_card(&self, k: &HeadId, n: usize, best: Option<usize>, cx: &App) -> impl IntoElement {
         let t = cx.theme();
         let r = theme::roles(cx);
         let stack = self.demo.stack().expect("stack");
@@ -382,7 +390,7 @@ impl DemoApp {
                     .justify_between()
                     .items_center()
                     .gap_2()
-                    .child(div().text_sm().font_weight(FontWeight::SEMIBOLD).truncate().child(k.name()))
+                    .child(div().text_sm().font_weight(FontWeight::SEMIBOLD).truncate().child(self.title(k)))
                     .when(leading, |d| {
                         d.child(
                             h_flex()
@@ -433,18 +441,13 @@ impl DemoApp {
                         Lucide::Timer,
                         if s.judged > 0 { format!("{:.0} ms / image", s.mean_ms) } else { "– ms / image".into() },
                     ))
-                    .when(
-                        matches!(k, ModelKey::C | ModelKey::Deployed)
-                            && self.bench.models.contains(&ModelKey::C)
-                            && self.bench.models.contains(&ModelKey::Deployed),
-                        |d| d.child("one SigLIP pass shared by C and Deployed"),
-                    )
+                    .when_some(self.shared_pass(k), |d, note| d.child(note))
                     .when(s.unsure > 0, |d| d.child(meta(Lucide::CircleQuestionMark, format!("{} unsure", s.unsure))))
                     .when(s.errors > 0, |d| d.child(meta(Lucide::CircleAlert, format!("{} errors", s.errors)))),
             )
     }
 
-    fn render_matrix(&self, models: &[ModelKey], cx: &mut Context<Self>) -> impl IntoElement {
+    fn render_matrix(&self, models: &[HeadId], cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.theme();
         let r = theme::roles(cx);
         let stack = self.demo.stack().expect("stack");
@@ -459,14 +462,14 @@ impl DemoApp {
             .border_b_1()
             .border_color(t.border)
             .child(div().w(px(300.)).flex_none().child("Image · true label"))
-            .children(models.iter().map(|k| div().flex_1().min_w_0().truncate().child(k.short())));
+            .children(models.iter().map(|k| div().flex_1().min_w_0().truncate().child(self.short(k))));
         let rows: Vec<AnyElement> = self
             .bench_rows()
             .into_iter()
             .map(|i| {
                 let im = &stack.images[i];
                 let thumb = self.demo.items.get(i).and_then(|it| it.thumb.clone());
-                let cells = models.iter().map(|&k| {
+                let cells = models.iter().map(|k| {
                     let cell = h_flex()
                         .flex_1()
                         .min_w_0()
@@ -476,7 +479,7 @@ impl DemoApp {
                         .border_1()
                         .border_color(r.border);
                     let body = v_flex().flex_1().min_w_0().px_2().gap_1().justify_center();
-                    match self.bench.results.get(&(i, k)) {
+                    match self.bench.results.get(&(i, k.clone())) {
                         Some(Ok(p)) => {
                             let v = im.judge(&p.top3[0].0, p.unsure);
                             let c = r.verdict(v).0;
@@ -640,17 +643,18 @@ mod tests {
             r#"{"images":[{"file":"a","section":"s","true_label":"led"},{"file":"b","section":"s","true_label":null}]}"#,
         )
         .unwrap();
+        let (ka, kb) = (HeadId::new("a"), HeadId::new("b"));
         let mut r = HashMap::new();
-        r.insert((0, ModelKey::A), Ok(pred(0, 0.9)));
-        r.insert((0, ModelKey::B), Ok(pred(1, 0.8)));
-        r.insert((1, ModelKey::A), Ok(pred(2, 0.4)));
-        r.insert((1, ModelKey::B), Err("x".into()));
-        let a = stats(&stack, &r, ModelKey::A);
+        r.insert((0, ka.clone()), Ok(pred(0, 0.9)));
+        r.insert((0, kb.clone()), Ok(pred(1, 0.8)));
+        r.insert((1, ka.clone()), Ok(pred(2, 0.4)));
+        r.insert((1, kb.clone()), Err("x".into()));
+        let a = stats(&stack, &r, &ka);
         assert_eq!((a.correct, a.judged, a.unsure, a.errors), (2, 2, 0, 0), "out-of-scope + unsure counts as correct");
         assert!((a.mean_conf - 0.65).abs() < 1e-6);
-        let b = stats(&stack, &r, ModelKey::B);
+        let b = stats(&stack, &r, &kb);
         assert_eq!((b.correct, b.judged, b.errors), (0, 1, 1));
-        assert!(disagree(&r, 0, &[ModelKey::A, ModelKey::B]));
-        assert!(!disagree(&r, 1, &[ModelKey::A, ModelKey::B]), "an error is not an answer");
+        assert!(disagree(&r, 0, &[ka.clone(), kb.clone()]));
+        assert!(!disagree(&r, 1, &[ka, kb]), "an error is not an answer");
     }
 }

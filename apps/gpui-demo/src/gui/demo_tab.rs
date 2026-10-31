@@ -29,7 +29,7 @@ use super::worker::{self, Cmd, Job, JobInput, Update};
 use super::{DemoApp, theme, widgets};
 use crate::contract::Prediction;
 use crate::demo::{DemoStack, Verdict};
-use crate::models::ModelKey;
+use crate::manifest::HeadId;
 
 /// Cards are at least this wide; the grid fits as many columns as the window allows and widens them evenly.
 const CARD_MIN_W: f32 = 176.;
@@ -49,11 +49,11 @@ pub struct Item {
     pub full: Option<Arc<RenderImage>>,
     pub rgb: Option<Arc<RgbImage>>,
     pub load_error: Option<String>,
-    pub results: HashMap<ModelKey, ItemResult>,
+    pub results: HashMap<HeadId, ItemResult>,
 }
 
 struct RunState {
-    model: ModelKey,
+    model: HeadId,
     queue: VecDeque<usize>,
     total: usize,
     cancel: Arc<AtomicBool>,
@@ -90,11 +90,11 @@ impl DemoState {
     }
 
     /// (correct, judged, unsure) for `model` over the images classified so far.
-    pub fn summary(&self, model: ModelKey) -> (usize, usize, usize) {
-        let Some(s) = self.stack() else { return (0, 0, 0) };
+    pub fn summary(&self, model: Option<&HeadId>) -> (usize, usize, usize) {
+        let (Some(s), Some(model)) = (self.stack(), model) else { return (0, 0, 0) };
         let (mut ok, mut n, mut unsure) = (0, 0, 0);
         for (im, it) in s.images.iter().zip(&self.items) {
-            if let Some(ItemResult::Done(p)) = it.results.get(&model) {
+            if let Some(ItemResult::Done(p)) = it.results.get(model) {
                 n += 1;
                 match im.judge(&p.top3[0].0, p.unsure) {
                     Verdict::Correct => ok += 1,
@@ -148,7 +148,7 @@ impl DemoApp {
     fn demo_classify(
         &mut self,
         i: usize,
-        model: ModelKey,
+        model: HeadId,
         advance: bool,
         cancel: Arc<AtomicBool>,
         cx: &mut Context<Self>,
@@ -161,12 +161,12 @@ impl DemoApp {
             None => JobInput::Source(crate::fetch::Source::File(path)),
         };
         let (tx, mut rx) = fmpsc::unbounded();
-        let job = Job { input, models: vec![model], display: false, cancel, updates: tx };
+        let job = Job { input, models: vec![model.clone()], display: false, cancel, updates: tx };
         if self.jobs.send(Cmd::Job(job)).is_err() {
             it.results.insert(model, ItemResult::Failed("inference thread is not running".into()));
             return;
         }
-        it.results.insert(model, ItemResult::Working);
+        it.results.insert(model.clone(), ItemResult::Working);
         cx.spawn(async move |this, cx| {
             while let Some(u) = rx.next().await {
                 let alive = this
@@ -180,7 +180,7 @@ impl DemoApp {
                                     it.results.insert(k, ItemResult::Failed(e));
                                 }
                                 Update::Failed(e) => {
-                                    it.results.insert(model, ItemResult::Failed(e));
+                                    it.results.insert(model.clone(), ItemResult::Failed(e));
                                 }
                                 Update::Image(..) => {}
                                 Update::Done(_) => {
@@ -205,15 +205,21 @@ impl DemoApp {
         cx.notify();
     }
 
+    /// Item `it`'s result for the selected head.
+    fn selected_result<'a>(&self, it: &'a Item) -> Option<&'a ItemResult> {
+        self.model.as_ref().and_then(|m| it.results.get(m))
+    }
+
     pub(super) fn demo_classify_selected(&mut self, cx: &mut Context<Self>) {
         if self.demo.stack().is_none() {
             return;
         }
         let i = self.demo.selected;
-        if matches!(self.demo.items.get(i).and_then(|it| it.results.get(&self.model)), Some(ItemResult::Working)) {
+        let Some(model) = self.model.clone() else { return };
+        if matches!(self.demo.items.get(i).and_then(|it| it.results.get(&model)), Some(ItemResult::Working)) {
             return;
         }
-        self.demo_classify(i, self.model, false, Arc::new(AtomicBool::new(false)), cx);
+        self.demo_classify(i, model, false, Arc::new(AtomicBool::new(false)), cx);
     }
 
     pub(super) fn demo_run_all(&mut self, cx: &mut Context<Self>) {
@@ -221,7 +227,7 @@ impl DemoApp {
         if self.demo.run.is_some() {
             return self.demo_cancel(cx);
         }
-        let model = self.model;
+        let Some(model) = self.model.clone() else { return };
         for it in &mut self.demo.items {
             it.results.remove(&model);
         }
@@ -238,7 +244,7 @@ impl DemoApp {
         }
         match run.queue.pop_front() {
             Some(i) => {
-                let (model, cancel) = (run.model, run.cancel.clone());
+                let (model, cancel) = (run.model.clone(), run.cancel.clone());
                 self.demo.selected = i;
                 let ci = self.demo.child_index(i);
                 self.demo.scroll.scroll_to_item(ci);
@@ -308,7 +314,8 @@ impl DemoApp {
         let t = cx.theme();
         let r = theme::roles(cx);
         let n = self.demo.items.len();
-        let (ok, judged, _) = self.demo.summary(self.model);
+        let (ok, judged, _) = self.demo.summary(self.model.as_ref());
+        let short = self.model.as_ref().map(|m| self.short(m)).unwrap_or_default();
         let running = self.demo.run.as_ref();
         let progress = running.map(|run| {
             let done = (run.total - run.queue.len()).saturating_sub(1); // one image is in flight
@@ -329,9 +336,9 @@ impl DemoApp {
                 .items_baseline()
                 .child(div().text_3xl().font_weight(FontWeight::BOLD).child(format!("{ok}/{judged}")))
                 .child(div().text_sm().text_color(t.muted_foreground).child(if judged < n {
-                    format!("correct · {judged} of {n} classified · {}", self.model.short())
+                    format!("correct · {judged} of {n} classified · {short}")
                 } else {
-                    format!("correct · {}", self.model.short())
+                    format!("correct · {short}")
                 }))
         });
         h_flex()
@@ -385,7 +392,7 @@ impl DemoApp {
         let mut children: Vec<AnyElement> = Vec::new();
         for (si, section) in stack.sections.iter().enumerate() {
             let idx = stack.section_indices(section);
-            let (ok, n) = idx.iter().fold((0, 0), |(ok, n), &i| match self.demo.items[i].results.get(&self.model) {
+            let (ok, n) = idx.iter().fold((0, 0), |(ok, n), &i| match self.selected_result(&self.demo.items[i]) {
                 Some(ItemResult::Done(p)) => {
                     (ok + usize::from(stack.images[i].judge(&p.top3[0].0, p.unsure) == Verdict::Correct), n + 1)
                 }
@@ -442,11 +449,11 @@ impl DemoApp {
         let im = &stack.images[i];
         let it = &self.demo.items[i];
         let sel = self.demo.selected == i;
-        let verdict = match it.results.get(&self.model) {
+        let verdict = match self.selected_result(it) {
             Some(ItemResult::Done(p)) => Some(im.judge(&p.top3[0].0, p.unsure)),
             _ => None,
         };
-        let result: AnyElement = match it.results.get(&self.model) {
+        let result: AnyElement = match self.selected_result(it) {
             Some(ItemResult::Working) => h_flex()
                 .gap_1()
                 .items_center()
@@ -559,22 +566,31 @@ impl DemoApp {
                         .child(format!("Reference run (Deployed, CLI): {p} {}", widgets::pct(c))),
                 )
             });
-        let result: AnyElement = match it.results.get(&self.model) {
-            Some(ItemResult::Done(p)) => {
+        let short = self.model.as_ref().map(|m| self.short(m)).unwrap_or_default();
+        let result: AnyElement = match (self.selected_result(it), &self.model) {
+            (Some(ItemResult::Done(p)), Some(m)) => {
                 let v = im.judge(&p.top3[0].0, p.unsure);
-                widgets::prediction_block(p, self.model, self.threshold(), Some((v, im.true_text())), &self.labels, cx)
+                widgets::prediction_block(
+                    p,
+                    &self.title(m),
+                    self.calibrated(m),
+                    self.threshold(),
+                    Some((v, im.true_text())),
+                    &self.labels(m),
+                    cx,
+                )
             }
-            Some(ItemResult::Working) => h_flex()
+            (Some(ItemResult::Working), _) => h_flex()
                 .gap_2()
                 .items_center()
                 .py_4()
                 .child(Spinner::new().color(t.primary))
-                .child(div().text_lg().child(format!("Classifying with {}…", self.model.short())))
+                .child(div().text_lg().child(format!("Classifying with {short}…")))
                 .into_any_element(),
-            Some(ItemResult::Failed(e)) => {
+            (Some(ItemResult::Failed(e)), _) => {
                 Alert::error("demo-error", SharedString::from(e.clone())).title("Could not classify").into_any_element()
             }
-            None => v_flex()
+            _ => v_flex()
                 .gap_2()
                 .items_start()
                 .child(
@@ -582,7 +598,7 @@ impl DemoApp {
                         .primary()
                         .large()
                         .icon(IconName::Play)
-                        .label(format!("Classify with {}", self.model.short()))
+                        .label(format!("Classify with {short}"))
                         .on_click(cx.listener(|this, _, _, cx| this.demo_classify_selected(cx))),
                 )
                 .child(widgets::hint(&["enter"], "classify · ← → step through the stack", cx))

@@ -77,14 +77,15 @@ rm -rf "$OUT"
 mkdir -p "$OUT/exports/final" "$OUT/exports/itri626" "$OUT/LICENSES"
 cp "$BIN" "$OUT/gpui-demo" && strip --strip-all "$OUT/gpui-demo"
 cp "$ORT_LIB" "$OUT/libonnxruntime.so.1.31.0"
-# only what the app reads: model.onnx is required (folder detection + the CLI default), model_multi.onnx
-# carries Deployed + C in one graph over the shared model.onnx.data
-for f in model.onnx model.onnx.data model_multi.onnx model_multi.json preprocess.json labels.json; do
+# what the app reads: the index, each model.json and the files it lists (model_multi.onnx carries Deployed + C
+# in one graph over model.onnx.data), plus preprocess.json as the human-readable contract
+cp "$REPO/exports/models.json" "$OUT/exports/models.json"
+for f in model.onnx.data model_multi.onnx model.json preprocess.json labels.json; do
     cp --reflink=auto "$REPO/exports/final/$f" "$OUT/exports/final/"
 done
 for m in A_scratch_cnn B_convnext_tiny; do
     mkdir -p "$OUT/exports/itri626/$m"
-    for f in model.onnx preprocess.json labels.json; do cp "$REPO/exports/itri626/$m/$f" "$OUT/exports/itri626/$m/"; done
+    for f in model.onnx model.json preprocess.json labels.json; do cp "$REPO/exports/itri626/$m/$f" "$OUT/exports/itri626/$m/"; done
 done
 cp -r "$APP/demo_stack" "$OUT/demo_stack"
 cp "$APP/packaging/run.sh" "$OUT/run.sh" && cp "$APP/packaging/run-nixos.sh" "$OUT/run-nixos.sh" && chmod 755 "$OUT/run.sh" "$OUT/run-nixos.sh" "$OUT/gpui-demo"

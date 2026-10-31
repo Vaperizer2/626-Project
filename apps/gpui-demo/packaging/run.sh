@@ -12,7 +12,7 @@ BIN="$HERE/gpui-demo"
 
 # Explicit paths (an environment variable already set by the caller wins).
 export ORT_DYLIB_PATH="${ORT_DYLIB_PATH:-$HERE/libonnxruntime.so.1.31.0}"
-export COMPCLASS_MODEL_DIR="${COMPCLASS_MODEL_DIR:-$HERE/exports/final}"
+export COMPCLASS_MODELS="${COMPCLASS_MODELS:-$HERE/exports}"
 export COMPCLASS_DEMO_DIR="${COMPCLASS_DEMO_DIR:-$HERE/demo_stack}"
 
 if [ "$(uname -m)" != "x86_64" ]; then
