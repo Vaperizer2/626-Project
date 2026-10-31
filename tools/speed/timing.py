@@ -4,9 +4,10 @@ Inputs and outputs stay on the GPU through IO binding, so a run measures the gra
 ``run_with_iobinding`` plus ``synchronize_outputs``, timed with ``perf_counter_ns``. Warmup runs until both a
 minimum count and a minimum duration pass (cuDNN autotuning, TensorRT first-run work, GPU boost ramp).
 
-legion's laptop GPU sits at its power cap during these runs, and that cap moves when other work loads the CPU,
-which shifts latency by 3-5% between minutes. So batch-1 rounds of the candidate alternate with rounds of the
-baseline in the same session, and the per-round ratio candidate/baseline is the speed number that cancels it.
+legion's laptop GPU runs these at its thermal and power limits (87 C, SM clock stepping between ~900 and 1500 MHz
+every few seconds), which moves absolute latency by up to 11% over an afternoon. So every batch-1 run of the
+candidate is followed by one run of the baseline in a second session, and the median of the 300 per-pair ratios
+candidate/baseline is the speed number: both runs of a pair see the same clock.
 """
 
 from __future__ import annotations
@@ -22,7 +23,7 @@ from harness import (BASELINE, INPUT, MAX_BATCH, OUTPUT, PROBS, Candidate, appen
                      gpu_lock, load_candidate, make_session, provider_info)
 
 WARMUP_RUNS, WARMUP_S = 20, 10.0
-ROUNDS, RUNS_B1, RUNS_REF, RUNS_B8 = 5, 60, 20, 12
+ROUNDS, RUNS_B1, RUNS_B8 = 5, 60, 12
 MIN_COS = 0.999
 
 
@@ -167,13 +168,12 @@ def run_time(path: str) -> dict:
             if paired:
                 rr = Runner(rsess, preprocessed(ref, m, rows[:1]), ref.dim, C)
                 rr.warmup()
-            lat, rlat = [], []
-            for _ in range(ROUNDS):
-                lat.append(r1.rounds(1, RUNS_B1)[0])
-                if paired:
-                    rlat.append(rr.rounds(1, RUNS_REF)[0])
+                runs = np.array([[(r1.once(), rr.once()) for _ in range(RUNS_B1)] for _ in range(ROUNDS)])
+                lat, rlat = runs[..., 0], runs[..., 1]
+            else:
+                lat = r1.rounds(ROUNDS, RUNS_B1)
             bad, cos = r1.check(single[:1])
-            b1 = {**stats(np.array(lat), 1), "warmup_runs": warm, "n_bad_outputs": bad, "cos_vs_plain_run": cos}
+            b1 = {**stats(lat, 1), "warmup_runs": warm, "n_bad_outputs": bad, "cos_vs_plain_run": cos}
             rr = rsess = None  # batch 8 is unpaired; two So400m-size sessions plus batch-8 buffers overflow 6 GB
             b8 = None
             if max_batch(c) >= MAX_BATCH:
@@ -185,20 +185,21 @@ def run_time(path: str) -> dict:
         del sess
     pair = None
     if paired:
-        ratios = np.median(lat, 1) / np.median(rlat, 1)
+        ratios = lat / rlat
+        rounds = np.median(ratios, 1)
         pair = {"reference": ref.id, "reference_sha": ref.sha, "reference_median_ms": float(np.median(rlat)),
                 "reference_round_medians_ms": np.median(rlat, 1).round(3).tolist(),
-                "round_ratios": ratios.round(4).tolist(), "ratio_median": float(np.median(ratios)),
-                "ratio_min": float(ratios.min()), "ratio_max": float(ratios.max())}
+                "round_ratios": rounds.round(4).tolist(), "ratio_median": float(np.median(ratios)),
+                "ratio_min": float(rounds.min()), "ratio_max": float(rounds.max())}
     raw = c.work / f"latency-{time.strftime('%Y%m%dT%H%M%S')}.npz"
-    np.savez(raw, b1=np.array(lat), **({"ref": np.array(rlat)} if paired else {}), **({"b8": lat8} if b8 else {}))
+    np.savez(raw, b1=lat, **({"ref": rlat} if paired else {}), **({"b8": lat8} if b8 else {}))
     n_err = b1["n_bad_outputs"] + (b8["n_bad_outputs"] if b8 else 0)
     rec = append_result({"kind": "time", "candidate": c.id, "candidate_sha": c.sha, "candidate_dir": str(c.dir),
                          "built_from": c.preprocess.get("built_from"), "n_images": MAX_BATCH if b8 else 1,
                          "n_errors": n_err, "n_timed_runs": ROUNDS * (RUNS_B1 + (RUNS_B8 if b8 else 0)),
-                         "batch1": b1, "is_reference": not paired, "paired": pair, "batch8": b8, **info, **versions(), **static,
-                         "gpu_during": gpu.summary(), "loadavg_1m": load0[0], "loadavg_1m_after": os.getloadavg()[0],
-                         "raw_latencies": str(raw)})
+                         "batch1": b1, "is_reference": not paired, "paired": pair, "batch8": b8, **info, **versions(),
+                         **static, "gpu_during": gpu.summary(), "loadavg_1m": load0[0],
+                         "loadavg_1m_after": os.getloadavg()[0], "raw_latencies": str(raw)})
     print(f"[{c.id}] batch-1 median {b1['median_ms']:.2f} ms (p10 {b1['p10_ms']:.2f}, p90 {b1['p90_ms']:.2f}; "
           f"round medians {b1['round_medians_ms']})")
     if pair:
