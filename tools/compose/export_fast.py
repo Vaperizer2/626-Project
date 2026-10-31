@@ -1,6 +1,6 @@
 """One deployable model file for a speed-track trunk candidate: the trunk plus the deployed head refitted on it.
 
-    export_fast.py <candidate_dir> <out_dir> [--n-parity 314] [--n-exact 32]
+    tools/compose/py tools/compose/export_fast.py <candidate_dir> <out_dir> [--n-parity 314] [--n-exact 32]
 
 Head: ``compclass.final.fit_head`` (the code behind exports/final, checked by check_fit.py) on the candidate's own
 2,512 development embeddings, the ones the frozen harness's latest eval of this exact candidate content extracted on
@@ -78,7 +78,6 @@ def append_head(m: onnx.ModelProto, head: dict) -> onnx.ModelProto:
     del g.output[:]
     g.output.extend(helper.make_tensor_value_info(o, TensorProto.FLOAT, [batch.dim_param or batch.dim_value, classes])
                     for o in ("logits", "probs"))
-    onnx.checker.check_model(m)
     return m
 
 
@@ -106,6 +105,7 @@ def write_export(c, head: dict, report: dict, out: Path) -> None:
     for loc in locs:
         subprocess.run(["cp", "--reflink=auto", str(c.dir / loc), str(out / loc)], check=True)
     onnx.save(append_head(m, head), out / "model.onnx")
+    onnx.checker.check_model(str(out / "model.onnx"))
     np.savez(out / "head.npz", **head)
     shutil.copy(DEPLOYED / "labels.json", out / "labels.json")
     final = json.loads((DEPLOYED / "preprocess.json").read_text())
@@ -141,6 +141,9 @@ def session(model: Path, provider: str, options: dict, cache: Path | None, runti
         providers = [(provider, opts), "CPUExecutionProvider"]
     t0 = time.perf_counter()
     s = ort.InferenceSession(str(model), so, providers=providers)
+    if s.get_providers()[0] != provider:
+        raise SystemExit(f"{provider} did not load (session providers {s.get_providers()}); run through "
+                         "tools/compose/py so the TensorRT libraries are on the library path")
     print(f"  session {model.parent.name}/{model.name} on {s.get_providers()[0]} in {time.perf_counter() - t0:.0f}s",
           flush=True)
     return s
@@ -189,6 +192,7 @@ def parity(c, out: Path, head: dict, F_harness: np.ndarray, n: int, n_exact: int
     rep["runtime_probs_sum_max_err"] = float(np.abs(P.sum(1) - 1).max())
     rep["exact"] = agreement(Pe, python_probs(Fe, head))
     cpu = rep["ep_assignment"].get("CPUExecutionProvider", {}).get("nodes", 0)
+    rep["nodes_off_stated_provider"] = sum(v["nodes"] for k, v in rep["ep_assignment"].items() if k != ep)
     rep["checks"] = {
         "runtime": rep["runtime"]["max_abs_prob"] <= TOL["runtime"]["max_abs_prob"]
         and rep["runtime"]["argmax_agree"] >= TOL["runtime"]["argmax_agree"] and rep["runtime_finite"],
