@@ -14,6 +14,7 @@ from harness import append_result, latest, load_candidate
 
 MAX_DROP = 0.005
 ALPHA = 0.05
+MIN_EFFECT = 0.03  # paired ratios of one candidate moved up to 2.3% between sessions (README: Baseline and noise)
 
 
 def vs_baseline(t: dict) -> tuple[float, float, float] | None:
@@ -25,18 +26,19 @@ def vs_baseline(t: dict) -> tuple[float, float, float] | None:
 
 
 def latency(ta: dict, tb: dict) -> dict:
-    """Batch-1 latency ratio B/A. Both runs paired with the baseline -> ratio of their same-session ratios, and B is
-    beyond noise when its round ratios do not overlap A's; otherwise the ratio of independent medians, beyond noise
-    when the round medians do not overlap."""
+    """Batch-1 latency ratio B/A. Both runs paired with the baseline -> ratio of their same-session ratios, else the
+    ratio of the absolute medians. Beyond noise: the round ranges do not overlap and the ratio is at least
+    MIN_EFFECT away from 1."""
     pa, pb = vs_baseline(ta), vs_baseline(tb)
     if pa and pb:
         ratio, lo, hi, paired = pb[0] / pa[0], pb[1] / pa[0], pb[2] / pa[0], True
-        beyond = pb[2] < pa[1] or pb[1] > pa[2]
+        disjoint = pb[2] < pa[1] or pb[1] > pa[2]
     else:
         ra, rb = ta["batch1"]["round_medians_ms"], tb["batch1"]["round_medians_ms"]
         ratio, lo, hi, paired = tb["batch1"]["median_ms"] / ta["batch1"]["median_ms"], min(rb) / max(ra), \
             max(rb) / min(ra), False
-        beyond = max(rb) < min(ra) or max(ra) < min(rb)
+        disjoint = max(rb) < min(ra) or max(ra) < min(rb)
+    beyond = disjoint and abs(ratio - 1) >= MIN_EFFECT
 
     def img_s(t: dict) -> float | None:
         return round(t["batch8"]["img_per_s"], 1) if t["batch8"] and t["batch8"]["valid"] else None

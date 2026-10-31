@@ -112,12 +112,14 @@ Under the GPU lock, a session on your provider runs `with_head.onnx` with inputs
 (IO binding), so a run is the model, not host copies. Input is the first dev image (batch 1) or first 8 (batch 8).
 Each run is `run_with_iobinding` + `synchronize_outputs`, timed with `perf_counter_ns`.
 
-- A second session holds the baseline. Batch-1 rounds alternate: 60 runs of yours, 20 of the baseline, five
-  times. The per-round ratio (your round median / the baseline's) is the speed number (`paired.ratio_median`),
-  because legion's GPU sits at its 80 W cap and that cap moves with CPU load, shifting absolute latency by 3-5%
-  between minutes (see Baseline and noise). Both sessions see the same clocks inside a round.
+- A second session holds the baseline. Every batch-1 run of yours is followed by one baseline run: 5 rounds of
+  60 pairs. The median of the 300 per-pair ratios (yours / baseline) is the speed number
+  (`paired.ratio_median`); `paired.round_ratios` are the 5 per-round medians. legion's GPU runs at its thermal
+  and power limits and its SM clock steps every few seconds, so absolute latency drifts (see Baseline and noise);
+  the two runs of a pair see the same clock.
 - Warmup per session and batch size: at least 20 runs and 10 s.
-- Batch 1: reports median, p10, p90, min, max and the 5 round medians of your 300 runs.
+- Batch 1: reports median, p10, p90, min, max and the 5 round medians of your 300 runs (measured while
+  alternating with the baseline).
 - Batch 8: 5 rounds x 12 runs, unpaired. Reports images/s = 8 / median batch latency. Skipped for a static-1 graph
   or a TensorRT profile whose max batch is below 8.
 - Output checks: every output row finite, probabilities summing to 1, and each embedding within cosine 0.999 of
@@ -142,8 +144,10 @@ Otherwise **REJECT**. Speed is the hillclimb metric; this rule only guards accur
 
 - the batch-1 latency ratio B/A, from the same-session ratios to the baseline when both time records have them
   (B/A = ratio(B) / ratio(A), with ratio(baseline) = 1), else from the two absolute medians;
-- `beyond noise`: true when B's five round ratios all lie outside A's range (or, unpaired, the round medians do
-  not overlap);
+- `beyond noise`: true when B's five round ratios all lie outside A's range (unpaired: the round medians do not
+  overlap) and the ratio is at least 3% away from 1. The 3% is above the largest drift of one candidate's paired
+  ratio between sessions (2.3%, Baseline and noise). A smaller real gain shows as not beyond noise; re-run
+  `time` on both sides at different times before claiming it;
 - batch-8 throughputs, where valid.
 
 ## Results
@@ -151,13 +155,83 @@ Otherwise **REJECT**. Speed is the hillclimb metric; this rule only guards accur
 Every `eval`, `time` and `compare` appends one JSON line to
 `/home/vaper/Work/Prototypes/626-artifacts/harness/results.jsonl` with `kind`, `candidate` (directory name),
 `candidate_sha` (hash of `model.onnx`, its external data, `preprocess.json`, `runtime.json`), `git_sha` and
-`git_dirty` of this harness, `n_images`, `n_errors`, `n_timed_runs`, plus the fields above. `compare` uses the
-latest `eval` and `time` records whose `candidate_sha` matches the directory's current content, so rebuilding
-a candidate in place forces a fresh eval and time.
+`git_dirty` of this harness (code only; docs are ignored), `n_images`, `n_errors`, `n_timed_runs`, plus the
+fields above. Time records carry `batch1`, `paired` (null for the baseline itself, which has
+`is_reference: true`) and `batch8`. `compare` uses the latest `eval` and `time` records whose `candidate_sha`
+matches the directory's current content, so rebuilding a candidate in place forces a fresh eval and time.
+
+A quick look at everything recorded so far:
+
+```bash
+jq -c 'select(.kind=="compare") | {b, d_cv_acc, mcnemar, ratio: .latency.ratio, verdict}' \
+    /home/vaper/Work/Prototypes/626-artifacts/harness/results.jsonl
+```
 
 ## Baseline and noise
 
-BASELINE_AND_NOISE
+Measured on legion on 2026-10-31: RTX 3060 Laptop GPU, driver 615.78.08 (CUDA 13.4), onnxruntime-gpu 1.31.1
+(CUDA 13.0 build), cuDNN 9.27, TensorRT 10.16.1. Raw records are in `results.jsonl`; the development runs that
+shaped this protocol are in `artifacts/harness/dev/`.
+
+**The eval recipe reproduces the recorded numbers.** `check_recipe.py` runs eval's head code on the dev
+features recorded on carlpc2 (torch, fp16 autocast):
+
+- benchmark.csv's probe CV 0.8252 and its per-fold accuracies are reproduced exactly with the C grid of the
+  time, (0.01, 0.1, 1, 10). Commit cbf1877 widened the grid to (0.001 ... 1), which the deployed head and this
+  harness use. With it, the probe's pooled out-of-fold accuracy is 0.8248, exactly as in fit_report.json.
+- The fused out-of-fold accuracy is 0.8268 against the recorded 0.8264 (one image). carlpc2 reproduces 0.8264
+  exactly with the same code and features. On legion, fold 3's inner-CV choice between C = 0.01 and C = 0.1
+  (macro-F1 margin about 2e-4) resolves the other way.
+
+**Baseline** (`candidates/baseline_fp32`: the deployed graph's trunk, CUDA EP defaults):
+
+| | value |
+|---|---|
+| CV accuracy, mean ± sd over 5 folds | 0.8268 ± 0.0151 (folds 0.8008 0.8270 0.8330 0.8350 0.8383) |
+| CV macro-F1 | 0.8254 ± 0.0149 |
+| pooled out-of-fold accuracy (recorded deployed fit: 0.8264) | 0.8268 |
+| batch-1 latency, median (p10 to p90), standalone runs | 116.4 ms (116.1 to 123.9) and 119.0 ms (118.7 to 119.1) in two runs |
+| batch-8 throughput | 8.6 to 9.6 img/s |
+
+The trunk cut is exact. On CPU in strict fp32, deployed graph vs candidate + `head.npz` in numpy: probabilities
+agree to 1.2e-7, and batch-1 vs batch-4 embeddings are identical. On CUDA EP they agree to 7.8e-4 (TF32), with
+argmax 16/16. Two evals of the baseline produce identical embeddings and predictions.
+
+**Accuracy noise.** Numerically equivalent versions of the same model score CV 0.8244 to 0.8288: strict fp32
+0.8244, the recorded torch features 0.8268, TF32 0.8268, TensorRT fp16 0.8280 (0.8276 from another engine
+build), fp16 0.8288. Each differs from the baseline on 12 to 22 images, with McNemar p ≥ 0.15. The cause is the
+recipe: tiny embedding differences flip the inner-CV choice of C in a fold, which moves that fold by up to
+0.6 pp. A candidate within about 0.25 pp of the baseline is therefore indistinguishable from it. The 0.5 pp
+tolerance sits about twice that band. Real losses are caught: dropping the last block costs 1.20 pp (82 vs 52
+discordant, p = 0.012) and dropping four costs 7.56 pp. Both are REJECT.
+
+**Latency noise and N.** The laptop GPU runs these loads at its limits: 81 to 88 °C, power 69 to 80 W, SM clock
+stepping between about 900 and 1530 MHz every few seconds. That sets the noise, not the sample count:
+
+- Within a run, p10 to p90 is about ±0.3% of the median, so the median of 300 runs has a standard error near
+  0.03%. More runs per side would not help.
+- Absolute baseline medians drifted from 109.0 to 120.9 ms (11%) over one afternoon. A blocked A-then-B protocol
+  gave TensorRT round ratios spread 13% inside one run, because blocks straddled clock steps.
+- Alternating single runs (the frozen protocol) gives each pair one clock state. An A/A check (the baseline
+  against a copy with a no-op option) measured 1.0003 and 0.9999. Per-round ratios agree within 0.3% inside a
+  run. One candidate's paired ratio moved at most 0.2% between sessions for fp16 and truncated graphs, 0.9% for
+  TensorRT (2.3% counting a session at a cooler GPU state), and 1.2% for strict fp32.
+- Hence N = 5 rounds x 60 pairs (300 candidate + 300 baseline runs). Pairing per run handles the clock steps.
+  300 pairs keep the median ratio insensitive to the few pairs that straddle a step, and 5 rounds give the
+  in-run spread check. `compare` requires a ratio at least 3% from 1 before it calls a difference beyond noise.
+
+**Variants measured** (CV accuracy ± sd; paired batch-1 ratio to the baseline over two sessions; verdict):
+
+| candidate | change | CV acc | macro-F1 | batch-1 (ratio) | batch-8 | verdict |
+|---|---|---|---|---|---|---|
+| baseline_fp16 | fp16 weights and math, CUDA EP | 0.8288 ± 0.0170 | 0.8271 | 65.0 ms (0.573 to 0.574) | 16.5 to 18.2 img/s | ACCEPTABLE |
+| baseline_trt_fp16 | TensorRT EP, fp16, profile 1..8 | 0.8280 ± 0.0134 | 0.8264 | 27.0 ms (0.228 to 0.230) | invalid (see gotchas) | ACCEPTABLE |
+| baseline_fp32_notf32 | CUDA EP `use_tf32=0` | 0.8244 ± 0.0155 | 0.8233 | 185 ms (1.466 to 1.483) | 5.1 to 5.3 img/s | ACCEPTABLE (slower) |
+| degraded_drop1block | last block removed | 0.8149 ± 0.0165 | 0.8130 | 114 ms (0.963) | 9.2 to 9.4 img/s | REJECT |
+| degraded_drop4blocks | last 4 blocks removed | 0.7512 ± 0.0180 | 0.7482 | 102 ms (0.853) | 10.2 to 10.4 img/s | REJECT |
+
+The truncated graphs confirm the latency is the work: removing 1 and 4 of 27 blocks gives ratios 0.963 and
+0.853, against 26/27 = 0.963 and 23/27 = 0.852.
 
 ## Gotchas for candidate authors
 
@@ -172,9 +246,19 @@ BASELINE_AND_NOISE
   the output `embedding` (the pooled 1152-d feature, before any head).
 - **TF32.** CUDA EP defaults to `use_tf32=1`. A candidate may change any provider option, and the change is part
   of the candidate (it is hashed and recorded).
-- **TensorRT.** The first `eval` builds the engine inside the GPU lock (minutes for So400m), cached under
-  `artifacts/harness/work/<id>/<sha12>/trt_cache` and reused by `time`. A new candidate hash means a new
-  build. Put int8 calibration or QDQ in the graph; the harness only passes provider options.
+- **TensorRT.** The first `eval` builds the engine inside the GPU lock (about 50 s for So400m fp16), cached
+  under `artifacts/harness/work/<id>/<sha12>/trt_cache` and reused by `time`. A new candidate hash means a new
+  build, and builds differ numerically (CV 0.8276 vs 0.8280 for two builds of the same graph). Put int8
+  calibration or QDQ in the graph; the harness only passes provider options.
+- **TensorRT is wrong at batch > 1 on the baseline graph.** With a 1..8 profile, batch-1 output is correct
+  (embedding cosine to CUDA fp32: median 0.99988, min 0.995). At batches 2, 4 and 8, every row is wrong (cosine
+  0.42 to 0.92, even for 8 copies of one image), in fp32 and fp16 alike, while CUDA EP is exact on the same
+  graph. `time` catches this and marks `batch8.valid = false`. If your graph must serve batches under TensorRT,
+  check that flag. For batch-1 deployment, a profile of min = opt = max = 1 is legitimate.
+- **VRAM.** `time` holds your session and the baseline's (about 2 GB at batch 1) together, next to about 1.1 GB
+  for the resident `nemo-speech` process, on a 6 GB GPU. The baseline session is freed before batch 8.
+- **Runtime.** eval takes about 5 min for the fp32 baseline (1 min for TensorRT fp16), plus head fitting on the
+  CPU. time takes 2 to 4 min. Both hold the GPU lock for their GPU part.
 - **Zero-shot fusion** uses the deployed text embeddings (`exports/final/head.npz["W"]`, 20 x 1152), T = 50,
   w = 0.25. It is only meaningful for So400m-space embeddings; the harness refuses it for other dimensions but
   cannot check the space itself, so set it truthfully.
@@ -183,6 +267,9 @@ BASELINE_AND_NOISE
 - **CPU preprocessing is not timed.** Pillow decode + resize + crop + normalise of a dev image takes about
   5 ms single-threaded (median of 64, measured at load average 19), next to about 110 ms for the baseline
   model. Once a model gets near 20 ms, preprocessing is a fifth of what the app's user waits for.
+- **Absolute latency depends on the GPU's thermal state.** Back-to-back runs keep it at 81 to 88 °C, where it
+  clocks lower than a cool GPU serving one click at a time. Quote speedups as the paired ratio; quote absolute
+  ms with the `gpu_during` clocks next to them. Power-dense kernels throttle harder: strict fp32 drove the SM clock
+  to 900 MHz in one run.
 - **legion is shared.** Other agents compile Rust and run their own jobs; `time` records the load average, GPU
-  processes and clocks with every run. A `nemo-speech` process keeps about 1.1 GB of VRAM; budget about
-  4.9 GB for your session.
+  processes and clocks with every run.
