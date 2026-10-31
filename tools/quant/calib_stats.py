@@ -1,9 +1,11 @@
 """Activation statistics at every weight-GEMM input, collected on pool images for INT8 calibration.
 
 The graph gets extra outputs per GEMM activation x [1, T, C]: per-channel max |x| over tokens (for SmoothQuant and
-the max calibrator) and the TOPK largest |x| over the whole tensor (for percentile calibrators). Reductions run on
+the max calibrator), the TOPK largest |x| over the whole tensor (for percentile calibrators) and its shape (T differs
+per block once tokens are merged). Reductions run on
 the GPU inside the session, so only a few KB per tensor leave the device. Images are the pool calibration split
-(disjoint from every development and test image; see calib_set.py).
+(disjoint from every development and test image; see calib_set.py), preprocessed as the preprocess.json next to
+<model.onnx> declares.
 
     calib_stats.py <model.onnx> <out.npz> [--split calib] [--n 512]
 
@@ -21,7 +23,7 @@ import numpy as np
 import onnx
 from onnx import TensorProto, helper, numpy_helper
 
-from common import gpu_lock, pool_images, preprocess
+from common import gpu_lock, pool_images, preprocess, spec_of
 
 TOPK = 1024
 
@@ -45,9 +47,11 @@ def stats_graph(src: Path, dst: Path) -> list[str]:
         g.node.extend([helper.make_node("Abs", [x], [a]),
                        helper.make_node("ReduceMax", [a, "qs.axes01"], [f"cmax/{x}"], keepdims=0),
                        helper.make_node("Reshape", [a, "qs.flat"], [f"qs.flat{i}"]),
-                       helper.make_node("TopK", [f"qs.flat{i}", "qs.k"], [f"top/{x}", f"qs.idx{i}"])])
+                       helper.make_node("TopK", [f"qs.flat{i}", "qs.k"], [f"top/{x}", f"qs.idx{i}"]),
+                       helper.make_node("Shape", [x], [f"shape/{x}"])])
         g.output.extend([helper.make_tensor_value_info(f"cmax/{x}", TensorProto.FLOAT, None),
-                         helper.make_tensor_value_info(f"top/{x}", TensorProto.FLOAT, None)])
+                         helper.make_tensor_value_info(f"top/{x}", TensorProto.FLOAT, None),
+                         helper.make_tensor_value_info(f"shape/{x}", TensorProto.INT64, None)])
     for loc in {e.value for t in g.initializer if t.data_location == TensorProto.EXTERNAL for e in t.external_data
                 if e.key == "location"}:
         subprocess.run(["cp", "--reflink=auto", str(src.parent / loc), str(dst.parent / loc)], check=True)
@@ -67,10 +71,10 @@ def main() -> None:
     a.out.parent.mkdir(parents=True, exist_ok=True)
     tmp = a.out.parent / "calib_stats.onnx"
     acts = stats_graph(a.model, tmp)
-    X = preprocess(pool_images(a.split, a.n))
+    X = preprocess(pool_images(a.split, a.n), spec_of(a.model.parent))
     print(f"{len(acts)} GEMM activations, {len(X)} images", flush=True)
     ort.preload_dlls()
-    names = [f"cmax/{x}" for x in acts] + [f"top/{x}" for x in acts]
+    names = [f"cmax/{x}" for x in acts] + [f"top/{x}" for x in acts] + [f"shape/{x}" for x in acts]
     with gpu_lock():
         sess = ort.InferenceSession(str(tmp), providers=["CUDAExecutionProvider", "CPUExecutionProvider"])
         t0 = time.perf_counter()
@@ -81,10 +85,11 @@ def main() -> None:
             for j, x in enumerate(acts):
                 cmax[x].append(out[j])
                 top[x].append(out[len(acts) + j])
+            shape = dict(zip(acts, out[2 * len(acts):]))
         print(f"{time.perf_counter() - t0:.0f}s", flush=True)
         del sess
     np.savez(a.out, acts=np.array(acts), **{f"cmax/{x}": np.stack(v) for x, v in cmax.items()},
-             **{f"top/{x}": np.stack(v) for x, v in top.items()})
+             **{f"top/{x}": np.stack(v) for x, v in top.items()}, **{f"shape/{x}": v for x, v in shape.items()})
     print(f"wrote {a.out}")
 
 
