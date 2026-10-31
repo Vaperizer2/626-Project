@@ -63,6 +63,8 @@ pub struct Loaded {
     pub placement: Placement,
     /// e.g. "onnxruntime 1.31.1"
     pub runtime: String,
+    /// every file is the copy `models --check` last hashed and found matching its manifest
+    pub verified: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -711,7 +713,7 @@ pub(crate) mod fake {
         Prob, Readout, RuntimeSpec,
     };
     use crate::registry::Graph as RegGraph;
-    use std::collections::{BTreeMap, HashSet};
+    use std::collections::HashSet;
     use std::path::PathBuf;
     use std::time::Duration;
 
@@ -746,7 +748,6 @@ pub(crate) mod fake {
             },
             heads: vec![HeadSpec { id: HeadId::new(id), title: id.to_uppercase(), short: id.into(), task }],
             runtime: RuntimeSpec { opt_level: OptLevel::All, providers: vec![Ep { kind: EpKind::Cpu, options: vec![] }] },
-            provenance: BTreeMap::new(),
         })
     }
 
@@ -811,7 +812,7 @@ pub(crate) mod fake {
             }
             let graph = FakeGraph { id: m.id.to_string(), run: self.run, seen: self.seen.clone() };
             let placement = Placement { registered: vec![EpKind::Cpu], skipped: vec![] };
-            Ok((Box::new(graph), Loaded { ms: 1.0, placement, runtime: "fake".into() }))
+            Ok((Box::new(graph), Loaded { ms: 1.0, placement, runtime: "fake".into(), verified: true }))
         }
 
         fn probe(&self, m: &Manifest) -> Result<(), String> {

@@ -352,7 +352,12 @@ impl DemoApp {
                     ModelState::Ready(l) => {
                         let skipped: String =
                             l.placement.skipped.iter().map(|(ep, why)| format!("\n{} skipped: {why}", ep.name())).collect();
-                        format!("{name} — on {}, loaded in {:.1} s{skipped}", l.placement, l.ms / 1000.0)
+                        let checked = if l.verified {
+                            "checksums verified"
+                        } else {
+                            "checksums not verified since the files changed (gpui-demo models --check)"
+                        };
+                        format!("{name} — on {}, loaded in {:.1} s, {checked}{skipped}", l.placement, l.ms / 1000.0)
                     }
                     ModelState::Loading { stage: LoadStage::BuildingEngine, .. } => {
                         format!("{name} — building its TensorRT engine (first run only)")
