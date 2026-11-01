@@ -534,6 +534,11 @@ fn run_models(a: &Args) -> Result<u8> {
             Err(e) => println!("{:9} {:30} unavailable  {e}", h.id(), h.spec.title),
         }
     }
+    // --check: a manifest the index lists but that cannot be used is a failure too (registry() printed why)
+    let mut bad = if a.check { reg.problems().len() } else { 0 };
+    if bad > 0 {
+        println!("index     {bad} problem(s) with {}", reg.index_path().display());
+    }
     let loader = OrtLoader::new(&a.opts, reg.index_path().parent());
     let rt = match loader.runtime() {
         Ok(rt) => rt,
@@ -565,7 +570,6 @@ fn run_models(a: &Args) -> Result<u8> {
     }
     // --check: hash every file against its manifest, then load the graph the way the app does
     let mut stamps = integrity::Stamps::load();
-    let mut bad = 0;
     for g in reg.graphs() {
         let m = &g.manifest;
         if let Err(e) = &g.availability {
@@ -674,5 +678,16 @@ mod tests {
         let heads: Vec<&HeadId> = rows.iter().map(|r| &r.0).collect();
         assert_eq!(heads, [&x, &y], "every requested head has a row");
         assert!(rows[0].1.is_ok() && rows[1].1.is_err(), "the head that never answered counts as a failure");
+    }
+
+    #[test]
+    fn models_check_fails_when_the_index_lists_a_manifest_it_cannot_read() {
+        let dir = std::env::temp_dir().join(format!("gpui-demo-check-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join(registry::INDEX_FILE), r#"{"schema":"model-index/1","default":[],"manifests":["gone/model.json"]}"#)
+            .unwrap();
+        let args = Args { check: true, opts: ModelOptions { models: Some(dir.clone()), ..Default::default() }, ..Default::default() };
+        assert_eq!(run_models(&args).unwrap(), 1, "a manifest that cannot be read is a failed check");
+        let _ = std::fs::remove_dir_all(&dir); // test scratch dir under the OS temp dir only
     }
 }
