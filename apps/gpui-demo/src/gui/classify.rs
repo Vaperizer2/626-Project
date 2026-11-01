@@ -27,6 +27,7 @@ use super::results::{HeadResult, Results};
 use super::{DemoApp, FocusUrl, ModelState, Open, Paste, theme, widgets};
 use crate::fetch::Source;
 use crate::inference::{ImageInput, RequestHandle, RunError, Ticket, Update};
+use crate::manifest::HeadId;
 
 const MAX_ENTRIES: usize = 40;
 
@@ -80,6 +81,15 @@ impl ClassifyState {
             .is_some_and(|e| matches!(e.results.get(head), Some(HeadResult::Done(_, _, Some(_)))) && e.image.is_some())
     }
 
+    /// How many entries have `head`'s answer and their display picture.
+    #[cfg(test)]
+    pub fn answered_entries(&self, head: &crate::manifest::HeadId) -> usize {
+        self.entries
+            .iter()
+            .filter(|e| matches!(e.results.get(head), Some(HeadResult::Done(_, _, Some(_)))) && e.image.is_some())
+            .count()
+    }
+
     /// The short status the Recent list shows for the selected entry's failed answer from `head`.
     #[cfg(test)]
     pub fn failure(&self, head: &crate::manifest::HeadId) -> Option<&'static str> {
@@ -130,21 +140,33 @@ impl DemoApp {
     }
 
     /// The selected entry gets the selected model's answer when it has none yet: on submission, after a model
-    /// switch, and when another entry is selected.
+    /// switch, and when another entry is selected. Entries never submitted (they arrived while the start-up default
+    /// was probed) get theirs too.
     pub(super) fn classify_follow_model(&mut self, cx: &mut Context<Self>) {
-        let (Some(model), Some(ix)) = (self.run_model(), self.classify.selected_ix()) else { return };
+        let Some(model) = self.run_model() else { return };
+        let c = &self.classify;
+        let waiting = c.entries.iter().enumerate().filter(|(_, e)| e.tickets.is_empty()).map(|(i, _)| i);
+        let todo: Vec<usize> = c.selected_ix().into_iter().chain(waiting).collect();
+        for ix in todo {
+            self.classify_answer(ix, &model, cx);
+        }
+    }
+
+    /// Entry `ix` gets `model`'s answer unless it has one or is waiting for it.
+    fn classify_answer(&mut self, ix: usize, model: &HeadId, cx: &mut Context<Self>) {
         let c = &mut self.classify;
         let e = &mut c.entries[ix];
-        if e.results.get(&model).is_some() {
+        if e.results.get(model).is_some() {
             return;
         }
         let (id, token) = (e.id, c.next_id);
         c.next_id += 1;
         let display = e.image.is_none().then_some(DISPLAY_MAX_SIDE);
         let RequestHandle { updates: mut rx, ticket } =
-            self.interactive.submit(e.input.clone(), std::slice::from_ref(&model), display);
+            self.interactive.submit(e.input.clone(), std::slice::from_ref(model), display);
         e.tickets.push(ticket);
         e.results.start(model.clone(), token);
+        let model = model.clone();
         cx.spawn(async move |this, cx| {
             while let Some(update) = rx.next().await {
                 let alive = this
