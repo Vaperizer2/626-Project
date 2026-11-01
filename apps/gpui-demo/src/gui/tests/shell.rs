@@ -55,10 +55,11 @@ fn tabs_are_named_by_title_and_listed_in_the_help() {
     assert_eq!(super::super::tab_index(SHELL_TABS, ""), None);
     assert_eq!(super::super::tab_index(SHELL_TABS, "settings"), None);
     let help = super::super::keys_help(SHELL_TABS);
-    assert!(help.contains("Ctrl+1..2 Classify / Probe tab"), "{help}");
+    assert!(help.starts_with("Ctrl+1..2 Classify / Probe tab,"), "{help}");
+    let one = super::super::keys_help(&SHELL_TABS[..1]);
+    assert!(one.starts_with("Ctrl+1 Classify tab,"), "one tab has one key: {one}");
     for tabs in [SHELL_TABS, app::TABS] {
         let help = super::super::keys_help(tabs);
-        assert!(help.contains(&format!("Ctrl+1..{}", tabs.len())), "{help}");
         for t in tabs {
             assert!(help.contains(t.title), "--help names the {} tab", t.title);
             for (_, label) in t.hints {
