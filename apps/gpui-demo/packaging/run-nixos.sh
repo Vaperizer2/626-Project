@@ -56,17 +56,22 @@ ATTRS=(glibc stdenv.cc.cc.lib wayland libxkbcommon libxcb libglvnd vulkan-loader
 
 nix_cmd() { nix --extra-experimental-features 'nix-command flakes' "$@"; }
 
+# The first printed store path that has a lib/ directory.
+with_lib() { local q f=""; while read -r q; do [ -z "$f" ] && [ -d "$q/lib" ] && f=$q; done; [ -n "$f" ] && printf '%s\n' "$f"; }
+
 resolve_one() { # $1 = attribute; prints the store path of its library output
     local attr="$1" alt="" p=""
     [ "$attr" = libxcb ] && alt="xorg.libxcb"
     for a in "$attr" $alt; do
+        # the library output: nix build of a bare attribute realises only its default outputs (glibc: bin)
+        case "$a" in *.lib) ;; *) a="$a.out" ;; esac
         if [ -n "${NIXPKGS:-}" ]; then
-            p=$(nix_cmd build --no-link --print-out-paths "${NIXPKGS}#${a}" 2>/dev/null | head -n1) && [ -n "$p" ] && break
+            p=$(nix_cmd build --no-link --print-out-paths "${NIXPKGS}#${a}" 2>/dev/null | with_lib) && [ -n "$p" ] && break
         else
             if nix-instantiate --find-file nixpkgs >/dev/null 2>&1; then
-                p=$(nix-build '<nixpkgs>' -A "$a" --no-out-link 2>/dev/null | head -n1) && [ -n "$p" ] && break
+                p=$(nix-build '<nixpkgs>' -A "$a" --no-out-link 2>/dev/null | with_lib) && [ -n "$p" ] && break
             fi
-            p=$(nix_cmd build --no-link --print-out-paths "nixpkgs#${a}" 2>/dev/null | head -n1) && [ -n "$p" ] && break
+            p=$(nix_cmd build --no-link --print-out-paths "nixpkgs#${a}" 2>/dev/null | with_lib) && [ -n "$p" ] && break
         fi
         p=""
     done
@@ -118,7 +123,7 @@ export COMPCLASS_DEMO_DIR="${COMPCLASS_DEMO_DIR:-$HERE/demo_stack}"
 export XCURSOR_PATH="${XCURSOR_PATH:-$HOME/.icons:$HOME/.local/share/icons:$HOME/.nix-profile/share/icons:/etc/profiles/per-user/${USER:-$(id -un)}/share/icons:/run/current-system/sw/share/icons}"
 
 HEADLESS=0
-case "${ARGS[0]:-}" in classify | preprocess | models | -h | --help | -V | --version) HEADLESS=1 ;; esac
+case "${ARGS[0]:-}" in classify | preprocess | models | bench | -h | --help | -V | --version) HEADLESS=1 ;; esac
 
 if [ "$HEADLESS" = 0 ] && [ "$DOCTOR" = 0 ]; then
     if [ "$USE_X11" = 1 ]; then
