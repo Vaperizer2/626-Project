@@ -33,9 +33,20 @@ pub struct GraphReport {
 pub enum Verification {
     Unavailable(Unavailable),
     /// every file matched, in `secs`; then the load, or why it failed
-    Hashed { bytes: u64, secs: f64, load: Result<Loaded, String> },
-    Mismatch { file: PathBuf, expected: Sha256, found: Sha256 },
-    Unreadable { file: PathBuf, error: String },
+    Hashed {
+        bytes: u64,
+        secs: f64,
+        load: Result<Loaded, String>,
+    },
+    Mismatch {
+        file: PathBuf,
+        expected: Sha256,
+        found: Sha256,
+    },
+    Unreadable {
+        file: PathBuf,
+        error: String,
+    },
 }
 
 impl Verification {

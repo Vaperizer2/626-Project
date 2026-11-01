@@ -138,7 +138,7 @@ pub fn run(opts: Settings, gui: GuiOptions, initial: Vec<String>) {
         let bounds = Bounds::centered(None, size(px(1360.), px(860.)), cx);
         let options = WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(bounds)),
-            app_id: Some(crate::app::APP_ID.into()),
+            app_id: Some(crate::app::BIN.into()),
             window_min_size: Some(size(px(1024.), px(640.))),
             ..TitleBar::window_options()
         };
