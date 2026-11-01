@@ -22,7 +22,7 @@ use gpui_kit::{
 };
 
 use super::models::{ModelState, Models};
-use super::stack::{Stack, verdict_colors, verdict_icon};
+use super::stack::{Stack, tab_header, verdict_colors, verdict_icon};
 use super::widgets::Lucide;
 use super::{Cancel, Hint, RunAll, Tab, theme, widgets};
 use crate::app;
@@ -318,7 +318,7 @@ impl BenchTab {
         });
         let skipped =
             if unavailable.is_empty() { String::new() } else { format!(" · skipped: {}", unavailable.join(", ")) };
-        let header = widgets::tab_header(
+        let header = tab_header(
             "Benchmark on the demo stack",
             format!("{n} images × {} models{skipped}", available.len()),
             h_flex()

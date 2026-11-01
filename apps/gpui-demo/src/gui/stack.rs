@@ -1,14 +1,14 @@
 //! The demo stack (`crate::demo`) with its pictures, decoded once at start-up on their own thread (rayon), and the
 //! answers each picture got, judged against its true label. The Demo and Benchmark tabs share it, so the benchmark's
-//! answers show on the Demo cards.
+//! answers show on the Demo cards, and they share the verdict's looks and the header row here.
 
 use std::sync::Arc;
 use std::time::Instant;
 
 use futures::StreamExt;
 use futures::channel::mpsc as fmpsc;
-use gpui_kit::component::{ActiveTheme as _, tag::Tag};
-use gpui_kit::{App, Context, Hsla, RenderImage};
+use gpui_kit::component::{ActiveTheme as _, h_flex, tag::Tag, v_flex};
+use gpui_kit::{App, Context, Div, FontWeight, Hsla, RenderImage, div, prelude::*};
 use image::RgbImage;
 use inference::{preprocess, prof};
 use rayon::prelude::*;
@@ -161,4 +161,27 @@ pub fn verdict_tag(v: Verdict, small: bool, cx: &App) -> Tag {
         Verdict::Unsure => "Unsure",
     };
     widgets::tag(verdict_icon(v), text, verdict_colors(v, cx), small)
+}
+
+/// The Demo and Benchmark tabs' header row: title and subtitle on the left, `controls` on the right. The text gives way (truncates)
+/// so the controls stay inside the window at its smallest size.
+pub fn tab_header(title: &str, subtitle: String, controls: impl IntoElement, cx: &App) -> Div {
+    let (t, r) = (cx.theme(), theme::roles(cx));
+    h_flex()
+        .justify_between()
+        .items_center()
+        .gap_4()
+        .px_4()
+        .py_3()
+        .bg(r.chrome)
+        .border_b_1()
+        .border_color(t.border)
+        .child(
+            v_flex()
+                .flex_1()
+                .min_w_0()
+                .child(div().text_lg().font_weight(FontWeight::SEMIBOLD).truncate().child(title.to_string()))
+                .child(div().text_xs().text_color(t.muted_foreground).truncate().child(subtitle)),
+        )
+        .child(h_flex().flex_none().gap_4().items_center().child(controls))
 }

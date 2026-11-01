@@ -88,29 +88,6 @@ pub fn hint(keys: &[&str], label: &'static str, cx: &App) -> impl IntoElement {
         .child(div().text_xs().text_color(cx.theme().muted_foreground).child(label))
 }
 
-/// A tab's header row: title and subtitle on the left, `controls` on the right. The text gives way (truncates)
-/// so the controls stay inside the window at its smallest size.
-pub fn tab_header(title: &str, subtitle: String, controls: impl IntoElement, cx: &App) -> Div {
-    let (t, r) = (cx.theme(), theme::roles(cx));
-    h_flex()
-        .justify_between()
-        .items_center()
-        .gap_4()
-        .px_4()
-        .py_3()
-        .bg(r.chrome)
-        .border_b_1()
-        .border_color(t.border)
-        .child(
-            v_flex()
-                .flex_1()
-                .min_w_0()
-                .child(div().text_lg().font_weight(FontWeight::SEMIBOLD).truncate().child(title.to_string()))
-                .child(div().text_xs().text_color(t.muted_foreground).truncate().child(subtitle)),
-        )
-        .child(h_flex().flex_none().gap_4().items_center().child(controls))
-}
-
 /// An icon before text that wraps under itself instead of running past its container.
 pub fn icon_line(icon: Icon, text: impl Into<SharedString>) -> Div {
     h_flex().gap_1().items_start().child(icon.flex_none()).child(div().flex_1().min_w_0().child(text.into()))

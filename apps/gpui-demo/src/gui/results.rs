@@ -23,10 +23,6 @@ impl Results {
         self.0.get(head)
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-
     #[cfg(test)]
     pub fn working(&self) -> bool {
         self.0.values().any(|r| matches!(r, HeadResult::Working(_)))
@@ -38,10 +34,6 @@ impl Results {
 
     pub fn done(&mut self, head: HeadId, c: Classification, timing: Timing) {
         self.0.insert(head, HeadResult::Done(c, timing, None));
-    }
-
-    pub fn clear(&mut self, head: &HeadId) {
-        self.0.remove(head);
     }
 
     /// Drop `head`'s answer when it is "the model failed to load", so a retried load answers again.
