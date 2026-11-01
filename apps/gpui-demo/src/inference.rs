@@ -106,6 +106,7 @@ pub enum Policy {
     Latest,
 }
 
+#[derive(Clone)]
 pub enum ImageInput {
     Source(Source),
     Bytes(Vec<u8>),

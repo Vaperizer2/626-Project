@@ -19,7 +19,6 @@ use gpui_kit::{
     AnyElement, App, Context, FontWeight, ObjectFit, ScrollHandle, TestSupportExt as _, div, img, prelude::*, px,
 };
 
-use super::demo_tab::ItemResult;
 use super::widgets::Lucide;
 use super::{DemoApp, ModelState, theme, widgets};
 use crate::classification::{Classification, HeadOutput};
@@ -169,7 +168,7 @@ impl DemoApp {
                                     let r = result.map(|HeadOutput::Classify(c)| (c, timing)).map_err(|e| e.to_string());
                                     // share with the Demo tab so its cards show the result too
                                     if let (Ok((c, timing)), Some(it)) = (&r, this.demo.items.get_mut(i)) {
-                                        it.results.insert(head.clone(), ItemResult::Done(c.clone(), *timing));
+                                        it.results.done(head.clone(), c.clone(), *timing);
                                     }
                                     this.bench.results.insert((i, head), r);
                                 }

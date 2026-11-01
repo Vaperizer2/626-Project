@@ -12,6 +12,7 @@ mod classify;
 mod demo_tab;
 mod theme;
 mod images;
+mod results;
 mod widgets;
 
 use std::collections::HashMap;
@@ -271,6 +272,11 @@ impl DemoApp {
         }
         self.model = Some(k);
         self.model_chosen = true;
+        match self.tab {
+            TabKind::Classify => self.classify_follow_model(cx),
+            TabKind::Demo => self.demo_follow_model(cx),
+            TabKind::Bench => {}
+        }
         cx.notify();
     }
 
