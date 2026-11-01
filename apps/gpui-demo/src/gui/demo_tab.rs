@@ -23,7 +23,7 @@ use gpui_kit::{
 use super::models::{ModelEvent, Models};
 use super::widgets::Lucide;
 use super::results::HeadResult;
-use super::stack::{Item, Stack, verdict_colors, verdict_icon, verdict_tag};
+use super::stack::{Item, Stack, tab_header, verdict_colors, verdict_icon, verdict_tag};
 use super::{Activate, Cancel, Hint, RunAll, StepNext, StepPrev, Tab, theme, widgets};
 use crate::app;
 use crate::demo::Verdict;
@@ -133,11 +133,7 @@ impl Tab for DemoTab {
             return self.cancel(cx);
         }
         let Some(model) = self.models.read(cx).run_model() else { return };
-        self.stack.update(cx, |s, _| {
-            for it in &mut s.items {
-                it.results.clear(&model);
-            }
-        });
+        // each submission's `start` replaces the card's earlier answer from this model
         let token = self.next_token;
         let tickets = (0..n).filter_map(|i| self.submit(i, model.clone(), Priority::Bulk, cx)).map(|t| t.1).collect();
         // the run counts the requests submitted from `token` on
@@ -148,7 +144,9 @@ impl Tab for DemoTab {
     /// After a model switch: a card on screen that another model answered gets the selected model's answer too.
     fn follow_model(&mut self, cx: &mut Context<Self>) {
         let Some(it) = self.stack.read(cx).items.get(self.selected) else { return };
-        if !it.results.is_empty() && selected_result(self.models.read(cx).selected(), it).is_none() {
+        let models = self.models.read(cx);
+        let answered = models.head_ids().iter().any(|h| it.results.get(h).is_some());
+        if answered && selected_result(models.selected(), it).is_none() {
             self.classify_selected(cx);
         }
     }
@@ -329,7 +327,7 @@ impl DemoTab {
                     format!("correct · {short}")
                 }))
         });
-        widgets::tab_header(
+        tab_header(
             "Demo stack",
             format!("{n} Wikimedia Commons photos never used for training or model selection · click a card or press Enter"),
             h_flex().gap_4().items_center().children(summary).children(progress).child(if running.is_some() {
