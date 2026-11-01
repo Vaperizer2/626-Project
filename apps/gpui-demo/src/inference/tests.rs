@@ -249,6 +249,16 @@ fn a_default_no_manifest_provides_is_passed_over() {
 }
 
 #[test]
+fn a_missing_fallback_does_not_exempt_an_earlier_default_from_its_probe() {
+    // Deployed, the listed fallback, has no manifest: Fast must still pass its TensorRT probe to become the default
+    let fake = FakeLoader { no_provider: ["fast".to_string()].into(), ..Default::default() };
+    let (_inf, mut ev) = Inference::spawn(registry(&[("fast", 1), ("a", 1)], &["fast", "deployed"]), fake);
+    let (head, passed_over) = default_of(&mut ev);
+    assert_eq!(head, Some(HeadId::new("a")), "{passed_over:?}");
+    assert!(passed_over.iter().any(|(id, why)| id.as_str() == "fast" && why.contains("TensorRT")), "{passed_over:?}");
+}
+
+#[test]
 fn bulk_preparation_stays_bounded_while_a_graph_lags() {
     let gate = Arc::new(Gate::default());
     let fake = FakeLoader { gates: [("z".to_string(), gate.clone())].into(), ..Default::default() };

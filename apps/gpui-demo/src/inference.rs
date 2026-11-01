@@ -558,7 +558,13 @@ impl Core {
             head = Some(id.clone());
             break;
         }
-        let head = head.or_else(|| self.registry.heads().find(|h| h.available().is_ok()).map(|h| h.id().clone()));
+        // no listed default can run: any head with its files, except a default just passed over
+        let head = head.or_else(|| {
+            self.registry
+                .heads()
+                .find(|h| h.available().is_ok() && !passed_over.iter().any(|(id, _)| id == h.id()))
+                .map(|h| h.id().clone())
+        });
         let _ = self.events.unbounded_send(ServiceEvent::Default { head, passed_over });
     }
 
