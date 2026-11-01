@@ -307,7 +307,7 @@ impl DemoApp {
             h_flex()
                 .gap_2()
                 .items_center()
-                .child(div().w(px(200.)).child(widgets::bar(
+                .child(div().w(px(120.)).child(widgets::bar(
                     done as f32 / run.total.max(1) as f32,
                     r.accent,
                     px(6.),
@@ -326,45 +326,27 @@ impl DemoApp {
                     format!("correct · {short}")
                 }))
         });
-        h_flex()
-            .justify_between()
-            .items_center()
-            .gap_4()
-            .px_4()
-            .py_3()
-            .bg(r.chrome)
-            .border_b_1()
-            .border_color(t.border)
-            .child(
-                v_flex()
-                    .child(div().text_lg().font_weight(FontWeight::SEMIBOLD).child("Demo stack"))
-                    .child(div().text_xs().text_color(t.muted_foreground).child(format!(
-                        "{n} Wikimedia Commons photos never used for training or model selection · click a card or press Enter"
-                    ))),
-            )
-            .child(
-                h_flex()
-                    .gap_4()
-                    .items_center()
-                    .children(summary)
-                    .children(progress)
-                    .child(if running.is_some() {
-                        Button::new("demo-run")
-                            .danger()
-                            .outline()
-                            .icon(IconName::Square)
-                            .label("Stop")
-                            .tooltip("Stop: drop the images not classified yet (Esc)")
-                            .on_click(cx.listener(|this, _, _, cx| this.demo_cancel(cx)))
-                    } else {
-                        Button::new("demo-run")
-                            .primary()
-                            .icon(IconName::Play)
-                            .label("Run all")
-                            .tooltip("Classify every image in order (Ctrl+R)")
-                            .on_click(cx.listener(|this, _, _, cx| this.demo_run_all(cx)))
-                    }),
-            )
+        widgets::tab_header(
+            "Demo stack",
+            format!("{n} Wikimedia Commons photos never used for training or model selection · click a card or press Enter"),
+            h_flex().gap_4().items_center().children(summary).children(progress).child(if running.is_some() {
+                Button::new("demo-run")
+                    .danger()
+                    .outline()
+                    .icon(IconName::Square)
+                    .label("Stop")
+                    .tooltip("Stop: drop the images not classified yet (Esc)")
+                    .on_click(cx.listener(|this, _, _, cx| this.demo_cancel(cx)))
+            } else {
+                Button::new("demo-run")
+                    .primary()
+                    .icon(IconName::Play)
+                    .label("Run all")
+                    .tooltip("Classify every image in order (Ctrl+R)")
+                    .on_click(cx.listener(|this, _, _, cx| this.demo_run_all(cx)))
+            }),
+            cx,
+        )
     }
 
     fn render_grid(&self, window: &Window, cx: &mut Context<Self>) -> impl IntoElement {

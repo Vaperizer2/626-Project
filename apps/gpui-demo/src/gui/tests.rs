@@ -9,7 +9,8 @@ use std::time::Duration;
 
 use gpui_kit::test::TestWindowExt as _;
 use gpui_kit::{
-    AnyWindowHandle, AppContext as _, Bounds, Entity, Point, TestAppContext, WindowBounds, WindowOptions, px, size,
+    AnyWindowHandle, AppContext as _, Bounds, Entity, Pixels, Point, Size, TestAppContext, WindowBounds, WindowOptions,
+    px, size,
 };
 
 use super::{DemoApp, TabKind};
@@ -39,6 +40,15 @@ fn open(cx: &mut TestAppContext, registry: Arc<Registry>) -> (AnyWindowHandle, E
 }
 
 fn open_with(cx: &mut TestAppContext, registry: Arc<Registry>, loader: FakeLoader) -> (AnyWindowHandle, Entity<DemoApp>) {
+    open_sized(cx, registry, loader, size(px(1360.), px(860.)))
+}
+
+fn open_sized(
+    cx: &mut TestAppContext,
+    registry: Arc<Registry>,
+    loader: FakeLoader,
+    window: Size<Pixels>,
+) -> (AnyWindowHandle, Entity<DemoApp>) {
     // The app's inference and thumbnail threads are real OS threads that wake GPUI tasks; tell the
     // deterministic test scheduler that this is expected.
     cx.executor().allow_parking();
@@ -49,7 +59,7 @@ fn open_with(cx: &mut TestAppContext, registry: Arc<Registry>, loader: FakeLoade
     cx.update(|cx| cx.bind_keys(super::keymap()));
     let service = Inference::spawn(registry, loader);
     let (handle, view) = cx.update(|cx| {
-        let bounds = Bounds { origin: Point::default(), size: size(px(1360.), px(860.)) };
+        let bounds = Bounds { origin: Point::default(), size: window };
         gpui_kit::open_window(
             WindowOptions { window_bounds: Some(WindowBounds::Windowed(bounds)), ..Default::default() },
             cx,
@@ -256,6 +266,37 @@ async fn a_model_that_fails_to_load_is_not_called_an_unreadable_picture(cx: &mut
     submit(cx, stack_dir().join("no_such_picture.jpg"));
     wait(cx, &view, "the read failure", &|v| v.classify.failure(&x).is_some());
     cx.update(|cx| assert_eq!(view.read(cx).classify.failure(&x), Some("could not read")));
+}
+
+#[gpui_kit::test]
+async fn controls_stay_inside_the_smallest_window(cx: &mut TestAppContext) {
+    if !stack_dir().join(crate::demo::STACK_FILE).is_file() {
+        return;
+    }
+    let loader = FakeLoader { run: Duration::from_millis(40), ..Default::default() };
+    let (handle, view) = open_sized(cx, registry(&[("x", 1), ("y", 1)], &["x", "y"]), loader, size(px(1024.), px(640.)));
+    wait(cx, &view, "the default head", &|v| v.model.is_some());
+    let inside = |cx: &mut TestAppContext, tab: TabKind, start: &dyn Fn(&mut DemoApp, &mut gpui_kit::Context<DemoApp>)| {
+        cx.update_window(handle, |_, window, cx| {
+            view.update(cx, |v, cx| {
+                v.set_tab(tab, window, cx);
+                start(v, cx);
+            });
+            window.render_frame(cx);
+            for id in ["demo-run", "bench-run", "status-hints"] {
+                if let Some(el) = window.try_find(id) {
+                    let right = el.bounds().right();
+                    assert!(right <= px(1024.), "{tab:?}: #{id} ends at {right:?}, past the 1024 px window");
+                }
+            }
+        })
+        .unwrap()
+    };
+    inside(cx, TabKind::Classify, &|_, _| {});
+    inside(cx, TabKind::Demo, &|v, cx| v.demo_run_all(cx));
+    assert!(cx.update(|cx| view.read(cx).demo.running()), "the header was checked during Run all");
+    inside(cx, TabKind::Bench, &|v, cx| v.bench_start(cx));
+    assert!(cx.update(|cx| view.read(cx).bench.running()), "the header was checked during the benchmark");
 }
 
 #[gpui_kit::test]
