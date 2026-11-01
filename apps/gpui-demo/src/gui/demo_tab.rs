@@ -201,7 +201,7 @@ impl DemoApp {
             return;
         }
         let i = self.demo.selected;
-        let Some(model) = self.model.clone() else { return };
+        let Some(model) = self.run_model() else { return };
         if matches!(self.demo.items.get(i).and_then(|it| it.results.get(&model)), Some(HeadResult::Working(_))) {
             return;
         }
@@ -216,7 +216,7 @@ impl DemoApp {
         if self.demo.run.is_some() {
             return self.demo_cancel(cx);
         }
-        let Some(model) = self.model.clone() else { return };
+        let Some(model) = self.run_model() else { return };
         for it in &mut self.demo.items {
             it.results.clear(&model);
         }
