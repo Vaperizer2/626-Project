@@ -377,7 +377,7 @@ mod unit {
     #[test]
     fn every_lucide_icon_used_is_bundled() {
         let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-        let mut files = vec![dir.join("gui.rs")];
+        let mut files = vec![dir.join("gui.rs"), dir.join("app.rs")];
         files.extend(std::fs::read_dir(dir.join("gui")).unwrap().map(|e| e.unwrap().path()));
         let mut used = std::collections::BTreeSet::new();
         for f in files.iter().filter(|f| f.extension().is_some_and(|e| e == "rs")) {

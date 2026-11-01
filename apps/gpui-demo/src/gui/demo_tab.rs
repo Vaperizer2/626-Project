@@ -21,16 +21,15 @@ use gpui_kit::{
 };
 
 use super::models::{ModelEvent, Models};
+use super::widgets::Lucide;
 use super::results::HeadResult;
 use super::stack::{Item, Stack};
-use super::{Activate, Cancel, Hint, RunAll, StepNext, StepPrev, theme, widgets};
+use super::{Activate, Cancel, Hint, RunAll, StepNext, StepPrev, Tab, theme, widgets};
+use crate::app;
 use crate::demo::Verdict;
+use inference::prof;
 use inference::service::{Lane, Policy, Priority, RequestHandle, Ticket, Update};
 use inference::manifest::HeadId;
-
-/// The status bar's shortcuts while the tab is on screen.
-pub const HINTS: &[Hint] =
-    &[(&["left", "right"], "Step"), (&["enter"], "Classify"), (&["ctrl-r"], "Run all"), (&["escape"], "Stop")];
 
 /// Cards are at least this wide; the grid fits as many columns as the window allows and widens them evenly.
 const CARD_MIN_W: f32 = 176.;
@@ -53,7 +52,7 @@ pub struct DemoTab {
     interactive: Lane,
     /// "Run all"
     bulk: Lane,
-    pub(super) focus: FocusHandle,
+    focus: FocusHandle,
     pub selected: usize,
     run: Option<RunState>,
     next_token: u64,
@@ -92,8 +91,14 @@ fn selected_result<'a>(model: Option<&HeadId>, it: &'a Item) -> Option<&'a HeadR
     model.and_then(|m| it.results.get(m))
 }
 
-impl DemoTab {
-    pub fn new(models: Entity<Models>, stack: Entity<Stack>, cx: &mut Context<Self>) -> Self {
+impl Tab for DemoTab {
+    const TITLE: &'static str = "Demo";
+    const ICON: Lucide = Lucide::LayoutGrid;
+    const HINTS: &'static [Hint] =
+        &[(&["left", "right"], "Step"), (&["enter"], "Classify"), (&["ctrl-r"], "Run all"), (&["escape"], "Stop")];
+
+    fn new(models: Entity<Models>, shared: &app::Shared, _: &mut Window, cx: &mut Context<Self>) -> Self {
+        let stack = shared.stack.clone();
         let inference = models.read(cx).inference();
         let (interactive, bulk) =
             (inference.lane(Priority::Interactive, Policy::Keep), inference.lane(Priority::Bulk, Policy::Keep));
@@ -117,6 +122,39 @@ impl DemoTab {
         }
     }
 
+    fn focus_handle(&self) -> FocusHandle {
+        self.focus.clone()
+    }
+
+    /// Submit the whole stack at once; the graph takes the images as fast as it can (batched when it allows).
+    fn run(&mut self, cx: &mut Context<Self>) {
+        let Some(n) = self.stack.read(cx).stack().map(|s| s.images.len()) else { return };
+        if self.run.is_some() {
+            return self.cancel(cx);
+        }
+        let Some(model) = self.models.read(cx).run_model() else { return };
+        self.stack.update(cx, |s, _| {
+            for it in &mut s.items {
+                it.results.clear(&model);
+            }
+        });
+        let token = self.next_token;
+        let tickets = (0..n).filter_map(|i| self.submit(i, model.clone(), Priority::Bulk, cx)).map(|t| t.1).collect();
+        // the run counts the requests submitted from `token` on
+        self.run = Some(RunState { token, total: n, done: 0, _tickets: tickets });
+        cx.notify();
+    }
+
+    /// After a model switch: a card on screen that another model answered gets the selected model's answer too.
+    fn follow_model(&mut self, cx: &mut Context<Self>) {
+        let Some(it) = self.stack.read(cx).items.get(self.selected) else { return };
+        if !it.results.is_empty() && selected_result(self.models.read(cx).selected(), it).is_none() {
+            self.classify_selected(cx);
+        }
+    }
+}
+
+impl DemoTab {
     /// "Run all" is under way.
     #[cfg(test)]
     pub fn running(&self) -> bool {
@@ -166,13 +204,6 @@ impl DemoTab {
         matches!(items.get(self.selected).and_then(|it| it.results.get(head)), Some(HeadResult::Done(..)))
     }
 
-    /// After a model switch: a card on screen that another model answered gets the selected model's answer too.
-    pub fn follow_model(&mut self, cx: &mut Context<Self>) {
-        let Some(it) = self.stack.read(cx).items.get(self.selected) else { return };
-        if !it.results.is_empty() && selected_result(self.models.read(cx).selected(), it).is_none() {
-            self.classify_selected(cx);
-        }
-    }
 
     pub fn classify_selected(&mut self, cx: &mut Context<Self>) {
         let stack = self.stack.read(cx);
@@ -189,24 +220,6 @@ impl DemoTab {
         }
     }
 
-    /// Submit the whole stack at once; the graph takes the images as fast as it can (batched when it allows).
-    pub fn run_all(&mut self, cx: &mut Context<Self>) {
-        let Some(n) = self.stack.read(cx).stack().map(|s| s.images.len()) else { return };
-        if self.run.is_some() {
-            return self.cancel(cx);
-        }
-        let Some(model) = self.models.read(cx).run_model() else { return };
-        self.stack.update(cx, |s, _| {
-            for it in &mut s.items {
-                it.results.clear(&model);
-            }
-        });
-        let token = self.next_token;
-        let tickets = (0..n).filter_map(|i| self.submit(i, model.clone(), Priority::Bulk, cx)).map(|t| t.1).collect();
-        // the run counts the requests submitted from `token` on
-        self.run = Some(RunState { token, total: n, done: 0, _tickets: tickets });
-        cx.notify();
-    }
 
     /// Request `token` for image `i` finished; when it belongs to the running "Run all", follow it in the grid.
     fn progress(&mut self, token: u64, i: usize, cx: &mut Context<Self>) {
@@ -334,7 +347,7 @@ impl DemoTab {
                     .icon(IconName::Play)
                     .label("Run all")
                     .tooltip("Classify every image in order (Ctrl+R)")
-                    .on_click(cx.listener(|this, _, _, cx| this.run_all(cx)))
+                    .on_click(cx.listener(|this, _, _, cx| this.run(cx)))
             }),
             cx,
         )
@@ -613,9 +626,9 @@ impl Render for DemoTab {
             .on_action(cx.listener(|this, _: &StepPrev, _, cx| this.step(-1, cx)))
             .on_action(cx.listener(|this, _: &StepNext, _, cx| this.step(1, cx)))
             .on_action(cx.listener(|this, _: &Activate, _, cx| this.classify_selected(cx)))
-            .on_action(cx.listener(|this, _: &RunAll, _, cx| this.run_all(cx)))
+            .on_action(cx.listener(|this, _: &RunAll, _, cx| this.run(cx)))
             .on_action(cx.listener(|this, _: &Cancel, _, cx| this.cancel(cx)))
             .size_full()
-            .child(self.render_body(window, cx))
+            .child(prof!("gui::build_tab_elements", self.render_body(window, cx)))
     }
 }

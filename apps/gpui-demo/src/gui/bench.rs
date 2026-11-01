@@ -24,14 +24,13 @@ use gpui_kit::{
 use super::models::{ModelState, Models};
 use super::stack::Stack;
 use super::widgets::Lucide;
-use super::{Cancel, Hint, RunAll, theme, widgets};
+use super::{Cancel, Hint, RunAll, Tab, theme, widgets};
+use crate::app;
 use inference::classification::{Classification, HeadOutput};
 use crate::demo::Verdict;
 use inference::service::{Finish, ImageInput, Lane, Policy, Priority, RequestHandle, RunError, Ticket, Timing, Update};
 use inference::manifest::HeadId;
-
-/// The status bar's shortcuts while the tab is on screen.
-pub const HINTS: &[Hint] = &[(&["ctrl-r"], "Run"), (&["escape"], "Stop")];
+use inference::prof;
 
 /// One benchmark run: every image was submitted at once; dropping the run cancels what has not run yet.
 struct BenchRun {
@@ -53,7 +52,7 @@ pub struct BenchTab {
     models: Entity<Models>,
     stack: Entity<Stack>,
     lane: Lane,
-    pub(super) focus: FocusHandle,
+    focus: FocusHandle,
     run: Option<BenchRun>,
     next_id: u64,
     /// columns of the last run
@@ -121,8 +120,14 @@ pub fn disagree(
     answers.len() > 1
 }
 
-impl BenchTab {
-    pub fn new(models: Entity<Models>, stack: Entity<Stack>, cx: &mut Context<Self>) -> Self {
+impl Tab for BenchTab {
+    const TITLE: &'static str = "Benchmark";
+    const ICON: Lucide = Lucide::ChartNoAxesColumn;
+    const HINTS: &'static [Hint] = &[(&["ctrl-r"], "Run"), (&["escape"], "Stop")];
+    const MODEL_NOTE: Option<&'static str> = Some("Runs every available model");
+
+    fn new(models: Entity<Models>, shared: &app::Shared, _: &mut Window, cx: &mut Context<Self>) -> Self {
+        let stack = shared.stack.clone();
         let lane = models.read(cx).inference().lane(Priority::Bulk, Policy::Keep);
         // the header counts the run's seconds
         super::tick_while(cx, |this, _| this.running());
@@ -142,11 +147,12 @@ impl BenchTab {
         }
     }
 
-    pub fn running(&self) -> bool {
-        self.run.is_some()
+    fn focus_handle(&self) -> FocusHandle {
+        self.focus.clone()
     }
 
-    pub fn start(&mut self, cx: &mut Context<Self>) {
+    /// Every available model over the whole stack, submitted at once; again while it runs stops it.
+    fn run(&mut self, cx: &mut Context<Self>) {
         if self.run.is_some() {
             return self.cancel(cx);
         }
@@ -211,6 +217,13 @@ impl BenchTab {
         self.run = Some(BenchRun { id, total: n, finished: HashSet::new(), started: Instant::now(), _tickets: tickets });
         cx.notify();
     }
+}
+
+impl BenchTab {
+    pub fn running(&self) -> bool {
+        self.run.is_some()
+    }
+
 
     pub fn cancel(&mut self, cx: &mut Context<Self>) {
         if let Some(run) = self.run.take() {
@@ -354,7 +367,7 @@ impl BenchTab {
                         .label(if self.results.is_empty() { "Run benchmark" } else { "Run again" })
                         .disabled(available.is_empty())
                         .tooltip("Classify every demo image with every available model (Ctrl+R)")
-                        .on_click(cx.listener(|this, _, _, cx| this.start(cx)))
+                        .on_click(cx.listener(|this, _, _, cx| this.run(cx)))
                 }),
             cx,
         );
@@ -649,10 +662,10 @@ impl Render for BenchTab {
             .id("bench-tab")
             .track_focus(&self.focus)
             .key_context("Bench")
-            .on_action(cx.listener(|this, _: &RunAll, _, cx| this.start(cx)))
+            .on_action(cx.listener(|this, _: &RunAll, _, cx| this.run(cx)))
             .on_action(cx.listener(|this, _: &Cancel, _, cx| this.cancel(cx)))
             .size_full()
-            .child(self.render_body(cx))
+            .child(prof!("gui::build_tab_elements", self.render_body(cx)))
     }
 }
 

@@ -1,81 +1,55 @@
 //! The desktop window, built with GPUI Kit (`gpui-kit`: GPUI + the Kit's components and themes).
 //!
-//! Layout: Kit `TitleBar` (app name, theme toggle) · tab row (`TabBar`: Classify / Demo / Benchmark, plus the
-//! model picker) · the active tab · Kit `StatusBar` (model / onnxruntime state, shortcuts as `Kbd`).
+//! Layout: Kit `TitleBar` (app name, theme toggle) · tab row (`TabBar` with the tabs of `app::TABS`, plus the model
+//! picker) · the active tab · Kit `StatusBar` (model / onnxruntime state, shortcuts as `Kbd`).
 //!
-//! One view (`DemoApp`) owns the window's state; each tab's state and rendering lives in its own module
-//! (`classify`, `demo_tab`, `bench`). The Demo and Benchmark tabs are entities of their own (`demo_tab::DemoTab`,
-//! `bench::BenchTab`) with their own focus, so they handle their keys themselves. The models the tabs share (the
-//! service, load states, the selected head) are one entity, `models::Models`, and the demo stack the Demo and
-//! Benchmark tabs share is another, `stack::Stack`. Inference, model loading, image reading and decoding all run in
-//! the inference service (`inference::service`); results come back over channels that GPUI tasks await.
+//! `shell::Shell` is the root view and draws the chrome. Every tab is an entity of its own (`shell::Tab`) with its
+//! own focus, keys and lanes. The models the tabs share (the service, load states, the selected head) are one
+//! entity, `models::Models`. Inference, model loading, image reading and decoding all run in the inference service
+//! (`inference::service`); results come back over channels that GPUI tasks await.
 
-mod bench;
-mod classify;
-mod demo_tab;
-mod models;
-mod theme;
+pub mod bench;
+pub mod classify;
+pub mod demo_tab;
 mod images;
+pub mod models;
 mod results;
-mod stack;
-mod widgets;
+mod shell;
+pub mod stack;
+mod theme;
+pub mod widgets;
+
+pub use shell::{Hint, Tab, TabSpec, keys_help, tab_index};
+pub use widgets::Lucide;
 
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
 use futures::channel::mpsc as fmpsc;
-use inference::prof;
-use gpui_kit::component::{
-    ActiveTheme as _, Icon, IconName, Sizable as _, Theme, ThemeMode, TitleBar,
-    alert::Alert,
-    button::{Button, ButtonGroup, ButtonVariants as _},
-    h_flex,
-    status_bar::StatusBar,
-    tab::{Tab, TabBar},
-};
-use gpui_kit::component::{Disableable as _, Selectable as _};
+use gpui_kit::component::TitleBar;
 use gpui_kit::{
-    App, Bounds, Context, Entity, FocusHandle, FontWeight, KeyBinding, RenderImage, SharedString, TestSupportExt as _,
-    Window, WindowBounds, WindowOptions, actions, div, prelude::*, px, size,
+    Action, App, AppContext as _, Bounds, Context, KeyBinding, WindowBounds, WindowOptions, actions, px, size,
 };
 
-use inference::service::{Inference, Lane, LoadStage, Policy, Priority, ServiceEvent};
-use inference::manifest::Task;
 use inference::registry::Registry;
-use inference::runtime::{Settings, OrtLoader};
-use models::{ModelEvent, ModelState, Models};
-use widgets::Lucide;
+use inference::runtime::{OrtLoader, Settings};
+use inference::service::{Inference, ServiceEvent};
+use shell::Shell;
 
 actions!(
     gpui_demo,
-    [
-        Open,
-        Paste,
-        FocusUrl,
-        ToggleTheme,
-        Quit,
-        ShowClassify,
-        ShowDemo,
-        ShowBench,
-        NextModel,
-        StepPrev,
-        StepNext,
-        Activate,
-        RunAll,
-        Cancel
-    ]
+    [Open, Paste, FocusUrl, ToggleTheme, Quit, NextModel, StepPrev, StepNext, Activate, RunAll, Cancel]
 );
 
-/// Key context of the root view; demo keys (arrows, j/k, Enter) only fire when no text field has focus.
+/// Ctrl+1 to Ctrl+9: show the tab at this index.
+#[derive(Clone, PartialEq, Action)]
+#[action(namespace = gpui_demo, no_json)]
+pub struct ShowTab(pub usize);
+
+/// Key context of the root view; arrows, j/k and Enter only fire when no text field has focus.
 const CTX: &str = "GpuiDemo";
 const CTX_NAV: &str = "GpuiDemo && !Input";
-
-/// A status-bar shortcut: its keys and what they do.
-type Hint = (&'static [&'static str], &'static str);
-
-const CLASSIFY_HINTS: &[Hint] =
-    &[(&["ctrl-o"], "Open"), (&["ctrl-v"], "Paste"), (&["ctrl-l"], "URL"), (&["up", "down"], "Recent")];
 
 /// Redraw `cx`'s view every 250 ms while `busy` holds, for the elapsed-time counters.
 fn tick_while<T: 'static>(cx: &mut Context<T>, busy: impl Fn(&T, &App) -> bool + 'static) {
@@ -91,444 +65,24 @@ fn tick_while<T: 'static>(cx: &mut Context<T>, busy: impl Fn(&T, &App) -> bool +
     .detach();
 }
 
-/// Window start-up options (`--tab`, `--autorun`, `--dark`/`--light`).
+/// Window start-up options (`--tab`, `--autorun`, `--dark`/`--light`, `--demo-dir`).
 #[derive(Debug, Clone, Default)]
 pub struct GuiOptions {
-    pub tab: TabKind,
+    /// index into `app::TABS`
+    pub tab: usize,
     pub autorun: bool,
     /// Some(true) = dark, Some(false) = light, None = follow the system
     pub theme: Option<bool>,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
-pub enum TabKind {
-    #[default]
-    Classify,
-    Demo,
-    Bench,
-}
-
-impl TabKind {
-    const ALL: [TabKind; 3] = [TabKind::Classify, TabKind::Demo, TabKind::Bench];
-    fn index(self) -> usize {
-        Self::ALL.iter().position(|t| *t == self).unwrap_or(0)
-    }
-}
-
-pub struct DemoApp {
-    focus: FocusHandle,
-    tab: TabKind,
-    models: Entity<Models>,
-    /// Classify submissions
-    interactive: Lane,
-    /// `--autorun`, waiting for the start-up default
-    autorun: bool,
-    /// manifests that could not be read and defaults that name no model, beside the models that work; dismissible
-    registry_problems: Vec<String>,
-    classify: classify::ClassifyState,
-    demo: Entity<demo_tab::DemoTab>,
-    bench: Entity<bench::BenchTab>,
-    /// textures evicted from the recent list, released on the next frame
-    to_drop: Vec<std::sync::Arc<RenderImage>>,
-    _subscriptions: Vec<gpui_kit::Subscription>,
-}
-
-impl DemoApp {
-    pub fn new(
-        service: (Inference, fmpsc::UnboundedReceiver<ServiceEvent>),
-        demo_dir: Option<PathBuf>,
-        initial: Vec<String>,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) -> Self {
-        tick_while(cx, Self::is_busy);
-        let models = cx.new(|cx| Models::new(service, cx));
-        let stack = cx.new(|cx| stack::Stack::new(demo_dir, cx));
-        let demo = cx.new(|cx| demo_tab::DemoTab::new(models.clone(), stack.clone(), cx));
-        let bench = cx.new(|cx| bench::BenchTab::new(models.clone(), stack, cx));
-        let (classify, mut subs) = classify::ClassifyState::new(window, cx);
-        subs.push(cx.subscribe(&models, |this, _, ev, cx| this.on_model_event(ev, cx)));
-        let m = models.read(cx);
-        let registry_problems = if m.registry_error().is_some() { Vec::new() } else { m.registry().problems().to_vec() };
-        let interactive = m.inference().lane(Priority::Interactive, Policy::Keep);
-        let mut this = Self {
-            focus: cx.focus_handle(),
-            tab: TabKind::Classify,
-            models,
-            interactive,
-            autorun: false,
-            registry_problems,
-            classify,
-            demo,
-            bench,
-            to_drop: Vec::new(),
-            _subscriptions: subs,
-        };
-        for s in initial {
-            if let Some(src) = inference::fetch::Source::parse(&s) {
-                this.submit_source(src, cx);
-            }
-        }
-        this
-    }
-
-    /// Something is loading or running (elapsed-time counters, spinners).
-    fn is_busy(&self, cx: &App) -> bool {
-        self.models.read(cx).loading() || self.classify.busy()
-    }
-
-    fn on_model_event(&mut self, ev: &ModelEvent, cx: &mut Context<Self>) {
-        match ev {
-            ModelEvent::Picked { startup } => {
-                self.follow_model(cx);
-                if *startup && std::mem::take(&mut self.autorun) {
-                    self.run_all(cx);
-                }
-            }
-            ModelEvent::Retrying(heads) => {
-                for h in heads {
-                    self.classify_forget_load_failures(h);
-                }
-            }
-        }
-        cx.notify();
-    }
-
-    /// The input on screen gets the selected model's answer.
-    fn follow_model(&mut self, cx: &mut Context<Self>) {
-        match self.tab {
-            TabKind::Classify => self.classify_follow_model(cx),
-            TabKind::Demo => self.demo.update(cx, |d, cx| d.follow_model(cx)),
-            TabKind::Bench => {}
-        }
-    }
-
-    fn next_model(&mut self, _: &NextModel, window: &mut Window, cx: &mut Context<Self>) {
-        self.models.update(cx, |m, cx| m.next_model(window, cx));
-    }
-
-    fn set_tab(&mut self, tab: TabKind, window: &mut Window, cx: &mut Context<Self>) {
-        self.tab = tab;
-        // the model may have changed on another tab
-        self.follow_model(cx);
-        window.focus(&self.active_focus(cx), cx);
-        cx.notify();
-    }
-
-    /// What has the keyboard while the tab is on screen: the tab when it is an entity, else this view.
-    fn active_focus(&self, cx: &App) -> FocusHandle {
-        match self.tab {
-            TabKind::Classify => self.focus.clone(),
-            TabKind::Demo => self.demo.read(cx).focus.clone(),
-            TabKind::Bench => self.bench.read(cx).focus.clone(),
-        }
-    }
-
-    fn dismiss_problems(&mut self, cx: &mut Context<Self>) {
-        self.registry_problems.clear();
-        cx.notify();
-    }
-
-    fn toggle_theme(&mut self, _: &ToggleTheme, window: &mut Window, cx: &mut Context<Self>) {
-        let mode = if cx.theme().is_dark() { ThemeMode::Light } else { ThemeMode::Dark };
-        Theme::change(mode, Some(window), cx);
-        cx.notify();
-    }
-
-    // ------------------------------------------------------------------------------------------ chrome
-    fn render_title_bar(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let t = cx.theme();
-        let dark = t.is_dark();
-        let m = self.models.read(cx);
-        TitleBar::new()
-            .child(
-                h_flex()
-                    .gap_2()
-                    .items_center()
-                    .child(
-                        div()
-                            .size(px(22.))
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .rounded(t.radius)
-                            .bg(t.primary)
-                            .text_color(t.primary_foreground)
-                            .child(Icon::new(Lucide::Microchip).small()),
-                    )
-                    .child(div().text_sm().font_weight(FontWeight::SEMIBOLD).child(crate::app::TITLE))
-                    .children(m.selected().and_then(|k| m.head(k)).map(|h| {
-                        let Task::Classify(c) = &h.spec.task;
-                        div()
-                            .text_xs()
-                            .text_color(t.muted_foreground)
-                            .child(format!("· {} electronic-component classes", c.labels.len()))
-                    })),
-            )
-            .child(
-                h_flex().pr_2().child(
-                    Button::new("theme")
-                        .ghost()
-                        .small()
-                        .icon(if dark { IconName::Sun } else { IconName::Moon })
-                        .tooltip(if dark { "Light theme (Ctrl+T)" } else { "Dark theme (Ctrl+T)" })
-                        .on_click(cx.listener(|this, _, w, cx| this.toggle_theme(&ToggleTheme, w, cx))),
-                ),
-            )
-    }
-
-    fn render_tab_row(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let t = cx.theme();
-        let m = self.models.read(cx);
-        let models = ButtonGroup::new("model-picker")
-            .small()
-            .outline()
-            .children(m.head_ids().into_iter().map(|k| {
-                let state = m.state(&k);
-                let pickable = !matches!(state, ModelState::Unavailable(_));
-                let name = m.title(&k);
-                let tip = match state {
-                    ModelState::Unavailable(e) => format!("{name} — unavailable: {e}"),
-                    ModelState::Failed(e) => format!("{name} — failed to load: {e}. Pick it to try again."),
-                    ModelState::Ready(l) => {
-                        let skipped: String =
-                            l.placement.skipped.iter().map(|(ep, why)| format!("\n{} skipped: {why}", ep.name())).collect();
-                        let checked = if l.verified {
-                            "checksums verified"
-                        } else {
-                            "checksums not verified since the files changed (gpui-demo models --check)"
-                        };
-                        format!("{name} — on {}, loaded in {}, {checked}{skipped}", l.placement, widgets::duration(l.ms))
-                    }
-                    ModelState::Loading { stage: LoadStage::BuildingEngine, .. } => {
-                        format!("{name} — building its TensorRT engine (first run only)")
-                    }
-                    ModelState::Loading { .. } => format!("{name} — loading…"),
-                    ModelState::Idle => format!("{name} — loads on first use (Ctrl+M cycles models)"),
-                };
-                let selected = m.selected() == Some(&k);
-                Button::new(SharedString::from(format!("model-{k}")))
-                    .label(m.short(&k))
-                    .selected(selected)
-                    // outline + primary: the chosen model reads as an accent tint, not a grey press state
-                    .when(selected, |b| b.primary())
-                    .disabled(!pickable)
-                    .tooltip(tip)
-            }))
-            .on_click(cx.listener(|this, sel: &Vec<usize>, w, cx| {
-                this.models.update(cx, |m, cx| {
-                    if let Some(k) = sel.first().and_then(|&i| m.head_ids().get(i).cloned()) {
-                        m.select_model(k, w, cx);
-                    }
-                });
-            }));
-        h_flex()
-            .justify_between()
-            .items_center()
-            .gap_4()
-            .px_4()
-            .bg(t.tab_bar)
-            .border_b_1()
-            .border_color(t.border)
-            .child(
-                TabBar::new("tabs")
-                    .underline()
-                    .selected_index(self.tab.index())
-                    .on_click(cx.listener(|this, ix: &usize, w, cx| this.set_tab(TabKind::ALL[*ix], w, cx)))
-                    .child(Tab::new().prefix(Icon::new(Lucide::ScanSearch).small()).label("Classify"))
-                    .child(Tab::new().prefix(Icon::new(Lucide::LayoutGrid).small()).label("Demo"))
-                    .child(Tab::new().prefix(Icon::new(Lucide::ChartNoAxesColumn).small()).label("Benchmark")),
-            )
-            .child(
-                h_flex()
-                    .gap_2()
-                    .items_center()
-                    .when(self.tab != TabKind::Bench, |d| {
-                        d.child(div().text_xs().text_color(t.muted_foreground).child("Model"))
-                            .child(models)
-                            .children(m.selected().map(|k| widgets::model_state_chip(&m.state(k), cx)))
-                    })
-                    .when(self.tab == TabKind::Bench, |d| {
-                        d.child(div().text_xs().text_color(t.muted_foreground).child("Runs every available model"))
-                    }),
-            )
-    }
-
-    fn render_status_bar(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let t = cx.theme();
-        let mut left = Vec::new();
-        let m = self.models.read(cx);
-        if let Some(k) = m.selected() {
-            let short = m.short(k);
-            match m.state(k) {
-                ModelState::Ready(l) => {
-                    let skipped: Vec<&str> = l.placement.skipped.iter().map(|(ep, _)| ep.name()).collect();
-                    left.push(if skipped.is_empty() {
-                        format!("{short} on {}", l.placement)
-                    } else {
-                        format!("{short} on {} ({} unavailable)", l.placement, skipped.join(", "))
-                    });
-                    left.push(l.runtime);
-                }
-                ModelState::Loading { since, stage: LoadStage::BuildingEngine } => left.push(format!(
-                    "{short}: building the TensorRT engine, first run only ({:.0} s)",
-                    since.elapsed().as_secs_f64()
-                )),
-                ModelState::Loading { .. } => left.push(format!("{short} loading…")),
-                ModelState::Idle => left.push(format!("{short} loads on first use")),
-                ModelState::Failed(_) => left.push(format!("{short} failed to load")),
-                ModelState::Unavailable(_) => left.push(format!("{short} unavailable")),
-            }
-        }
-        left.push(format!("jpeg: {}", inference::preprocess::JPEG_DECODER));
-        let left = left.join(" · ");
-        let hints = match self.tab {
-            TabKind::Classify => CLASSIFY_HINTS,
-            TabKind::Demo => demo_tab::HINTS,
-            TabKind::Bench => bench::HINTS,
-        };
-        // laid out here rather than in the Kit's left/right slots, which shrink alike and clip the shortcuts
-        StatusBar::new().child(
-            h_flex()
-                .w_full()
-                .gap_4()
-                .justify_between()
-                .child(div().flex_1().min_w_0().truncate().text_color(t.muted_foreground).child(left))
-                .child(
-                    h_flex()
-                        .id("status-hints")
-                        .flex_none()
-                        .gap_4()
-                        .children(hints.iter().map(|(keys, label)| widgets::hint(keys, label, cx)))
-                        .child(widgets::hint(&["ctrl-m"], "Model", cx))
-                        .child(widgets::hint(&["ctrl-t"], "Theme", cx)),
-                ),
-        )
-    }
-}
-
-impl Render for DemoApp {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        for im in self.to_drop.drain(..) {
-            window.drop_image(im).ok();
-        }
-        let t = cx.theme();
-        let (bg, fg, drop_border) = (theme::roles(cx).canvas, t.foreground, t.drag_border);
-        let body = prof!(
-            "gui::build_tab_elements",
-            match self.tab {
-                TabKind::Classify => self.render_classify(window, cx).into_any_element(),
-                TabKind::Demo => self.demo.clone().into_any_element(),
-                TabKind::Bench => self.bench.clone().into_any_element(),
-            }
-        );
-        let m = self.models.read(cx);
-        let registry_alert = m.registry_error().map(|e| {
-            let found = !m.registry().index_path().as_os_str().is_empty();
-            let title = if found { "No model in the index could be read" } else { "Model index not found" };
-            div()
-                .px_4()
-                .pt_3()
-                .child(Alert::error("registry-error", SharedString::from(e.to_string())).title(title).small())
-        });
-        let problems_alert = (!self.registry_problems.is_empty()).then(|| {
-            div().id("registry-problems").test_support().px_4().pt_3().child(
-                Alert::warning("registry-problems-alert", SharedString::from(self.registry_problems.join("\n")))
-                    .title("Some models in the index could not be read")
-                    .small()
-                    .on_close(cx.listener(|this, _, _, cx| this.dismiss_problems(cx))),
-            )
-        });
-        let fallback_alert = m.fallback_notice().map(|(title, why)| {
-            div()
-                .id("fallback-notice")
-                .test_support()
-                .px_4()
-                .pt_3()
-                .child(Alert::warning("default-fallback", SharedString::from(why)).title(title).small())
-        });
-        div()
-            .id("root")
-            .track_focus(&self.focus)
-            .key_context(CTX)
-            .on_action(cx.listener(Self::open))
-            .on_action(cx.listener(Self::paste))
-            .on_action(cx.listener(Self::focus_url))
-            .on_action(cx.listener(Self::toggle_theme))
-            .on_action(cx.listener(Self::next_model))
-            .on_action(cx.listener(|this, _: &ShowClassify, w, cx| this.set_tab(TabKind::Classify, w, cx)))
-            .on_action(cx.listener(|this, _: &ShowDemo, w, cx| this.set_tab(TabKind::Demo, w, cx)))
-            .on_action(cx.listener(|this, _: &ShowBench, w, cx| this.set_tab(TabKind::Bench, w, cx)))
-            .on_action(cx.listener(|this, _: &StepPrev, _, cx| this.step(-1, cx)))
-            .on_action(cx.listener(|this, _: &StepNext, _, cx| this.step(1, cx)))
-            .on_action(cx.listener(|this, _: &RunAll, _, cx| this.run_all(cx)))
-            .on_action(cx.listener(|this, _: &Cancel, w, cx| this.cancel(w, cx)))
-            .on_mouse_down(
-                gpui_kit::MouseButton::Left,
-                cx.listener(|this, _, window, cx| {
-                    let focus = this.active_focus(cx);
-                    if !focus.contains_focused(window, cx) {
-                        window.focus(&focus, cx);
-                    }
-                }),
-            )
-            .on_drop(cx.listener(|this, paths: &gpui_kit::ExternalPaths, w, cx| {
-                this.set_tab(TabKind::Classify, w, cx);
-                for p in paths.paths() {
-                    this.submit_source(inference::fetch::Source::File(p.clone()), cx);
-                }
-            }))
-            .drag_over::<gpui_kit::ExternalPaths>(move |style, _, _, _| style.border_2().border_color(drop_border))
-            .size_full()
-            .flex()
-            .flex_col()
-            .bg(bg)
-            .text_color(fg)
-            .child(self.render_title_bar(cx))
-            .child(self.render_tab_row(cx))
-            .children(registry_alert)
-            .children(problems_alert)
-            .children(fallback_alert)
-            .child(div().flex_1().min_h_0().child(body))
-            .child(self.render_status_bar(cx))
-    }
-}
-
-impl DemoApp {
-    /// Up/Down, j/k, Left/Right on Classify: the recent list. The other tabs handle them themselves.
-    fn step(&mut self, delta: isize, cx: &mut Context<Self>) {
-        if self.tab == TabKind::Classify {
-            self.classify_step(delta, cx);
-        }
-    }
-
-    fn run_all(&mut self, cx: &mut Context<Self>) {
-        match self.tab {
-            TabKind::Demo => self.demo.update(cx, |d, cx| d.run_all(cx)),
-            TabKind::Bench => self.bench.update(cx, |b, cx| b.start(cx)),
-            TabKind::Classify => {}
-        }
-    }
-
-    /// Esc steps back one level: out of a text field first. The Demo and Benchmark tabs stop their runs themselves.
-    fn cancel(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let focus = self.active_focus(cx);
-        if !focus.is_focused(window) {
-            window.focus(&focus, cx);
-        }
-    }
+    pub demo_dir: Option<PathBuf>,
 }
 
 pub fn keymap() -> Vec<KeyBinding> {
-    vec![
+    let mut keys = vec![
         KeyBinding::new("ctrl-o", Open, Some(CTX)),
         KeyBinding::new("ctrl-v", Paste, Some(CTX_NAV)),
         KeyBinding::new("ctrl-l", FocusUrl, Some(CTX)),
         KeyBinding::new("ctrl-t", ToggleTheme, Some(CTX)),
         KeyBinding::new("ctrl-m", NextModel, Some(CTX)),
-        KeyBinding::new("ctrl-1", ShowClassify, Some(CTX)),
-        KeyBinding::new("ctrl-2", ShowDemo, Some(CTX)),
-        KeyBinding::new("ctrl-3", ShowBench, Some(CTX)),
         KeyBinding::new("ctrl-r", RunAll, Some(CTX)),
         // also while a text field has focus: the field handles Esc first, then it reaches Cancel
         KeyBinding::new("escape", Cancel, Some(CTX)),
@@ -543,7 +97,9 @@ pub fn keymap() -> Vec<KeyBinding> {
         KeyBinding::new("cmd-o", Open, Some(CTX)),
         KeyBinding::new("cmd-v", Paste, Some(CTX_NAV)),
         KeyBinding::new("cmd-q", Quit, None),
-    ]
+    ];
+    keys.extend((1..=9).map(|n| KeyBinding::new(&format!("ctrl-{n}"), ShowTab(n - 1), Some(CTX))));
+    keys
 }
 
 /// The model index (an empty one when it cannot be read, with the reason) and the service over it, backed by
@@ -557,8 +113,8 @@ fn service(opts: &Settings) -> (Inference, fmpsc::UnboundedReceiver<ServiceEvent
     Inference::spawn(Arc::new(registry), OrtLoader::new(opts, exports.as_deref()))
 }
 
-/// Open the window. `initial` are image paths / URLs to classify straight away.
-pub fn run(opts: Settings, demo_dir: Option<PathBuf>, gui: GuiOptions, initial: Vec<String>) {
+/// Open the window. `initial` are image paths / URLs for the tab that takes pictures.
+pub fn run(opts: Settings, gui: GuiOptions, initial: Vec<String>) {
     let unset = |v: &str| std::env::var_os(v).is_none_or(|s| s.is_empty());
     if cfg!(target_os = "linux") && unset("DISPLAY") && unset("WAYLAND_DISPLAY") {
         eprintln!(
@@ -587,25 +143,20 @@ pub fn run(opts: Settings, demo_dir: Option<PathBuf>, gui: GuiOptions, initial: 
         let bounds = Bounds::centered(None, size(px(1360.), px(860.)), cx);
         let options = WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(bounds)),
-            app_id: Some("gpui-demo".into()),
+            app_id: Some(crate::app::APP_ID.into()),
             window_min_size: Some(size(px(1024.), px(640.))),
             ..TitleBar::window_options()
         };
         let opened = gpui_kit::open_window(options, cx, |window, cx| {
             theme::apply_initial(gui.theme, window, cx);
             window.set_window_title(crate::app::TITLE);
-            cx.new(|cx| {
-                let mut app = DemoApp::new(service, demo_dir, initial, window, cx);
-                app.tab = gui.tab;
-                app.autorun = gui.autorun;
-                app
-            })
+            cx.new(|cx| Shell::new(service, &gui, initial, window, cx))
         });
         match opened {
             Ok((handle, view)) => {
                 handle
                     .update(cx, |_, window, cx| {
-                        let focus = view.read(cx).active_focus(cx);
+                        let focus = view.read(cx).active_focus();
                         window.focus(&focus, cx);
                     })
                     .ok();

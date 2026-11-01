@@ -27,6 +27,7 @@ impl Results {
         self.0.is_empty()
     }
 
+    #[cfg(test)]
     pub fn working(&self) -> bool {
         self.0.values().any(|r| matches!(r, HeadResult::Working(_)))
     }
