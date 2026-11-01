@@ -149,6 +149,25 @@ pub struct Runtime {
     cache_dir: Option<PathBuf>,
 }
 
+/// TensorRT provider options that turn on or place its engine and timing caches.
+const TRT_CACHE_KEYS: [&str; 4] =
+    ["trt_engine_cache_enable", "trt_timing_cache_enable", "trt_engine_cache_path", "trt_timing_cache_path"];
+
+/// The TensorRT options for `ep`: the manifest's, with the caches in `cache` (the app's dir for this graph). Without
+/// one no cache is kept: the manifest's own switches would write engines wherever the process happens to run.
+fn trt_options(ep: &Ep, cache: Option<&std::path::Path>) -> Vec<(String, String)> {
+    let mut out: Vec<(String, String)> =
+        ep.options.iter().filter(|(k, _)| cache.is_some() || !TRT_CACHE_KEYS.contains(&k.as_str())).cloned().collect();
+    if let Some(dir) = cache {
+        out.retain(|(k, _)| k != "trt_engine_cache_path" && k != "trt_timing_cache_path");
+        out.push(("trt_engine_cache_path".into(), dir.display().to_string()));
+        if ep.flag("trt_timing_cache_enable") {
+            out.push(("trt_timing_cache_path".into(), dir.display().to_string()));
+        }
+    }
+    out
+}
+
 impl Runtime {
     /// dlopen libonnxruntime (see [`resolve_ort_lib`]) and create the environment. No provider is registered on
     /// the environment: each session gets its own list.
@@ -257,18 +276,14 @@ impl Runtime {
     fn provider(&self, ep: &Ep, m: &Manifest) -> ExecutionProviderDispatch {
         match ep.kind {
             EpKind::TensorRt => {
+                let cache = ep
+                    .flag("trt_engine_cache_enable")
+                    .then(|| self.engine_cache(m))
+                    .flatten()
+                    .filter(|dir| std::fs::create_dir_all(dir).is_ok());
                 let mut p = ort::ep::TensorRT::default();
-                for (k, v) in &ep.options {
+                for (k, v) in trt_options(ep, cache.as_deref()) {
                     p = p.with_arbitrary_config(k, v);
-                }
-                if ep.flag("trt_engine_cache_enable")
-                    && let Some(dir) = self.engine_cache(m)
-                    && std::fs::create_dir_all(&dir).is_ok()
-                {
-                    p = p.with_engine_cache_path(dir.display());
-                    if ep.flag("trt_timing_cache_enable") {
-                        p = p.with_timing_cache_path(dir.display());
-                    }
                 }
                 p.build()
             }
@@ -557,6 +572,25 @@ mod tests {
         let mut m = Arc::try_unwrap(crate::testing::manifest("fast", 1)).unwrap();
         m.runtime.providers = providers.iter().map(|&kind| Ep { kind, options: vec![] }).collect();
         m
+    }
+
+    #[test]
+    fn without_a_cache_dir_tensorrt_keeps_no_cache() {
+        let o = |k: &str, v: &str| (k.to_string(), v.to_string());
+        let ep = Ep {
+            kind: EpKind::TensorRt,
+            options: vec![
+                o("trt_fp16_enable", "1"),
+                o("trt_engine_cache_enable", "1"),
+                o("trt_timing_cache_enable", "1"),
+                o("trt_engine_cache_path", "trt_cache"),
+            ],
+        };
+        assert_eq!(trt_options(&ep, None), vec![o("trt_fp16_enable", "1")], "no switch, no relative path");
+        let with = trt_options(&ep, Some(std::path::Path::new("/c/fast")));
+        assert!(with.contains(&o("trt_engine_cache_enable", "1")) && with.contains(&o("trt_timing_cache_enable", "1")));
+        assert!(with.contains(&o("trt_engine_cache_path", "/c/fast")) && with.contains(&o("trt_timing_cache_path", "/c/fast")));
+        assert!(!with.contains(&o("trt_engine_cache_path", "trt_cache")), "the app's dir replaces the manifest's");
     }
 
     #[test]
