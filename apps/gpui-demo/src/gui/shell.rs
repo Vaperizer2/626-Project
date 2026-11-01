@@ -127,11 +127,9 @@ pub fn tab_index(tabs: &[TabSpec], name: &str) -> Option<usize> {
 /// The window's keys for `--help`: the shell's own, then each tab's hints.
 pub fn keys_help(tabs: &[TabSpec]) -> String {
     let titles: Vec<&str> = tabs.iter().map(|t| t.title).collect();
-    let mut lines = vec![format!(
-        "Ctrl+1..{} {} tab, Ctrl+M next model, Ctrl+T light/dark theme, Ctrl+Q quit,",
-        tabs.len(),
-        titles.join(" / ")
-    )];
+    let show = if tabs.len() == 1 { "Ctrl+1".to_string() } else { format!("Ctrl+1..{}", tabs.len()) };
+    let mut lines =
+        vec![format!("{show} {} tab, Ctrl+M next model, Ctrl+T light/dark theme, Ctrl+Q quit,", titles.join(" / "))];
     lines.push("Ctrl+O open pictures, Ctrl+V paste a picture, path or URL, or drop files on the window.".into());
     for t in tabs.iter().filter(|t| !t.hints.is_empty()) {
         let hints: Vec<String> = t
