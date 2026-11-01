@@ -1,7 +1,6 @@
 //! Demo tab: the curated stack as a sectioned thumbnail grid, a detail pane with the result against the true
 //! label and the photo's attribution, "Run all" with progress and an accuracy summary, keyboard stepping.
 
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -24,10 +23,10 @@ use gpui_kit::{
 use image::RgbImage;
 
 use super::images;
+use super::results::{HeadResult, Results};
 use super::{DemoApp, theme, widgets};
-use crate::classification::{Classification, HeadOutput};
 use crate::demo::{DemoStack, Verdict};
-use crate::inference::{Finish, ImageInput, Priority, RequestHandle, Ticket, Timing, Update};
+use crate::inference::{ImageInput, Priority, RequestHandle, Ticket, Update};
 use crate::manifest::HeadId;
 
 /// Cards are at least this wide; the grid fits as many columns as the window allows and widens them evenly.
@@ -36,20 +35,13 @@ const GRID_GAP: f32 = 12.;
 const GRID_PAD: f32 = 16.;
 const DETAIL_W: f32 = 440.;
 
-pub enum ItemResult {
-    /// submitted; the token tells this request's late "cancelled" apart from a newer request's
-    Working(u64),
-    Done(Classification, Timing),
-    Failed(String),
-}
-
 #[derive(Default)]
 pub struct Item {
     pub thumb: Option<Arc<RenderImage>>,
     pub full: Option<Arc<RenderImage>>,
     pub rgb: Option<Arc<RgbImage>>,
     pub load_error: Option<String>,
-    pub results: HashMap<HeadId, ItemResult>,
+    pub results: Results,
     /// the latest single classification of this image (a new one replaces and cancels it)
     single: Option<Ticket>,
 }
@@ -79,7 +71,7 @@ impl Default for DemoState {
 
 impl DemoState {
     pub fn running(&self) -> bool {
-        self.run.is_some() || self.items.iter().any(|i| i.results.values().any(|r| matches!(r, ItemResult::Working(_))))
+        self.run.is_some() || self.items.iter().any(|i| i.results.working())
     }
 
     pub fn stack(&self) -> Option<&DemoStack> {
@@ -98,7 +90,7 @@ impl DemoState {
         let (Some(s), Some(model)) = (self.stack(), model) else { return (0, 0, 0) };
         let (mut ok, mut n, mut unsure) = (0, 0, 0);
         for (im, it) in s.images.iter().zip(&self.items) {
-            if let Some(ItemResult::Done(c, _)) = it.results.get(model) {
+            if let Some(HeadResult::Done(c, ..)) = it.results.get(model) {
                 n += 1;
                 match im.judge(c.best_label(), c.abstained()) {
                     Verdict::Correct => ok += 1,
@@ -161,30 +153,16 @@ impl DemoApp {
         };
         let lane = if priority == Priority::Bulk { &self.bulk } else { &self.interactive };
         let RequestHandle { updates: mut rx, ticket } = lane.submit(input, std::slice::from_ref(&model), None);
-        it.results.insert(model.clone(), ItemResult::Working(token));
+        it.results.start(model.clone(), token);
         cx.spawn(async move |this, cx| {
             while let Some(u) = rx.next().await {
                 let alive = this
                     .update(cx, |this, cx| {
                         let Some(it) = this.demo.items.get_mut(i) else { return };
-                        match u {
-                            Update::Head { head, result: Ok(HeadOutput::Classify(c)), timing } => {
-                                it.results.insert(head, ItemResult::Done(c, timing));
-                            }
-                            Update::Head { head, result: Err(e), .. } => {
-                                it.results.insert(head, ItemResult::Failed(e.to_string()));
-                            }
-                            Update::Done(Finish::Failed(e)) => {
-                                it.results.insert(model.clone(), ItemResult::Failed(e.to_string()));
-                                this.demo_progress(token, i, cx);
-                            }
-                            Update::Done(_) => {
-                                if matches!(it.results.get(&model), Some(ItemResult::Working(t)) if *t == token) {
-                                    it.results.remove(&model); // cancelled before it ran
-                                }
-                                this.demo_progress(token, i, cx);
-                            }
-                            Update::Decoded { .. } => {}
+                        let finished = matches!(u, Update::Done(_));
+                        it.results.apply(&model, token, u);
+                        if finished {
+                            this.demo_progress(token, i, cx);
                         }
                         cx.notify();
                     })
@@ -199,9 +177,23 @@ impl DemoApp {
         Some((token, ticket))
     }
 
+    /// The selected card has `head`'s answer.
+    #[cfg(test)]
+    pub(super) fn demo_answered(&self, head: &HeadId) -> bool {
+        matches!(self.demo.items.get(self.demo.selected).and_then(|it| it.results.get(head)), Some(HeadResult::Done(..)))
+    }
+
     /// Item `it`'s result for the selected head.
-    fn selected_result<'a>(&self, it: &'a Item) -> Option<&'a ItemResult> {
+    fn selected_result<'a>(&self, it: &'a Item) -> Option<&'a HeadResult> {
         self.model.as_ref().and_then(|m| it.results.get(m))
+    }
+
+    /// After a model switch: a card on screen that another model answered gets the selected model's answer too.
+    pub(super) fn demo_follow_model(&mut self, cx: &mut Context<Self>) {
+        let Some(it) = self.demo.items.get(self.demo.selected) else { return };
+        if !it.results.is_empty() && self.selected_result(it).is_none() {
+            self.demo_classify_selected(cx);
+        }
     }
 
     pub(super) fn demo_classify_selected(&mut self, cx: &mut Context<Self>) {
@@ -209,8 +201,8 @@ impl DemoApp {
             return;
         }
         let i = self.demo.selected;
-        let Some(model) = self.model.clone() else { return };
-        if matches!(self.demo.items.get(i).and_then(|it| it.results.get(&model)), Some(ItemResult::Working(_))) {
+        let Some(model) = self.run_model() else { return };
+        if matches!(self.demo.items.get(i).and_then(|it| it.results.get(&model)), Some(HeadResult::Working(_))) {
             return;
         }
         if let Some((_, ticket)) = self.demo_submit(i, model, Priority::Interactive, cx) {
@@ -224,9 +216,9 @@ impl DemoApp {
         if self.demo.run.is_some() {
             return self.demo_cancel(cx);
         }
-        let Some(model) = self.model.clone() else { return };
+        let Some(model) = self.run_model() else { return };
         for it in &mut self.demo.items {
-            it.results.remove(&model);
+            it.results.clear(&model);
         }
         let token = self.demo.next_token;
         let tickets = (0..n).filter_map(|i| self.demo_submit(i, model.clone(), Priority::Bulk, cx)).map(|t| t.1).collect();
@@ -315,7 +307,7 @@ impl DemoApp {
             h_flex()
                 .gap_2()
                 .items_center()
-                .child(div().w(px(200.)).child(widgets::bar(
+                .child(div().w(px(120.)).child(widgets::bar(
                     done as f32 / run.total.max(1) as f32,
                     r.accent,
                     px(6.),
@@ -334,45 +326,27 @@ impl DemoApp {
                     format!("correct · {short}")
                 }))
         });
-        h_flex()
-            .justify_between()
-            .items_center()
-            .gap_4()
-            .px_4()
-            .py_3()
-            .bg(r.chrome)
-            .border_b_1()
-            .border_color(t.border)
-            .child(
-                v_flex()
-                    .child(div().text_lg().font_weight(FontWeight::SEMIBOLD).child("Demo stack"))
-                    .child(div().text_xs().text_color(t.muted_foreground).child(format!(
-                        "{n} Wikimedia Commons photos never used for training or model selection · click a card or press Enter"
-                    ))),
-            )
-            .child(
-                h_flex()
-                    .gap_4()
-                    .items_center()
-                    .children(summary)
-                    .children(progress)
-                    .child(if running.is_some() {
-                        Button::new("demo-run")
-                            .danger()
-                            .outline()
-                            .icon(IconName::Square)
-                            .label("Stop")
-                            .tooltip("Stop: drop the images not classified yet (Esc)")
-                            .on_click(cx.listener(|this, _, _, cx| this.demo_cancel(cx)))
-                    } else {
-                        Button::new("demo-run")
-                            .primary()
-                            .icon(IconName::Play)
-                            .label("Run all")
-                            .tooltip("Classify every image in order (Ctrl+R)")
-                            .on_click(cx.listener(|this, _, _, cx| this.demo_run_all(cx)))
-                    }),
-            )
+        widgets::tab_header(
+            "Demo stack",
+            format!("{n} Wikimedia Commons photos never used for training or model selection · click a card or press Enter"),
+            h_flex().gap_4().items_center().children(summary).children(progress).child(if running.is_some() {
+                Button::new("demo-run")
+                    .danger()
+                    .outline()
+                    .icon(IconName::Square)
+                    .label("Stop")
+                    .tooltip("Stop: drop the images not classified yet (Esc)")
+                    .on_click(cx.listener(|this, _, _, cx| this.demo_cancel(cx)))
+            } else {
+                Button::new("demo-run")
+                    .primary()
+                    .icon(IconName::Play)
+                    .label("Run all")
+                    .tooltip("Classify every image in order (Ctrl+R)")
+                    .on_click(cx.listener(|this, _, _, cx| this.demo_run_all(cx)))
+            }),
+            cx,
+        )
     }
 
     fn render_grid(&self, window: &Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -386,7 +360,7 @@ impl DemoApp {
         for (si, section) in stack.sections.iter().enumerate() {
             let idx = stack.section_indices(section);
             let (ok, n) = idx.iter().fold((0, 0), |(ok, n), &i| match self.selected_result(&self.demo.items[i]) {
-                Some(ItemResult::Done(c, _)) => {
+                Some(HeadResult::Done(c, ..)) => {
                     (ok + usize::from(stack.images[i].judge(c.best_label(), c.abstained()) == Verdict::Correct), n + 1)
                 }
                 _ => (ok, n),
@@ -443,17 +417,17 @@ impl DemoApp {
         let it = &self.demo.items[i];
         let sel = self.demo.selected == i;
         let verdict = match self.selected_result(it) {
-            Some(ItemResult::Done(c, _)) => Some(im.judge(c.best_label(), c.abstained())),
+            Some(HeadResult::Done(c, ..)) => Some(im.judge(c.best_label(), c.abstained())),
             _ => None,
         };
         let result: AnyElement = match self.selected_result(it) {
-            Some(ItemResult::Working(_)) => h_flex()
+            Some(HeadResult::Working(_)) => h_flex()
                 .gap_1()
                 .items_center()
                 .child(Spinner::new().xsmall().color(t.muted_foreground))
                 .child(div().text_xs().text_color(t.muted_foreground).child("classifying…"))
                 .into_any_element(),
-            Some(ItemResult::Done(c, _)) => {
+            Some(HeadResult::Done(c, ..)) => {
                 let v = im.judge(c.best_label(), c.abstained());
                 let text = if c.abstained() { "unsure".to_string() } else { c.best_label().to_string() };
                 h_flex()
@@ -466,13 +440,13 @@ impl DemoApp {
                     .child(div().flex_none().text_color(r.muted_fg).child(widgets::pct(c.best().1)))
                     .into_any_element()
             }
-            Some(ItemResult::Failed(_)) => h_flex()
+            Some(HeadResult::Failed(e)) => h_flex()
                 .gap_1()
                 .items_center()
                 .text_xs()
                 .text_color(t.danger)
                 .child(Icon::new(IconName::CircleAlert).xsmall())
-                .child("error")
+                .child(widgets::failure_label(e))
                 .into_any_element(),
             None => div().text_xs().text_color(t.muted_foreground).child("not classified yet").into_any_element(),
         };
@@ -561,20 +535,18 @@ impl DemoApp {
             });
         let short = self.model.as_ref().map(|m| self.short(m)).unwrap_or_default();
         let result: AnyElement = match (self.selected_result(it), &self.model) {
-            (Some(ItemResult::Done(c, timing)), Some(m)) => {
+            (Some(HeadResult::Done(c, timing, _)), Some(m)) => {
                 let v = im.judge(c.best_label(), c.abstained());
                 widgets::prediction_block(c, timing, &self.title(m), Some((v, im.true_text())), cx)
             }
-            (Some(ItemResult::Working(_)), _) => h_flex()
+            (Some(HeadResult::Working(_)), _) => h_flex()
                 .gap_2()
                 .items_center()
                 .py_4()
                 .child(Spinner::new().color(t.primary))
                 .child(div().text_lg().child(format!("Classifying with {short}…")))
                 .into_any_element(),
-            (Some(ItemResult::Failed(e)), _) => {
-                Alert::error("demo-error", SharedString::from(e.clone())).title("Could not classify").into_any_element()
-            }
+            (Some(HeadResult::Failed(e)), Some(m)) => widgets::failure_alert("demo-error", e, &self.title(m)).into_any_element(),
             _ => v_flex()
                 .gap_2()
                 .items_start()

@@ -23,31 +23,24 @@ use gpui_kit::{
 
 use super::widgets::Lucide;
 use super::images::{DISPLAY_MAX_SIDE, render};
+use super::results::{HeadResult, Results};
 use super::{DemoApp, FocusUrl, ModelState, Open, Paste, theme, widgets};
-use crate::classification::{Classification, HeadOutput};
 use crate::fetch::Source;
-use crate::inference::{Finish, ImageInput, RequestHandle, Ticket, Timing, Update};
-use crate::manifest::HeadId;
+use crate::inference::{ImageInput, RequestHandle, RunError, Ticket, Update};
 
 const MAX_ENTRIES: usize = 40;
-
-pub enum EntryState {
-    Working,
-    /// the answer, its timing, and the request's wall time incl. read and decode
-    Done(Classification, Timing, f64),
-    Failed(String),
-}
 
 pub struct Entry {
     id: u64,
     name: SharedString,
     full: SharedString,
-    model: HeadId,
+    /// what was opened, to run it again with another model
+    input: ImageInput,
     image: Option<Arc<RenderImage>>,
     dims: Option<(u32, u32)>,
-    state: EntryState,
-    /// dropping the entry (evicted from the list) cancels its request
-    _ticket: Ticket,
+    results: Results,
+    /// dropping the entry (evicted from the list) cancels its requests
+    tickets: Vec<Ticket>,
 }
 
 pub struct ClassifyState {
@@ -72,13 +65,33 @@ impl ClassifyState {
     }
 
     pub fn busy(&self) -> bool {
-        self.entries.iter().any(|e| matches!(e.state, EntryState::Working))
+        self.entries.iter().any(|e| e.results.working())
     }
 
-    /// The newest entry has an answer, its wall time and its display picture.
+    fn selected_ix(&self) -> Option<usize> {
+        self.selected.and_then(|id| self.entries.iter().position(|e| e.id == id))
+    }
+
+    /// The selected entry has `head`'s answer, its wall time and its display picture.
     #[cfg(test)]
-    pub fn done(&self) -> bool {
-        self.entries.first().is_some_and(|e| matches!(e.state, EntryState::Done(_, _, ms) if ms > 0.0) && e.image.is_some())
+    pub fn answered(&self, head: &crate::manifest::HeadId) -> bool {
+        self.selected_ix()
+            .map(|i| &self.entries[i])
+            .is_some_and(|e| matches!(e.results.get(head), Some(HeadResult::Done(_, _, Some(_)))) && e.image.is_some())
+    }
+
+    /// The short status the Recent list shows for the selected entry's failed answer from `head`.
+    #[cfg(test)]
+    pub fn failure(&self, head: &crate::manifest::HeadId) -> Option<&'static str> {
+        match self.entries[self.selected_ix()?].results.get(head) {
+            Some(HeadResult::Failed(e)) => Some(widgets::failure_label(e)),
+            _ => None,
+        }
+    }
+
+    #[cfg(test)]
+    pub fn len(&self) -> usize {
+        self.entries.len()
     }
 }
 
@@ -89,9 +102,9 @@ impl DemoApp {
     }
 
     fn submit(&mut self, input: ImageInput, name: String, full: String, cx: &mut Context<Self>) {
-        let Some(model) = self.model.clone() else { return };
-        let RequestHandle { updates: mut rx, ticket } =
-            self.interactive.submit(input, std::slice::from_ref(&model), Some(DISPLAY_MAX_SIDE));
+        if self.model.is_none() {
+            return;
+        }
         let c = &mut self.classify;
         let id = c.next_id;
         c.next_id += 1;
@@ -99,11 +112,11 @@ impl DemoApp {
             id,
             name: name.into(),
             full: full.into(),
-            model,
+            input,
             image: None,
             dims: None,
-            state: EntryState::Working,
-            _ticket: ticket,
+            results: Results::default(),
+            tickets: Vec::new(),
         };
         c.entries.insert(0, entry);
         while c.entries.len() > MAX_ENTRIES {
@@ -113,6 +126,25 @@ impl DemoApp {
         }
         c.selected = Some(id);
         c.list_scroll.scroll_to_item(0);
+        self.classify_follow_model(cx);
+    }
+
+    /// The selected entry gets the selected model's answer when it has none yet: on submission, after a model
+    /// switch, and when another entry is selected.
+    pub(super) fn classify_follow_model(&mut self, cx: &mut Context<Self>) {
+        let (Some(model), Some(ix)) = (self.run_model(), self.classify.selected_ix()) else { return };
+        let c = &mut self.classify;
+        let e = &mut c.entries[ix];
+        if e.results.get(&model).is_some() {
+            return;
+        }
+        let (id, token) = (e.id, c.next_id);
+        c.next_id += 1;
+        let display = e.image.is_none().then_some(DISPLAY_MAX_SIDE);
+        let RequestHandle { updates: mut rx, ticket } =
+            self.interactive.submit(e.input.clone(), std::slice::from_ref(&model), display);
+        e.tickets.push(ticket);
+        e.results.start(model.clone(), token);
         cx.spawn(async move |this, cx| {
             while let Some(update) = rx.next().await {
                 let alive = this
@@ -120,21 +152,12 @@ impl DemoApp {
                         if let Some(e) = this.classify.entries.iter_mut().find(|e| e.id == id) {
                             match update {
                                 Update::Decoded { size, display } => {
-                                    e.image = display.map(render);
                                     e.dims = Some(size);
-                                }
-                                Update::Head { result: Ok(HeadOutput::Classify(c)), timing, .. } => {
-                                    e.state = EntryState::Done(c, timing, 0.0)
-                                }
-                                Update::Head { result: Err(err), .. } | Update::Done(Finish::Failed(err)) => {
-                                    e.state = EntryState::Failed(err.to_string())
-                                }
-                                Update::Done(Finish::Complete { wall_ms }) => {
-                                    if let EntryState::Done(_, _, t) = &mut e.state {
-                                        *t = wall_ms;
+                                    if let Some(d) = display {
+                                        e.image = Some(render(d));
                                     }
                                 }
-                                Update::Done(Finish::Cancelled | Finish::Superseded) => {}
+                                u => e.results.apply(&model, token, u),
                             }
                         }
                         cx.notify();
@@ -240,12 +263,13 @@ impl DemoApp {
         let next = (cur + delta).clamp(0, c.entries.len() as isize - 1) as usize;
         c.selected = Some(c.entries[next].id);
         c.list_scroll.scroll_to_item(next);
+        self.classify_follow_model(cx);
         cx.notify();
     }
 
     // ------------------------------------------------------------------------------------------ render
     pub(super) fn render_classify(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let entry_ix = self.classify.selected.and_then(|id| self.classify.entries.iter().position(|e| e.id == id));
+        let entry_ix = self.classify.selected_ix();
         v_flex().size_full().child(self.render_toolbar(window, cx)).child(
             h_flex()
                 .flex_1()
@@ -302,27 +326,28 @@ impl DemoApp {
         let rows = c.entries.iter().map(|e| {
             let id = e.id;
             let sel = c.selected == Some(id);
-            let status = match &e.state {
-                EntryState::Working => h_flex()
+            let status = match self.model.as_ref().and_then(|m| e.results.get(m)) {
+                None => div().text_color(t.muted_foreground).child("not classified yet").into_any_element(),
+                Some(HeadResult::Working(_)) => h_flex()
                     .gap_1()
                     .items_center()
                     .child(Spinner::new().xsmall().color(t.muted_foreground))
                     .child(div().text_color(t.muted_foreground).child("classifying…"))
                     .into_any_element(),
-                EntryState::Failed(_) => h_flex()
+                Some(HeadResult::Failed(e)) => h_flex()
                     .gap_1()
                     .items_center()
                     .text_color(t.danger)
                     .child(Icon::new(IconName::CircleAlert).xsmall())
-                    .child("could not read")
+                    .child(widgets::failure_label(e))
                     .into_any_element(),
-                EntryState::Done(c, ..) if c.abstained() => h_flex()
+                Some(HeadResult::Done(c, ..)) if c.abstained() => h_flex()
                     .gap_1()
                     .items_center()
                     .child(widgets::verdict_tag(crate::demo::Verdict::Unsure, true, cx))
                     .child(div().text_xs().text_color(t.muted_foreground).truncate().child(c.best_label().to_string()))
                     .into_any_element(),
-                EntryState::Done(c, ..) => h_flex()
+                Some(HeadResult::Done(c, ..)) => h_flex()
                     .gap_2()
                     .justify_between()
                     .min_w_0()
@@ -346,6 +371,7 @@ impl DemoApp {
                 .when(!sel, |d| d.border_1().border_color(gpui_kit::transparent_black()).hover(|s| s.bg(t.list_hover)))
                 .on_click(cx.listener(move |this, _, _, cx| {
                     this.classify.selected = Some(id);
+                    this.classify_follow_model(cx);
                     cx.notify();
                 }))
                 .child(
@@ -418,13 +444,13 @@ impl DemoApp {
     fn render_picture(&self, entry_ix: Option<usize>, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.theme();
         let entry = entry_ix.map(|i| &self.classify.entries[i]);
-        let failed = entry.and_then(|e| match &e.state {
-            EntryState::Failed(msg) => Some(msg.clone()),
-            _ => None,
-        });
+        let unreadable = matches!(
+            entry.and_then(|e| self.model.as_ref().and_then(|m| e.results.get(m))),
+            Some(HeadResult::Failed(RunError::Read(_) | RunError::Decode(_)))
+        );
         let body = match entry.and_then(|e| e.image.clone()) {
             Some(im) => div().size_full().p_6().child(img(im).size_full().object_fit(ObjectFit::Contain)).into_any_element(),
-            None if failed.is_some() => div()
+            None if unreadable => div()
                 .size_full()
                 .p_8()
                 .child(
@@ -497,15 +523,15 @@ impl DemoApp {
         let t = cx.theme();
         let entry = entry_ix.map(|i| &self.classify.entries[i]);
         let mut panel = v_flex().gap_5().p_5();
-        if let Some(m) = &self.model
-            && let ModelState::Failed(msg) = self.state(m)
-        {
-            panel = panel.child(
-                Alert::error("model-failed", SharedString::from(msg.clone()))
-                    .title(format!("{} failed to load", self.title(m))),
-            );
-        }
         let Some(e) = entry else {
+            // with a picture on screen, its answer from the failed model says this instead
+            if let Some(m) = &self.model
+                && let ModelState::Failed(msg) = self.state(m)
+            {
+                panel = panel.child(
+                    Alert::error("model-failed", SharedString::from(msg)).title(format!("{} failed to load", self.title(m))),
+                );
+            }
             return panel.child(
                 v_flex()
                     .gap_2()
@@ -528,28 +554,25 @@ impl DemoApp {
                     d.child(div().text_xs().text_color(t.muted_foreground).child(format!("{w} × {h} px")))
                 }),
         );
-        match &e.state {
-            EntryState::Working => {
+        let Some(m) = &self.model else { return panel };
+        match e.results.get(m) {
+            None | Some(HeadResult::Working(_)) => {
                 panel.child(h_flex().gap_2().items_center().child(Spinner::new().color(t.primary)).child(
-                    div().text_lg().child(if matches!(self.state(&e.model), ModelState::Loading { .. }) {
-                        format!("Loading {}…", self.short(&e.model))
+                    div().text_lg().child(if matches!(self.state(m), ModelState::Loading { .. }) {
+                        format!("Loading {}…", self.short(m))
                     } else {
                         "Classifying…".to_string()
                     }),
                 ))
             }
-            EntryState::Failed(msg) => panel.child(
-                Alert::error(("classify-error", e.id as usize), SharedString::from(msg.clone()))
-                    .title("Could not classify"),
-            ),
-            EntryState::Done(c, timing, total) => {
-                let block = widgets::prediction_block(c, timing, &self.title(&e.model), None, cx);
-                panel.child(block).child(
-                    div()
-                        .text_xs()
-                        .text_color(t.muted_foreground)
-                        .child(format!("Total incl. read and decode: {total:.0} ms")),
-                )
+            Some(HeadResult::Failed(err)) => {
+                panel.child(widgets::failure_alert(("classify-error", e.id as usize), err, &self.title(m)))
+            }
+            Some(HeadResult::Done(c, timing, wall)) => {
+                let block = widgets::prediction_block(c, timing, &self.title(m), None, cx);
+                panel.child(block).children(wall.map(|ms| {
+                    div().text_xs().text_color(t.muted_foreground).child(format!("Total incl. read and decode: {ms:.0} ms"))
+                }))
             }
         }
     }

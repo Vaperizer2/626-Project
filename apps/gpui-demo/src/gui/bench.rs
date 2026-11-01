@@ -13,18 +13,19 @@ use gpui_kit::component::{
     scroll::ScrollableElement as _,
     spinner::Spinner,
     switch::Switch,
+    tooltip::Tooltip,
     v_flex,
 };
 use gpui_kit::{
-    AnyElement, App, Context, FontWeight, ObjectFit, ScrollHandle, TestSupportExt as _, div, img, prelude::*, px,
+    AnyElement, App, Context, FontWeight, ObjectFit, ScrollHandle, SharedString, TestSupportExt as _, div, img,
+    prelude::*, px,
 };
 
-use super::demo_tab::ItemResult;
 use super::widgets::Lucide;
 use super::{DemoApp, ModelState, theme, widgets};
 use crate::classification::{Classification, HeadOutput};
 use crate::demo::Verdict;
-use crate::inference::{Finish, ImageInput, RequestHandle, Ticket, Timing, Update};
+use crate::inference::{Finish, ImageInput, RequestHandle, RunError, Ticket, Timing, Update};
 use crate::manifest::HeadId;
 
 /// One benchmark run: every image was submitted at once; dropping the run cancels what has not run yet.
@@ -48,7 +49,7 @@ pub struct BenchState {
     next_id: u64,
     /// columns of the last run
     models: Vec<HeadId>,
-    pub(super) results: HashMap<(usize, HeadId), Result<(Classification, Timing), String>>,
+    pub(super) results: HashMap<(usize, HeadId), Result<(Classification, Timing), RunError>>,
     only_disagree: bool,
     wall_s: Option<f64>,
     cancelled: bool,
@@ -90,7 +91,7 @@ impl BenchState {
 /// Aggregate `results` for `model` over `stack`.
 pub fn stats(
     stack: &crate::demo::DemoStack,
-    results: &HashMap<(usize, HeadId), Result<(Classification, Timing), String>>,
+    results: &HashMap<(usize, HeadId), Result<(Classification, Timing), RunError>>,
     model: &HeadId,
 ) -> Stats {
     let mut s = Stats::default();
@@ -120,7 +121,7 @@ pub fn stats(
 
 /// Do the models' answers (the committed class, or abstaining) differ on image `i`?
 pub fn disagree(
-    results: &HashMap<(usize, HeadId), Result<(Classification, Timing), String>>,
+    results: &HashMap<(usize, HeadId), Result<(Classification, Timing), RunError>>,
     i: usize,
     models: &[HeadId],
 ) -> bool {
@@ -166,16 +167,16 @@ impl DemoApp {
                             }
                             match u {
                                 Update::Head { head, result, timing } => {
-                                    let r = result.map(|HeadOutput::Classify(c)| (c, timing)).map_err(|e| e.to_string());
+                                    let r = result.map(|HeadOutput::Classify(c)| (c, timing));
                                     // share with the Demo tab so its cards show the result too
                                     if let (Ok((c, timing)), Some(it)) = (&r, this.demo.items.get_mut(i)) {
-                                        it.results.insert(head.clone(), ItemResult::Done(c.clone(), *timing));
+                                        it.results.done(head.clone(), c.clone(), *timing);
                                     }
                                     this.bench.results.insert((i, head), r);
                                 }
                                 Update::Done(Finish::Failed(e)) => {
                                     for k in this.bench.models.clone() {
-                                        this.bench.results.insert((i, k), Err(e.to_string()));
+                                        this.bench.results.insert((i, k), Err(e.clone()));
                                     }
                                     this.bench_progress(i, cx);
                                 }
@@ -220,11 +221,16 @@ impl DemoApp {
         cx.notify();
     }
 
-    /// "one pass shared by X and Y" when other benchmarked heads read the same graph as `k`.
+    /// "one pass with X" when other benchmarked heads read the same graph as `k`.
     fn shared_pass(&self, k: &HeadId) -> Option<String> {
-        let sib = self.registry().siblings(k);
-        let names: Vec<String> = sib.iter().filter(|s| self.bench.models.contains(s)).map(|s| self.short(s)).collect();
-        (names.len() > 1).then(|| format!("one pass shared by {}", names.join(" and ")))
+        let others: Vec<String> = self
+            .registry()
+            .siblings(k)
+            .iter()
+            .filter(|s| *s != k && self.bench.models.contains(s))
+            .map(|s| self.short(s))
+            .collect();
+        (!others.is_empty()).then(|| format!("one pass with {}", others.join(" and ")))
     }
 
     fn bench_rows(&self) -> Vec<usize> {
@@ -267,7 +273,7 @@ impl DemoApp {
                 .gap_2()
                 .items_center()
                 .child(Spinner::new().small().color(roles.accent))
-                .child(div().w(px(240.)).child(widgets::bar(
+                .child(div().w(px(160.)).child(widgets::bar(
                     done as f32 / r.total.max(1) as f32,
                     roles.accent,
                     px(6.),
@@ -280,85 +286,68 @@ impl DemoApp {
                     r.started.elapsed().as_secs_f64()
                 )))
         });
-        let header = h_flex()
-            .justify_between()
-            .items_center()
-            .gap_4()
-            .px_4()
-            .py_3()
-            .bg(roles.chrome)
-            .border_b_1()
-            .border_color(t.border)
-            .child(
-                v_flex()
-                    .child(div().text_lg().font_weight(FontWeight::SEMIBOLD).child("Benchmark on the demo stack"))
-                    .child(div().text_xs().text_color(t.muted_foreground).child(format!(
-                        "{n} images × {} models{}",
-                        available.len(),
-                        if unavailable.is_empty() {
-                            String::new()
-                        } else {
-                            format!(" · skipped: {}", unavailable.join(", "))
-                        }
-                    ))),
-            )
-            .child(
-                h_flex()
-                    .gap_4()
-                    .items_center()
-                    .children(progress)
-                    .when(running.is_none() && self.bench.wall_s.is_some(), |d| {
-                        d.child(
-                            h_flex()
-                                .gap_1()
-                                .items_center()
-                                .text_sm()
-                                .text_color(t.muted_foreground)
-                                .child(
-                                    Icon::new(if self.bench.cancelled { Lucide::CircleStop } else { Lucide::Timer })
-                                        .small(),
-                                )
-                                .child(format!(
-                                    "{} in {:.0} s",
-                                    if self.bench.cancelled { "stopped" } else { "finished" },
-                                    self.bench.wall_s.unwrap_or(0.0)
-                                )),
-                        )
-                    })
-                    .child(
-                        Switch::new("bench-disagree")
-                            .checked(self.bench.only_disagree)
-                            .label("Only where models disagree")
-                            .on_click(cx.listener(|this, checked: &bool, _, cx| {
-                                this.bench.only_disagree = *checked;
-                                cx.notify();
-                            })),
+        let skipped =
+            if unavailable.is_empty() { String::new() } else { format!(" · skipped: {}", unavailable.join(", ")) };
+        let header = widgets::tab_header(
+            "Benchmark on the demo stack",
+            format!("{n} images × {} models{skipped}", available.len()),
+            h_flex()
+                .gap_4()
+                .items_center()
+                .children(progress)
+                .when(running.is_none() && self.bench.wall_s.is_some(), |d| {
+                    d.child(
+                        h_flex()
+                            .gap_1()
+                            .items_center()
+                            .text_sm()
+                            .text_color(t.muted_foreground)
+                            .child(
+                                Icon::new(if self.bench.cancelled { Lucide::CircleStop } else { Lucide::Timer })
+                                    .small(),
+                            )
+                            .child(format!(
+                                "{} in {:.0} s",
+                                if self.bench.cancelled { "stopped" } else { "finished" },
+                                self.bench.wall_s.unwrap_or(0.0)
+                            )),
                     )
-                    .child(if running.is_some() {
-                        Button::new("bench-run")
-                            .danger()
-                            .outline()
-                            .icon(IconName::Square)
-                            .label("Stop")
-                            .tooltip("Stop: drop the images not classified yet (Esc)")
-                            .on_click(cx.listener(|this, _, _, cx| this.bench_cancel(cx)))
-                    } else {
-                        Button::new("bench-run")
-                            .primary()
-                            .icon(IconName::Play)
-                            .label(if self.bench.results.is_empty() { "Run benchmark" } else { "Run again" })
-                            .disabled(available.is_empty())
-                            .tooltip("Classify every demo image with every available model (Ctrl+R)")
-                            .on_click(cx.listener(|this, _, _, cx| this.bench_start(cx)))
-                    }),
-            );
+                })
+                .child(
+                    Switch::new("bench-disagree")
+                        .checked(self.bench.only_disagree)
+                        .label("Only where models disagree")
+                        .on_click(cx.listener(|this, checked: &bool, _, cx| {
+                            this.bench.only_disagree = *checked;
+                            cx.notify();
+                        })),
+                )
+                .child(if running.is_some() {
+                    Button::new("bench-run")
+                        .danger()
+                        .outline()
+                        .icon(IconName::Square)
+                        .label("Stop")
+                        .tooltip("Stop: drop the images not classified yet (Esc)")
+                        .on_click(cx.listener(|this, _, _, cx| this.bench_cancel(cx)))
+                } else {
+                    Button::new("bench-run")
+                        .primary()
+                        .icon(IconName::Play)
+                        .label(if self.bench.results.is_empty() { "Run benchmark" } else { "Run again" })
+                        .disabled(available.is_empty())
+                        .tooltip("Classify every demo image with every available model (Ctrl+R)")
+                        .on_click(cx.listener(|this, _, _, cx| this.bench_start(cx)))
+                }),
+            cx,
+        );
         let models = if self.bench.models.is_empty() { available.clone() } else { self.bench.models.clone() };
-        let best = models
-            .iter()
-            .map(|k| stats(stack, &self.bench.results, k))
-            .filter(|s| s.judged > 0)
-            .map(|s| s.correct)
-            .max();
+        // mid-run the counts favour whichever model got through more images
+        let best = if running.is_some() {
+            None
+        } else {
+            models.iter().map(|k| stats(stack, &self.bench.results, k)).filter(|s| s.judged > 0).map(|s| s.correct).max()
+        };
         let cards = h_flex()
             .items_stretch()
             .gap_3()
@@ -384,11 +373,14 @@ impl DemoApp {
         let leading = s.judged > 0 && best == Some(s.correct);
         let meta =
             |icon: Lucide, text: String| h_flex().gap_1().items_center().child(Icon::new(icon).xsmall()).child(text);
+        let title = self.title(k);
         v_flex()
+            .id(SharedString::from(format!("bench-card-{k}")))
             .flex_1()
             .min_w_0()
             .gap_2()
             .p_4()
+            .tooltip(move |window, cx| Tooltip::new(title.clone()).build(window, cx))
             .rounded(t.radius_lg)
             .border_1()
             .border_color(if leading { r.accent.opacity(0.6) } else { r.border })
@@ -396,12 +388,14 @@ impl DemoApp {
             .child(
                 h_flex()
                     .justify_between()
-                    .items_center()
+                    .items_start()
                     .gap_2()
-                    .child(div().text_sm().font_weight(FontWeight::SEMIBOLD).truncate().child(self.title(k)))
+                    .child(div().flex_1().min_w_0().text_sm().font_weight(FontWeight::SEMIBOLD).truncate().child(self.short(k)))
                     .when(leading, |d| {
                         d.child(
                             h_flex()
+                                .id(SharedString::from(format!("bench-best-{k}")))
+                                .test_support()
                                 .flex_none()
                                 .gap_1()
                                 .items_center()
@@ -417,7 +411,8 @@ impl DemoApp {
             )
             .child(
                 h_flex()
-                    .gap_2()
+                    .flex_wrap()
+                    .gap_x_2()
                     .items_baseline()
                     .child(div().text_3xl().font_weight(FontWeight::BOLD).child(big))
                     .child(
@@ -449,7 +444,7 @@ impl DemoApp {
                         Lucide::Timer,
                         if s.judged > 0 { format!("{:.0} ms / image", s.mean_ms) } else { "– ms / image".into() },
                     ))
-                    .when_some(self.shared_pass(k), |d, note| d.child(note))
+                    .when_some(self.shared_pass(k), |d, note| d.child(widgets::icon_line(Icon::new(Lucide::Layers).xsmall(), note).w_full()))
                     .when(s.unsure > 0, |d| d.child(meta(Lucide::CircleQuestionMark, format!("{} unsure", s.unsure))))
                     .when(s.errors > 0, |d| d.child(meta(Lucide::CircleAlert, format!("{} errors", s.errors)))),
             )
@@ -540,7 +535,7 @@ impl DemoApp {
                                         .text_xs()
                                         .text_color(r.wrong)
                                         .child(Icon::new(IconName::CircleAlert).xsmall())
-                                        .child(div().truncate().child(format!("error: {e}"))),
+                                        .child(div().truncate().child(widgets::failure_label(e))),
                                 ),
                             )
                             .into_any_element(),
@@ -666,7 +661,7 @@ mod tests {
         r.insert((0, ka.clone()), Ok(pred(0, 0.9)));
         r.insert((0, kb.clone()), Ok(pred(1, 0.8)));
         r.insert((1, ka.clone()), Ok(pred(2, 0.4)));
-        r.insert((1, kb.clone()), Err("x".into()));
+        r.insert((1, kb.clone()), Err(RunError::Run("x".into())));
         let a = stats(&stack, &r, &ka);
         assert_eq!((a.correct, a.judged, a.unsure, a.errors), (2, 2, 0, 0), "out-of-scope + unsure counts as correct");
         assert!((a.mean_conf - 0.65).abs() < 1e-6);
