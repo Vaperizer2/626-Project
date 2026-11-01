@@ -159,7 +159,8 @@ async fn benchmark_and_classify_run_through_the_service(cx: &mut TestAppContext)
     let picture = stack_dir().join("01_battery_holder.jpg");
     cx.update(|cx| view.update(cx, |v, cx| v.submit_source(crate::fetch::Source::File(picture), cx)));
     wait(cx, "the Classify result", &|v| !v.classify.busy());
-    cx.update(|cx| assert!(view.read(cx).classify.done(), "the entry has an answer and its picture"));
+    let y = crate::manifest::HeadId::new("y");
+    cx.update(|cx| assert!(view.read(cx).classify.answered(&y), "the entry has an answer and its picture"));
 }
 
 /// Poll `done` while the service threads work, or panic after about 5 s.
@@ -198,6 +199,41 @@ async fn escape_leaves_the_url_field_and_stops_only_the_visible_run(cx: &mut Tes
     cx.update_window(handle, |_, window, cx| view.update(cx, |v, cx| v.set_tab(TabKind::Bench, window, cx))).unwrap();
     cx.simulate_keystrokes(handle, "escape");
     assert!(cx.update(|cx| !view.read(cx).bench.running()), "Esc on the Benchmark tab stops it");
+}
+
+#[gpui_kit::test]
+async fn switching_model_answers_the_picture_on_screen_with_it(cx: &mut TestAppContext) {
+    if !stack_dir().join(crate::demo::STACK_FILE).is_file() {
+        return;
+    }
+    let (handle, view) = open(cx, registry(&[("x", 1), ("y", 1)], &["y", "x"]));
+    let (x, y) = (crate::manifest::HeadId::new("x"), crate::manifest::HeadId::new("y"));
+    wait(cx, &view, "the default head", &|v| v.model.as_ref() == Some(&y));
+    let select = |cx: &mut TestAppContext, k: &crate::manifest::HeadId| {
+        cx.update_window(handle, |_, window, cx| view.update(cx, |v, cx| v.select_model(k.clone(), window, cx))).unwrap()
+    };
+
+    let picture = stack_dir().join("01_battery_holder.jpg");
+    cx.update(|cx| view.update(cx, |v, cx| v.submit_source(crate::fetch::Source::File(picture), cx)));
+    wait(cx, &view, "y's answer", &|v| v.classify.answered(&y));
+    select(cx, &x);
+    wait(cx, &view, "x's answer for the same picture", &|v| v.classify.answered(&x));
+    cx.update(|cx| {
+        let v = view.read(cx);
+        assert_eq!(v.classify.len(), 1, "the switch answers the picture in place, not as a new entry");
+        assert!(v.classify.answered(&y), "y's answer is kept for switching back");
+    });
+
+    cx.update_window(handle, |_, window, cx| {
+        view.update(cx, |v, cx| {
+            v.set_tab(TabKind::Demo, window, cx);
+            v.demo_classify_selected(cx);
+        })
+    })
+    .unwrap();
+    wait(cx, &view, "x's answer on the selected card", &|v| v.demo_answered(&x));
+    select(cx, &y);
+    wait(cx, &view, "y's answer on the same card", &|v| v.demo_answered(&y));
 }
 
 #[gpui_kit::test]
