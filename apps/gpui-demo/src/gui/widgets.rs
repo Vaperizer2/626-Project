@@ -27,6 +27,7 @@ gpui_kit::assets::icon_assets!(
         ImageOff,
         ImagePlus,
         Images,
+        Layers,
         LayoutGrid,
         Microchip,
         ScanSearch,
@@ -81,6 +82,34 @@ pub fn hint(keys: &[&str], label: &'static str, cx: &App) -> impl IntoElement {
         .items_center()
         .children(keys.iter().map(|k| kbd(k)))
         .child(div().text_xs().text_color(cx.theme().muted_foreground).child(label))
+}
+
+/// A tab's header row: title and subtitle on the left, `controls` on the right. The text gives way (truncates)
+/// so the controls stay inside the window at its smallest size.
+pub fn tab_header(title: &str, subtitle: String, controls: impl IntoElement, cx: &App) -> Div {
+    let (t, r) = (cx.theme(), theme::roles(cx));
+    h_flex()
+        .justify_between()
+        .items_center()
+        .gap_4()
+        .px_4()
+        .py_3()
+        .bg(r.chrome)
+        .border_b_1()
+        .border_color(t.border)
+        .child(
+            v_flex()
+                .flex_1()
+                .min_w_0()
+                .child(div().text_lg().font_weight(FontWeight::SEMIBOLD).truncate().child(title.to_string()))
+                .child(div().text_xs().text_color(t.muted_foreground).truncate().child(subtitle)),
+        )
+        .child(h_flex().flex_none().gap_4().items_center().child(controls))
+}
+
+/// An icon before text that wraps under itself instead of running past its container.
+pub fn icon_line(icon: Icon, text: impl Into<SharedString>) -> Div {
+    h_flex().gap_1().items_start().child(icon.flex_none()).child(div().flex_1().min_w_0().child(text.into()))
 }
 
 /// Small semibold muted caption above a group ("Prediction", "Other classes", "Photo credit").
@@ -199,13 +228,12 @@ pub fn prediction_block(
             )
             .when(low_confidence, |d| {
                 d.child(
-                    h_flex()
-                        .gap_1()
-                        .items_center()
-                        .text_xs()
-                        .text_color(r.muted_fg)
-                        .child(Icon::new(IconName::Info).xsmall())
-                        .child("Low confidence. This model is not calibrated, so it never abstains; it always answers."),
+                    icon_line(
+                        Icon::new(IconName::Info).xsmall(),
+                        "Low confidence. This model is not calibrated, so it never abstains; it always answers.",
+                    )
+                    .text_xs()
+                    .text_color(r.muted_fg),
                 )
             }),
     };
@@ -245,16 +273,15 @@ pub fn prediction_block(
                 .child(caption("Other classes", cx).pb_1())
                 .children(rest),
         )
-        .child(
-            h_flex()
-                .gap_1()
-                .items_center()
-                .text_xs()
-                .text_color(r.muted_fg)
-                .child(Icon::new(Lucide::Timer).xsmall())
-                .child(format!("{title} · preprocess + inference {:.0} ms", timing.ms()))
-                .when(timing.shared_by > 1, |d| d.child(format!("· one pass for {} heads", timing.shared_by))),
-        )
+        .child({
+            let shared = if timing.shared_by > 1 { format!(" · one pass for {} heads", timing.shared_by) } else { String::new() };
+            icon_line(
+                Icon::new(Lucide::Timer).xsmall(),
+                format!("{title} · preprocess + inference {:.0} ms{shared}", timing.ms()),
+            )
+            .text_xs()
+            .text_color(r.muted_fg)
+        })
         .into_any_element()
 }
 

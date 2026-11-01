@@ -462,12 +462,22 @@ impl DemoApp {
                 widgets::hint(&["escape"], "Stop", cx).into_any_element(),
             ],
         };
-        StatusBar::new().left(div().text_xs().text_color(t.muted_foreground).child(left)).right(
-            h_flex().gap_4().children(hints).child(widgets::hint(&["ctrl-m"], "Model", cx)).child(widgets::hint(
-                &["ctrl-t"],
-                "Theme",
-                cx,
-            )),
+        // laid out here rather than in the Kit's left/right slots, which shrink alike and clip the shortcuts
+        StatusBar::new().child(
+            h_flex()
+                .w_full()
+                .gap_4()
+                .justify_between()
+                .child(div().flex_1().min_w_0().truncate().text_color(t.muted_foreground).child(left))
+                .child(
+                    h_flex()
+                        .id("status-hints")
+                        .flex_none()
+                        .gap_4()
+                        .children(hints)
+                        .child(widgets::hint(&["ctrl-m"], "Model", cx))
+                        .child(widgets::hint(&["ctrl-t"], "Theme", cx)),
+                ),
         )
     }
 }
