@@ -196,3 +196,46 @@ fn the_default_says_so_when_no_head_can_run() {
     assert_eq!(head, None, "nothing can run, and the service says so instead of staying silent");
     assert!(matches!(&passed_over[..], [(x, why)] if x.as_str() == "x" && why.contains("missing")), "{passed_over:?}");
 }
+
+/// A 4x4 PNG whose every channel is `v`.
+fn png(v: u8) -> Vec<u8> {
+    let mut bytes = Vec::new();
+    RgbImage::from_pixel(4, 4, image::Rgb([v, v, v]))
+        .write_to(&mut std::io::Cursor::new(&mut bytes), image::ImageFormat::Png)
+        .unwrap();
+    bytes
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn a_picture_read_during_shutdown_starts_no_graph() {
+    use std::io::Write as _;
+    use std::os::unix::fs::OpenOptionsExt as _;
+    const O_NONBLOCK: i32 = 0o4000;
+    let dir = std::env::temp_dir().join(format!("gpui-demo-shutdown-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let fifo = dir.join("picture.png");
+    assert!(std::process::Command::new("mkfifo").arg(&fifo).status().unwrap().success());
+    let fake = FakeLoader::default();
+    let (inf, _ev) = Inference::spawn(registry(&[("x", 1)], &["x"]), fake.clone());
+    let lane = inf.lane(Priority::Interactive, Policy::Keep);
+    let mut h = lane.submit(ImageInput::Source(Source::File(fifo.clone())), &ids(&["x"]), None);
+    // a non-blocking open for writing succeeds once a reader has the fifo open: an io worker is mid-prepare
+    let t0 = Instant::now();
+    let mut writer = loop {
+        match std::fs::OpenOptions::new().write(true).custom_flags(O_NONBLOCK).open(&fifo) {
+            Ok(w) => break w,
+            Err(_) if t0.elapsed() < WAIT => std::thread::sleep(Duration::from_millis(1)),
+            Err(e) => panic!("no io worker opened the picture: {e}"),
+        }
+    };
+    assert!(!inf.shutdown(Duration::ZERO), "the io worker is still reading the picture");
+    writer.write_all(&png(200)).unwrap();
+    drop(writer);
+    let (heads, _) = finish(&mut h);
+    assert!(heads.iter().all(|(_, r)| r.is_err()), "a stopped service answers nothing");
+    inf.preload(&HeadId::new("x"));
+    std::thread::sleep(Duration::from_millis(50));
+    assert!(fake.seen().is_empty(), "no graph loaded or ran after shutdown: {:?}", fake.seen());
+    let _ = std::fs::remove_dir_all(&dir); // test scratch dir under the OS temp dir only
+}

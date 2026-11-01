@@ -334,14 +334,18 @@ struct Core {
     loader: Arc<dyn Loader>,
     events: fmpsc::UnboundedSender<ServiceEvent>,
     io: Queue<IoJob>,
-    actors: Mutex<HashMap<GraphId, Arc<Queue<Msg>>>>,
+    /// each graph's actor queue; None once the service is closed, so no actor starts after `shutdown` took the
+    /// thread list
+    actors: Mutex<Option<HashMap<GraphId, Arc<Queue<Msg>>>>>,
     threads: Mutex<Vec<JoinHandle<()>>>,
 }
+
+const STOPPED: &str = "the inference service has stopped";
 
 impl Core {
     fn close(&self) {
         self.io.close();
-        for q in self.actors.lock().expect("actors lock").values() {
+        for q in self.actors.lock().expect("actors lock").take().into_iter().flat_map(HashMap::into_values) {
             q.close();
         }
     }
@@ -376,7 +380,7 @@ impl Inference {
             loader: Arc::new(loader),
             events,
             io: Queue::new(),
-            actors: Mutex::new(HashMap::new()),
+            actors: Mutex::new(Some(HashMap::new())),
             threads: Mutex::new(Vec::new()),
         });
         let mut threads = Vec::new();
@@ -432,7 +436,7 @@ impl Inference {
         let core = &self.owner.0;
         if let Some(h) = core.registry.head(head)
             && h.available().is_ok()
-            && let Some(q) = core.actor(h.manifest())
+            && let Ok(q) = core.actor(h.manifest())
         {
             let _ = q.push(Priority::Interactive, Msg::Preload);
         }
@@ -440,7 +444,7 @@ impl Inference {
 
     #[cfg(test)]
     fn queued(&self, graph: &GraphId) -> usize {
-        self.owner.0.actors.lock().unwrap().get(graph).map_or(0, |q| q.len())
+        self.owner.0.actors.lock().unwrap().as_ref().and_then(|a| a.get(graph)).map_or(0, |q| q.len())
     }
 }
 
@@ -465,7 +469,7 @@ impl Lane {
         });
         let job = IoJob { req: req.clone(), input, heads: heads.to_vec(), display };
         if self.inference.owner.0.io.push(self.priority, job).is_err() {
-            req.fail(RunError::Run("the inference service has stopped".into()));
+            req.fail(RunError::Run(STOPPED.into()));
         }
         RequestHandle { updates, ticket: Ticket(cancelled) }
     }
@@ -473,21 +477,23 @@ impl Lane {
 }
 
 impl Core {
-    /// The queue of `m`'s actor, spawning it on first use.
-    fn actor(&self, m: &Arc<Manifest>) -> Option<Arc<Queue<Msg>>> {
+    /// The queue of `m`'s actor, spawning it on first use; an error once the service is closed.
+    fn actor(&self, m: &Arc<Manifest>) -> Result<Arc<Queue<Msg>>, String> {
         let mut actors = self.actors.lock().expect("actors lock");
+        let actors = actors.as_mut().ok_or(STOPPED)?;
         if let Some(q) = actors.get(&m.id) {
-            return Some(q.clone());
+            return Ok(q.clone());
         }
         let q = Arc::new(Queue::new());
         let (m2, q2, loader, events) = (m.clone(), q.clone(), self.loader.clone(), self.events.clone());
         let t = std::thread::Builder::new()
             .name(format!("graph-{}", m.id))
             .spawn(move || actor(m2, q2, loader, events))
-            .ok()?;
+            .map_err(|e| format!("cannot start a thread for {}: {e}", m.id))?;
+        // still under the actors lock: `close` waits for this, so `shutdown` sees the thread
         self.threads.lock().expect("threads lock").push(t);
         actors.insert(m.id.clone(), q.clone());
-        Some(q)
+        Ok(q)
     }
 
     fn resolve_default(&self) {
@@ -598,13 +604,16 @@ impl Core {
                 preprocess_ms,
                 enqueued: Instant::now(),
             };
-            match self.actor(m) {
-                Some(q) => {
-                    if q.push(req.priority, Msg::Job(job)).is_err() {
-                        req.graph_done();
-                    }
+            let queued = self.actor(m).and_then(|q| q.push(req.priority, Msg::Job(job)).map_err(|_| STOPPED.to_string()));
+            if let Err(e) = queued {
+                for &i in ix {
+                    req.send(Update::Head {
+                        head: m.heads[i].id.clone(),
+                        result: Err(RunError::Run(e.clone())),
+                        timing: Timing { decode_ms, preprocess_ms, ..Default::default() },
+                    });
                 }
-                None => req.graph_done(),
+                req.graph_done();
             }
         }
     }
