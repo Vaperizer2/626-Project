@@ -249,6 +249,40 @@ async fn switching_model_answers_the_picture_on_screen_with_it(cx: &mut TestAppC
 }
 
 #[gpui_kit::test]
+async fn switching_tab_answers_its_input_with_the_model_picked_elsewhere(cx: &mut TestAppContext) {
+    if !stack_dir().join(crate::demo::STACK_FILE).is_file() {
+        return;
+    }
+    let (handle, view) = open(cx, registry(&[("x", 1), ("y", 1), ("z", 1)], &["y", "x"]));
+    let [x, y, z] = ["x", "y", "z"].map(crate::manifest::HeadId::new);
+    wait(cx, &view, "the default head", &|v| v.run_model().as_ref() == Some(&y));
+    let on = |cx: &mut TestAppContext, tab: TabKind, f: &dyn Fn(&mut DemoApp, &mut gpui_kit::Window, &mut gpui_kit::Context<DemoApp>)| {
+        cx.update_window(handle, |_, window, cx| {
+            view.update(cx, |v, cx| {
+                v.set_tab(tab, window, cx);
+                f(v, window, cx);
+            })
+        })
+        .unwrap()
+    };
+    let picture = stack_dir().join("01_battery_holder.jpg");
+    on(cx, TabKind::Classify, &|v, _, cx| v.submit_source(crate::fetch::Source::File(picture.clone()), cx));
+    wait(cx, &view, "y's answer for the picture", &|v| v.classify.answered(&y));
+    on(cx, TabKind::Demo, &|v, _, cx| v.demo_classify_selected(cx));
+    wait(cx, &view, "y's answer on the selected card", &|v| v.demo_answered(&y));
+
+    on(cx, TabKind::Classify, &|v, w, cx| v.select_model(x.clone(), w, cx));
+    wait(cx, &view, "x's answer for the picture", &|v| v.classify.answered(&x));
+    on(cx, TabKind::Demo, &|_, _, _| {});
+    wait(cx, &view, "x's answer on the card shown when the tab opens", &|v| v.demo_answered(&x));
+
+    on(cx, TabKind::Demo, &|v, w, cx| v.select_model(z.clone(), w, cx));
+    wait(cx, &view, "z's answer on the card", &|v| v.demo_answered(&z));
+    on(cx, TabKind::Classify, &|_, _, _| {});
+    wait(cx, &view, "z's answer for the picture shown when the tab opens", &|v| v.classify.answered(&z));
+}
+
+#[gpui_kit::test]
 async fn a_model_that_fails_to_load_is_not_called_an_unreadable_picture(cx: &mut TestAppContext) {
     if !stack_dir().join(crate::demo::STACK_FILE).is_file() {
         return;

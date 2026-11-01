@@ -327,6 +327,8 @@ impl DemoApp {
 
     fn set_tab(&mut self, tab: TabKind, window: &mut Window, cx: &mut Context<Self>) {
         self.tab = tab;
+        // the model may have changed on another tab
+        self.follow_model(cx);
         window.focus(&self.focus, cx);
         cx.notify();
     }
