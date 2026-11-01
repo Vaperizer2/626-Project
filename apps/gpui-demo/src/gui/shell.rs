@@ -1,6 +1,6 @@
 //! The window's chrome and the tab protocol. `Shell` draws the title bar, the tab row with the model picker, the
-//! registry and fallback alerts, the active tab and the status bar. It knows tabs only through `app::TABS`: each is
-//! an entity implementing [`Tab`], with its own focus, its own keys and its own lanes. Pictures that reach the
+//! registry and fallback alerts, the active tab and the status bar. It knows tabs only through the list it opens
+//! (`app::TABS`): each is an entity implementing [`Tab`], with its own focus, its own keys and its own lanes. Pictures that reach the
 //! window (dropped, opened, pasted, given on the command line) go to the tab that takes them.
 
 use gpui_kit::component::{
@@ -118,22 +118,22 @@ fn focus_input<T: Tab>(view: &AnyView, window: &mut Window, cx: &mut App) {
     typed::<T>(view).update(cx, |t, cx| t.focus_input(window, cx));
 }
 
-/// The index of the tab `--tab` names: a title, or the start of one, in any case.
-pub fn tab_index(name: &str) -> Option<usize> {
+/// The index in `tabs` of the tab `--tab` names: a title, or the start of one, in any case.
+pub fn tab_index(tabs: &[TabSpec], name: &str) -> Option<usize> {
     let name = name.to_lowercase();
-    app::TABS.iter().position(|t| !name.is_empty() && t.title.to_lowercase().starts_with(&name))
+    tabs.iter().position(|t| !name.is_empty() && t.title.to_lowercase().starts_with(&name))
 }
 
 /// The window's keys for `--help`: the shell's own, then each tab's hints.
-pub fn keys_help() -> String {
-    let titles: Vec<&str> = app::TABS.iter().map(|t| t.title).collect();
+pub fn keys_help(tabs: &[TabSpec]) -> String {
+    let titles: Vec<&str> = tabs.iter().map(|t| t.title).collect();
     let mut lines = vec![format!(
         "Ctrl+1..{} {} tab, Ctrl+M next model, Ctrl+T light/dark theme, Ctrl+Q quit,",
-        app::TABS.len(),
+        tabs.len(),
         titles.join(" / ")
     )];
     lines.push("Ctrl+O open pictures, Ctrl+V paste a picture, path or URL, or drop files on the window.".into());
-    for t in app::TABS.iter().filter(|t| !t.hints.is_empty()) {
+    for t in tabs.iter().filter(|t| !t.hints.is_empty()) {
         let hints: Vec<String> = t
             .hints
             .iter()
@@ -176,6 +176,7 @@ impl Shell {
         service: (Inference, futures::channel::mpsc::UnboundedReceiver<ServiceEvent>),
         gui: &GuiOptions,
         initial: Vec<String>,
+        tabs: &'static [TabSpec],
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
@@ -183,7 +184,7 @@ impl Shell {
         super::tick_while(cx, |this, cx| this.models.read(cx).loading());
         let models = cx.new(|cx| Models::new(service, cx));
         let shared = app::shared(cx);
-        let tabs = app::TABS
+        let open: Vec<TabEntry> = tabs
             .iter()
             .map(|spec| {
                 let (view, focus) = (spec.open)(models.clone(), &shared, window, cx);
@@ -195,8 +196,8 @@ impl Shell {
         let registry_problems =
             if m.registry_error().is_some() { Vec::new() } else { m.registry().problems().to_vec() };
         let this = Self {
-            tabs,
-            active: gui.tab.min(app::TABS.len() - 1),
+            tabs: open,
+            active: gui.tab.min(tabs.len() - 1),
             models,
             autorun: gui.autorun,
             registry_problems,
@@ -225,7 +226,7 @@ impl Shell {
         (tab.spec.follow_model)(&tab.view, cx);
     }
 
-    /// The index in `app::TABS` of the tab on screen.
+    /// The index of the tab on screen.
     #[cfg(test)]
     pub fn active_tab(&self) -> usize {
         self.active
@@ -506,6 +507,7 @@ impl Shell {
                 .child(
                     h_flex()
                         .id("status-hints")
+                        .test_support()
                         .flex_none()
                         .gap_4()
                         .children(hints.iter().map(|(keys, label)| widgets::hint(keys, label, cx)))

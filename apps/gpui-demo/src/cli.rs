@@ -56,7 +56,7 @@ pub fn help() -> String {
         None => String::new(),
     };
     let first = titles.first().cloned().unwrap_or_default();
-    let keys = gui::keys_help();
+    let keys = gui::keys_help(app::TABS);
     let mut lines = vec![usage(format!("    {bin} [OPTIONS] [IMAGE|URL ...]"), "open the window")];
     lines.extend(app::COMMANDS.iter().map(|c| usage(format!("    {bin} {} {}", c.name, c.args), c.about)));
     let usage = lines.join("\n");
@@ -141,7 +141,7 @@ pub fn parse_args() -> Result<Args> {
             "--warmup" => a.warmup = value("--warmup")?.parse().context("--warmup")?,
             "--tab" => {
                 let name = value("--tab")?;
-                let Some(ix) = gui::tab_index(&name) else {
+                let Some(ix) = gui::tab_index(app::TABS, &name) else {
                     let titles: Vec<&str> = app::TABS.iter().map(|t| t.title).collect();
                     bail!("--tab {name}: expected one of {}", titles.join(", "));
                 };

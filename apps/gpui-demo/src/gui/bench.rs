@@ -659,48 +659,4 @@ impl Render for BenchTab {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use inference::classification::read_head;
-    use crate::demo::DemoStack;
-    use inference::manifest::{Calibration, ClassifyTask, Decision, Labels, Prob, Readout, Task};
-    use std::path::Path;
-    use std::sync::Arc;
-
-    /// A calibrated head that abstains below 0.5, answering class `label_ix` with probability `p`.
-    fn pred(label_ix: usize, p: f32) -> (Classification, Timing) {
-        let labels = Labels::new(["led", "diode", "resistor"].iter().map(|s| s.to_string()).collect()).unwrap();
-        let task = Task::Classify(ClassifyTask {
-            readout: Readout::Probs { output: "probs".into() },
-            labels: Arc::new(labels),
-            calibration: Calibration::Temperature { t: 1.0, in_graph: true },
-            decision: Decision::Abstain { below: Prob::new(0.5).unwrap() },
-        });
-        let mut probs = vec![(1.0 - p) / 2.0; 3];
-        probs[label_ix] = p;
-        let HeadOutput::Classify(c) = read_head(&task, &probs).unwrap();
-        (c, Timing { preprocess_ms: 2.0, run_ms: 8.0, shared_by: 1, ..Default::default() })
-    }
-
-    #[test]
-    fn stats_and_disagreement() {
-        let stack = DemoStack::parse(
-            Path::new("/d"),
-            r#"{"images":[{"file":"a","section":"s","true_label":"led"},{"file":"b","section":"s","true_label":null}]}"#,
-        )
-        .unwrap();
-        let (ka, kb) = (HeadId::new("a"), HeadId::new("b"));
-        let mut r = HashMap::new();
-        r.insert((0, ka.clone()), Ok(pred(0, 0.9)));
-        r.insert((0, kb.clone()), Ok(pred(1, 0.8)));
-        r.insert((1, ka.clone()), Ok(pred(2, 0.4)));
-        r.insert((1, kb.clone()), Err(RunError::Run("x".into())));
-        let a = stats(&stack, &r, &ka);
-        assert_eq!((a.correct, a.judged, a.unsure, a.errors), (2, 2, 0, 0), "out-of-scope + unsure counts as correct");
-        assert!((a.mean_conf - 0.65).abs() < 1e-6);
-        let b = stats(&stack, &r, &kb);
-        assert_eq!((b.correct, b.judged, b.errors), (0, 1, 1));
-        assert!(disagree(&r, 0, &[ka.clone(), kb.clone()]));
-        assert!(!disagree(&r, 1, &[ka, kb]), "an error is not an answer");
-    }
-}
+mod tests;
