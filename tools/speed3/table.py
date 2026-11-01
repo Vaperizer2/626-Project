@@ -17,6 +17,8 @@ W = "speed2_int8_res294_mlp3840"
 t2.ROWS = {
     W: ("speed2_int8_res294", "speed2 winner: res294 + MLP 3840 (FLAP fluct, bias-comp), INT8"),
     "speed3_int8_c1": (W, "C1: fc2 least-squares refit per block, 512 pool images (external)"),
+    "speed3_int8_q1": (W, "Q1: QAT distillation, LoRA 64 all GEMMs, pool images (external)"),
+    "speed3_int8_q2": (W, "Q2: Q1 on the dev images (transductive)"),
 }
 
 if __name__ == "__main__":

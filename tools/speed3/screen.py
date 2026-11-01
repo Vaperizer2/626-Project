@@ -50,6 +50,7 @@ def main() -> None:
     ap.add_argument("--state", type=Path)
     ap.add_argument("--fp32", action="store_true", help="fp32 (TF32 matmuls) instead of bf16 autocast")
     ap.add_argument("--fq", action="store_true", help="fake-quantise with the speed2 INT8 recipe (fakequant.py)")
+    ap.add_argument("--keep-float", default="", help="with --fq: comma-separated GEMM roles left in floating point")
     a = ap.parse_args()
     torch.backends.cuda.matmul.allow_tf32 = torch.backends.cudnn.allow_tf32 = True
     d = GRAPHS.get(a.graph, Path(a.graph))
@@ -62,6 +63,8 @@ def main() -> None:
 
         cal = fakequant.calibrate(m)
         fakequant.quantize(m, cal)
+        for r, mod in fakequant.gemms(m).items():
+            mod.enabled = r not in a.keep_float.split(",")
         (R / "screens" / f"{a.name}.amax.json").write_text(json.dumps(fakequant.amax_table(cal), indent=0))
     t0 = time.time()
     F = embed(m, graph_size(d), a.fp32)
@@ -69,7 +72,7 @@ def main() -> None:
     np.save(R / "screens" / f"{a.name}.npy", F)
     mf, rows = dev_rows()
     fold = np.array([r["fold"] for r in rows])
-    rec = {"name": a.name, "graph": str(d), "state": str(a.state) if a.state else None, "fp32": a.fp32, "fq": a.fq,
+    rec = {"name": a.name, "graph": str(d), "state": str(a.state) if a.state else None, "fp32": a.fp32, "fq": a.fq, "keep_float": a.keep_float,
            "embed_s": round(time.time() - t0)}
     for ref in ("t294", "t384"):
         p = R / "screens" / f"{ref}.npy"

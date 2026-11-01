@@ -10,6 +10,9 @@ only the teacher's outputs on that view:
   mse  squared error of the per-dimension standardised embeddings (the space the refitted probe reads); mean and sd
        from the teacher on 256 images of the training source
   tok  1 - cosine per token of every block's output (t294 only: same 21x21 grid), mean over tokens and blocks
+  zs   KL from the teacher's to the student's distribution under the fixed zero-shot text head the deployed model
+       fuses (exports/final head.npz W, T = 50): the 20 class-prompt directions of SigLIP's text space. Teacher
+       outputs only; no image label enters.
 Trainable: `mlp` fc1+fc2 of all 27 blocks, `fc2` only, `lora:R` rank-R adapters on fc1/fc2 (`lora_all:R` also on
 qkv/proj), merged into the weights at the end so shapes stay exactly s294's. --qat runs the student through
 fakequant.py's replica of the speed2 INT8 recipe (straight-through rounding), recalibrated on the pool calibration
@@ -31,6 +34,8 @@ from torch import nn
 from torch.utils.checkpoint import checkpoint
 
 from common import GRAPHS, block_state, graph_size, load_block_state, loader, source, trunk
+
+HEAD, T_ZS = Path("/home/carl/626-runs/distill/v2meta/head.npz"), 50.0  # byte-identical copy of exports/final/head.npz
 
 
 class LoRA(nn.Module):
@@ -113,16 +118,16 @@ def main() -> None:
     ap.add_argument("--w-cos", type=float, default=1.0)
     ap.add_argument("--w-mse", type=float, default=1.0)
     ap.add_argument("--w-tok", type=float, default=0.0)
+    ap.add_argument("--w-zs", type=float, default=0.0)
     ap.add_argument("--p-view0", type=float, default=0.25)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--workers", type=int, default=10)
     ap.add_argument("--qat", action="store_true")
     ap.add_argument("--recal", type=int, default=250)
     ap.add_argument("--bf16-base", action="store_true",
-                    help="LoRA only: frozen weights in bf16 on the GPU, deltas merged into fp32 weights at the end")
+                    help="frozen weights in bf16 on the GPU; trained weights or LoRA deltas go into fp32 ones at the end")
     a = ap.parse_args()
     assert not (a.w_tok and a.teacher != "t294"), "token loss needs the teacher on the student's grid"
-    assert not a.bf16_base or a.train.startswith("lora"), "--bf16-base keeps only LoRA adapters in fp32"
     torch.manual_seed(a.seed)
     torch.backends.cuda.matmul.allow_tf32 = True
     a.out.mkdir(parents=True, exist_ok=True)
@@ -158,6 +163,7 @@ def main() -> None:
         x0 = xt[:4].to(dev, torch.bfloat16)
         assert F.cosine_similarity(run(t, x0, ckpt=False)[0].float(), t(x0).float()).min() > 0.9999, "run() != forward"
 
+    Wt = torch.from_numpy(np.load(HEAD)["W"]).float().to(dev)
     opt = torch.optim.AdamW(params, lr=a.lr, weight_decay=0.0, fused=True)
     dl = loader([items[j] for j in order], views, sizes, a.batch, a.workers)
     cfg = {**{k: str(v) for k, v in vars(a).items()}, "n_trainable": sum(p.numel() for p in params),
@@ -165,7 +171,7 @@ def main() -> None:
     (a.out / "config.json").write_text(json.dumps(cfg, indent=1))
     print(json.dumps(cfg), flush=True)
     log = open(a.out / "log.jsonl", "w")
-    t0, agg = time.time(), {"loss": 0.0, "cos": 0.0, "mse": 0.0, "tok": 0.0}
+    t0, agg = time.time(), {"loss": 0.0, "cos": 0.0, "mse": 0.0, "tok": 0.0, "zs": 0.0}
     for step, (xs, xt) in enumerate(dl):
         f = min(1.0, (step + 1) / a.warmup) * 0.5 * (1 + math.cos(math.pi * step / a.steps))
         for g in opt.param_groups:
@@ -185,13 +191,19 @@ def main() -> None:
             tok = torch.stack([1 - F.cosine_similarity(u.float(), v.float(), dim=-1).mean()
                                for u, v in zip(stok, ttok)]).mean()
             loss = loss + a.w_tok * tok
+        zs = torch.zeros((), device=dev)
+        if a.w_zs:
+            ls = F.log_softmax(T_ZS * F.normalize(se, dim=1) @ Wt.T, dim=1)
+            lt = F.log_softmax(T_ZS * F.normalize(te, dim=1) @ Wt.T, dim=1)
+            zs = F.kl_div(ls, lt, log_target=True, reduction="batchmean")
+            loss = loss + a.w_zs * zs
         opt.zero_grad(set_to_none=True)
         loss.backward()
         torch.nn.utils.clip_grad_norm_(params, 1.0)
         opt.step()
         if a.qat and (step + 1) % a.recal == 0 and step + 1 < a.steps:
             fakequant.quantize(s, fakequant.calibrate(s, bf16=a.bf16_base))
-        for k_, v_ in (("loss", loss), ("cos", cos), ("mse", mse), ("tok", tok)):
+        for k_, v_ in (("loss", loss), ("cos", cos), ("mse", mse), ("tok", tok), ("zs", zs)):
             agg[k_] += float(v_)
         if (step + 1) % 50 == 0:
             rec = {"step": step + 1, **{k_: round(v_ / 50, 6) for k_, v_ in agg.items()}, "lr": a.lr * f,
@@ -204,14 +216,20 @@ def main() -> None:
     if a.qat:
         fakequant.unwrap(s)
     if a.bf16_base:
-        deltas = {(i, n): (mod.B @ mod.A).detach().float().cpu() for i, b in enumerate(s.blocks)
-                  for n in ("attn.qkv", "attn.proj", "mlp.fc1", "mlp.fc2") if isinstance(mod := b.get_submodule(n), LoRA)}
+        lins = [(i, n, b.get_submodule(n)) for i, b in enumerate(s.blocks)
+                for n in ("attn.qkv", "attn.proj", "mlp.fc1", "mlp.fc2")]
+        deltas = {(i, n): (mod.B @ mod.A).detach().float().cpu() for i, n, mod in lins if isinstance(mod, LoRA)}
+        trained = {(i, n): (mod.weight.detach().float().cpu(), mod.bias.detach().float().cpu()) for i, n, mod in lins
+                   if not isinstance(mod, LoRA) and mod.weight.requires_grad}
         s = trunk(GRAPHS["s294"])
         if a.init:
             load_block_state(s, a.init)
         with torch.no_grad():
             for (i, n), d in deltas.items():
                 s.blocks[i].get_submodule(n).weight += d
+            for (i, n), (w, b) in trained.items():
+                s.blocks[i].get_submodule(n).weight.copy_(w)
+                s.blocks[i].get_submodule(n).bias.copy_(b)
     else:
         merge(s)
     np.savez(a.out / "state.npz", **block_state(s))
