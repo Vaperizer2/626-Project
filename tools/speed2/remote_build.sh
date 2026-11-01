@@ -4,6 +4,7 @@
 # p99.999) -> fidelity screen against the winner's own fp32 and INT8 graphs.
 #   remote_build.sh <candidate_id> <tokens_recipe> <prune build.py args | none>
 # DROP_BLOCKS (comma-separated block indices) removes those blocks after pruning (blocks.py drop).
+# HEADS_KEEP keeps that many attention heads per block on the resized graph (heads.py, statistics at its size).
 # QDQ_EXCLUDE (comma-separated GEMM roles kept in fp16) defaults to none, as in the winner.
 set -euo pipefail
 id=$1 tok=$2
@@ -29,6 +30,11 @@ fi
 TOKENS_BASELINE=$fp TOKENS_OUT=$W/tok TOKENS_SHA=$SPEED2_SHA $PY "$R/repo/tools/tokens/build.py" "$tok"
 src=$W/tok/$tok
 cd "$R/repo/tools/quant"
+if [ -n "${HEADS_KEEP:-}" ]; then
+  flock /tmp/626-gpu.lock ./py ../speed2/heads.py stats "$src" "$W/heads_stats/stats.npz"
+  ./py ../speed2/heads.py prune "$src" "$W/heads_stats/stats.npz" "$W/heads" --keep "$HEADS_KEEP"
+  src=$W/heads
+fi
 ./py candidate.py static1 "$W/static1" "$(cat "$src/runtime.json")" --src "$src"
 flock /tmp/626-gpu.lock ./py calib_stats.py "$W/static1/model.onnx" "$W/stats/stats.npz"
 ./py qdq.py smooth "$W/static1" "$W/stats/stats.npz" "$W/smooth05" --alpha 0.5
@@ -41,10 +47,10 @@ if [ -f "$WIN/static1/preprocess.json" ] && cmp -s <(jq -S '{input_size, crop_pc
     /home/carl/626-runs/compose/candidates/compose_int8_res308 "$R/candidates/$id"
 fi
 jq -n --arg prune "$*" --arg tok "$tok" --arg sha "$SPEED2_SHA" --arg drop "${DROP_BLOCKS:-}" \
-  --arg excl "${QDQ_EXCLUDE:-}" --slurpfile pre "$src/preprocess.json" \
-  '{prune_args: $prune, drop_blocks: $drop, qdq_exclude: $excl, tokens_recipe: $tok, tools_sha: $sha,
+  --arg excl "${QDQ_EXCLUDE:-}" --arg heads "${HEADS_KEEP:-}" --slurpfile pre "$src/preprocess.json" \
+  '{prune_args: $prune, drop_blocks: $drop, qdq_exclude: $excl, heads_keep: $heads, tokens_recipe: $tok, tools_sha: $sha,
     tokens_built_from: $pre[0].built_from}' \
   > "$R/candidates/$id/recipe.json"
-[ -f "$W/fp32_384/prune.json" ] && cp "$W/fp32_384/prune.json" "$R/candidates/$id/"
+for f in "$W/fp32_384/prune.json" "$W/heads/heads.json"; do [ ! -f "$f" ] || cp "$f" "$R/candidates/$id/"; done
 rm -f "$W/stats/calib_stats.onnx" "$W/stats/model.onnx.data"
 echo done

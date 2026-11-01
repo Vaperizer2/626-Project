@@ -29,7 +29,6 @@ from onnx import TensorProto, helper, numpy_helper
 from calib_stats import gemms
 from candidate import TRT_FP16, git_sha
 
-D = 1152
 DEFAULT_EXCLUDE = "blocks.0.,blocks.26.,attn_pool."
 
 
@@ -115,11 +114,11 @@ def smooth(src: Path, stats_path: Path, dst: Path, alpha: float) -> None:
         divided[r[role].input[0]] = s
         qkv = r[f"blocks.{b}.attn.qkv"]
         wq = w[qkv.input[1]].copy()
-        wq[:, 2 * D:] /= s
+        wq[:, -len(s):] /= s
         set_init(m, qkv.input[1], wq)
         bias = table[f"blocks.{b}.attn.qkv"][1]
         bq = w[bias].copy()
-        bq[2 * D:] /= s
+        bq[-len(s):] /= s
         set_init(m, bias, bq)
         set_init(m, r[role].input[1], w[r[role].input[1]] * s[:, None])
     rt = json.loads((src / "runtime.json").read_text()) if (src / "runtime.json").exists() else {}
