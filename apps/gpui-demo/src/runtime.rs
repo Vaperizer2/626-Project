@@ -89,6 +89,30 @@ pub fn resolve_ort_lib(explicit: Option<&Path>, exports: Option<&Path>) -> PathB
     PathBuf::from(format!("{}onnxruntime{}", std::env::consts::DLL_PREFIX, std::env::consts::DLL_SUFFIX))
 }
 
+/// The providers to try for `m`, in order: the manifest's list, or `--ep`'s (taking the manifest's options for a
+/// provider it lists).
+fn preferences(eps: Option<&[EpKind]>, m: &Manifest) -> Vec<Ep> {
+    match eps {
+        None => m.runtime.providers.clone(),
+        Some(kinds) => kinds
+            .iter()
+            .map(|&kind| m.runtime.providers.iter().find(|e| e.kind == kind).cloned().unwrap_or(Ep { kind, options: vec![] }))
+            .collect(),
+    }
+}
+
+/// `m`'s preferred provider, the first in its manifest, when `--ep` keeps it first. The start-up default needs a
+/// graph to run on the provider it was accepted on: `--ep` forces the provider of a model chosen by name, it does
+/// not make a model the default.
+fn preferred(eps: Option<&[EpKind]>, m: &Manifest) -> Result<Ep, String> {
+    let want = m.runtime.providers.first().ok_or("the manifest lists no execution provider")?;
+    match preferences(eps, m).into_iter().next() {
+        Some(first) if first.kind == want.kind => Ok(first),
+        Some(first) => Err(format!("--ep puts {} first, not its preferred {}", first.kind.name(), want.kind.name())),
+        None => Err(format!("--ep leaves out its preferred {}", want.kind.name())),
+    }
+}
+
 /// The execution providers a session ended up with, and the preferred ones that were skipped and why.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Placement {
@@ -145,18 +169,9 @@ impl Runtime {
         Ok(Self { env, ort_lib, version, threads: opts.threads, eps: opts.eps.clone() })
     }
 
-    /// The providers to try for `m`, in order: the manifest's list, or `--ep`'s (taking the manifest's options
-    /// for a provider it lists).
+    /// The providers to try for `m`, in order (see [`preferences`]).
     pub fn preferences(&self, m: &Manifest) -> Vec<Ep> {
-        match &self.eps {
-            None => m.runtime.providers.clone(),
-            Some(kinds) => kinds
-                .iter()
-                .map(|&kind| {
-                    m.runtime.providers.iter().find(|e| e.kind == kind).cloned().unwrap_or(Ep { kind, options: vec![] })
-                })
-                .collect(),
-        }
+        preferences(self.eps.as_deref(), m)
     }
 
     fn builder(&self, m: &Manifest) -> Result<SessionBuilder> {
@@ -506,15 +521,34 @@ impl Loader for OrtLoader {
     }
 
     fn probe(&self, m: &Manifest) -> std::result::Result<(), String> {
+        let ep = preferred(self.opts.eps.as_deref(), m)?;
         let rt = self.runtime()?;
-        let ep = rt.preferences(m).into_iter().next().ok_or("the manifest lists no execution provider")?;
         rt.probe(&ep, m).map_err(|e| format!("{} does not register here: {e}", ep.kind.name()))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::reason;
+    use super::*;
+
+    /// A manifest preferring `providers`, in order.
+    fn preferring(providers: &[EpKind]) -> Manifest {
+        let mut m = Arc::try_unwrap(crate::inference::fake::manifest("fast", 1)).unwrap();
+        m.runtime.providers = providers.iter().map(|&kind| Ep { kind, options: vec![] }).collect();
+        m
+    }
+
+    #[test]
+    fn the_default_needs_its_preferred_provider_whatever_ep_says() {
+        let fast = preferring(&[EpKind::TensorRt, EpKind::Cuda, EpKind::Cpu]);
+        assert_eq!(preferred(None, &fast).unwrap().kind, EpKind::TensorRt);
+        assert_eq!(preferred(Some(&[EpKind::TensorRt, EpKind::Cpu]), &fast).unwrap().kind, EpKind::TensorRt);
+        for ep in [&[EpKind::Cpu][..], &[EpKind::Cuda, EpKind::Cpu], &[EpKind::Cpu, EpKind::TensorRt]] {
+            assert!(preferred(Some(ep), &fast).is_err(), "--ep {ep:?} must not make fast the default");
+        }
+        let kinds = |eps| preferences(eps, &fast).iter().map(|e| e.kind).collect::<Vec<_>>();
+        assert_eq!(kinds(Some(&[EpKind::Cpu])), [EpKind::Cpu], "--ep still decides where a chosen model runs");
+    }
 
     #[test]
     fn reasons_drop_onnxruntime_source_locations() {
