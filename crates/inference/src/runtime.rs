@@ -229,7 +229,7 @@ impl Runtime {
             let mut registered = Vec::new();
             let mut failed = Vec::new();
             for ep in candidates.iter().filter(|e| e.kind != EpKind::Cpu) {
-                match self.provider(ep, m).register(&mut b) {
+                match self.provider(ep, m, true).register(&mut b) {
                     Ok(()) => registered.push(ep.kind),
                     Err(e) => {
                         skipped.push((ep.kind, reason(&e.to_string())));
@@ -268,16 +268,16 @@ impl Runtime {
             return Ok(());
         }
         let mut b = self.builder(m).map_err(|e| e.to_string())?;
-        self.provider(ep, m).register(&mut b).map_err(|e| reason(&e.to_string()))
+        // a probe builds no engine, so it gets no cache: a cache dir made here would stay empty
+        self.provider(ep, m, false).register(&mut b).map_err(|e| reason(&e.to_string()))
     }
 
     /// The ort provider for one preference: the manifest's options passed through unchanged, plus, for TensorRT
-    /// with its engine cache on, the cache paths (the app's, see `engine_cache`).
-    fn provider(&self, ep: &Ep, m: &Manifest) -> ExecutionProviderDispatch {
+    /// with its engine cache on and `cached`, the cache paths (the app's, see `engine_cache`).
+    fn provider(&self, ep: &Ep, m: &Manifest, cached: bool) -> ExecutionProviderDispatch {
         match ep.kind {
             EpKind::TensorRt => {
-                let cache = ep
-                    .flag("trt_engine_cache_enable")
+                let cache = (cached && ep.flag("trt_engine_cache_enable"))
                     .then(|| self.engine_cache(m))
                     .flatten()
                     .filter(|dir| std::fs::create_dir_all(dir).is_ok());
