@@ -26,7 +26,7 @@ def tokens_of(layer: dict) -> int | None:
         outs = ast.literal_eval(outs)
     for o in outs:
         d = o.get("Dimensions", [])
-        if len(d) == 3 and d[0] == 1 and d[1] > 1:
+        if len(d) == 3 and d[0] in (1, 16) and d[1] > 1:
             return d[1]
         if len(d) == 4 and d[0] == 1 and d[1] == 16:
             return d[2]
@@ -51,16 +51,25 @@ def split(d: Path) -> dict:
     prof = json.loads((d / "profile.json").read_text())
     by = defaultdict(lambda: [0.0, 0])
     per_block = defaultdict(float)
+    rows = []
+    last = max(b for b in (classify(x)[1] for x in layers) if b is not None)
+    current, done = None, False
     for layer in layers:
         ms = prof.get(layer["Name"])
+        role, blk = classify(layer)
+        if blk is not None:
+            current = blk
+            done = done or (blk == last and role == "mlp.fc2")
+        elif not done:
+            blk = current
         if ms is None:
             continue
-        role, blk = classify(layer)
         t = tokens_of(layer)
         by[(role, t)][0] += ms
         by[(role, t)][1] += 1
         per_block[blk] += ms
-    return {"total_ms": sum(prof.values()),
+        rows.append({"block": blk, "role": role, "tokens": t, "ms": ms})
+    return {"total_ms": sum(prof.values()), "layers": rows,
             "roles": [{"role": r, "tokens": t, "ms": round(ms, 4), "n": n, "ms_each": round(ms / n, 4)}
                       for (r, t), (ms, n) in sorted(by.items(), key=lambda kv: (kv[0][0], -(kv[0][1] or 0)))],
             "per_block": {str(k): round(v, 4) for k, v in sorted(per_block.items(), key=lambda kv: (kv[0] is None, kv[0] or 0))}}
