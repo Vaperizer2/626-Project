@@ -351,6 +351,22 @@ async fn escape_leaves_the_url_field_and_stops_only_the_visible_run(cx: &mut Tes
 }
 
 #[gpui_kit::test]
+async fn ctrl_l_on_another_tab_opens_the_url_field(cx: &mut TestAppContext) {
+    if !stack_dir().join(crate::demo::STACK_FILE).is_file() {
+        return;
+    }
+    let (handle, view) = open_with(cx, registry(&[("x", 1)], &["x"]), FakeLoader::default());
+    cx.update_window(handle, |_, window, cx| view.update(cx, |v, cx| v.set_tab(ix::<BenchTab>(), window, cx))).unwrap();
+    cx.simulate_keystrokes(handle, "ctrl-l");
+    cx.update_window(handle, |_, window, cx| {
+        let v = view.read(cx);
+        assert_eq!(v.active_tab(), ix::<ClassifyTab>(), "Ctrl+L shows the tab with the URL field");
+        assert!(!v.tabs[ix::<ClassifyTab>()].focus.is_focused(window), "and puts the cursor in the field");
+    })
+    .unwrap();
+}
+
+#[gpui_kit::test]
 async fn switching_model_answers_the_picture_on_screen_with_it(cx: &mut TestAppContext) {
     if !stack_dir().join(crate::demo::STACK_FILE).is_file() {
         return;

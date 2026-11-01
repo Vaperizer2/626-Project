@@ -20,7 +20,7 @@ use gpui_kit::{
 
 use super::models::{ModelEvent, ModelState, Models};
 use super::widgets::{self, Lucide};
-use super::{CTX, Cancel, GuiOptions, NextModel, Open, Paste, ShowTab, ToggleTheme, theme};
+use super::{CTX, Cancel, FocusUrl, GuiOptions, NextModel, Open, Paste, ShowTab, ToggleTheme, theme};
 use crate::app;
 use inference::fetch::Source;
 use inference::manifest::Task;
@@ -51,6 +51,9 @@ pub trait Tab: Render + Sized {
     fn run(&mut self, _cx: &mut Context<Self>) {}
     /// Pictures for a tab that sets `TAKES_INPUTS`.
     fn take(&mut self, _inputs: Vec<ImageInput>, _window: &mut Window, _cx: &mut Context<Self>) {}
+    /// Focus the tab's own text input (a URL or path field), as Ctrl+L does from any tab, for a tab that sets
+    /// `TAKES_INPUTS`.
+    fn focus_input(&mut self, _window: &mut Window, _cx: &mut Context<Self>) {}
 }
 
 /// A tab before it exists: what `--help` and the shell need to know, and how to make it. `app::TABS` lists them.
@@ -64,6 +67,7 @@ pub struct TabSpec {
     follow_model: fn(&AnyView, &mut App),
     run: fn(&AnyView, &mut App),
     take: fn(&AnyView, Vec<ImageInput>, &mut Window, &mut App),
+    focus_input: fn(&AnyView, &mut Window, &mut App),
 }
 
 impl TabSpec {
@@ -78,6 +82,7 @@ impl TabSpec {
             follow_model: follow_model::<T>,
             run: run::<T>,
             take: take::<T>,
+            focus_input: focus_input::<T>,
         }
     }
 }
@@ -108,6 +113,10 @@ fn run<T: Tab>(view: &AnyView, cx: &mut App) {
 
 fn take<T: Tab>(view: &AnyView, inputs: Vec<ImageInput>, window: &mut Window, cx: &mut App) {
     typed::<T>(view).update(cx, |t, cx| t.take(inputs, window, cx));
+}
+
+fn focus_input<T: Tab>(view: &AnyView, window: &mut Window, cx: &mut App) {
+    typed::<T>(view).update(cx, |t, cx| t.focus_input(window, cx));
 }
 
 /// The index of the tab `--tab` names: a title, or the start of one, in any case.
@@ -218,6 +227,11 @@ impl Shell {
     }
 
     /// Has the keyboard while the active tab is on screen.
+    /// The index in `app::TABS` of the tab on screen.
+    pub fn active_tab(&self) -> usize {
+        self.active
+    }
+
     pub fn active_focus(&self) -> FocusHandle {
         self.tabs[self.active].focus.clone()
     }
@@ -281,6 +295,13 @@ impl Shell {
             .ok();
         })
         .detach();
+    }
+
+    fn focus_url(&mut self, _: &FocusUrl, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(ix) = self.input_tab() else { return };
+        self.set_tab(ix, window, cx);
+        let tab = &self.tabs[ix];
+        (tab.spec.focus_input)(&tab.view, window, cx);
     }
 
     fn paste(&mut self, _: &Paste, window: &mut Window, cx: &mut Context<Self>) {
@@ -546,6 +567,7 @@ impl Render for Shell {
             .capture_action(cx.listener(Self::leave_text_field))
             .on_action(cx.listener(Self::open))
             .on_action(cx.listener(Self::paste))
+            .on_action(cx.listener(Self::focus_url))
             .on_action(cx.listener(Self::toggle_theme))
             .on_action(cx.listener(Self::next_model))
             .on_action(cx.listener(|this, tab: &ShowTab, w, cx| this.set_tab(tab.0, w, cx)))

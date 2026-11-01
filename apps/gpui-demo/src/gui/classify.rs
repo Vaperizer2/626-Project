@@ -24,7 +24,7 @@ use super::images::{DISPLAY_MAX_SIDE, render};
 use super::models::{ModelEvent, ModelState, Models};
 use super::results::{HeadResult, Results};
 use super::widgets::Lucide;
-use super::{FocusUrl, Hint, Open, Paste, StepNext, StepPrev, Tab, theme, widgets};
+use super::{Hint, Open, Paste, StepNext, StepPrev, Tab, theme, widgets};
 use crate::app;
 use inference::fetch::Source;
 use inference::manifest::HeadId;
@@ -124,6 +124,10 @@ impl Tab for ClassifyTab {
             }
             self.submit(input, cx);
         }
+    }
+
+    fn focus_input(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.url.update(cx, |st, cx| st.focus(window, cx));
     }
 }
 
@@ -250,10 +254,6 @@ impl ClassifyTab {
             Some(src) => self.submit(ImageInput::Source(src), cx),
             None => window.push_notification("Type or paste an image URL (or a file path) first.", cx),
         }
-    }
-
-    fn focus_url(&mut self, _: &FocusUrl, window: &mut Window, cx: &mut Context<Self>) {
-        self.url.update(cx, |st, cx| st.focus(window, cx));
     }
 
     fn step(&mut self, delta: isize, cx: &mut Context<Self>) {
@@ -591,7 +591,6 @@ impl Render for ClassifyTab {
             .id("classify-tab")
             .track_focus(&self.focus)
             .key_context("Classify")
-            .on_action(cx.listener(Self::focus_url))
             .on_action(cx.listener(|this, _: &StepPrev, _, cx| this.step(-1, cx)))
             .on_action(cx.listener(|this, _: &StepNext, _, cx| this.step(1, cx)))
             .size_full()
