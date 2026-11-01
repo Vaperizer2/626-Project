@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Build speed4 INT8 ToMe candidates on carlpc2 and fetch them to legion with the TensorRT session-config fix.
 #   build.sh start <schedule spec> [candidate_id] [calib images]   # sync code, launch remote_build.sh (nohup)
+#   build.sh queue <schedule spec>...                              # several, one after another, default ids
 #   build.sh fetch <candidate_id>                                  # once the remote log ends in "done"
 # The default id is speed4_int8_<schedule id>. Every fetched runtime.json keeps ORT_ENABLE_ALL and disables the two
 # level-1 rewrites TensorRT compiles wrongly (626-artifacts/trtbugs/NOTES.md).
@@ -9,19 +10,33 @@ here=$(cd "$(dirname "$0")" && pwd)
 REPO=$(cd "$here/../.." && pwd)
 ART=/home/vaper/Work/Prototypes/626-artifacts
 R=/home/carl/626-runs/speed4
-case $1 in
-start)
-  spec=$2
-  id=${3:-speed4_int8_$(python3 "$here/sched.py" id "$spec")}
+sync() {
   sha=$(git -C "$REPO" rev-parse --short HEAD)$(git -C "$REPO" diff --quiet HEAD -- tools src || echo -dirty)
   ssh carlpc2 "mkdir -p $R/repo/tools $R/repo/src $R/work $R/candidates $R/logs $R/art \
     && ln -sfn /home/carl/626-runs/quant/art/calib $R/art/calib"
   for d in tools/quant tools/speed tools/compose tools/tokens tools/speed4 src/compclass; do
     rsync -a --delete --exclude __pycache__ "$REPO/$d/" "carlpc2:$R/repo/$d/"
   done
+}
+idof() { echo "speed4_int8_$(python3 "$here/sched.py" id "$1")"; }
+case $1 in
+start)
+  spec=$2 id=${3:-$(idof "$2")}
+  sync
   ssh carlpc2 "SPEED4_SHA=$sha setsid nohup bash $R/repo/tools/speed4/remote_build.sh '$spec' $id ${4:-512} \
     > $R/logs/$id.log 2>&1 < /dev/null &"
   echo "started $id ($spec) @ $sha; log carlpc2:$R/logs/$id.log"
+  ;;
+queue)
+  shift
+  sync
+  jobs=""
+  for spec in "$@"; do
+    id=$(idof "$spec")
+    jobs+="bash $R/repo/tools/speed4/remote_build.sh '$spec' $id 512 > $R/logs/$id.log 2>&1; "
+    echo "queued $id ($spec)"
+  done
+  ssh carlpc2 "SPEED4_SHA=$sha setsid nohup bash -c \"$jobs\" > /dev/null 2>&1 < /dev/null &"
   ;;
 fetch)
   id=$2

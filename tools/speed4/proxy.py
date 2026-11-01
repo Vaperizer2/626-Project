@@ -183,6 +183,7 @@ def cos(a: np.ndarray, b: np.ndarray) -> np.ndarray:
 def embeddings(emb: Embedder, scheds: list[Schedule]) -> dict[str, np.ndarray]:
     d = OUT / "emb"
     d.mkdir(parents=True, exist_ok=True)
+    scheds = list({s.id: s for s in scheds}.values())
     todo = [s for s in scheds if not (d / f"{s.id}.npy").exists()]
     for size in sorted({s.size for s in todo}, reverse=True):
         for k, v in emb([s for s in todo if s.size == size]).items():
