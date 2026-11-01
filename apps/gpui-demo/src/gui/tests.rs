@@ -35,6 +35,10 @@ fn index_without_graphs(tag: &str) -> PathBuf {
 }
 
 fn open(cx: &mut TestAppContext, registry: Arc<Registry>) -> (AnyWindowHandle, Entity<DemoApp>) {
+    open_with(cx, registry, FakeLoader::default())
+}
+
+fn open_with(cx: &mut TestAppContext, registry: Arc<Registry>, loader: FakeLoader) -> (AnyWindowHandle, Entity<DemoApp>) {
     // The app's inference and thumbnail threads are real OS threads that wake GPUI tasks; tell the
     // deterministic test scheduler that this is expected.
     cx.executor().allow_parking();
@@ -43,7 +47,7 @@ fn open(cx: &mut TestAppContext, registry: Arc<Registry>) -> (AnyWindowHandle, E
         super::theme::install(cx);
     });
     cx.update(|cx| cx.bind_keys(super::keymap()));
-    let service = Inference::spawn(registry, FakeLoader::default());
+    let service = Inference::spawn(registry, loader);
     let (handle, view) = cx.update(|cx| {
         let bounds = Bounds { origin: Point::default(), size: size(px(1360.), px(860.)) };
         gpui_kit::open_window(
@@ -156,6 +160,44 @@ async fn benchmark_and_classify_run_through_the_service(cx: &mut TestAppContext)
     cx.update(|cx| view.update(cx, |v, cx| v.submit_source(crate::fetch::Source::File(picture), cx)));
     wait(cx, "the Classify result", &|v| !v.classify.busy());
     cx.update(|cx| assert!(view.read(cx).classify.done(), "the entry has an answer and its picture"));
+}
+
+/// Poll `done` while the service threads work, or panic after about 5 s.
+fn wait(cx: &mut TestAppContext, view: &Entity<DemoApp>, what: &str, done: &dyn Fn(&DemoApp) -> bool) {
+    for _ in 0..200 {
+        cx.run_until_parked();
+        if cx.update(|cx| done(view.read(cx))) {
+            return;
+        }
+        std::thread::sleep(Duration::from_millis(25));
+    }
+    panic!("timed out waiting for {what}");
+}
+
+#[gpui_kit::test]
+async fn escape_leaves_the_url_field_and_stops_only_the_visible_run(cx: &mut TestAppContext) {
+    if !stack_dir().join(crate::demo::STACK_FILE).is_file() {
+        return;
+    }
+    let loader = FakeLoader { run: Duration::from_millis(40), ..Default::default() };
+    let (handle, view) = open_with(cx, registry(&[("x", 1)], &["x"]), loader);
+    let app_focused = |cx: &mut TestAppContext| {
+        cx.update_window(handle, |_, window, cx| view.read(cx).focus.is_focused(window)).unwrap()
+    };
+    cx.update_window(handle, |_, window, cx| window.focus(&view.read(cx).focus.clone(), cx)).unwrap();
+    cx.simulate_keystrokes(handle, "ctrl-l");
+    assert!(!app_focused(cx), "Ctrl+L puts the cursor in the URL field");
+    cx.simulate_keystrokes(handle, "escape");
+    assert!(app_focused(cx), "Esc hands the keyboard back to the app");
+
+    wait(cx, &view, "the default head", &|v| v.model.is_some());
+    cx.update(|cx| view.update(cx, |v, cx| v.bench_start(cx)));
+    cx.update_window(handle, |_, window, cx| view.update(cx, |v, cx| v.set_tab(TabKind::Classify, window, cx))).unwrap();
+    cx.simulate_keystrokes(handle, "escape");
+    assert!(cx.update(|cx| view.read(cx).bench.running()), "Esc on Classify leaves the benchmark running");
+    cx.update_window(handle, |_, window, cx| view.update(cx, |v, cx| v.set_tab(TabKind::Bench, window, cx))).unwrap();
+    cx.simulate_keystrokes(handle, "escape");
+    assert!(cx.update(|cx| !view.read(cx).bench.running()), "Esc on the Benchmark tab stops it");
 }
 
 #[gpui_kit::test]
