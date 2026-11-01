@@ -9,8 +9,8 @@ use std::time::Duration;
 
 use gpui_kit::test::TestWindowExt as _;
 use gpui_kit::{
-    AnyWindowHandle, AppContext as _, Bounds, Entity, Pixels, Point, Size, TestAppContext, WindowBounds, WindowOptions,
-    px, size,
+    AnyWindowHandle, AppContext as _, Bounds, Entity, Pixels, Point, SharedString, Size, TestAppContext, WindowBounds,
+    WindowOptions, px, size,
 };
 
 use super::{DemoApp, TabKind};
@@ -337,6 +337,30 @@ async fn the_fallback_notice_goes_once_the_user_picks_a_model(cx: &mut TestAppCo
     })
     .unwrap();
     assert!(!notice(cx), "after the user picks, the start-up notice no longer describes the model in use");
+}
+
+#[gpui_kit::test]
+async fn the_best_model_is_named_when_the_benchmark_ends(cx: &mut TestAppContext) {
+    if !stack_dir().join(crate::demo::STACK_FILE).is_file() {
+        return;
+    }
+    // x answers every image before slow y has answered many, so mid-run x has the most correct
+    let loader = FakeLoader { run: Duration::from_millis(30), ..Default::default() };
+    let (handle, view) = open_with(cx, registry(&[("x", 8), ("y", 1)], &["x"]), loader);
+    let badges = |cx: &mut TestAppContext| {
+        cx.update_window(handle, |_, window, cx| {
+            view.update(cx, |v, cx| v.set_tab(TabKind::Bench, window, cx));
+            window.render_frame(cx);
+            ["x", "y"].iter().filter(|k| window.try_find(SharedString::from(format!("bench-best-{k}"))).is_some()).count()
+        })
+        .unwrap()
+    };
+    cx.update(|cx| view.update(cx, |v, cx| v.bench_start(cx)));
+    wait(cx, &view, "the benchmark to be under way", &|v| !v.bench.results.is_empty());
+    assert!(cx.update(|cx| view.read(cx).bench.running()));
+    assert_eq!(badges(cx), 0, "no model is called best while the counts are partial");
+    wait(cx, &view, "the benchmark to finish", &|v| !v.bench.running());
+    assert!(badges(cx) >= 1, "the finished benchmark names the best model");
 }
 
 #[gpui_kit::test]
