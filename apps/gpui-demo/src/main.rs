@@ -294,6 +294,27 @@ fn collect(h: &mut RequestHandle) -> (Vec<(HeadId, Result<HeadOutput, RunError>,
     (heads, None)
 }
 
+/// One row per requested head, in `keys` order; a head the request ended without is a failed row.
+fn rows_of(
+    keys: &[HeadId],
+    mut results: Vec<(HeadId, Result<HeadOutput, RunError>, Timing)>,
+    failed: Option<RunError>,
+) -> Vec<(HeadId, Result<(HeadOutput, Timing), String>)> {
+    keys.iter()
+        .map(|k| {
+            let row = match (&failed, results.iter().position(|r| r.0 == *k)) {
+                (Some(e), _) => Err(e.to_string()),
+                (None, Some(i)) => {
+                    let (_, r, t) = results.swap_remove(i);
+                    r.map(|o| (o, t)).map_err(|e| e.to_string())
+                }
+                (None, None) => Err("no answer: the inference service ended the request without one".into()),
+            };
+            (k.clone(), row)
+        })
+        .collect()
+}
+
 /// `classify`: every image is submitted at once to one bulk lane, so decoding overlaps inference; rows come out in
 /// input order, heads in `--model` order (default: the index's default head).
 fn run_classify(a: &Args) -> Result<u8> {
@@ -319,16 +340,11 @@ fn run_classify(a: &Args) -> Result<u8> {
     let mut rows = Vec::new();
     let stdout = std::io::stdout();
     for (s, handle) in &mut requests {
-        let (mut results, failed) = match handle {
+        let (results, failed) = match handle {
             Some(h) => collect(h),
             None => (vec![], Some(RunError::Read("empty source".into()))),
         };
-        results.sort_by_key(|r| keys.iter().position(|k| *k == r.0));
-        let outcome: Vec<(HeadId, Result<(HeadOutput, Timing), String>)> = match failed {
-            Some(e) => keys.iter().map(|k| (k.clone(), Err(e.to_string()))).collect(),
-            None => results.into_iter().map(|(k, r, t)| (k, r.map(|o| (o, t)).map_err(|e| e.to_string()))).collect(),
-        };
-        for (head, r) in outcome {
+        for (head, r) in rows_of(&keys, results, failed) {
             match r {
                 Ok((HeadOutput::Classify(c), timing)) => {
                     let label = c.committed().map_or(UNSURE, |i| c.labels.name(i));
@@ -631,5 +647,21 @@ fn main() -> ExitCode {
             eprintln!("gpui-demo: {e:#}");
             ExitCode::from(1)
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_requested_head_without_a_result_is_a_failed_row() {
+        let (x, y) = (HeadId::new("x"), HeadId::new("y"));
+        let task = &inference::fake::manifest("x", 1).heads[0].task;
+        let answer = classification::read_head(task, &[0.9, 0.1]).unwrap();
+        let rows = rows_of(&[x.clone(), y.clone()], vec![(x.clone(), Ok(answer), Timing::default())], None);
+        let heads: Vec<&HeadId> = rows.iter().map(|r| &r.0).collect();
+        assert_eq!(heads, [&x, &y], "every requested head has a row");
+        assert!(rows[0].1.is_ok() && rows[1].1.is_err(), "the head that never answered counts as a failure");
     }
 }

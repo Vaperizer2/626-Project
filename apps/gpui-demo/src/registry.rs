@@ -91,7 +91,7 @@ pub struct Registry {
     /// (graph, head) in UI order: manifest order, then head order
     heads: Vec<(usize, usize)>,
     default: Vec<HeadId>,
-    /// manifests that did not parse and default ids that name no head; shown, never fatal
+    /// manifests that did not parse or reuse a graph id, and default ids that name no head; shown, never fatal
     problems: Vec<String>,
 }
 
@@ -131,6 +131,19 @@ impl Registry {
         default: Vec<HeadId>,
         mut problems: Vec<String>,
     ) -> Result<Self, IndexError> {
+        let mut kept: Vec<Graph> = Vec::new();
+        for g in graphs {
+            match kept.iter().find(|k| k.manifest.id == g.manifest.id) {
+                Some(first) => problems.push(format!(
+                    "{}: graph id {:?} is already used by {}; skipped",
+                    g.manifest.path.display(),
+                    g.manifest.id.as_str(),
+                    first.manifest.path.display()
+                )),
+                None => kept.push(g),
+            }
+        }
+        let graphs = kept;
         let mut heads: Vec<(usize, usize)> = Vec::new();
         for (gi, g) in graphs.iter().enumerate() {
             for (hi, h) in g.manifest.heads.iter().enumerate() {
@@ -293,11 +306,29 @@ mod tests {
         let _ = std::fs::remove_dir_all(&tmp); // test scratch dir under the OS temp dir only
     }
 
+    fn model_a() -> Manifest {
+        manifest::parse_manifest(&Path::new(env!("CARGO_MANIFEST_DIR")).join("../../exports/itri626/A_scratch_cnn/model.json"))
+            .unwrap()
+    }
+
+    fn graph(m: Manifest) -> Graph {
+        Graph { manifest: Arc::new(m), availability: Ok(()) }
+    }
+
     #[test]
     fn duplicate_head_ids_are_an_error() {
-        let base = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../exports/itri626/A_scratch_cnn/model.json");
-        let g = || Graph { manifest: Arc::new(manifest::parse_manifest(&base).unwrap()), availability: Ok(()) };
-        let e = Registry::from_graphs(PathBuf::from("i"), vec![g(), g()], vec![], vec![]).unwrap_err();
+        let mut other = model_a();
+        other.id = GraphId::new("other");
+        let e = Registry::from_graphs(PathBuf::from("i"), vec![graph(model_a()), graph(other)], vec![], vec![]).unwrap_err();
         assert!(matches!(e, IndexError::DuplicateHead { .. }));
+    }
+
+    #[test]
+    fn a_second_manifest_with_the_same_graph_id_is_a_problem() {
+        let mut second = model_a();
+        second.heads[0].id = HeadId::new("a2");
+        let r = Registry::from_graphs(PathBuf::from("i"), vec![graph(model_a()), graph(second)], vec![], vec![]).unwrap();
+        assert_eq!(r.ids(), [HeadId::new("a")], "the service keys graphs by id, so only the first one is served");
+        assert!(matches!(r.problems(), [p] if p.contains("A_scratch_cnn")), "{:?}", r.problems());
     }
 }
