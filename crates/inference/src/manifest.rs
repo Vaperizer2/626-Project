@@ -1,6 +1,6 @@
-//! Model manifests (`<model dir>/model.json`) and their index (`exports/models.json`), written by
-//! `tools/gen_manifests.py`. This is the only parser of model metadata: everything is validated here, and the rest
-//! of the app trusts these types.
+//! Model manifests (`<model dir>/model.json`) and their index (`exports/models.json`), written by hand or by the
+//! script that exports the graph. This is the only parser of model metadata: everything is validated here, and the
+//! rest of the app trusts these types.
 //!
 //! A manifest describes one ONNX graph: its files (size + sha256), its input (name, size, max batch, preprocessing),
 //! the heads it serves (one per readout output) and the execution providers it prefers, in order. The index lists
@@ -665,33 +665,6 @@ pub(crate) fn parse_index(path: &Path) -> Result<Index, ManifestError> {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    fn exports() -> PathBuf {
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../exports")
-    }
-
-    /// Every manifest in the shipped index parses; with REQUIRE_EXPORTS=1 the files it names must be present too.
-    #[test]
-    fn shipped_manifests_parse() {
-        let index = parse_index(&exports().join("models.json")).unwrap();
-        let require = std::env::var_os("REQUIRE_EXPORTS").is_some_and(|v| v == "1");
-        let mut heads = HashSet::new();
-        for p in &index.manifests {
-            let m = parse_manifest(p).unwrap_or_else(|e| panic!("{e}"));
-            for h in &m.heads {
-                assert!(heads.insert(h.id.clone()), "head {} repeated", h.id);
-            }
-            for f in &m.files {
-                let found = std::fs::metadata(&f.path).map(|md| md.len()).ok();
-                if require {
-                    assert_eq!(found, Some(f.bytes), "{} missing or wrong size", f.path.display());
-                }
-            }
-        }
-        for d in &index.default {
-            assert!(heads.contains(d), "default head {d} is not in any manifest");
-        }
-    }
 
     const MANIFEST: &str = r#"{
       "schema": "model-manifest/1", "id": "g",

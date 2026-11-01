@@ -10,8 +10,8 @@
 #
 # Usage (from anywhere; the folder can live anywhere):
 #   ./run-nixos.sh                       open the window (Wayland)
-#   ./run-nixos.sh --tab demo --dark     any app option is passed through (see ./run-nixos.sh --help)
-#   ./run-nixos.sh classify demo_stack/01_battery_holder.jpg   headless check, no display needed
+#   ./run-nixos.sh --tab classify --dark any app option is passed through (see ./run-nixos.sh --help)
+#   ./run-nixos.sh classify picture.jpg  headless check, no display needed
 #   ./run-nixos.sh --x11 ...             use X11 instead (needs a running X server, e.g. xwayland-satellite on niri)
 #   ./run-nixos.sh --doctor              print what was found and exit
 # Environment overrides:
@@ -142,7 +142,7 @@ if [ "$HEADLESS" = 0 ] && [ "$DOCTOR" = 0 ]; then
                 [ -S "$s" ] && { sock="$s"; break; }
             done
             [ -n "$sock" ] || die "no Wayland session found (WAYLAND_DISPLAY empty, no socket in $rt).
-  Start this from a terminal inside niri, or test headless: $0 classify demo_stack/01_battery_holder.jpg"
+  Start this from a terminal inside niri, or test headless: $0 classify picture.jpg"
             WAYLAND_DISPLAY="${sock##*/}"
             export XDG_RUNTIME_DIR="$rt" WAYLAND_DISPLAY
         fi

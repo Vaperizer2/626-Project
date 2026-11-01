@@ -95,29 +95,30 @@ case_ "the shared runtime without XDG_DATA_HOME is under ~/.local/share" \
     "$(ort_in "$T/.local/share/onnxruntime-gpu/1.31")" "GPU*" XDG_DATA_HOME=
 
 # Another app's identity: its variables and its folder are the ones read, not this app's.
-printf '%s\n' APP_NAME=hello-ai 'APP_TITLE="Hello AI"' ENV_PREFIX=HELLOAI BIN=hello-ai > "$T/hello.env"
-venv 1.31.1 "$T/data/hello-ai/gpu" trt
-case_ "another app: HELLOAI_GPU_VENV is read, ${ENV_PREFIX}_GPU_VENV is not" "$(ort_in "$T/good venv")" "GPU*" \
-    APP_ENV="$T/hello.env" HELLOAI_GPU_VENV="$T/good venv" "${ENV_PREFIX}_GPU_VENV=$T/old venv"
-case_ "another app: its own older folder hello-ai/gpu" "$(ort_in "$T/data/hello-ai/gpu")" "GPU*" APP_ENV="$T/hello.env"
-case_ "another app: HELLOAI_GPU=0" "$T/bundle/libonnxruntime.so.1.31.0" "CPU (HELLOAI_GPU=0)" \
-    APP_ENV="$T/hello.env" HELLOAI_GPU=0
+ON=$APP_NAME-other OP=${ENV_PREFIX}_OTHER
+printf '%s\n' "APP_NAME=$ON" 'APP_TITLE="Other"' "ENV_PREFIX=$OP" "BIN=$ON" > "$T/other.env"
+venv 1.31.1 "$T/data/$ON/gpu" trt
+case_ "another app: ${OP}_GPU_VENV is read, ${ENV_PREFIX}_GPU_VENV is not" "$(ort_in "$T/good venv")" "GPU*" \
+    APP_ENV="$T/other.env" "${OP}_GPU_VENV=$T/good venv" "${ENV_PREFIX}_GPU_VENV=$T/old venv"
+case_ "another app: its own older folder $ON/gpu" "$(ort_in "$T/data/$ON/gpu")" "GPU*" APP_ENV="$T/other.env"
+case_ "another app: ${OP}_GPU=0" "$T/bundle/libonnxruntime.so.1.31.0" "CPU (${OP}_GPU=0)" \
+    APP_ENV="$T/other.env" "${OP}_GPU=0"
 
 # run.sh in a bundle of another app: it starts app.env's BIN with that app's variables pointing into the bundle.
-B="$T/hello bundle"
+B="$T/other bundle"
 mkdir -p "$B"
-cp "$PKG/run.sh" "$PKG/gpu-env.sh" "$B/" && cp "$T/hello.env" "$B/app.env"
-printf '%s\n' '#!/bin/sh' 'printf "%s|%s|%s|%s\n" "$1" "$HELLOAI_MODELS" "$HELLOAI_DEMO_DIR" "${COMPCLASS_MODELS-unset}"' \
-    > "$B/hello-ai"
-chmod +x "$B/hello-ai"
+cp "$PKG/run.sh" "$PKG/gpu-env.sh" "$B/" && cp "$T/other.env" "$B/app.env"
+printf '%s\n' '#!/bin/sh' "printf '%s|%s|%s|%s\\n' \"\$1\" \"\$${OP}_MODELS\" \"\$${OP}_DEMO_DIR\" \"\${${ENV_PREFIX}_MODELS-unset}\"" \
+    > "$B/$ON"
+chmod +x "$B/$ON"
 want="models|$B/exports|$B/demo_stack|unset"
-got=$(env -i PATH="$PATH" HOME="$T" XDG_DATA_HOME="$T/data" HELLOAI_GPU=0 sh "$B/run.sh" models 2>/dev/null)
+got=$(env -i PATH="$PATH" HOME="$T" XDG_DATA_HOME="$T/data" "${OP}_GPU=0" sh "$B/run.sh" models 2>/dev/null)
 if [ "$got" = "$want" ]; then echo "ok   run.sh starts BIN with the app's variables"; else
     echo "FAIL run.sh: got $got, want $want"; fails=$((fails + 1)); fi
-got=$(env -i PATH="$PATH" HOME="$T" HELLOAI_GPU=0 HELLOAI_MODELS="$T/x" sh "$B/run.sh" models 2>/dev/null)
+got=$(env -i PATH="$PATH" HOME="$T" "${OP}_GPU=0" "${OP}_MODELS=$T/x" sh "$B/run.sh" models 2>/dev/null)
 case "$got" in "models|$T/x|"*) echo "ok   run.sh keeps a variable the caller set" ;; *)
-    echo "FAIL run.sh overrode HELLOAI_MODELS: $got"; fails=$((fails + 1)) ;; esac
-got=$(env -i PATH="$PATH" HOME="$T" HELLOAI_GPU=0 sh "$B/run.sh" models 2>&1 >/dev/null)
-case "$got" in "run.sh: onnxruntime on CPU (HELLOAI_GPU=0)") echo "ok   run.sh names the runtime" ;; *)
+    echo "FAIL run.sh overrode ${OP}_MODELS: $got"; fails=$((fails + 1)) ;; esac
+got=$(env -i PATH="$PATH" HOME="$T" "${OP}_GPU=0" sh "$B/run.sh" models 2>&1 >/dev/null)
+case "$got" in "run.sh: onnxruntime on CPU (${OP}_GPU=0)") echo "ok   run.sh names the runtime" ;; *)
     echo "FAIL run.sh first line: $got"; fails=$((fails + 1)) ;; esac
 exit $fails

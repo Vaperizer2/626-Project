@@ -274,13 +274,14 @@ pub(crate) fn search_bases() -> Vec<PathBuf> {
 mod tests {
     use super::*;
 
-    fn shipped() -> Registry {
-        Registry::load(&Path::new(env!("CARGO_MANIFEST_DIR")).join("../../exports").join(INDEX_FILE)).unwrap()
+    /// The classifier's index and manifests, without their graphs (`tests/fixtures/`).
+    fn fixture(path: &str) -> PathBuf {
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures").join(path)
     }
 
     #[test]
-    fn shipped_registry_orders_heads_and_groups_siblings() {
-        let r = shipped();
+    fn registry_orders_heads_and_groups_siblings() {
+        let r = Registry::load(&fixture(INDEX_FILE)).unwrap();
         assert!(r.problems().is_empty(), "{:?}", r.problems());
         let ids: Vec<String> = r.ids().iter().map(|h| h.to_string()).collect();
         assert_eq!(&ids[..4], ["a", "b", "c", "deployed"], "manifest order, then head order");
@@ -295,7 +296,7 @@ mod tests {
     #[test]
     fn missing_or_truncated_files_make_a_graph_unavailable() {
         let tmp = std::env::temp_dir().join(format!("inference-registry-{}", std::process::id()));
-        let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../exports/itri626/A_scratch_cnn");
+        let src = fixture("itri626/A_scratch_cnn");
         let dir = tmp.join("A");
         std::fs::create_dir_all(&dir).unwrap();
         for f in ["model.json", "labels.json"] {
@@ -315,8 +316,7 @@ mod tests {
     }
 
     fn model_a() -> Manifest {
-        manifest::parse_manifest(&Path::new(env!("CARGO_MANIFEST_DIR")).join("../../exports/itri626/A_scratch_cnn/model.json"))
-            .unwrap()
+        manifest::parse_manifest(&fixture("itri626/A_scratch_cnn/model.json")).unwrap()
     }
 
     fn graph(m: Manifest) -> GraphEntry {

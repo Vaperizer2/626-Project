@@ -1,4 +1,4 @@
-"""Print the Rust crates linked into gpui-demo with version, licence and source, from `cargo metadata`.
+"""Print the Rust crates linked into the app with version, licence and source, from `cargo metadata`.
 
 Reads `cargo metadata --format-version 1 --features ... --filter-platform <triple>` on stdin and walks the resolve
 graph from the root package over normal (non-dev) and build dependencies. Used by scripts/package_linux.sh.
@@ -27,7 +27,7 @@ rows = sorted((pkgs[i]["name"], pkgs[i]["version"], pkgs[i].get("license") or "(
 by_lic = {}
 for _, _, lic, _ in rows:
     by_lic[lic] = by_lic.get(lic, 0) + 1
-print("Third-party Rust crates compiled into gpui-demo (from Cargo.lock; licence = the crate's SPDX field)")
+print(f"Third-party Rust crates compiled into {pkgs[root]['name']} (from Cargo.lock; licence = the crate's SPDX field)")
 print("Full texts: Apache-2.0.txt, MIT-template.txt (each crate's copyright line is in its source package).")
 print("MPL-2.0 crates are used unmodified; their source is at the repository listed. Where a crate offers a choice")
 print("(\"A OR B\"), this distribution uses it under the first permissive licence listed (MIT or Apache-2.0).")

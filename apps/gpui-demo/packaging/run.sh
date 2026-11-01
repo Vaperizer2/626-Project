@@ -3,7 +3,7 @@
 # Everything (binary, onnxruntime, models, demo pictures) is found relative to this script, so the folder can
 # live anywhere and be started from any directory. All arguments are passed through to the app:
 #   ./run.sh                          open the window
-#   ./run.sh --tab demo --dark        start on the Demo tab, dark theme
+#   ./run.sh --tab classify --dark    start on the Classify tab, dark theme
 #   ./run.sh classify picture.jpg     headless: print the prediction (no display needed)
 #   ./run.sh --help                   all options
 set -eu
@@ -44,7 +44,7 @@ if [ -z "${WAYLAND_DISPLAY:-}" ] && [ -z "${DISPLAY:-}" ]; then
 run.sh: no graphical session found (neither WAYLAND_DISPLAY nor DISPLAY is set).
   * Start it from a terminal inside your desktop session (not over plain SSH).
   * Over SSH without a display you can still test the models:
-        ./run.sh classify demo_stack/01_battery_holder.jpg
+        ./run.sh classify picture.jpg
 MSG
     exit 1
 fi
