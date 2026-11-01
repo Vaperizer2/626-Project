@@ -2,14 +2,12 @@
 //! `docs/VISUAL_DIRECTION.md`), and the few app-level roles derived from them.
 //!
 //! Views never hard-code colours: they read Kit roles through `cx.theme()` or, for meanings the Kit has no
-//! name for (correct / wrong / unsure, bar tracks, the canvas-chrome-surface layering), through [`roles`].
+//! name for (a failure, an abstention, bar tracks, the canvas-chrome-surface layering), through [`roles`].
 
 use std::rc::Rc;
 
 use gpui_kit::component::{ActiveTheme as _, Theme, ThemeConfig, ThemeMode, ThemeRegistry};
 use gpui_kit::{App, Hsla, Window};
-
-use crate::demo::Verdict;
 
 /// ThemeSet JSON in the Kit's theme-file format (same keys as the Kit's `default-theme.json`).
 pub const THEME_SET: &str = include_str!("themes/bench.json");
@@ -104,11 +102,9 @@ pub struct Roles {
     pub track: Hsla,
     /// Non-top-1 bars.
     pub bar_muted: Hsla,
-    /// Colour-blind-safe verdict trio (bluish green / vermillion / violet), each with a soft tint.
-    pub correct: Hsla,
-    pub correct_soft: Hsla,
+    /// A failure (vermillion).
     pub wrong: Hsla,
-    pub wrong_soft: Hsla,
+    /// An abstention (violet), and its soft tint.
     pub unsure: Hsla,
     pub unsure_soft: Hsla,
 }
@@ -127,22 +123,9 @@ pub fn roles(cx: &App) -> Roles {
         accent_soft: t.list_active,
         track: t.skeleton,
         bar_muted: t.muted_foreground.opacity(0.45),
-        correct: t.success,
-        correct_soft: t.green_light,
         wrong: t.danger,
-        wrong_soft: t.red_light,
         unsure: t.magenta,
         unsure_soft: t.magenta_light,
-    }
-}
-
-impl Roles {
-    pub fn verdict(&self, v: Verdict) -> (Hsla, Hsla) {
-        match v {
-            Verdict::Correct => (self.correct, self.correct_soft),
-            Verdict::Wrong => (self.wrong, self.wrong_soft),
-            Verdict::Unsure => (self.unsure, self.unsure_soft),
-        }
     }
 }
 

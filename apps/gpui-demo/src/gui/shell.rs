@@ -182,7 +182,7 @@ impl Shell {
         // the status bar and the model chip count a load's seconds
         super::tick_while(cx, |this, cx| this.models.read(cx).loading());
         let models = cx.new(|cx| Models::new(service, cx));
-        let shared = app::shared(gui, cx);
+        let shared = app::shared(cx);
         let tabs = app::TABS
             .iter()
             .map(|spec| {

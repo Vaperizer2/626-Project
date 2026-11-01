@@ -23,7 +23,7 @@ use gpui_kit::{
 use super::models::{ModelEvent, Models};
 use super::widgets::Lucide;
 use super::results::HeadResult;
-use super::stack::{Item, Stack};
+use super::stack::{Item, Stack, verdict_colors, verdict_icon, verdict_tag};
 use super::{Activate, Cancel, Hint, RunAll, StepNext, StepPrev, Tab, theme, widgets};
 use crate::app;
 use crate::demo::Verdict;
@@ -277,8 +277,7 @@ impl DemoTab {
                         .icon(IconName::Info),
                 )
                 .child(div().pt_3().text_sm().text_color(t.muted_foreground).child(format!(
-                    "Run the app from inside the repository, or pass --demo-dir apps/gpui-demo/demo_stack \
-                     (or set {}_DEMO_DIR).",
+                    "Run the app from inside the repository, or set {}_DEMO_DIR to the folder with demo_stack.json.",
                     crate::app::ENV_PREFIX
                 )))
                 .into_any_element();
@@ -442,7 +441,7 @@ impl DemoTab {
                     .items_center()
                     .min_w_0()
                     .text_xs()
-                    .child(Icon::new(widgets::verdict_icon(v)).xsmall().text_color(r.verdict(v).0))
+                    .child(Icon::new(verdict_icon(v)).xsmall().text_color(verdict_colors(v, cx).0))
                     .child(div().flex_1().min_w_0().truncate().text_color(r.fg).child(text))
                     .child(div().flex_none().text_color(r.muted_fg).child(widgets::pct(c.best().1)))
                     .into_any_element()
@@ -481,7 +480,7 @@ impl DemoTab {
             }))
             // verdict strip: colour echo of the icon below (never the only cue)
             .child(div().w_full().h(px(3.)).bg(match verdict {
-                Some(v) => r.verdict(v).0,
+                Some(v) => verdict_colors(v, cx).0,
                 None => r.border,
             }))
             .child(
@@ -544,8 +543,12 @@ impl DemoTab {
         let short = models.selected().map(|m| models.short(m)).unwrap_or_default();
         let result: AnyElement = match (selected_result(models.selected(), it), models.selected()) {
             (Some(HeadResult::Done(c, timing, _)), Some(m)) => {
-                let v = im.judge(c.best_label(), c.abstained());
-                widgets::prediction_block(c, timing, &models.title(m), Some((v, im.true_text())), cx)
+                let verdict = h_flex()
+                    .gap_2()
+                    .items_center()
+                    .child(verdict_tag(im.judge(c.best_label(), c.abstained()), false, cx))
+                    .child(div().text_sm().text_color(r.muted_fg).child(format!("True label: {}", im.true_text())));
+                widgets::prediction_block(c, timing, &models.title(m), Some(verdict.into_any_element()), cx)
             }
             (Some(HeadResult::Working(_)), _) => h_flex()
                 .gap_2()

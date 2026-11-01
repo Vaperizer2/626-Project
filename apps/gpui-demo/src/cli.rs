@@ -81,8 +81,6 @@ OPTIONS:
     --model HEADS     classify with these models (comma-separated head ids, or all). Default: the
                       first of the index's defaults whose preferred execution provider registers here
                       and is not displaced by --ep. See `{bin} models` for the ids.
-    --demo-dir DIR    window: folder with demo_stack.json (default: ${env}_DEMO_DIR, else the
-                      first demo_stack/ found walking up from the current directory, then the executable)
     --tab TAB         window: start on tab TAB, one of {tabs} (default: {first})
     --autorun         window: start the tab's run (its Ctrl+R) once the default model is known
     --dark, --light   window: initial theme (default: follow the system)
@@ -141,7 +139,6 @@ pub fn parse_args() -> Result<Args> {
             "--check" => a.check = true,
             "--rounds" => a.rounds = value("--rounds")?.parse().context("--rounds")?,
             "--warmup" => a.warmup = value("--warmup")?.parse().context("--warmup")?,
-            "--demo-dir" => a.gui.demo_dir = Some(PathBuf::from(value("--demo-dir")?)),
             "--tab" => {
                 let name = value("--tab")?;
                 let Some(ix) = gui::tab_index(&name) else {

@@ -30,11 +30,6 @@ fn stack_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("demo_stack")
 }
 
-/// The window's start-up options, with the shipped demo stack.
-fn options() -> GuiOptions {
-    GuiOptions { demo_dir: Some(stack_dir()), ..Default::default() }
-}
-
 /// The open tab of type `T`.
 fn tab<T: Tab>(v: &Shell) -> Entity<T> {
     v.tabs.iter().find_map(|t| t.view.clone().downcast::<T>().ok()).expect("the tab is open")
@@ -75,7 +70,7 @@ fn open(cx: &mut TestAppContext, registry: Arc<Registry>) -> (AnyWindowHandle, E
 }
 
 fn open_with(cx: &mut TestAppContext, registry: Arc<Registry>, loader: FakeLoader) -> (AnyWindowHandle, Entity<Shell>) {
-    open_sized(cx, registry, loader, size(px(1360.), px(860.)), Vec::new(), options())
+    open_sized(cx, registry, loader, size(px(1360.), px(860.)), Vec::new(), GuiOptions::default())
 }
 
 /// The window over `registry` and `loader`, `window` big, given `initial` pictures and `gui` as on the command line.
@@ -317,7 +312,7 @@ async fn autorun_starts_the_start_tabs_run_once_the_default_is_known(cx: &mut Te
     if !stack_dir().join(crate::demo::STACK_FILE).is_file() {
         return;
     }
-    let gui = GuiOptions { tab: ix::<BenchTab>(), autorun: true, ..options() };
+    let gui = GuiOptions { tab: ix::<BenchTab>(), autorun: true, ..Default::default() };
     let window = size(px(1360.), px(860.));
     let (_handle, view) = open_sized(cx, registry(&[("x", 1)], &["x"]), FakeLoader::default(), window, Vec::new(), gui);
     wait(cx, &view, "the benchmark --autorun starts", &|v, cx| !bench(v, cx).results.is_empty());
@@ -499,7 +494,7 @@ async fn controls_stay_inside_the_smallest_window(cx: &mut TestAppContext) {
     }
     let loader = FakeLoader { run: Duration::from_millis(40), ..Default::default() };
     let small = size(px(1024.), px(640.));
-    let (handle, view) = open_sized(cx, registry(&[("x", 1), ("y", 1)], &["x", "y"]), loader, small, Vec::new(), options());
+    let (handle, view) = open_sized(cx, registry(&[("x", 1), ("y", 1)], &["x", "y"]), loader, small, Vec::new(), GuiOptions::default());
     wait(cx, &view, "the default head", &|v, cx| run_model(v, cx).is_some());
     let inside = |cx: &mut TestAppContext, tab: usize, start: &dyn Fn(&mut Shell, &mut Context<Shell>)| {
         cx.update_window(handle, |_, window, cx| {
@@ -537,7 +532,7 @@ async fn pictures_given_at_start_wait_for_the_default_model(cx: &mut TestAppCont
         .collect();
     // y is the default once the start-up probe passes it; x, the last default, is only the fallback
     let reg = registry(&[("x", 1), ("y", 1)], &["y", "x"]);
-    let (_handle, view) = open_sized(cx, reg, loader, size(px(1360.), px(860.)), pictures, options());
+    let (_handle, view) = open_sized(cx, reg, loader, size(px(1360.), px(860.)), pictures, GuiOptions::default());
     let y = HeadId::new("y");
     wait(cx, &view, "y's answer for every picture", &|v, cx| classify(v, cx).answered_entries(&y) == 3);
     let fallback_runs = ran.lock().unwrap().iter().filter(|s| matches!(s, Seen::Started { graph, .. } if graph == "x")).count();
@@ -617,7 +612,7 @@ async fn real_benchmark_matches_the_golden_rows(cx: &mut TestAppContext) {
         gpui_kit::open_window(
             WindowOptions { window_bounds: Some(WindowBounds::Windowed(bounds)), ..Default::default() },
             cx,
-            |window, cx| cx.new(|cx| Shell::new(service, &options(), Vec::new(), window, cx)),
+            |window, cx| cx.new(|cx| Shell::new(service, &GuiOptions::default(), Vec::new(), window, cx)),
         )
         .unwrap()
     });

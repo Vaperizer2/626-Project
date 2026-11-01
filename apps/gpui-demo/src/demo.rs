@@ -1,8 +1,7 @@
 //! The curated demo stack (`demo_stack/demo_stack.json` + images) used by the Demo and Benchmark tabs.
 //!
-//! Located like the model folder: `--demo-dir`, then `$COMPCLASS_DEMO_DIR`, then the first `demo_stack/` (or
-//! `apps/<bin>/demo_stack/`) with a `demo_stack.json` found walking up from the current directory and from
-//! the executable.
+//! Found through `$<ENV_PREFIX>_DEMO_DIR`, else as the first `demo_stack/` (or `apps/<bin>/demo_stack/`) with a
+//! `demo_stack.json` found walking up from the current directory and from the executable.
 
 use std::path::{Path, PathBuf};
 
@@ -125,15 +124,8 @@ fn is_stack(d: &Path) -> bool {
     d.join(STACK_FILE).is_file()
 }
 
-/// `--demo-dir`, `$COMPCLASS_DEMO_DIR`, else walk up from `starts` looking for `demo_stack/` or
-/// `apps/<bin>/demo_stack/`.
-pub fn locate_in(explicit: Option<&Path>, env: Option<PathBuf>, starts: &[PathBuf]) -> Result<PathBuf> {
-    if let Some(p) = explicit {
-        if is_stack(p) {
-            return Ok(p.to_path_buf());
-        }
-        bail!("--demo-dir {}: no {STACK_FILE} there", p.display());
-    }
+/// `$<ENV_PREFIX>_DEMO_DIR` (`env`), else walk up from `starts` looking for `demo_stack/` or `apps/<bin>/demo_stack/`.
+pub fn locate_in(env: Option<PathBuf>, starts: &[PathBuf]) -> Result<PathBuf> {
     if let Some(p) = env.filter(|p| !p.as_os_str().is_empty()) {
         if is_stack(&p) {
             return Ok(p);
@@ -149,10 +141,13 @@ pub fn locate_in(explicit: Option<&Path>, env: Option<PathBuf>, starts: &[PathBu
             }
         }
     }
-    bail!("no demo_stack/{STACK_FILE} found above the current directory or the executable; pass --demo-dir")
+    bail!(
+        "no demo_stack/{STACK_FILE} found above the current directory or the executable; set {}_DEMO_DIR",
+        crate::app::ENV_PREFIX
+    )
 }
 
-pub fn locate(explicit: Option<&Path>) -> Result<PathBuf> {
+pub fn locate() -> Result<PathBuf> {
     let mut starts = Vec::new();
     if let Ok(cwd) = std::env::current_dir() {
         starts.push(cwd);
@@ -162,7 +157,7 @@ pub fn locate(explicit: Option<&Path>) -> Result<PathBuf> {
     {
         starts.push(d.to_path_buf());
     }
-    locate_in(explicit, std::env::var_os(format!("{}_DEMO_DIR", crate::app::ENV_PREFIX)).map(PathBuf::from), &starts)
+    locate_in(std::env::var_os(format!("{}_DEMO_DIR", crate::app::ENV_PREFIX)).map(PathBuf::from), &starts)
 }
 
 #[cfg(test)]
@@ -210,23 +205,18 @@ mod tests {
     }
 
     #[test]
-    fn locates_by_flag_env_and_walking_up() {
+    fn locates_by_env_and_walking_up() {
         let tmp = std::env::temp_dir().join(format!("{}-stack-{}", crate::app::BIN, std::process::id()));
         let stack = tmp.join("repo").join("apps").join(crate::app::BIN).join("demo_stack");
         std::fs::create_dir_all(&stack).unwrap();
         std::fs::write(stack.join(STACK_FILE), JSON).unwrap();
         let deep = tmp.join("repo").join("docs").join("x");
         std::fs::create_dir_all(&deep).unwrap();
-        assert_eq!(locate_in(None, None, std::slice::from_ref(&deep)).unwrap(), stack);
-        assert_eq!(locate_in(None, None, std::slice::from_ref(&stack)).unwrap(), stack);
-        assert_eq!(locate_in(Some(&stack), None, &[]).unwrap(), stack);
-        assert_eq!(locate_in(None, Some(stack.clone()), &[]).unwrap(), stack);
-        assert!(locate_in(Some(&deep), None, &[]).is_err());
-        assert!(
-            locate_in(None, Some(deep.clone()), std::slice::from_ref(&stack)).is_err(),
-            "a wrong env var is an error"
-        );
-        assert!(locate_in(None, Some(PathBuf::new()), std::slice::from_ref(&deep)).is_ok(), "empty env var is ignored");
+        assert_eq!(locate_in(None, std::slice::from_ref(&deep)).unwrap(), stack);
+        assert_eq!(locate_in(None, std::slice::from_ref(&stack)).unwrap(), stack);
+        assert_eq!(locate_in(Some(stack.clone()), &[]).unwrap(), stack);
+        assert!(locate_in(Some(deep.clone()), std::slice::from_ref(&stack)).is_err(), "a wrong env var is an error");
+        assert!(locate_in(Some(PathBuf::new()), std::slice::from_ref(&deep)).is_ok(), "empty env var is ignored");
         let _ = std::fs::remove_dir_all(&tmp); // test scratch dir under the OS temp dir only
     }
 
