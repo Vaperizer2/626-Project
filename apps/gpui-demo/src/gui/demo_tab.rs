@@ -3,7 +3,6 @@
 
 use std::collections::HashMap;
 
-use futures::StreamExt;
 use gpui_kit::component::{
     ActiveTheme as _, Disableable as _, Icon, IconName, Sizable as _,
     alert::Alert,
@@ -20,7 +19,7 @@ use gpui_kit::{
     TestSupportExt as _, Window, div, img, prelude::*, px,
 };
 
-use super::models::{ModelEvent, Models};
+use super::models::{Models, on_retry};
 use super::widgets::Lucide;
 use super::results::HeadResult;
 use super::stack::{Item, Stack, tab_header, verdict_colors, verdict_icon, verdict_tag};
@@ -102,10 +101,12 @@ impl Tab for DemoTab {
         let inference = models.read(cx).inference();
         let (interactive, bulk) =
             (inference.lane(Priority::Interactive, Policy::Keep), inference.lane(Priority::Bulk, Policy::Keep));
-        let retries = cx.subscribe(&models, |this, _, ev, cx| {
-            if let ModelEvent::Retrying(heads) = ev {
-                this.forget_load_failures(heads, cx);
-            }
+        let retries = on_retry(&models, cx, |this, heads, cx| {
+            this.stack.update(cx, |s, _| {
+                for it in &mut s.items {
+                    it.results.forget_load_failures(heads);
+                }
+            });
         });
         Self {
             models,
@@ -166,31 +167,21 @@ impl DemoTab {
         let token = self.next_token;
         self.next_token += 1;
         let lane = if priority == Priority::Bulk { &self.bulk } else { &self.interactive };
-        let RequestHandle { updates: mut rx, ticket } = lane.submit(input, std::slice::from_ref(&model), None);
+        let RequestHandle { updates, ticket } = lane.submit(input, std::slice::from_ref(&model), None);
         self.stack.update(cx, |s, _| s.items[i].results.start(model.clone(), token));
-        cx.spawn(async move |this, cx| {
-            while let Some(u) = rx.next().await {
-                let alive = this
-                    .update(cx, |this, cx| {
-                        let finished = matches!(u, Update::Done(_));
-                        let applied = this.stack.update(cx, |s, cx| {
-                            let Some(it) = s.items.get_mut(i) else { return false };
-                            it.results.apply(&model, token, u);
-                            cx.notify();
-                            true
-                        });
-                        if applied && finished {
-                            this.progress(token, i, cx);
-                        }
-                        cx.notify();
-                    })
-                    .is_ok();
-                if !alive {
-                    break;
-                }
+        super::pump(cx, updates, move |this, u, cx| {
+            let finished = matches!(u, Update::Done(_));
+            let applied = this.stack.update(cx, |s, cx| {
+                let Some(it) = s.items.get_mut(i) else { return false };
+                it.results.apply(&model, token, u);
+                cx.notify();
+                true
+            });
+            if applied && finished {
+                this.progress(token, i, cx);
             }
-        })
-        .detach();
+            cx.notify();
+        });
         cx.notify();
         Some((token, ticket))
     }
@@ -233,16 +224,6 @@ impl DemoTab {
         let ci = child_index(self.stack.read(cx), i);
         self.scroll.scroll_to_item(ci);
         cx.notify();
-    }
-
-    fn forget_load_failures(&mut self, heads: &[HeadId], cx: &mut Context<Self>) {
-        self.stack.update(cx, |s, _| {
-            for it in &mut s.items {
-                for h in heads {
-                    it.results.forget_load_failure(h);
-                }
-            }
-        });
     }
 
     pub fn cancel(&mut self, cx: &mut Context<Self>) {

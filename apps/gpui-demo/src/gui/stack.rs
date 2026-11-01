@@ -5,7 +5,6 @@
 use std::sync::Arc;
 use std::time::Instant;
 
-use futures::StreamExt;
 use futures::channel::mpsc as fmpsc;
 use gpui_kit::component::{ActiveTheme as _, h_flex, tag::Tag, v_flex};
 use gpui_kit::{App, Context, Div, FontWeight, Hsla, RenderImage, div, prelude::*};
@@ -42,30 +41,20 @@ impl Stack {
         let items = match &stack {
             Ok(s) => {
                 log!("demo stack: {} images in {}", s.images.len(), s.dir.display());
-                let mut rx = load_thumbnails((0..s.images.len()).map(|i| s.path(i)).collect());
-                cx.spawn(async move |this, cx| {
-                    while let Some((i, r)) = rx.next().await {
-                        let alive = this
-                            .update(cx, |this, cx| {
-                                if let Some(it) = this.items.get_mut(i) {
-                                    match r {
-                                        Ok(d) => {
-                                            it.thumb = Some(d.thumb);
-                                            it.full = Some(d.full);
-                                            it.rgb = Some(d.rgb);
-                                        }
-                                        Err(e) => it.load_error = Some(e),
-                                    }
-                                }
-                                cx.notify();
-                            })
-                            .is_ok();
-                        if !alive {
-                            break;
+                let rx = load_thumbnails((0..s.images.len()).map(|i| s.path(i)).collect());
+                super::pump(cx, rx, |this, (i, r), cx| {
+                    if let Some(it) = this.items.get_mut(i) {
+                        match r {
+                            Ok(d) => {
+                                it.thumb = Some(d.thumb);
+                                it.full = Some(d.full);
+                                it.rgb = Some(d.rgb);
+                            }
+                            Err(e) => it.load_error = Some(e),
                         }
                     }
-                })
-                .detach();
+                    cx.notify();
+                });
                 (0..s.images.len()).map(|_| Item::default()).collect()
             }
             Err(e) => {
