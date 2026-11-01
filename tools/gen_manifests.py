@@ -8,8 +8,9 @@ here by hand are in MODELS below: which graph file, the head ids, titles, readou
 derived field is asserted against its source, and so are the checksums the export recorded. With the `onnx` module
 the graph's input and outputs are checked too (the harness venv has it; plain python3 skips that check).
 
---check regenerates in memory and exits 1 if a committed model.json or the index differs. Run it after replacing an
-export; rerun without --check to rewrite. Adding a model is a row in MODELS (or a hand-written model.json in its
+--check regenerates in memory and exits 1 if a committed model.json or the index differs, or if a graph's IO can be
+checked neither against a recorded export report nor with the `onnx` module (then run it with the harness venv's
+python). Run it after replacing an export; rerun without --check to rewrite. Adding a model is a row in MODELS (or a hand-written model.json in its
 folder plus a line in exports/models.json; the app needs no code change).
 """
 from __future__ import annotations
@@ -136,7 +137,7 @@ def runtime_of(d: Path, spec: dict):
     return rt.get("graph_optimization_level", "ORT_ENABLE_ALL"), providers, rt.get("static_batch", 1)
 
 
-def build(exports: Path, spec: dict) -> dict:
+def build(exports: Path, spec: dict, checking: bool) -> dict:
     d = exports / spec["dir"]
     pre = load(d / "preprocess.json")
     labels = load(d / "labels.json")
@@ -152,8 +153,11 @@ def build(exports: Path, spec: dict) -> dict:
 
     io = recorded_io(d, spec["graph"])
     actual = graph_io(d / spec["graph"])
+    check(not (checking and io is None and actual is None),
+          f"{d}: no recorded IO and no onnx module, so --check cannot verify {spec['graph']}'s IO against the graph "
+          "(run it with a python that has onnx, e.g. the harness venv)")
     if io is None and actual is None and (d / "model.json").is_file():
-        # nothing recorded and no onnx module: keep the IO the committed manifest states, and say so
+        # writing, with nothing recorded and no onnx module: keep the IO the committed manifest states, and say so
         old = load(d / "model.json")
         h, w = old["input"]["size"]
         io = (old["input"]["name"], [old["input"]["batch"]["max"], 3, h, w], [x["task"]["readout"]["output"] for x in old["heads"]])
@@ -243,7 +247,7 @@ def main() -> None:
     exports = Path(a.exports)
     outputs = {}
     for spec in MODELS:
-        outputs[exports / spec["dir"] / "model.json"] = render(build(exports, spec))
+        outputs[exports / spec["dir"] / "model.json"] = render(build(exports, spec, a.check))
     ids = [h["id"] for spec in MODELS for h in spec["heads"]]
     check(len(ids) == len(set(ids)), f"head ids are not unique: {ids}")
     check(all(h in ids for h in DEFAULT), f"default {DEFAULT} names an unknown head")
