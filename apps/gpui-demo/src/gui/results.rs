@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 
 use crate::classification::{Classification, HeadOutput};
-use crate::inference::{Finish, Timing, Update};
+use crate::inference::{Finish, RunError, Timing, Update};
 use crate::manifest::HeadId;
 
 pub enum HeadResult {
@@ -12,7 +12,7 @@ pub enum HeadResult {
     Working(u64),
     /// the answer, its timing, and its request's wall time incl. read and decode once the request completes
     Done(Classification, Timing, Option<f64>),
-    Failed(String),
+    Failed(RunError),
 }
 
 #[derive(Default)]
@@ -48,10 +48,10 @@ impl Results {
         match u {
             Update::Head { head, result: Ok(HeadOutput::Classify(c)), timing } => self.done(head, c, timing),
             Update::Head { head, result: Err(e), .. } => {
-                self.0.insert(head, HeadResult::Failed(e.to_string()));
+                self.0.insert(head, HeadResult::Failed(e));
             }
             Update::Done(Finish::Failed(e)) => {
-                self.0.insert(head.clone(), HeadResult::Failed(e.to_string()));
+                self.0.insert(head.clone(), HeadResult::Failed(e));
             }
             Update::Done(Finish::Complete { wall_ms }) => match self.0.get_mut(head) {
                 Some(HeadResult::Done(_, _, wall)) => *wall = Some(wall_ms),

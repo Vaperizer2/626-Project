@@ -23,7 +23,7 @@ use super::widgets::Lucide;
 use super::{DemoApp, ModelState, theme, widgets};
 use crate::classification::{Classification, HeadOutput};
 use crate::demo::Verdict;
-use crate::inference::{Finish, ImageInput, RequestHandle, Ticket, Timing, Update};
+use crate::inference::{Finish, ImageInput, RequestHandle, RunError, Ticket, Timing, Update};
 use crate::manifest::HeadId;
 
 /// One benchmark run: every image was submitted at once; dropping the run cancels what has not run yet.
@@ -47,7 +47,7 @@ pub struct BenchState {
     next_id: u64,
     /// columns of the last run
     models: Vec<HeadId>,
-    pub(super) results: HashMap<(usize, HeadId), Result<(Classification, Timing), String>>,
+    pub(super) results: HashMap<(usize, HeadId), Result<(Classification, Timing), RunError>>,
     only_disagree: bool,
     wall_s: Option<f64>,
     cancelled: bool,
@@ -89,7 +89,7 @@ impl BenchState {
 /// Aggregate `results` for `model` over `stack`.
 pub fn stats(
     stack: &crate::demo::DemoStack,
-    results: &HashMap<(usize, HeadId), Result<(Classification, Timing), String>>,
+    results: &HashMap<(usize, HeadId), Result<(Classification, Timing), RunError>>,
     model: &HeadId,
 ) -> Stats {
     let mut s = Stats::default();
@@ -119,7 +119,7 @@ pub fn stats(
 
 /// Do the models' answers (the committed class, or abstaining) differ on image `i`?
 pub fn disagree(
-    results: &HashMap<(usize, HeadId), Result<(Classification, Timing), String>>,
+    results: &HashMap<(usize, HeadId), Result<(Classification, Timing), RunError>>,
     i: usize,
     models: &[HeadId],
 ) -> bool {
@@ -165,7 +165,7 @@ impl DemoApp {
                             }
                             match u {
                                 Update::Head { head, result, timing } => {
-                                    let r = result.map(|HeadOutput::Classify(c)| (c, timing)).map_err(|e| e.to_string());
+                                    let r = result.map(|HeadOutput::Classify(c)| (c, timing));
                                     // share with the Demo tab so its cards show the result too
                                     if let (Ok((c, timing)), Some(it)) = (&r, this.demo.items.get_mut(i)) {
                                         it.results.done(head.clone(), c.clone(), *timing);
@@ -174,7 +174,7 @@ impl DemoApp {
                                 }
                                 Update::Done(Finish::Failed(e)) => {
                                     for k in this.bench.models.clone() {
-                                        this.bench.results.insert((i, k), Err(e.to_string()));
+                                        this.bench.results.insert((i, k), Err(e.clone()));
                                     }
                                     this.bench_progress(i, cx);
                                 }
@@ -539,7 +539,7 @@ impl DemoApp {
                                         .text_xs()
                                         .text_color(r.wrong)
                                         .child(Icon::new(IconName::CircleAlert).xsmall())
-                                        .child(div().truncate().child(format!("error: {e}"))),
+                                        .child(div().truncate().child(widgets::failure_label(e))),
                                 ),
                             )
                             .into_any_element(),
@@ -665,7 +665,7 @@ mod tests {
         r.insert((0, ka.clone()), Ok(pred(0, 0.9)));
         r.insert((0, kb.clone()), Ok(pred(1, 0.8)));
         r.insert((1, ka.clone()), Ok(pred(2, 0.4)));
-        r.insert((1, kb.clone()), Err("x".into()));
+        r.insert((1, kb.clone()), Err(RunError::Run("x".into())));
         let a = stats(&stack, &r, &ka);
         assert_eq!((a.correct, a.judged, a.unsure, a.errors), (2, 2, 0, 0), "out-of-scope + unsure counts as correct");
         assert!((a.mean_conf - 0.65).abs() < 1e-6);

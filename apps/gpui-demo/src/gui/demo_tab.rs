@@ -458,13 +458,13 @@ impl DemoApp {
                     .child(div().flex_none().text_color(r.muted_fg).child(widgets::pct(c.best().1)))
                     .into_any_element()
             }
-            Some(HeadResult::Failed(_)) => h_flex()
+            Some(HeadResult::Failed(e)) => h_flex()
                 .gap_1()
                 .items_center()
                 .text_xs()
                 .text_color(t.danger)
                 .child(Icon::new(IconName::CircleAlert).xsmall())
-                .child("error")
+                .child(widgets::failure_label(e))
                 .into_any_element(),
             None => div().text_xs().text_color(t.muted_foreground).child("not classified yet").into_any_element(),
         };
@@ -564,9 +564,7 @@ impl DemoApp {
                 .child(Spinner::new().color(t.primary))
                 .child(div().text_lg().child(format!("Classifying with {short}…")))
                 .into_any_element(),
-            (Some(HeadResult::Failed(e)), _) => {
-                Alert::error("demo-error", SharedString::from(e.clone())).title("Could not classify").into_any_element()
-            }
+            (Some(HeadResult::Failed(e)), Some(m)) => widgets::failure_alert("demo-error", e, &self.title(m)).into_any_element(),
             _ => v_flex()
                 .gap_2()
                 .items_start()

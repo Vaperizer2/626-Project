@@ -26,7 +26,7 @@ use super::images::{DISPLAY_MAX_SIDE, render};
 use super::results::{HeadResult, Results};
 use super::{DemoApp, FocusUrl, ModelState, Open, Paste, theme, widgets};
 use crate::fetch::Source;
-use crate::inference::{ImageInput, RequestHandle, Ticket, Update};
+use crate::inference::{ImageInput, RequestHandle, RunError, Ticket, Update};
 
 const MAX_ENTRIES: usize = 40;
 
@@ -78,6 +78,15 @@ impl ClassifyState {
         self.selected_ix()
             .map(|i| &self.entries[i])
             .is_some_and(|e| matches!(e.results.get(head), Some(HeadResult::Done(_, _, Some(_)))) && e.image.is_some())
+    }
+
+    /// The short status the Recent list shows for the selected entry's failed answer from `head`.
+    #[cfg(test)]
+    pub fn failure(&self, head: &crate::manifest::HeadId) -> Option<&'static str> {
+        match self.entries[self.selected_ix()?].results.get(head) {
+            Some(HeadResult::Failed(e)) => Some(widgets::failure_label(e)),
+            _ => None,
+        }
     }
 
     #[cfg(test)]
@@ -325,12 +334,12 @@ impl DemoApp {
                     .child(Spinner::new().xsmall().color(t.muted_foreground))
                     .child(div().text_color(t.muted_foreground).child("classifying…"))
                     .into_any_element(),
-                Some(HeadResult::Failed(_)) => h_flex()
+                Some(HeadResult::Failed(e)) => h_flex()
                     .gap_1()
                     .items_center()
                     .text_color(t.danger)
                     .child(Icon::new(IconName::CircleAlert).xsmall())
-                    .child("could not read")
+                    .child(widgets::failure_label(e))
                     .into_any_element(),
                 Some(HeadResult::Done(c, ..)) if c.abstained() => h_flex()
                     .gap_1()
@@ -435,13 +444,13 @@ impl DemoApp {
     fn render_picture(&self, entry_ix: Option<usize>, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.theme();
         let entry = entry_ix.map(|i| &self.classify.entries[i]);
-        let failed = entry.and_then(|e| match self.model.as_ref().and_then(|m| e.results.get(m)) {
-            Some(HeadResult::Failed(msg)) => Some(msg.clone()),
-            _ => None,
-        });
+        let unreadable = matches!(
+            entry.and_then(|e| self.model.as_ref().and_then(|m| e.results.get(m))),
+            Some(HeadResult::Failed(RunError::Read(_) | RunError::Decode(_)))
+        );
         let body = match entry.and_then(|e| e.image.clone()) {
             Some(im) => div().size_full().p_6().child(img(im).size_full().object_fit(ObjectFit::Contain)).into_any_element(),
-            None if failed.is_some() => div()
+            None if unreadable => div()
                 .size_full()
                 .p_8()
                 .child(
@@ -514,15 +523,15 @@ impl DemoApp {
         let t = cx.theme();
         let entry = entry_ix.map(|i| &self.classify.entries[i]);
         let mut panel = v_flex().gap_5().p_5();
-        if let Some(m) = &self.model
-            && let ModelState::Failed(msg) = self.state(m)
-        {
-            panel = panel.child(
-                Alert::error("model-failed", SharedString::from(msg.clone()))
-                    .title(format!("{} failed to load", self.title(m))),
-            );
-        }
         let Some(e) = entry else {
+            // with a picture on screen, its answer from the failed model says this instead
+            if let Some(m) = &self.model
+                && let ModelState::Failed(msg) = self.state(m)
+            {
+                panel = panel.child(
+                    Alert::error("model-failed", SharedString::from(msg)).title(format!("{} failed to load", self.title(m))),
+                );
+            }
             return panel.child(
                 v_flex()
                     .gap_2()
@@ -556,10 +565,9 @@ impl DemoApp {
                     }),
                 ))
             }
-            Some(HeadResult::Failed(msg)) => panel.child(
-                Alert::error(("classify-error", e.id as usize), SharedString::from(msg.clone()))
-                    .title("Could not classify"),
-            ),
+            Some(HeadResult::Failed(err)) => {
+                panel.child(widgets::failure_alert(("classify-error", e.id as usize), err, &self.title(m)))
+            }
             Some(HeadResult::Done(c, timing, wall)) => {
                 let block = widgets::prediction_block(c, timing, &self.title(m), None, cx);
                 panel.child(block).children(wall.map(|ms| {
