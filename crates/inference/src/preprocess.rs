@@ -65,7 +65,7 @@ pub const JPEG_DECODER: &str = if cfg!(feature = "turbojpeg-vendored") {
 
 /// Grayscale -> RGB by replication; images with alpha are composited on opaque white exactly like
 /// Pillow's `Image.alpha_composite(white, rgba)` (libImaging/AlphaComposite.c integer arithmetic).
-pub fn flatten_to_rgb(img: DynamicImage) -> RgbImage {
+pub(crate) fn flatten_to_rgb(img: DynamicImage) -> RgbImage {
     if !img.color().has_alpha() {
         return img.to_rgb8();
     }
@@ -98,7 +98,7 @@ fn composite_on_white(v: u8, a: u32) -> u8 {
 
 // --------------------------------------------------------------------------------------------- resize
 /// torchvision `Resize(short)`: the short side becomes `short`, the long side is truncated.
-pub fn resized_size(w: u32, h: u32, short: u32) -> (u32, u32) {
+pub(crate) fn resized_size(w: u32, h: u32, short: u32) -> (u32, u32) {
     if w <= h {
         (short, (short as u64 * h as u64 / w as u64) as u32)
     } else {
@@ -191,13 +191,13 @@ fn clip8(v: i32) -> u8 {
 
 /// Bit-exact port of `PIL.Image.resize((w, h), Image.BICUBIC)` for 8-bit RGB (no box, no reducing_gap).
 #[cfg(test)]
-pub fn pillow_bicubic_resize(src: &RgbImage, out_w: u32, out_h: u32) -> RgbImage {
+pub(crate) fn pillow_bicubic_resize(src: &RgbImage, out_w: u32, out_h: u32) -> RgbImage {
     pillow_resize(src, out_w, out_h, Filter::PillowBicubic)
 }
 
 /// Bit-exact port of `PIL.Image.resize((w, h), filter)` for 8-bit RGB, BICUBIC or BILINEAR (same separable
 /// `Resample.c` path; only the kernel and its support differ).
-pub fn pillow_resize(src: &RgbImage, out_w: u32, out_h: u32, filter: Filter) -> RgbImage {
+pub(crate) fn pillow_resize(src: &RgbImage, out_w: u32, out_h: u32, filter: Filter) -> RgbImage {
     let (in_w, in_h) = src.dimensions();
     if (in_w, in_h) == (out_w, out_h) {
         return src.clone();
@@ -261,7 +261,7 @@ pub fn pillow_resize(src: &RgbImage, out_w: u32, out_h: u32, filter: Filter) -> 
 
 // ----------------------------------------------------------------------------------------- transform
 /// torchvision CenterCrop offsets: `int(round((W - w) / 2))` with Python's round-half-to-even.
-pub fn center_crop_offsets(w: u32, h: u32, crop_w: u32, crop_h: u32) -> (u32, u32) {
+pub(crate) fn center_crop_offsets(w: u32, h: u32, crop_w: u32, crop_h: u32) -> (u32, u32) {
     let l = ((w - crop_w) as f64 / 2.0).round_ties_even() as u32;
     let t = ((h - crop_h) as f64 / 2.0).round_ties_even() as u32;
     (l, t)

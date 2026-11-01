@@ -1,4 +1,4 @@
-use super::fake::*;
+use crate::testing::*;
 use super::*;
 use futures::channel::mpsc::TryRecvError;
 
@@ -189,7 +189,7 @@ fn the_default_skips_a_head_whose_provider_is_missing() {
 #[test]
 fn the_default_says_so_when_no_head_can_run() {
     let missing = || Err(crate::registry::Unavailable::Missing(vec!["/fake/x/model.onnx".into()]));
-    let graphs = vec![crate::registry::Graph { manifest: manifest("x", 1), availability: missing() }];
+    let graphs = vec![crate::registry::GraphEntry { manifest: manifest("x", 1), availability: missing() }];
     let reg = Registry::from_graphs("/fake/models.json".into(), graphs, ids(&["x"]), vec![]).unwrap();
     let (_inf, mut ev) = Inference::spawn(Arc::new(reg), FakeLoader::default());
     let (head, passed_over) = default_of(&mut ev);

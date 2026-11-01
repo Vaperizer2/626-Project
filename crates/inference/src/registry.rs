@@ -60,7 +60,7 @@ impl std::error::Error for IndexError {}
 
 /// One graph: its manifest and whether its files are all there with the recorded sizes.
 #[derive(Debug)]
-pub struct Graph {
+pub struct GraphEntry {
     pub manifest: Arc<Manifest>,
     pub availability: Result<(), Unavailable>,
 }
@@ -69,7 +69,7 @@ pub struct Graph {
 #[derive(Clone, Copy)]
 pub struct Head<'r> {
     pub spec: &'r HeadSpec,
-    pub graph: &'r Graph,
+    pub graph: &'r GraphEntry,
 }
 
 impl<'r> Head<'r> {
@@ -87,7 +87,7 @@ impl<'r> Head<'r> {
 #[derive(Debug)]
 pub struct Registry {
     index: PathBuf,
-    graphs: Vec<Graph>,
+    graphs: Vec<GraphEntry>,
     /// (graph, head) in UI order: manifest order, then head order
     heads: Vec<(usize, usize)>,
     default: Vec<HeadId>,
@@ -114,7 +114,7 @@ impl Registry {
             match manifest::parse_manifest(p) {
                 Ok(m) => {
                     let availability = availability(&m);
-                    graphs.push(Graph { manifest: Arc::new(m), availability });
+                    graphs.push(GraphEntry { manifest: Arc::new(m), availability });
                 }
                 Err(e) => problems.push(e.to_string()),
             }
@@ -122,13 +122,13 @@ impl Registry {
         Self::from_graphs(index.to_path_buf(), graphs, idx.default, problems)
     }
 
-    pub fn from_graphs(
+    pub(crate) fn from_graphs(
         index: PathBuf,
-        graphs: Vec<Graph>,
+        graphs: Vec<GraphEntry>,
         default: Vec<HeadId>,
         mut problems: Vec<String>,
     ) -> Result<Self, IndexError> {
-        let mut kept: Vec<Graph> = Vec::new();
+        let mut kept: Vec<GraphEntry> = Vec::new();
         for g in graphs {
             match kept.iter().find(|k| k.manifest.id == g.manifest.id) {
                 Some(first) => problems.push(format!(
@@ -192,11 +192,11 @@ impl Registry {
         self.heads().map(|h| h.id().clone()).collect()
     }
 
-    pub fn graphs(&self) -> &[Graph] {
+    pub fn graphs(&self) -> &[GraphEntry] {
         &self.graphs
     }
 
-    pub fn graph(&self, id: &GraphId) -> Option<&Graph> {
+    pub fn graph(&self, id: &GraphId) -> Option<&GraphEntry> {
         self.graphs.iter().find(|g| &g.manifest.id == id)
     }
 
@@ -243,7 +243,7 @@ fn availability(m: &Manifest) -> Result<(), Unavailable> {
 }
 
 /// The current directory and the executable's directory, plus their ancestors.
-pub fn search_bases() -> Vec<PathBuf> {
+pub(crate) fn search_bases() -> Vec<PathBuf> {
     let mut starts = Vec::new();
     if let Ok(cwd) = std::env::current_dir() {
         starts.push(cwd);
@@ -313,8 +313,8 @@ mod tests {
             .unwrap()
     }
 
-    fn graph(m: Manifest) -> Graph {
-        Graph { manifest: Arc::new(m), availability: Ok(()) }
+    fn graph(m: Manifest) -> GraphEntry {
+        GraphEntry { manifest: Arc::new(m), availability: Ok(()) }
     }
 
     #[test]

@@ -15,7 +15,7 @@ use gpui_kit::{
 
 use super::{DemoApp, TabKind};
 use inference::service::Inference;
-use inference::service::fake::{FakeLoader, Seen, registry, shared_registry};
+use inference::testing::{FakeLoader, Seen, registry, shared_registry};
 use inference::registry::Registry;
 
 fn stack_dir() -> PathBuf {

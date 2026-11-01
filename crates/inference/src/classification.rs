@@ -67,7 +67,7 @@ impl Classification {
 }
 
 /// Indices of the `k` largest values, highest first (ties: lower index first, like a stable argsort; NaN last).
-pub fn top_k(probs: &[f32], k: usize) -> Vec<usize> {
+pub(crate) fn top_k(probs: &[f32], k: usize) -> Vec<usize> {
     let mut idx: Vec<usize> = (0..probs.len()).collect();
     idx.sort_by(|&a, &b| {
         let (x, y) = (probs[a], probs[b]);
@@ -77,7 +77,7 @@ pub fn top_k(probs: &[f32], k: usize) -> Vec<usize> {
     idx
 }
 
-pub fn softmax(z: &[f32]) -> Vec<f32> {
+pub(crate) fn softmax(z: &[f32]) -> Vec<f32> {
     let m = z.iter().copied().fold(f32::NEG_INFINITY, f32::max);
     let e: Vec<f32> = z.iter().map(|v| (v - m).exp()).collect();
     let s: f32 = e.iter().sum();

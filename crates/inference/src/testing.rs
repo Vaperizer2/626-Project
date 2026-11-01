@@ -1,13 +1,21 @@
-//! A loader whose graphs answer instantly or slowly, record what ran, and can hold a load until released.
+//! Test support (feature `test-support`): a loader whose graphs answer instantly or slowly, record what ran, and
+//! can hold a load until released, plus small manifests, registries and images to run them on.
 
-use super::*;
-use crate::manifest::{
-    Calibration, ClassifyTask, Decision, Ep, EpKind, Filter, HeadSpec, InputSpec, Labels, OptLevel, Precision,
-    Prob, Readout, RuntimeSpec,
-};
-use crate::registry::Graph as RegGraph;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use std::sync::{Arc, Condvar, Mutex};
+use std::time::{Duration, Instant};
+
+use image::RgbImage;
+
+use crate::manifest::{
+    Calibration, ClassifyTask, Decision, Ep, EpKind, Filter, GraphId, HeadId, HeadSpec, InputSpec, Labels, Manifest,
+    OptLevel, Precision, Preprocess, Prob, Readout, RuntimeSpec, Task,
+};
+use crate::registry::{GraphEntry, Registry};
+use crate::runtime::Placement;
+use crate::service::{Graph, ImageInput, LoadStage, Loaded, Loader, RunFailure};
 
 /// A graph `id` with one head `id`, a 4x4 input, two classes and `max_batch`.
 pub fn manifest(id: &str, max_batch: u16) -> Arc<Manifest> {
@@ -58,7 +66,7 @@ pub fn manifest_with_heads(id: &str, max_batch: u16, heads: &[&str]) -> Arc<Mani
 }
 
 pub fn registry(graphs: &[(&str, u16)], default: &[&str]) -> Arc<Registry> {
-    let graphs = graphs.iter().map(|&(id, max)| RegGraph { manifest: manifest(id, max), availability: Ok(()) });
+    let graphs = graphs.iter().map(|&(id, max)| GraphEntry { manifest: manifest(id, max), availability: Ok(()) });
     Arc::new(
         Registry::from_graphs(PathBuf::from("/fake/models.json"), graphs.collect(), default.iter().map(|d| HeadId::new(d)).collect(), vec![])
             .unwrap(),
@@ -67,7 +75,7 @@ pub fn registry(graphs: &[(&str, u16)], default: &[&str]) -> Arc<Registry> {
 
 /// One graph `graph` whose single forward pass serves every head in `heads` (as Deployed and C share `final`).
 pub fn shared_registry(graph: &str, heads: &[&str], default: &[&str]) -> Arc<Registry> {
-    let graphs = vec![RegGraph { manifest: manifest_with_heads(graph, 1, heads), availability: Ok(()) }];
+    let graphs = vec![GraphEntry { manifest: manifest_with_heads(graph, 1, heads), availability: Ok(()) }];
     Arc::new(
         Registry::from_graphs(PathBuf::from("/fake/models.json"), graphs, default.iter().map(|d| HeadId::new(d)).collect(), vec![])
             .unwrap(),
