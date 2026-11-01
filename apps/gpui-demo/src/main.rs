@@ -18,12 +18,11 @@ use std::time::Instant;
 
 use anyhow::{Context, Result, anyhow, bail};
 use futures::StreamExt;
-use inference::{integrity, preprocess, registry, runtime};
+use inference::{integrity, preprocess, registry};
 
-use inference::classification::HeadOutput;
 use inference::fetch::Source;
 use inference::service::{
-    Finish, GraphState, ImageInput, Inference, LoadStage, Loaded, Policy, Priority, RequestHandle, RunError,
+    Finish, GraphState, HeadOutput, ImageInput, Inference, LoadStage, Loaded, Policy, Priority, RequestHandle, RunError,
     ServiceEvent, Timing, Update,
 };
 use inference::manifest::{GraphId, HeadId, Precision, Task};
@@ -182,8 +181,7 @@ fn cache_dir() -> Option<PathBuf> {
 }
 
 fn registry(a: &Args) -> Result<Arc<Registry>> {
-    let index = Registry::locate(a.opts.models.as_deref())?;
-    let reg = Registry::load(&index)?;
+    let reg = Registry::open(&a.opts)?;
     for p in reg.problems() {
         eprintln!("[gpui-demo] {p}");
     }
@@ -287,7 +285,7 @@ impl Service {
 
 /// Start the service; graph load events also go to stderr.
 fn service(a: &Args, reg: &Arc<Registry>) -> Service {
-    let (inf, mut events) = Inference::spawn(reg.clone(), OrtLoader::new(&a.opts, reg.index_path().parent()));
+    let (inf, mut events) = Inference::spawn(reg.clone(), OrtLoader::new(&a.opts, reg));
     let reg = reg.clone();
     let (default_tx, default) = std::sync::mpsc::channel();
     let loaded = Arc::new(std::sync::Mutex::new(Vec::new()));
@@ -529,11 +527,9 @@ fn run_bench(a: &Args) -> Result<u8> {
 /// Release every session before the process exits with `code` (see `Inference::shutdown`); if a load is still
 /// running, leave with `code` without exit handlers rather than race its provider's teardown.
 fn end(inf: &Inference, code: u8) -> u8 {
-    if !inf.shutdown(std::time::Duration::from_secs(30)) {
-        eprintln!("[gpui-demo] a model is still loading; exiting without waiting for it");
-        let _ = std::io::stdout().flush();
-        runtime::exit_now(code.into());
-    }
+    inf.shutdown_or_exit(std::time::Duration::from_secs(30), code.into(), || {
+        eprintln!("[gpui-demo] a model is still loading; exiting without waiting for it")
+    });
     code
 }
 
@@ -559,7 +555,7 @@ fn run_models(a: &Args) -> Result<u8> {
     if bad > 0 {
         println!("index     {bad} problem(s) with {}", reg.index_path().display());
     }
-    let loader = OrtLoader::new(&a.opts, reg.index_path().parent());
+    let loader = OrtLoader::new(&a.opts, &reg);
     let rt = match loader.runtime() {
         Ok(rt) => rt,
         Err(e) => {

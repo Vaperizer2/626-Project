@@ -26,9 +26,9 @@ use super::stack::Stack;
 use super::widgets::Lucide;
 use super::{Cancel, Hint, RunAll, Tab, theme, widgets};
 use crate::app;
-use inference::classification::{Classification, HeadOutput};
+use inference::classification::Classification;
 use crate::demo::Verdict;
-use inference::service::{Finish, ImageInput, Lane, Policy, Priority, RequestHandle, RunError, Ticket, Timing, Update};
+use inference::service::{Finish, HeadOutput, ImageInput, Lane, Policy, Priority, RequestHandle, RunError, Ticket, Timing, Update};
 use inference::manifest::HeadId;
 use inference::prof;
 
