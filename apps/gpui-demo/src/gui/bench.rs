@@ -342,12 +342,12 @@ impl DemoApp {
             cx,
         );
         let models = if self.bench.models.is_empty() { available.clone() } else { self.bench.models.clone() };
-        let best = models
-            .iter()
-            .map(|k| stats(stack, &self.bench.results, k))
-            .filter(|s| s.judged > 0)
-            .map(|s| s.correct)
-            .max();
+        // mid-run the counts favour whichever model got through more images
+        let best = if running.is_some() {
+            None
+        } else {
+            models.iter().map(|k| stats(stack, &self.bench.results, k)).filter(|s| s.judged > 0).map(|s| s.correct).max()
+        };
         let cards = h_flex()
             .items_stretch()
             .gap_3()
@@ -394,6 +394,8 @@ impl DemoApp {
                     .when(leading, |d| {
                         d.child(
                             h_flex()
+                                .id(SharedString::from(format!("bench-best-{k}")))
+                                .test_support()
                                 .flex_none()
                                 .gap_1()
                                 .items_center()
