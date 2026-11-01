@@ -52,6 +52,11 @@ impl Classification {
         matches!(self.answer, Answer::Abstain { .. })
     }
 
+    /// The head committed although its top probability is below its confidence bound.
+    pub fn low_confidence(&self) -> bool {
+        matches!(self.answer, Answer::Class { low_confidence: true, .. })
+    }
+
     /// The committed class, or None when the head abstained.
     pub fn committed(&self) -> Option<usize> {
         match self.answer {

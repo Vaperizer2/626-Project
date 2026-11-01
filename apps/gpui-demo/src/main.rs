@@ -209,6 +209,7 @@ fn heads(a: &Args, reg: &Registry) -> Result<Vec<HeadId>> {
 /// The `label` of an abstaining head in classify output (the Python demo's spelling).
 const UNSURE: &str = "UNSURE";
 
+/// One `classify --json` row; an error row has the same keys.
 #[derive(serde::Serialize)]
 struct JsonRow<'a> {
     source: &'a str,
@@ -216,10 +217,43 @@ struct JsonRow<'a> {
     label: Option<&'a str>,
     top3: Vec<(&'a str, f32)>,
     unsure: bool,
+    /// a head that always answers is below its confidence bound (heads that abstain say `unsure` instead)
+    low_confidence: bool,
     ms: f64,
     probs: Vec<f32>,
-    error: Option<String>,
-    timing: Timing,
+    error: Option<&'a str>,
+    timing: Option<Timing>,
+}
+
+impl<'a> JsonRow<'a> {
+    fn new(source: &'a str, head: &'a HeadId, row: &'a Result<(HeadOutput, Timing), String>) -> Self {
+        match row {
+            Ok((HeadOutput::Classify(c), timing)) => JsonRow {
+                source,
+                model: head.as_str(),
+                label: Some(c.committed().map_or(UNSURE, |i| c.labels.name(i))),
+                top3: c.top(3).into_iter().map(|(i, p)| (c.labels.name(i), p)).collect(),
+                unsure: c.abstained(),
+                low_confidence: c.low_confidence(),
+                ms: (timing.ms() * 10.0).round() / 10.0,
+                probs: c.probs.to_vec(),
+                error: None,
+                timing: Some(*timing),
+            },
+            Err(e) => JsonRow {
+                source,
+                model: head.as_str(),
+                label: None,
+                top3: vec![],
+                unsure: false,
+                low_confidence: false,
+                ms: 0.0,
+                probs: vec![],
+                error: Some(e),
+                timing: None,
+            },
+        }
+    }
 }
 
 /// The start-up default (see `ServiceEvent::Default`) and the defaults passed over on the way.
@@ -356,42 +390,26 @@ fn run_classify(a: &Args) -> Result<u8> {
             None => (vec![], Some(RunError::Read("empty source".into()))),
         };
         for (head, r) in rows_of(&keys, results, failed) {
-            match r {
-                Ok((HeadOutput::Classify(c), timing)) => {
-                    let label = c.committed().map_or(UNSURE, |i| c.labels.name(i));
-                    let top3: Vec<(&str, f32)> = c.top(3).into_iter().map(|(i, p)| (c.labels.name(i), p)).collect();
-                    if a.json {
-                        rows.push(serde_json::to_value(JsonRow {
-                            source: s,
-                            model: head.as_str(),
-                            label: Some(label),
-                            top3,
-                            unsure: c.abstained(),
-                            ms: (timing.ms() * 10.0).round() / 10.0,
-                            probs: c.probs.to_vec(),
-                            error: None,
-                            timing,
-                        })?);
-                    } else {
-                        let top: Vec<String> = top3.iter().map(|(l, v)| format!("{l} {v:.3}")).collect();
-                        writeln!(
-                            stdout.lock(),
-                            "{s}\t{head}\t{label}\t{:.3}\ttop3: {}\t{:.0} ms",
-                            c.best().1,
-                            top.join(", "),
-                            timing.ms()
-                        )?;
-                    }
+            if r.is_err() {
+                failures = failures.saturating_add(1);
+            }
+            let row = JsonRow::new(s, &head, &r);
+            if a.json {
+                rows.push(serde_json::to_value(row)?);
+                continue;
+            }
+            match (&r, row.label) {
+                (Ok((HeadOutput::Classify(c), timing)), Some(label)) => {
+                    let top: Vec<String> = row.top3.iter().map(|(l, v)| format!("{l} {v:.3}")).collect();
+                    writeln!(
+                        stdout.lock(),
+                        "{s}\t{head}\t{label}\t{:.3}\ttop3: {}\t{:.0} ms",
+                        c.best().1,
+                        top.join(", "),
+                        timing.ms()
+                    )?;
                 }
-                Err(e) => {
-                    failures = failures.saturating_add(1);
-                    if a.json {
-                        rows.push(serde_json::json!({"source": s, "model": head.as_str(), "label": null, "top3": [],
-                                                     "unsure": false, "ms": 0.0, "probs": [], "error": e}));
-                    } else {
-                        writeln!(stdout.lock(), "{s}\t{head}\tERROR\t{e}")?;
-                    }
-                }
+                (_, _) => writeln!(stdout.lock(), "{s}\t{head}\tERROR\t{}", row.error.unwrap_or_default())?,
             }
         }
     }
@@ -686,6 +704,21 @@ mod tests {
         let script = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/test_gpu_env.sh");
         let out = std::process::Command::new("sh").arg(&script).output().unwrap();
         assert!(out.status.success(), "{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr));
+    }
+
+    #[test]
+    fn json_rows_have_one_shape_and_flag_low_confidence() {
+        let head = HeadId::new("x");
+        let mut m = Arc::try_unwrap(inference::fake::manifest("x", 1)).unwrap();
+        let Task::Classify(t) = &mut m.heads[0].task;
+        t.decision = manifest::Decision::Commit { low_confidence_below: manifest::Prob::new(0.95) };
+        let answer = classification::read_head(&m.heads[0].task, &[0.9, 0.1]).unwrap();
+        let rows = [Ok((answer, Timing::default())), Err("could not read".to_string())];
+        let [ok, err] = rows.each_ref().map(|r| serde_json::to_value(JsonRow::new("p.jpg", &head, r)).unwrap());
+        let keys = |v: &serde_json::Value| v.as_object().unwrap().keys().cloned().collect::<Vec<_>>();
+        assert_eq!(keys(&ok), keys(&err), "an error row has every key");
+        assert_eq!(ok["low_confidence"], true, "0.9 is below the head's 0.95 bound");
+        assert!(err["timing"].is_null() && err["low_confidence"] == false);
     }
 
     #[test]

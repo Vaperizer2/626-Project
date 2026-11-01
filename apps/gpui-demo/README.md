@@ -60,7 +60,8 @@ cargo build --release --locked --features turbojpeg   # Arch has libjpeg-turbo: 
 ```
 
 **Output change since the registry (2026-10-31).** Each `classify` text line now has the model's head id as its second
-column (`source, model, label, p, top3, ms`), and each JSON row has a `model` field. Scripts that split the old
+column (`source, model, label, p, top3, ms`), and each JSON row has `model` and `low_confidence` fields (error rows
+too, with `timing: null`). Scripts that split the old
 five-column lines or keyed rows by source alone need updating. Without `--model` the head is the machine's default
 (Fast where TensorRT registers, else Deployed), so pass `--model deployed` when output must match across machines.
 `--model-dir DIR` (the old export folder option) still works for now: it means `--models` of the index next to `DIR`,
@@ -89,7 +90,7 @@ export folder must contain `model.onnx` **and** `model.onnx.data` (1,714,593,792
 | `--ort-lib PATH` | `libonnxruntime.so` to load. Default: `$ORT_DYLIB_PATH`, else `<repo>/.venv/lib/python3.*/site-packages/onnxruntime/capi/libonnxruntime.so*`, else a copy next to the executable, else the system loader path. |
 | `--threads N` | onnxruntime intra-op threads (default: onnxruntime's choice, one per physical core). |
 | `--ep LIST` | execution providers for every model, in order: `tensorrt`, `cuda`, `cpu`, comma-separated. Default: each manifest's `runtime.providers` (`cuda,cpu`; `tensorrt,cuda,cpu` for Fast). `--ep cpu` gives bit-reproducible output. |
-| `--json` | `classify`: print a JSON array (`source, model, label, top3, unsure, ms, probs, timing, error`). |
+| `--json` | `classify`: print a JSON array (`source, model, label, top3, unsure, low_confidence, ms, probs, error, timing`). `unsure` is an abstaining head's UNSURE; `low_confidence` marks an answer from a head that always answers (A, B, C) below its bound. An error row has the same keys, with `label` and `timing` null. |
 | `bench [--rounds N] [--warmup N] IMG…` | one model through the inference service: per-image latency by stage (read+decode, preprocess, queue, run, readout, end to end), then rounds × images submitted at once for streamed FPS. JSON on stdout. |
 | `models [--check]` | every model, whether it is available, and per graph which providers register and why the others do not. `--check` also verifies every file's sha256 and loads each graph. |
 | `preprocess IMG OUT.f32 [--model HEAD]` | write the exact `[1,3,H,W]` float32 model input (little-endian), for parity tests. |
