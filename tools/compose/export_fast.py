@@ -91,6 +91,7 @@ def runtime_for_app(c) -> dict:
     """The candidate's provider and options; cache paths stay relative (the app resolves them, see report)."""
     return {"provider": c.runtime["provider"], "options": c.runtime["options"],
             "graph_optimization_level": c.runtime.get("graph_optimization_level", "ORT_ENABLE_ALL"),
+            "session_config": c.runtime.get("session_config", {}),
             "provider_order": [c.runtime["provider"], "CUDAExecutionProvider", "CPUExecutionProvider"],
             "static_batch": c.fixed_batch}
 
