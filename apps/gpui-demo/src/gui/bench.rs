@@ -17,17 +17,21 @@ use gpui_kit::component::{
     v_flex,
 };
 use gpui_kit::{
-    AnyElement, App, Context, FontWeight, ObjectFit, ScrollHandle, SharedString, TestSupportExt as _, div, img,
-    prelude::*, px,
+    AnyElement, App, Context, Entity, FocusHandle, FontWeight, ObjectFit, ScrollHandle, SharedString,
+    TestSupportExt as _, Window, div, img, prelude::*, px,
 };
 
+use super::models::{ModelState, Models};
+use super::stack::Stack;
 use super::widgets::Lucide;
-use super::models::ModelState;
-use super::{DemoApp, theme, widgets};
+use super::{Cancel, Hint, RunAll, theme, widgets};
 use inference::classification::{Classification, HeadOutput};
 use crate::demo::Verdict;
-use inference::service::{Finish, ImageInput, RequestHandle, RunError, Ticket, Timing, Update};
+use inference::service::{Finish, ImageInput, Lane, Policy, Priority, RequestHandle, RunError, Ticket, Timing, Update};
 use inference::manifest::HeadId;
+
+/// The status bar's shortcuts while the tab is on screen.
+pub const HINTS: &[Hint] = &[(&["ctrl-r"], "Run"), (&["escape"], "Stop")];
 
 /// One benchmark run: every image was submitted at once; dropping the run cancels what has not run yet.
 struct BenchRun {
@@ -45,31 +49,20 @@ impl BenchRun {
     }
 }
 
-pub struct BenchState {
+pub struct BenchTab {
+    models: Entity<Models>,
+    stack: Entity<Stack>,
+    lane: Lane,
+    pub(super) focus: FocusHandle,
     run: Option<BenchRun>,
     next_id: u64,
     /// columns of the last run
-    models: Vec<HeadId>,
+    heads: Vec<HeadId>,
     pub(super) results: HashMap<(usize, HeadId), Result<(Classification, Timing), RunError>>,
     only_disagree: bool,
     wall_s: Option<f64>,
     cancelled: bool,
     scroll: ScrollHandle,
-}
-
-impl Default for BenchState {
-    fn default() -> Self {
-        Self {
-            run: None,
-            next_id: 1,
-            models: Vec::new(),
-            results: HashMap::new(),
-            only_disagree: false,
-            wall_s: None,
-            cancelled: false,
-            scroll: ScrollHandle::new(),
-        }
-    }
 }
 
 /// Per-model aggregate over the images it has classified.
@@ -81,12 +74,6 @@ pub struct Stats {
     pub errors: usize,
     pub mean_conf: f32,
     pub mean_ms: f64,
-}
-
-impl BenchState {
-    pub fn running(&self) -> bool {
-        self.run.is_some()
-    }
 }
 
 /// Aggregate `results` for `model` over `stack`.
@@ -134,55 +121,81 @@ pub fn disagree(
     answers.len() > 1
 }
 
-impl DemoApp {
-    pub(super) fn bench_start(&mut self, cx: &mut Context<Self>) {
-        if self.bench.run.is_some() {
-            return self.bench_cancel(cx);
+impl BenchTab {
+    pub fn new(models: Entity<Models>, stack: Entity<Stack>, cx: &mut Context<Self>) -> Self {
+        let lane = models.read(cx).inference().lane(Priority::Bulk, Policy::Keep);
+        // the header counts the run's seconds
+        super::tick_while(cx, |this, _| this.running());
+        Self {
+            models,
+            stack,
+            lane,
+            focus: cx.focus_handle(),
+            run: None,
+            next_id: 1,
+            heads: Vec::new(),
+            results: HashMap::new(),
+            only_disagree: false,
+            wall_s: None,
+            cancelled: false,
+            scroll: ScrollHandle::new(),
         }
-        let Some(n) = self.demo.stack().map(|s| s.images.len()) else { return };
+    }
+
+    pub fn running(&self) -> bool {
+        self.run.is_some()
+    }
+
+    pub fn start(&mut self, cx: &mut Context<Self>) {
+        if self.run.is_some() {
+            return self.cancel(cx);
+        }
+        let stack = self.stack.read(cx);
+        let Some(n) = stack.stack().map(|s| s.images.len()) else { return };
+        let Some(inputs) = (0..n).map(|i| stack.input(i)).collect::<Option<Vec<ImageInput>>>() else { return };
         let m = self.models.read(cx);
-        let models: Vec<HeadId> = m.head_ids().into_iter().filter(|k| m.model_usable(k)).collect();
-        if models.is_empty() {
+        let heads: Vec<HeadId> = m.head_ids().into_iter().filter(|k| m.model_usable(k)).collect();
+        if heads.is_empty() {
             return;
         }
-        self.bench.models = models.clone();
-        self.bench.results.clear();
-        self.bench.wall_s = None;
-        self.bench.cancelled = false;
-        let id = self.bench.next_id;
-        self.bench.next_id += 1;
+        self.heads = heads.clone();
+        self.results.clear();
+        self.wall_s = None;
+        self.cancelled = false;
+        let id = self.next_id;
+        self.next_id += 1;
         let mut tickets = Vec::new();
-        for i in 0..n {
-            let input = match (self.demo.items.get(i).and_then(|it| it.rgb.clone()), self.demo.stack()) {
-                (Some(rgb), _) => ImageInput::Decoded(rgb),
-                (None, Some(s)) => ImageInput::Source(inference::fetch::Source::File(s.path(i))),
-                (None, None) => return,
-            };
-            let RequestHandle { updates: mut rx, ticket } = self.bulk.submit(input, &models, None);
+        for (i, input) in inputs.into_iter().enumerate() {
+            let RequestHandle { updates: mut rx, ticket } = self.lane.submit(input, &heads, None);
             tickets.push(ticket);
             cx.spawn(async move |this, cx| {
                 while let Some(u) = rx.next().await {
                     let alive = this
                         .update(cx, |this, cx| {
-                            if this.bench.run.as_ref().is_none_or(|r| r.id != id) {
+                            if this.run.as_ref().is_none_or(|r| r.id != id) {
                                 return;
                             }
                             match u {
                                 Update::Head { head, result, timing } => {
                                     let r = result.map(|HeadOutput::Classify(c)| (c, timing));
                                     // share with the Demo tab so its cards show the result too
-                                    if let (Ok((c, timing)), Some(it)) = (&r, this.demo.items.get_mut(i)) {
-                                        it.results.done(head.clone(), c.clone(), *timing);
+                                    if let Ok((c, timing)) = &r {
+                                        this.stack.update(cx, |s, cx| {
+                                            if let Some(it) = s.items.get_mut(i) {
+                                                it.results.done(head.clone(), c.clone(), *timing);
+                                                cx.notify();
+                                            }
+                                        });
                                     }
-                                    this.bench.results.insert((i, head), r);
+                                    this.results.insert((i, head), r);
                                 }
                                 Update::Done(Finish::Failed(e)) => {
-                                    for k in this.bench.models.clone() {
-                                        this.bench.results.insert((i, k), Err(e.clone()));
+                                    for k in this.heads.clone() {
+                                        this.results.insert((i, k), Err(e.clone()));
                                     }
-                                    this.bench_progress(i, cx);
+                                    this.progress(i, cx);
                                 }
-                                Update::Done(_) => this.bench_progress(i, cx),
+                                Update::Done(_) => this.progress(i, cx),
                                 Update::Decoded { .. } => {}
                             }
                             cx.notify();
@@ -195,30 +208,30 @@ impl DemoApp {
             })
             .detach();
         }
-        self.bench.run = Some(BenchRun { id, total: n, finished: HashSet::new(), started: Instant::now(), _tickets: tickets });
+        self.run = Some(BenchRun { id, total: n, finished: HashSet::new(), started: Instant::now(), _tickets: tickets });
         cx.notify();
     }
 
-    pub(super) fn bench_cancel(&mut self, cx: &mut Context<Self>) {
-        if let Some(run) = self.bench.run.take() {
-            self.bench.wall_s = Some(run.started.elapsed().as_secs_f64());
-            self.bench.cancelled = true;
+    pub fn cancel(&mut self, cx: &mut Context<Self>) {
+        if let Some(run) = self.run.take() {
+            self.wall_s = Some(run.started.elapsed().as_secs_f64());
+            self.cancelled = true;
             cx.notify();
         }
     }
 
     /// Image `i` has all its results; follow the run in the matrix and close it after the last image.
-    fn bench_progress(&mut self, i: usize, cx: &mut Context<Self>) {
-        let Some(run) = self.bench.run.as_mut() else { return };
+    fn progress(&mut self, i: usize, cx: &mut Context<Self>) {
+        let Some(run) = self.run.as_mut() else { return };
         run.finished.insert(i);
         let (done, next) = (run.finished.len() >= run.total, run.current());
         if done {
-            self.bench.wall_s = Some(run.started.elapsed().as_secs_f64());
-            self.bench.run = None;
+            self.wall_s = Some(run.started.elapsed().as_secs_f64());
+            self.run = None;
         }
         if let Some(next) = next {
-            let row = self.bench_row_index(next);
-            self.bench.scroll.scroll_to_item(row);
+            let row = self.row_index(next, cx);
+            self.scroll.scroll_to_item(row);
         }
         cx.notify();
     }
@@ -230,25 +243,25 @@ impl DemoApp {
             .registry()
             .siblings(k)
             .iter()
-            .filter(|s| *s != k && self.bench.models.contains(s))
+            .filter(|s| *s != k && self.heads.contains(s))
             .map(|s| m.short(s))
             .collect();
         (!others.is_empty()).then(|| format!("one pass with {}", others.join(" and ")))
     }
 
-    fn bench_rows(&self) -> Vec<usize> {
-        let n = self.demo.items.len();
-        (0..n).filter(|&i| !self.bench.only_disagree || disagree(&self.bench.results, i, &self.bench.models)).collect()
+    fn rows(&self, cx: &App) -> Vec<usize> {
+        let n = self.stack.read(cx).items.len();
+        (0..n).filter(|&i| !self.only_disagree || disagree(&self.results, i, &self.heads)).collect()
     }
 
-    fn bench_row_index(&self, i: usize) -> usize {
-        self.bench_rows().iter().position(|&r| r == i).unwrap_or(0)
+    fn row_index(&self, i: usize, cx: &App) -> usize {
+        self.rows(cx).iter().position(|&r| r == i).unwrap_or(0)
     }
 
     // ------------------------------------------------------------------------------------------ render
-    pub(super) fn render_bench(&mut self, cx: &mut Context<Self>) -> AnyElement {
+    fn render_body(&self, cx: &Context<Self>) -> AnyElement {
         let t = cx.theme();
-        let Some(stack) = self.demo.stack() else {
+        let Some(stack) = self.stack.read(cx).stack() else {
             return div()
                 .p_6()
                 .child(
@@ -258,7 +271,7 @@ impl DemoApp {
                 .into_any_element();
         };
         let n = stack.images.len();
-        let running = self.bench.run.as_ref();
+        let running = self.run.as_ref();
         let m = self.models.read(cx);
         let available: Vec<HeadId> = m.head_ids().into_iter().filter(|k| m.model_usable(k)).collect();
         let unavailable: Vec<String> = m
@@ -299,7 +312,7 @@ impl DemoApp {
                 .gap_4()
                 .items_center()
                 .children(progress)
-                .when(running.is_none() && self.bench.wall_s.is_some(), |d| {
+                .when(running.is_none() && self.wall_s.is_some(), |d| {
                     d.child(
                         h_flex()
                             .gap_1()
@@ -307,22 +320,22 @@ impl DemoApp {
                             .text_sm()
                             .text_color(t.muted_foreground)
                             .child(
-                                Icon::new(if self.bench.cancelled { Lucide::CircleStop } else { Lucide::Timer })
+                                Icon::new(if self.cancelled { Lucide::CircleStop } else { Lucide::Timer })
                                     .small(),
                             )
                             .child(format!(
                                 "{} in {:.0} s",
-                                if self.bench.cancelled { "stopped" } else { "finished" },
-                                self.bench.wall_s.unwrap_or(0.0)
+                                if self.cancelled { "stopped" } else { "finished" },
+                                self.wall_s.unwrap_or(0.0)
                             )),
                     )
                 })
                 .child(
                     Switch::new("bench-disagree")
-                        .checked(self.bench.only_disagree)
+                        .checked(self.only_disagree)
                         .label("Only where models disagree")
                         .on_click(cx.listener(|this, checked: &bool, _, cx| {
-                            this.bench.only_disagree = *checked;
+                            this.only_disagree = *checked;
                             cx.notify();
                         })),
                 )
@@ -333,24 +346,24 @@ impl DemoApp {
                         .icon(IconName::Square)
                         .label("Stop")
                         .tooltip("Stop: drop the images not classified yet (Esc)")
-                        .on_click(cx.listener(|this, _, _, cx| this.bench_cancel(cx)))
+                        .on_click(cx.listener(|this, _, _, cx| this.cancel(cx)))
                 } else {
                     Button::new("bench-run")
                         .primary()
                         .icon(IconName::Play)
-                        .label(if self.bench.results.is_empty() { "Run benchmark" } else { "Run again" })
+                        .label(if self.results.is_empty() { "Run benchmark" } else { "Run again" })
                         .disabled(available.is_empty())
                         .tooltip("Classify every demo image with every available model (Ctrl+R)")
-                        .on_click(cx.listener(|this, _, _, cx| this.bench_start(cx)))
+                        .on_click(cx.listener(|this, _, _, cx| this.start(cx)))
                 }),
             cx,
         );
-        let models = if self.bench.models.is_empty() { available.clone() } else { self.bench.models.clone() };
+        let models = if self.heads.is_empty() { available.clone() } else { self.heads.clone() };
         // mid-run the counts favour whichever model got through more images
         let best = if running.is_some() {
             None
         } else {
-            models.iter().map(|k| stats(stack, &self.bench.results, k)).filter(|s| s.judged > 0).map(|s| s.correct).max()
+            models.iter().map(|k| stats(stack, &self.results, k)).filter(|s| s.judged > 0).map(|s| s.correct).max()
         };
         let cards = h_flex()
             .items_stretch()
@@ -370,8 +383,8 @@ impl DemoApp {
     fn render_stats_card(&self, k: &HeadId, n: usize, best: Option<usize>, cx: &App) -> impl IntoElement {
         let t = cx.theme();
         let r = theme::roles(cx);
-        let stack = self.demo.stack().expect("stack");
-        let s = stats(stack, &self.bench.results, k);
+        let stack = self.stack.read(cx).stack().expect("stack");
+        let s = stats(stack, &self.results, k);
         let big = if s.judged == 0 { "–".to_string() } else { format!("{}/{}", s.correct, s.judged) };
         let acc = if s.judged == 0 { 0.0 } else { s.correct as f32 / s.judged as f32 };
         let leading = s.judged > 0 && best == Some(s.correct);
@@ -454,11 +467,12 @@ impl DemoApp {
             )
     }
 
-    fn render_matrix(&self, models: &[HeadId], cx: &mut Context<Self>) -> impl IntoElement {
+    fn render_matrix(&self, models: &[HeadId], cx: &App) -> impl IntoElement {
         let t = cx.theme();
         let r = theme::roles(cx);
-        let stack = self.demo.stack().expect("stack");
-        let current = self.bench.run.as_ref().and_then(BenchRun::current);
+        let items = &self.stack.read(cx).items;
+        let stack = self.stack.read(cx).stack().expect("stack");
+        let current = self.run.as_ref().and_then(BenchRun::current);
         let head = h_flex()
             .px_4()
             .py_2()
@@ -471,11 +485,11 @@ impl DemoApp {
             .child(div().w(px(300.)).flex_none().child("Image · true label"))
             .children(models.iter().map(|k| div().flex_1().min_w_0().truncate().child(self.models.read(cx).short(k))));
         let rows: Vec<AnyElement> = self
-            .bench_rows()
+            .rows(cx)
             .into_iter()
             .map(|i| {
                 let im = &stack.images[i];
-                let thumb = self.demo.items.get(i).and_then(|it| it.thumb.clone());
+                let thumb = items.get(i).and_then(|it| it.thumb.clone());
                 let cells = models.iter().map(|k| {
                     let cell = h_flex()
                         .flex_1()
@@ -486,7 +500,7 @@ impl DemoApp {
                         .border_1()
                         .border_color(r.border);
                     let body = v_flex().flex_1().min_w_0().px_2().gap_1().justify_center();
-                    match self.bench.results.get(&(i, k.clone())) {
+                    match self.results.get(&(i, k.clone())) {
                         Some(Ok((out, _))) => {
                             let v = im.judge(out.best_label(), out.abstained());
                             let c = r.verdict(v).0;
@@ -602,7 +616,7 @@ impl DemoApp {
             })
             .collect();
         let empty = rows.is_empty().then(|| {
-            div().p_6().text_sm().text_color(t.muted_foreground).child(if self.bench.only_disagree {
+            div().p_6().text_sm().text_color(t.muted_foreground).child(if self.only_disagree {
                 "All models agree on every image classified so far."
             } else {
                 "No images."
@@ -619,13 +633,26 @@ impl DemoApp {
                         .test_support()
                         .size_full()
                         .overflow_y_scroll()
-                        .track_scroll(&self.bench.scroll)
+                        .track_scroll(&self.scroll)
                         .pb_4()
                         .children(rows)
                         .children(empty),
                 )
-                .vertical_scrollbar(&self.bench.scroll),
+                .vertical_scrollbar(&self.scroll),
         )
+    }
+}
+
+impl Render for BenchTab {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        div()
+            .id("bench-tab")
+            .track_focus(&self.focus)
+            .key_context("Bench")
+            .on_action(cx.listener(|this, _: &RunAll, _, cx| this.start(cx)))
+            .on_action(cx.listener(|this, _: &Cancel, _, cx| this.cancel(cx)))
+            .size_full()
+            .child(self.render_body(cx))
     }
 }
 

@@ -74,7 +74,7 @@ fn open_sized(
     for _ in 0..50 {
         cx.run_until_parked();
         let loaded = cx.update(|cx| {
-            view.read(cx).demo.items.iter().all(|i| i.thumb.is_some() || i.load_error.is_some())
+            view.read(cx).stack.read(cx).items.iter().all(|i| i.thumb.is_some() || i.load_error.is_some())
         });
         if loaded {
             break;
@@ -94,10 +94,11 @@ async fn window_renders_every_tab(cx: &mut TestAppContext) {
         assert!(m.registry_error().is_none());
         assert_eq!(m.selected().map(|m| m.as_str()), Some("a"), "the index's default head is selected");
         assert!(!m.model_usable(m.selected().unwrap()), "a model without its graph file is unavailable");
-        let n = v.demo.stack().map(|s| s.images.len()).unwrap_or(0);
+        let stack = v.stack.read(cx);
+        let n = stack.stack().map(|s| s.images.len()).unwrap_or(0);
         if stack_dir().join(crate::demo::STACK_FILE).is_file() {
             assert!(n >= 20, "demo stack loaded");
-            assert!(v.demo.items.iter().all(|i| i.thumb.is_some()), "every thumbnail decoded");
+            assert!(stack.items.iter().all(|i| i.thumb.is_some()), "every thumbnail decoded");
         }
     });
     cx.update_window(handle, |_, window, cx| {
@@ -133,8 +134,9 @@ async fn window_renders_every_tab(cx: &mut TestAppContext) {
     .unwrap();
     cx.update(|cx| {
         let v = view.read(cx);
-        if !v.demo.items.is_empty() {
-            assert_eq!(v.demo.selected, v.demo.items.len() - 1);
+        let n = v.stack.read(cx).items.len();
+        if n > 0 {
+            assert_eq!(v.demo.selected, n - 1);
         }
     });
     let _ = std::fs::remove_dir_all(&index); // test scratch dir under the OS temp dir only
@@ -147,16 +149,17 @@ async fn benchmark_and_classify_run_through_the_service(cx: &mut TestAppContext)
     }
     let (_handle, view) = open(cx, registry(&[("x", 1), ("y", 4)], &["y", "x"]));
     wait(cx, &view, "the default head", &|v, cx| selected(v, cx).is_some_and(|m| m.as_str() == "y"));
-    cx.update(|cx| view.update(cx, |v, cx| v.bench_start(cx)));
-    wait(cx, &view, "the benchmark to finish", &|v, _| !v.bench.running());
+    cx.update(|cx| view.update(cx, |v, cx| start_bench(v, cx)));
+    wait(cx, &view, "the benchmark to finish", &|v, cx| !v.bench.read(cx).running());
     cx.update(|cx| {
         let v = view.read(cx);
-        let n = v.demo.items.len();
-        assert_eq!(v.bench.results.len(), 2 * n, "every image × every head");
-        assert!(v.bench.results.values().all(|r| r.is_ok()));
-        let stack = v.demo.stack().unwrap();
+        let (bench, stack) = (v.bench.read(cx), v.stack.read(cx));
+        let n = stack.items.len();
+        assert_eq!(bench.results.len(), 2 * n, "every image × every head");
+        assert!(bench.results.values().all(|r| r.is_ok()));
+        let stack = stack.stack().unwrap();
         for h in ["x", "y"] {
-            let s = super::bench::stats(stack, &v.bench.results, &HeadId::new(h));
+            let s = super::bench::stats(stack, &bench.results, &HeadId::new(h));
             assert_eq!(s.judged, n, "{h} judged every image");
         }
     });
@@ -177,6 +180,11 @@ fn wait(cx: &mut TestAppContext, view: &Entity<DemoApp>, what: &str, done: &dyn 
         std::thread::sleep(Duration::from_millis(25));
     }
     panic!("timed out waiting for {what}");
+}
+
+/// The Benchmark tab's Run button.
+fn start_bench(v: &mut DemoApp, cx: &mut gpui_kit::Context<DemoApp>) {
+    v.bench.update(cx, |b, cx| b.start(cx));
 }
 
 fn selected(v: &DemoApp, cx: &App) -> Option<HeadId> {
@@ -213,13 +221,13 @@ async fn escape_leaves_the_url_field_and_stops_only_the_visible_run(cx: &mut Tes
     assert!(app_focused(cx), "Esc hands the keyboard back to the app");
 
     wait(cx, &view, "the default head", &|v, cx| run_model(v, cx).is_some());
-    cx.update(|cx| view.update(cx, |v, cx| v.bench_start(cx)));
+    cx.update(|cx| view.update(cx, |v, cx| start_bench(v, cx)));
     cx.update_window(handle, |_, window, cx| view.update(cx, |v, cx| v.set_tab(TabKind::Classify, window, cx))).unwrap();
     cx.simulate_keystrokes(handle, "escape");
-    assert!(cx.update(|cx| view.read(cx).bench.running()), "Esc on Classify leaves the benchmark running");
+    assert!(cx.update(|cx| view.read(cx).bench.read(cx).running()), "Esc on Classify leaves the benchmark running");
     cx.update_window(handle, |_, window, cx| view.update(cx, |v, cx| v.set_tab(TabKind::Bench, window, cx))).unwrap();
     cx.simulate_keystrokes(handle, "escape");
-    assert!(cx.update(|cx| !view.read(cx).bench.running()), "Esc on the Benchmark tab stops it");
+    assert!(cx.update(|cx| !view.read(cx).bench.read(cx).running()), "Esc on the Benchmark tab stops it");
 }
 
 #[gpui_kit::test]
@@ -250,9 +258,9 @@ async fn switching_model_answers_the_picture_on_screen_with_it(cx: &mut TestAppC
         })
     })
     .unwrap();
-    wait(cx, &view, "x's answer on the selected card", &|v, _| v.demo_answered(&x));
+    wait(cx, &view, "x's answer on the selected card", &|v, cx| v.demo_answered(&x, cx));
     select(cx, &y);
-    wait(cx, &view, "y's answer on the same card", &|v, _| v.demo_answered(&y));
+    wait(cx, &view, "y's answer on the same card", &|v, cx| v.demo_answered(&y, cx));
 }
 
 #[gpui_kit::test]
@@ -276,15 +284,15 @@ async fn switching_tab_answers_its_input_with_the_model_picked_elsewhere(cx: &mu
     on(cx, TabKind::Classify, &|v, _, cx| v.submit_source(inference::fetch::Source::File(picture.clone()), cx));
     wait(cx, &view, "y's answer for the picture", &|v, _| v.classify.answered(&y));
     on(cx, TabKind::Demo, &|v, _, cx| v.demo_classify_selected(cx));
-    wait(cx, &view, "y's answer on the selected card", &|v, _| v.demo_answered(&y));
+    wait(cx, &view, "y's answer on the selected card", &|v, cx| v.demo_answered(&y, cx));
 
     on(cx, TabKind::Classify, &|v, w, cx| v.models.update(cx, |m, cx| m.select_model(x.clone(), w, cx)));
     wait(cx, &view, "x's answer for the picture", &|v, _| v.classify.answered(&x));
     on(cx, TabKind::Demo, &|_, _, _| {});
-    wait(cx, &view, "x's answer on the card shown when the tab opens", &|v, _| v.demo_answered(&x));
+    wait(cx, &view, "x's answer on the card shown when the tab opens", &|v, cx| v.demo_answered(&x, cx));
 
     on(cx, TabKind::Demo, &|v, w, cx| v.models.update(cx, |m, cx| m.select_model(z.clone(), w, cx)));
-    wait(cx, &view, "z's answer on the card", &|v, _| v.demo_answered(&z));
+    wait(cx, &view, "z's answer on the card", &|v, cx| v.demo_answered(&z, cx));
     on(cx, TabKind::Classify, &|_, _, _| {});
     wait(cx, &view, "z's answer for the picture shown when the tab opens", &|v, _| v.classify.answered(&z));
 }
@@ -377,9 +385,9 @@ async fn controls_stay_inside_the_smallest_window(cx: &mut TestAppContext) {
     };
     inside(cx, TabKind::Classify, &|_, _| {});
     inside(cx, TabKind::Demo, &|v, cx| v.demo_run_all(cx));
-    assert!(cx.update(|cx| view.read(cx).demo.running()), "the header was checked during Run all");
-    inside(cx, TabKind::Bench, &|v, cx| v.bench_start(cx));
-    assert!(cx.update(|cx| view.read(cx).bench.running()), "the header was checked during the benchmark");
+    assert!(cx.update(|cx| view.read(cx).demo.running(view.read(cx).stack.read(cx))), "the header was checked during Run all");
+    inside(cx, TabKind::Bench, &|v, cx| start_bench(v, cx));
+    assert!(cx.update(|cx| view.read(cx).bench.read(cx).running()), "the header was checked during the benchmark");
 }
 
 #[gpui_kit::test]
@@ -435,11 +443,11 @@ async fn the_best_model_is_named_when_the_benchmark_ends(cx: &mut TestAppContext
         })
         .unwrap()
     };
-    cx.update(|cx| view.update(cx, |v, cx| v.bench_start(cx)));
-    wait(cx, &view, "the benchmark to be under way", &|v, _| !v.bench.results.is_empty());
-    assert!(cx.update(|cx| view.read(cx).bench.running()));
+    cx.update(|cx| view.update(cx, |v, cx| start_bench(v, cx)));
+    wait(cx, &view, "the benchmark to be under way", &|v, cx| !v.bench.read(cx).results.is_empty());
+    assert!(cx.update(|cx| view.read(cx).bench.read(cx).running()));
     assert_eq!(badges(cx), 0, "no model is called best while the counts are partial");
-    wait(cx, &view, "the benchmark to finish", &|v, _| !v.bench.running());
+    wait(cx, &view, "the benchmark to finish", &|v, cx| !v.bench.read(cx).running());
     assert!(badges(cx) >= 1, "the finished benchmark names the best model");
 }
 
@@ -455,8 +463,9 @@ async fn missing_index_is_reported(cx: &mut TestAppContext) {
 }
 
 /// The Benchmark tab over the shipped exports with onnxruntime on the CPU EP matches the golden classify rows
-/// (top-1, abstain flag, probabilities within 1e-6). Needs the exports and ORT_DYLIB_PATH; about 30 s.
-///     ORT_DYLIB_PATH=... cargo test --release -- --ignored real_benchmark
+/// (top-1, abstain flag, probabilities within 1e-6). Needs the exports, ORT_DYLIB_PATH and the turbojpeg feature,
+/// because the golden rows were decoded with libjpeg-turbo; about 90 s in a debug build.
+///     ORT_DYLIB_PATH=... cargo test -p gpui-demo --features turbojpeg -- --ignored real_benchmark
 #[gpui_kit::test]
 #[ignore]
 async fn real_benchmark_matches_the_golden_rows(cx: &mut TestAppContext) {
@@ -478,20 +487,20 @@ async fn real_benchmark_matches_the_golden_rows(cx: &mut TestAppContext) {
         )
         .unwrap()
     });
-    let wait = |cx: &mut TestAppContext, secs: u64, done: &dyn Fn(&DemoApp) -> bool| {
+    let wait = |cx: &mut TestAppContext, secs: u64, done: &dyn Fn(&DemoApp, &App) -> bool| {
         let t0 = std::time::Instant::now();
         while t0.elapsed() < Duration::from_secs(secs) {
             cx.run_until_parked();
-            if cx.update(|cx| done(view.read(cx))) {
+            if cx.update(|cx| done(view.read(cx), cx)) {
                 return;
             }
             std::thread::sleep(Duration::from_millis(50));
         }
         panic!("timed out");
     };
-    wait(cx, 30, &|v| v.demo.items.iter().all(|i| i.rgb.is_some()));
-    cx.update(|cx| view.update(cx, |v, cx| v.bench_start(cx)));
-    wait(cx, 600, &|v| !v.bench.running());
+    wait(cx, 30, &|v, cx| v.stack.read(cx).items.iter().all(|i| i.rgb.is_some()));
+    cx.update(|cx| view.update(cx, |v, cx| start_bench(v, cx)));
+    wait(cx, 600, &|v, cx| !v.bench.read(cx).running());
     let golden: Vec<serde_json::Value> = serde_json::from_str(
         &std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../results/demo/golden/classify_all.json"))
             .unwrap(),
@@ -499,13 +508,14 @@ async fn real_benchmark_matches_the_golden_rows(cx: &mut TestAppContext) {
     .unwrap();
     cx.update(|cx| {
         let v = view.read(cx);
-        let stack = v.demo.stack().unwrap();
+        let stack = v.stack.read(cx).stack().unwrap();
+        let results = &v.bench.read(cx).results;
         let mut compared = 0;
         for row in &golden {
             let file = Path::new(row["source"].as_str().unwrap()).file_name().unwrap().to_str().unwrap();
             let i = stack.images.iter().position(|im| im.file == file).unwrap();
             let head = HeadId::new(row["model"].as_str().unwrap());
-            let (c, _) = v.bench.results[&(i, head.clone())].as_ref().unwrap();
+            let (c, _) = results[&(i, head.clone())].as_ref().unwrap();
             let label = c.committed().map_or("UNSURE", |k| c.labels.name(k));
             assert_eq!(label, row["label"].as_str().unwrap(), "{file} {head}");
             assert_eq!(c.abstained(), row["unsure"].as_bool().unwrap(), "{file} {head}");

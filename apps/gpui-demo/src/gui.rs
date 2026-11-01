@@ -4,8 +4,10 @@
 //! model picker) · the active tab · Kit `StatusBar` (model / onnxruntime state, shortcuts as `Kbd`).
 //!
 //! One view (`DemoApp`) owns the window's state; each tab's state and rendering lives in its own module
-//! (`classify`, `demo_tab`, `bench`). The models the tabs share (the service, load states, the selected head) are
-//! one entity, `models::Models`. Inference, model loading, image reading and decoding all run in the inference
+//! (`classify`, `demo_tab`, `bench`). The Benchmark tab is an entity of its own (`bench::BenchTab`) with its own
+//! focus, so it handles its keys itself. The models the tabs share (the service, load states, the selected head)
+//! are one entity, `models::Models`, and the demo stack the Demo and Benchmark tabs share is another,
+//! `stack::Stack`. Inference, model loading, image reading and decoding all run in the inference
 //! service (`inference::service`); results come back over channels that GPUI tasks await.
 
 mod bench;
@@ -15,6 +17,7 @@ mod models;
 mod theme;
 mod images;
 mod results;
+mod stack;
 mod widgets;
 
 use std::path::PathBuf;
@@ -68,6 +71,28 @@ actions!(
 const CTX: &str = "GpuiDemo";
 const CTX_NAV: &str = "GpuiDemo && !Input";
 
+/// A status-bar shortcut: its keys and what they do.
+type Hint = (&'static [&'static str], &'static str);
+
+const CLASSIFY_HINTS: &[Hint] =
+    &[(&["ctrl-o"], "Open"), (&["ctrl-v"], "Paste"), (&["ctrl-l"], "URL"), (&["up", "down"], "Recent")];
+const DEMO_HINTS: &[Hint] =
+    &[(&["left", "right"], "Step"), (&["enter"], "Classify"), (&["ctrl-r"], "Run all"), (&["escape"], "Stop")];
+
+/// Redraw `cx`'s view every 250 ms while `busy` holds, for the elapsed-time counters.
+fn tick_while<T: 'static>(cx: &mut Context<T>, busy: impl Fn(&T, &App) -> bool + 'static) {
+    cx.spawn(async move |this, cx| {
+        loop {
+            cx.background_executor().timer(Duration::from_millis(250)).await;
+            let Ok(busy) = this.update(cx, |this, cx| busy(this, cx)) else { break };
+            if busy {
+                this.update(cx, |_, cx| cx.notify()).ok();
+            }
+        }
+    })
+    .detach();
+}
+
 /// Window start-up options (`--tab`, `--autorun`, `--dark`/`--light`).
 #[derive(Debug, Clone, Default)]
 pub struct GuiOptions {
@@ -98,7 +123,7 @@ pub struct DemoApp {
     models: Entity<Models>,
     /// Classify submissions and single Demo classifications
     interactive: Lane,
-    /// Demo "Run all" and the benchmark
+    /// Demo "Run all"
     bulk: Lane,
     /// `--autorun`, waiting for the start-up default
     autorun: bool,
@@ -106,7 +131,8 @@ pub struct DemoApp {
     registry_problems: Vec<String>,
     classify: classify::ClassifyState,
     demo: demo_tab::DemoState,
-    bench: bench::BenchState,
+    stack: Entity<stack::Stack>,
+    bench: Entity<bench::BenchTab>,
     /// textures evicted from the recent list, released on the next frame
     to_drop: Vec<std::sync::Arc<RenderImage>>,
     _subscriptions: Vec<gpui_kit::Subscription>,
@@ -120,18 +146,10 @@ impl DemoApp {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
-        // Tick while something is loading or running (elapsed-time counters, spinners).
-        cx.spawn(async move |this, cx| {
-            loop {
-                cx.background_executor().timer(Duration::from_millis(250)).await;
-                let Ok(busy) = this.update(cx, |this, cx| this.is_busy(cx)) else { break };
-                if busy {
-                    this.update(cx, |_, cx| cx.notify()).ok();
-                }
-            }
-        })
-        .detach();
+        tick_while(cx, Self::is_busy);
         let models = cx.new(|cx| Models::new(service, cx));
+        let stack = cx.new(|cx| stack::Stack::new(demo_dir, cx));
+        let bench = cx.new(|cx| bench::BenchTab::new(models.clone(), stack.clone(), cx));
         let (classify, mut subs) = classify::ClassifyState::new(window, cx);
         subs.push(cx.subscribe(&models, |this, _, ev, cx| this.on_model_event(ev, cx)));
         let m = models.read(cx);
@@ -148,11 +166,11 @@ impl DemoApp {
             registry_problems,
             classify,
             demo: demo_tab::DemoState::default(),
-            bench: bench::BenchState::default(),
+            stack,
+            bench,
             to_drop: Vec::new(),
             _subscriptions: subs,
         };
-        this.demo_init(demo_dir, cx);
         for s in initial {
             if let Some(src) = inference::fetch::Source::parse(&s) {
                 this.submit_source(src, cx);
@@ -161,8 +179,9 @@ impl DemoApp {
         this
     }
 
+    /// Something is loading or running (elapsed-time counters, spinners).
     fn is_busy(&self, cx: &App) -> bool {
-        self.models.read(cx).loading() || self.classify.busy() || self.demo.running() || self.bench.running()
+        self.models.read(cx).loading() || self.classify.busy() || self.demo.running(self.stack.read(cx))
     }
 
     fn on_model_event(&mut self, ev: &ModelEvent, cx: &mut Context<Self>) {
@@ -176,7 +195,7 @@ impl DemoApp {
             ModelEvent::Retrying(heads) => {
                 for h in heads {
                     self.classify_forget_load_failures(h);
-                    self.demo_forget_load_failures(h);
+                    self.demo_forget_load_failures(h, cx);
                 }
             }
         }
@@ -200,8 +219,16 @@ impl DemoApp {
         self.tab = tab;
         // the model may have changed on another tab
         self.follow_model(cx);
-        window.focus(&self.focus, cx);
+        window.focus(&self.active_focus(cx), cx);
         cx.notify();
+    }
+
+    /// What has the keyboard while the tab is on screen: the tab when it is an entity, else this view.
+    fn active_focus(&self, cx: &App) -> FocusHandle {
+        match self.tab {
+            TabKind::Bench => self.bench.read(cx).focus.clone(),
+            TabKind::Classify | TabKind::Demo => self.focus.clone(),
+        }
     }
 
     fn dismiss_problems(&mut self, cx: &mut Context<Self>) {
@@ -362,23 +389,10 @@ impl DemoApp {
         }
         left.push(format!("jpeg: {}", inference::preprocess::JPEG_DECODER));
         let left = left.join(" · ");
-        let hints: Vec<gpui_kit::AnyElement> = match self.tab {
-            TabKind::Classify => vec![
-                widgets::hint(&["ctrl-o"], "Open", cx).into_any_element(),
-                widgets::hint(&["ctrl-v"], "Paste", cx).into_any_element(),
-                widgets::hint(&["ctrl-l"], "URL", cx).into_any_element(),
-                widgets::hint(&["up", "down"], "Recent", cx).into_any_element(),
-            ],
-            TabKind::Demo => vec![
-                widgets::hint(&["left", "right"], "Step", cx).into_any_element(),
-                widgets::hint(&["enter"], "Classify", cx).into_any_element(),
-                widgets::hint(&["ctrl-r"], "Run all", cx).into_any_element(),
-                widgets::hint(&["escape"], "Stop", cx).into_any_element(),
-            ],
-            TabKind::Bench => vec![
-                widgets::hint(&["ctrl-r"], "Run", cx).into_any_element(),
-                widgets::hint(&["escape"], "Stop", cx).into_any_element(),
-            ],
+        let hints = match self.tab {
+            TabKind::Classify => CLASSIFY_HINTS,
+            TabKind::Demo => DEMO_HINTS,
+            TabKind::Bench => bench::HINTS,
         };
         // laid out here rather than in the Kit's left/right slots, which shrink alike and clip the shortcuts
         StatusBar::new().child(
@@ -392,7 +406,7 @@ impl DemoApp {
                         .id("status-hints")
                         .flex_none()
                         .gap_4()
-                        .children(hints)
+                        .children(hints.iter().map(|(keys, label)| widgets::hint(keys, label, cx)))
                         .child(widgets::hint(&["ctrl-m"], "Model", cx))
                         .child(widgets::hint(&["ctrl-t"], "Theme", cx)),
                 ),
@@ -412,7 +426,7 @@ impl Render for DemoApp {
             match self.tab {
                 TabKind::Classify => self.render_classify(window, cx).into_any_element(),
                 TabKind::Demo => self.render_demo(window, cx).into_any_element(),
-                TabKind::Bench => self.render_bench(cx).into_any_element(),
+                TabKind::Bench => self.bench.clone().into_any_element(),
             }
         );
         let m = self.models.read(cx);
@@ -460,8 +474,9 @@ impl Render for DemoApp {
             .on_mouse_down(
                 gpui_kit::MouseButton::Left,
                 cx.listener(|this, _, window, cx| {
-                    if !this.focus.contains_focused(window, cx) {
-                        window.focus(&this.focus, cx);
+                    let focus = this.active_focus(cx);
+                    if !focus.contains_focused(window, cx) {
+                        window.focus(&focus, cx);
                     }
                 }),
             )
@@ -506,20 +521,21 @@ impl DemoApp {
     fn run_all(&mut self, cx: &mut Context<Self>) {
         match self.tab {
             TabKind::Demo => self.demo_run_all(cx),
-            TabKind::Bench => self.bench_start(cx),
+            TabKind::Bench => self.bench.update(cx, |b, cx| b.start(cx)),
             TabKind::Classify => {}
         }
     }
 
     /// Esc steps back one level: out of a text field first, then it stops the visible tab's run.
     fn cancel(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if !self.focus.is_focused(window) {
-            return window.focus(&self.focus, cx);
+        let focus = self.active_focus(cx);
+        if !focus.is_focused(window) {
+            return window.focus(&focus, cx);
         }
         match self.tab {
             TabKind::Demo => self.demo_cancel(cx),
-            TabKind::Bench => self.bench_cancel(cx),
-            TabKind::Classify => {}
+            // Classify has no run, and the Benchmark tab handles Esc itself
+            TabKind::Classify | TabKind::Bench => {}
         }
     }
 }
@@ -610,7 +626,7 @@ pub fn run(opts: Settings, demo_dir: Option<PathBuf>, gui: GuiOptions, initial: 
             Ok((handle, view)) => {
                 handle
                     .update(cx, |_, window, cx| {
-                        let focus = view.read(cx).focus.clone();
+                        let focus = view.read(cx).active_focus(cx);
                         window.focus(&focus, cx);
                     })
                     .ok();

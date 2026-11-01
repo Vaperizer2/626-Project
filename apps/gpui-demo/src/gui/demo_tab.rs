@@ -1,8 +1,7 @@
 //! Demo tab: the curated stack as a sectioned thumbnail grid, a detail pane with the result against the true
 //! label and the photo's attribution, "Run all" with progress and an accuracy summary, keyboard stepping.
 
-use std::path::PathBuf;
-use std::sync::Arc;
+use std::collections::HashMap;
 
 use futures::StreamExt;
 use gpui_kit::component::{
@@ -17,16 +16,15 @@ use gpui_kit::component::{
     v_flex,
 };
 use gpui_kit::{
-    AnyElement, Context, FontWeight, ObjectFit, RenderImage, ScrollHandle, SharedString, TestSupportExt as _, Window,
-    div, img, prelude::*, px,
+    AnyElement, Context, FontWeight, ObjectFit, ScrollHandle, SharedString, TestSupportExt as _, Window, div, img,
+    prelude::*, px,
 };
-use image::RgbImage;
 
-use super::images;
-use super::results::{HeadResult, Results};
+use super::results::HeadResult;
+use super::stack::{Item, Stack};
 use super::{DemoApp, theme, widgets};
-use crate::demo::{DemoStack, Verdict};
-use inference::service::{ImageInput, Priority, RequestHandle, Ticket, Update};
+use crate::demo::Verdict;
+use inference::service::{Priority, RequestHandle, Ticket, Update};
 use inference::manifest::HeadId;
 
 /// Cards are at least this wide; the grid fits as many columns as the window allows and widens them evenly.
@@ -34,17 +32,6 @@ const CARD_MIN_W: f32 = 176.;
 const GRID_GAP: f32 = 12.;
 const GRID_PAD: f32 = 16.;
 const DETAIL_W: f32 = 440.;
-
-#[derive(Default)]
-pub struct Item {
-    pub thumb: Option<Arc<RenderImage>>,
-    pub full: Option<Arc<RenderImage>>,
-    pub rgb: Option<Arc<RgbImage>>,
-    pub load_error: Option<String>,
-    pub results: Results,
-    /// the latest single classification of this image (a new one replaces and cancels it)
-    single: Option<Ticket>,
-}
 
 /// "Run all": the whole stack was submitted at once; dropping the run cancels what has not run yet.
 struct RunState {
@@ -55,52 +42,48 @@ struct RunState {
 }
 
 pub struct DemoState {
-    pub stack: Option<Result<DemoStack, String>>,
-    pub items: Vec<Item>,
     pub selected: usize,
     run: Option<RunState>,
     next_token: u64,
     scroll: ScrollHandle,
+    /// the latest single classification of each image (a new one replaces and cancels it)
+    single: HashMap<usize, Ticket>,
 }
 
 impl Default for DemoState {
     fn default() -> Self {
-        Self { stack: None, items: Vec::new(), selected: 0, run: None, next_token: 1, scroll: ScrollHandle::new() }
+        Self { selected: 0, run: None, next_token: 1, scroll: ScrollHandle::new(), single: HashMap::new() }
     }
 }
 
 impl DemoState {
-    pub fn running(&self) -> bool {
-        self.run.is_some() || self.items.iter().any(|i| i.results.working())
+    pub fn running(&self, stack: &Stack) -> bool {
+        self.run.is_some() || stack.working()
     }
+}
 
-    pub fn stack(&self) -> Option<&DemoStack> {
-        self.stack.as_ref().and_then(|s| s.as_ref().ok())
-    }
+/// Child index of image `i` in the flattened grid (one header element precedes each section).
+fn child_index(stack: &Stack, i: usize) -> usize {
+    let Some(s) = stack.stack() else { return i };
+    let sec = s.sections.iter().position(|x| *x == s.images[i].section).unwrap_or(0);
+    i + sec + 1
+}
 
-    /// Child index of image `i` in the flattened grid (one header element precedes each section).
-    fn child_index(&self, i: usize) -> usize {
-        let Some(s) = self.stack() else { return i };
-        let sec = s.sections.iter().position(|x| *x == s.images[i].section).unwrap_or(0);
-        i + sec + 1
-    }
-
-    /// (correct, judged, unsure) for `model` over the images classified so far.
-    pub fn summary(&self, model: Option<&HeadId>) -> (usize, usize, usize) {
-        let (Some(s), Some(model)) = (self.stack(), model) else { return (0, 0, 0) };
-        let (mut ok, mut n, mut unsure) = (0, 0, 0);
-        for (im, it) in s.images.iter().zip(&self.items) {
-            if let Some(HeadResult::Done(c, ..)) = it.results.get(model) {
-                n += 1;
-                match im.judge(c.best_label(), c.abstained()) {
-                    Verdict::Correct => ok += 1,
-                    Verdict::Unsure => unsure += 1,
-                    Verdict::Wrong => {}
-                }
+/// (correct, judged, unsure) for `model` over the images classified so far.
+fn summary(stack: &Stack, model: Option<&HeadId>) -> (usize, usize, usize) {
+    let (Some(s), Some(model)) = (stack.stack(), model) else { return (0, 0, 0) };
+    let (mut ok, mut n, mut unsure) = (0, 0, 0);
+    for (im, it) in s.images.iter().zip(&stack.items) {
+        if let Some(HeadResult::Done(c, ..)) = it.results.get(model) {
+            n += 1;
+            match im.judge(c.best_label(), c.abstained()) {
+                Verdict::Correct => ok += 1,
+                Verdict::Unsure => unsure += 1,
+                Verdict::Wrong => {}
             }
         }
-        (ok, n, unsure)
     }
+    (ok, n, unsure)
 }
 
 /// Item `it`'s result for the selected head `model`.
@@ -109,64 +92,27 @@ fn selected_result<'a>(model: Option<&HeadId>, it: &'a Item) -> Option<&'a HeadR
 }
 
 impl DemoApp {
-    pub(super) fn demo_init(&mut self, dir: Option<PathBuf>, cx: &mut Context<Self>) {
-        let stack = crate::demo::locate(dir.as_deref()).and_then(|d| DemoStack::load(&d)).map_err(|e| format!("{e:#}"));
-        if let Ok(s) = &stack {
-            eprintln!("[gpui-demo] demo stack: {} images in {}", s.images.len(), s.dir.display());
-            self.demo.items = (0..s.images.len()).map(|_| Item::default()).collect();
-            let paths: Vec<PathBuf> = (0..s.images.len()).map(|i| s.path(i)).collect();
-            let mut rx = images::load_thumbnails(paths);
-            cx.spawn(async move |this, cx| {
-                while let Some((i, r)) = rx.next().await {
-                    let alive = this
-                        .update(cx, |this, cx| {
-                            if let Some(it) = this.demo.items.get_mut(i) {
-                                match r {
-                                    Ok(d) => {
-                                        it.thumb = Some(d.thumb);
-                                        it.full = Some(d.full);
-                                        it.rgb = Some(d.rgb);
-                                    }
-                                    Err(e) => it.load_error = Some(e),
-                                }
-                            }
-                            cx.notify();
-                        })
-                        .is_ok();
-                    if !alive {
-                        break;
-                    }
-                }
-            })
-            .detach();
-        } else if let Err(e) = &stack {
-            eprintln!("[gpui-demo] demo stack unavailable: {e}");
-        }
-        self.demo.stack = Some(stack);
-    }
-
     /// Submit image `i` for `model`; its card shows the result. Bulk submissions count towards the running
     /// "Run all" with `token`.
     fn demo_submit(&mut self, i: usize, model: HeadId, priority: Priority, cx: &mut Context<Self>) -> Option<(u64, Ticket)> {
-        let path = self.demo.stack()?.path(i);
+        let input = self.stack.read(cx).input(i)?;
         let token = self.demo.next_token;
         self.demo.next_token += 1;
-        let it = self.demo.items.get_mut(i)?;
-        let input = match &it.rgb {
-            Some(rgb) => ImageInput::Decoded(rgb.clone()),
-            None => ImageInput::Source(inference::fetch::Source::File(path)),
-        };
         let lane = if priority == Priority::Bulk { &self.bulk } else { &self.interactive };
         let RequestHandle { updates: mut rx, ticket } = lane.submit(input, std::slice::from_ref(&model), None);
-        it.results.start(model.clone(), token);
+        self.stack.update(cx, |s, _| s.items[i].results.start(model.clone(), token));
         cx.spawn(async move |this, cx| {
             while let Some(u) = rx.next().await {
                 let alive = this
                     .update(cx, |this, cx| {
-                        let Some(it) = this.demo.items.get_mut(i) else { return };
                         let finished = matches!(u, Update::Done(_));
-                        it.results.apply(&model, token, u);
-                        if finished {
+                        let applied = this.stack.update(cx, |s, cx| {
+                            let Some(it) = s.items.get_mut(i) else { return false };
+                            it.results.apply(&model, token, u);
+                            cx.notify();
+                            true
+                        });
+                        if applied && finished {
                             this.demo_progress(token, i, cx);
                         }
                         cx.notify();
@@ -184,42 +130,46 @@ impl DemoApp {
 
     /// The selected card has `head`'s answer.
     #[cfg(test)]
-    pub(super) fn demo_answered(&self, head: &HeadId) -> bool {
-        matches!(self.demo.items.get(self.demo.selected).and_then(|it| it.results.get(head)), Some(HeadResult::Done(..)))
+    pub(super) fn demo_answered(&self, head: &HeadId, cx: &gpui_kit::App) -> bool {
+        let items = &self.stack.read(cx).items;
+        matches!(items.get(self.demo.selected).and_then(|it| it.results.get(head)), Some(HeadResult::Done(..)))
     }
 
     /// After a model switch: a card on screen that another model answered gets the selected model's answer too.
     pub(super) fn demo_follow_model(&mut self, cx: &mut Context<Self>) {
-        let Some(it) = self.demo.items.get(self.demo.selected) else { return };
+        let Some(it) = self.stack.read(cx).items.get(self.demo.selected) else { return };
         if !it.results.is_empty() && selected_result(self.models.read(cx).selected(), it).is_none() {
             self.demo_classify_selected(cx);
         }
     }
 
     pub(super) fn demo_classify_selected(&mut self, cx: &mut Context<Self>) {
-        if self.demo.stack().is_none() {
+        let stack = self.stack.read(cx);
+        if stack.stack().is_none() {
             return;
         }
         let i = self.demo.selected;
         let Some(model) = self.models.read(cx).run_model() else { return };
-        if matches!(self.demo.items.get(i).and_then(|it| it.results.get(&model)), Some(HeadResult::Working(_))) {
+        if matches!(stack.items.get(i).and_then(|it| it.results.get(&model)), Some(HeadResult::Working(_))) {
             return;
         }
         if let Some((_, ticket)) = self.demo_submit(i, model, Priority::Interactive, cx) {
-            self.demo.items[i].single = Some(ticket);
+            self.demo.single.insert(i, ticket);
         }
     }
 
     /// Submit the whole stack at once; the graph takes the images as fast as it can (batched when it allows).
     pub(super) fn demo_run_all(&mut self, cx: &mut Context<Self>) {
-        let Some(n) = self.demo.stack().map(|s| s.images.len()) else { return };
+        let Some(n) = self.stack.read(cx).stack().map(|s| s.images.len()) else { return };
         if self.demo.run.is_some() {
             return self.demo_cancel(cx);
         }
         let Some(model) = self.models.read(cx).run_model() else { return };
-        for it in &mut self.demo.items {
-            it.results.clear(&model);
-        }
+        self.stack.update(cx, |s, _| {
+            for it in &mut s.items {
+                it.results.clear(&model);
+            }
+        });
         let token = self.demo.next_token;
         let tickets = (0..n).filter_map(|i| self.demo_submit(i, model.clone(), Priority::Bulk, cx)).map(|t| t.1).collect();
         // the run counts the requests submitted from `token` on
@@ -238,15 +188,17 @@ impl DemoApp {
             self.demo.run = None;
         }
         self.demo.selected = i;
-        let ci = self.demo.child_index(i);
+        let ci = child_index(self.stack.read(cx), i);
         self.demo.scroll.scroll_to_item(ci);
         cx.notify();
     }
 
-    pub(super) fn demo_forget_load_failures(&mut self, model: &HeadId) {
-        for it in &mut self.demo.items {
-            it.results.forget_load_failure(model);
-        }
+    pub(super) fn demo_forget_load_failures(&mut self, model: &HeadId, cx: &mut Context<Self>) {
+        self.stack.update(cx, |s, _| {
+            for it in &mut s.items {
+                it.results.forget_load_failure(model);
+            }
+        });
     }
 
     pub(super) fn demo_cancel(&mut self, cx: &mut Context<Self>) {
@@ -256,12 +208,13 @@ impl DemoApp {
     }
 
     pub(super) fn demo_step(&mut self, delta: isize, _window: &mut Window, cx: &mut Context<Self>) {
-        let n = self.demo.items.len();
+        let stack = self.stack.read(cx);
+        let n = stack.items.len();
         if n == 0 {
             return;
         }
         self.demo.selected = (self.demo.selected as isize + delta).rem_euclid(n as isize) as usize;
-        let ci = self.demo.child_index(self.demo.selected);
+        let ci = child_index(stack, self.demo.selected);
         self.demo.scroll.scroll_to_item(ci);
         cx.notify();
     }
@@ -269,24 +222,20 @@ impl DemoApp {
     // ------------------------------------------------------------------------------------------ render
     pub(super) fn render_demo(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let t = cx.theme();
-        match &self.demo.stack {
-            None => return div().into_any_element(),
-            Some(Err(e)) => {
-                return div()
-                    .p_6()
-                    .child(
-                        Alert::warning("demo-missing", SharedString::from(e.clone()))
-                            .title("Demo stack not found")
-                            .icon(IconName::Info),
-                    )
-                    .child(div().pt_3().text_sm().text_color(t.muted_foreground).child(format!(
-                        "Run the app from inside the repository, or pass --demo-dir apps/gpui-demo/demo_stack \
-                         (or set {}_DEMO_DIR).",
-                        crate::app::ENV_PREFIX
-                    )))
-                    .into_any_element();
-            }
-            Some(Ok(_)) => {}
+        if let Some(e) = self.stack.read(cx).error() {
+            return div()
+                .p_6()
+                .child(
+                    Alert::warning("demo-missing", SharedString::from(e.to_string()))
+                        .title("Demo stack not found")
+                        .icon(IconName::Info),
+                )
+                .child(div().pt_3().text_sm().text_color(t.muted_foreground).child(format!(
+                    "Run the app from inside the repository, or pass --demo-dir apps/gpui-demo/demo_stack \
+                     (or set {}_DEMO_DIR).",
+                    crate::app::ENV_PREFIX
+                )))
+                .into_any_element();
         }
         v_flex()
             .size_full()
@@ -302,12 +251,13 @@ impl DemoApp {
             .into_any_element()
     }
 
-    fn render_demo_header(&self, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render_demo_header(&self, cx: &Context<Self>) -> impl IntoElement {
         let t = cx.theme();
         let r = theme::roles(cx);
-        let n = self.demo.items.len();
+        let stack = self.stack.read(cx);
+        let n = stack.items.len();
         let models = self.models.read(cx);
-        let (ok, judged, _) = self.demo.summary(models.selected());
+        let (ok, judged, _) = summary(stack, models.selected());
         let short = models.selected().map(|m| models.short(m)).unwrap_or_default();
         let running = self.demo.run.as_ref();
         let progress = running.map(|run| {
@@ -357,18 +307,19 @@ impl DemoApp {
         )
     }
 
-    fn render_grid(&self, window: &Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render_grid(&self, window: &Window, cx: &Context<Self>) -> impl IntoElement {
         let muted_fg = cx.theme().muted_foreground;
         // even columns: as many as fit at CARD_MIN_W, sharing the surplus (scrollbar gutter reserved)
         let avail = f32::from(window.viewport_size().width) - DETAIL_W - 2.0 * GRID_PAD - 12.0;
         let cols = ((avail + GRID_GAP) / (CARD_MIN_W + GRID_GAP)).floor().max(1.0);
         let card_w = ((avail - GRID_GAP * (cols - 1.0)) / cols).floor().max(CARD_MIN_W);
-        let Some(stack) = self.demo.stack() else { return div().into_any_element() };
-        let model = self.models.read(cx).selected().cloned();
+        let items = &self.stack.read(cx).items;
+        let Some(stack) = self.stack.read(cx).stack() else { return div().into_any_element() };
+        let model = self.models.read(cx).selected();
         let mut children: Vec<AnyElement> = Vec::new();
         for (si, section) in stack.sections.iter().enumerate() {
             let idx = stack.section_indices(section);
-            let (ok, n) = idx.iter().fold((0, 0), |(ok, n), &i| match selected_result(model.as_ref(), &self.demo.items[i]) {
+            let (ok, n) = idx.iter().fold((0, 0), |(ok, n), &i| match selected_result(model, &items[i]) {
                 Some(HeadResult::Done(c, ..)) => {
                     (ok + usize::from(stack.images[i].judge(c.best_label(), c.abstained()) == Verdict::Correct), n + 1)
                 }
@@ -417,13 +368,13 @@ impl DemoApp {
             .into_any_element()
     }
 
-    fn render_card(&self, i: usize, card_w: f32, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render_card(&self, i: usize, card_w: f32, cx: &Context<Self>) -> impl IntoElement {
         let thumb_h = (card_w * 0.72).round();
         let t = cx.theme();
         let r = theme::roles(cx);
-        let stack = self.demo.stack().expect("stack loaded");
+        let stack = self.stack.read(cx).stack().expect("stack loaded");
         let im = &stack.images[i];
-        let it = &self.demo.items[i];
+        let it = &self.stack.read(cx).items[i];
         let sel = self.demo.selected == i;
         let result = selected_result(self.models.read(cx).selected(), it);
         let verdict = match result {
@@ -505,13 +456,13 @@ impl DemoApp {
             )
     }
 
-    fn render_detail(&self, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render_detail(&self, cx: &Context<Self>) -> impl IntoElement {
         let t = cx.theme();
         let r = theme::roles(cx);
-        let stack = self.demo.stack().expect("stack loaded");
+        let stack = self.stack.read(cx).stack().expect("stack loaded");
         let i = self.demo.selected.min(stack.images.len() - 1);
         let im = &stack.images[i];
-        let it = &self.demo.items[i];
+        let it = &self.stack.read(cx).items[i];
         let picture = div().w_full().h(px(280.)).rounded(t.radius_lg).bg(r.canvas).p_2().overflow_hidden().child(
             match &it.full {
                 Some(full) => img(full.clone()).size_full().object_fit(ObjectFit::Contain).into_any_element(),
