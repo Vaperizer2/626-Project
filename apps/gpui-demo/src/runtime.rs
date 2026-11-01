@@ -438,20 +438,22 @@ impl Graph for Engine {
         let onnx = &self.manifest.graph;
         let session = &mut self.session;
         let name = self.manifest.input.name.as_str();
-        // a watcher stops the run once nobody waits for it (RunOptions::terminate); polled every 5 ms
+        // a watcher stops the run once nobody waits for it (RunOptions::terminate); polled every 5 ms, and woken when
+        // the run ends: the scope joins it, and a plain sleep made every run wait out the rest of its 5 ms
         std::thread::scope(|scope| {
-            scope.spawn(|| {
+            let watcher = scope.spawn(|| {
                 while !finished.load(Ordering::Acquire) {
                     if !alive() {
                         stopped.store(true, Ordering::Release);
                         let _ = opts.terminate();
                         return;
                     }
-                    std::thread::sleep(Duration::from_millis(5));
+                    std::thread::park_timeout(Duration::from_millis(5));
                 }
             });
             let res = session.run_with_options(ort::inputs![name => input], &opts);
             finished.store(true, Ordering::Release);
+            watcher.thread().unpark();
             if stopped.load(Ordering::Acquire) {
                 return Err(RunFailure::Stopped);
             }
