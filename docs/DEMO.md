@@ -114,8 +114,28 @@ image is slower (warm-up). Source: results/demo/demo_parity.json and results/dem
 | PyTorch CUDA (`--backend torch`, torch 2.11 cu128) | 80 | 270 |
 
 Model load took 0.7 s for ONNX (file already in the page cache) and 4.5 s for torch. On the laptop expect CPU speed
-to depend on its core count. The RTX 3060 Laptop GPU has not been measured, but the fp32 weights (1.6 GB) fit
-comfortably in its memory.
+to depend on its core count.
+
+### The desktop app on the laptop GPU (RTX 3060 Laptop, 2026-11-01)
+
+The GPUI app (`apps/gpui-demo`) runs Deployed on CUDA and **Fast** on TensorRT. Fast is the deployed recipe on the
+speed track's `compose_int8_res308` backbone: 308 px input and INT8 weights (SmoothQuant), with the fused head and
+the temperature in the graph (`exports/fast/`). On the development folds its cross-validated accuracy is 0.8268, the
+same as Deployed's (`exports/fast/fit_report.json`; the sealed test is spent, so there is no test number). Numbers
+through the app's inference service, onnxruntime 1.31.1, TensorRT 10.16.1, `gpui-demo bench` and `classify`
+(medians over 5 alternated rounds; `results/demo/gpui_legion_speed.json`):
+
+| app on legion | ms / image, end to end | of which the model run | pictures / s, streamed | model ready at start-up |
+|---|---|---|---|---|
+| Fast, TensorRT (INT8 + fp16) | 14.4 | 12.1 | 78 | 1.0 to 1.5 s (46 s on first use) |
+| Deployed, onnxruntime CUDA | 113.0 | 110.2 | 9.0 | 1.1 s |
+
+Fast's engine is built on first use (46 s, peak RAM about 6 GB), then cached in
+`~/.cache/component-classifier/tensorrt/`. The app's Fast agrees exactly with Python onnxruntime on the same execution
+provider (530 images: the demo photos and development fold 0; `results/demo/gpui_fast_parity.json`). TensorRT and the
+CPU provider differ slightly for this INT8 graph (top-1 agreement 99.4 %), so Fast on a machine without TensorRT is a
+close but not identical model. How to install the GPU runtime and run it:
+[the app README](../apps/gpui-demo/README.md#gpu-cuda-and-tensorrt).
 
 ### Using the laptop GPU (onnxruntime-gpu)
 
@@ -231,7 +251,9 @@ uv run python -m pytest -q tests/test_demo.py
 > (`cd apps/gpui-demo && cargo run --release --locked`). It implements exactly the contract below; its headless
 > `classify` mode matches the Python pipeline on 64/64 dev images (`results/demo/gpui_parity.json`). The window is
 > built with GPUI Kit and has Classify, Demo (a curated, credited stack of web-holdout photos) and Benchmark tabs. It
-> can switch between the deployed model and the report's models A, B and C (`--features turbojpeg` recommended).
+> can switch between the deployed model, the report's models A, B and C, and Fast (`--features turbojpeg`
+> recommended). The app reads each export through its `model.json` manifest (files and checksums, input and
+> preprocessing, heads, execution providers), so the contract below is what `exports/final/model.json` encodes.
 
 The export folder is a self-contained contract. Any onnxruntime binding (Rust `ort`, C++, C#) can reproduce the demo
 from these three files:
