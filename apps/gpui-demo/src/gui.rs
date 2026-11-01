@@ -106,6 +106,16 @@ impl ModelState {
     }
 }
 
+/// Where the selected model came from.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Pick {
+    /// the start-up probe has not picked the default yet: the fallback is shown, nothing runs on it
+    Probing,
+    Default,
+    /// the user picked; the start-up default no longer applies
+    User,
+}
+
 pub struct DemoApp {
     focus: FocusHandle,
     tab: TabKind,
@@ -116,8 +126,9 @@ pub struct DemoApp {
     bulk: Lane,
     /// selected head for Classify and Demo (none only when no model is available)
     model: Option<HeadId>,
-    /// the user picked a model, so the start-up default no longer applies
-    model_chosen: bool,
+    pick: Pick,
+    /// `--autorun`, waiting for the start-up default
+    autorun: bool,
     graphs: HashMap<GraphId, GraphState>,
     /// the preferred default heads passed over at start-up, and why
     passed_over: Vec<(HeadId, String)>,
@@ -170,7 +181,8 @@ impl DemoApp {
             bulk: inference.lane(Priority::Bulk, Policy::Keep),
             inference,
             model,
-            model_chosen: false,
+            pick: Pick::Probing,
+            autorun: false,
             graphs: HashMap::new(),
             passed_over: Vec::new(),
             registry_error,
@@ -206,11 +218,16 @@ impl DemoApp {
                 self.graphs.insert(g, st);
             }
             ServiceEvent::Default { head, passed_over } => {
-                if !self.model_chosen {
+                if self.pick != Pick::User {
                     self.inference.preload(&head);
                     self.model = Some(head);
+                    self.pick = Pick::Default;
                 }
                 self.passed_over = passed_over;
+                self.follow_model(cx);
+                if std::mem::take(&mut self.autorun) {
+                    self.run_all(cx);
+                }
             }
         }
         cx.notify();
@@ -271,13 +288,23 @@ impl DemoApp {
             self.inference.preload(&k);
         }
         self.model = Some(k);
-        self.model_chosen = true;
+        self.pick = Pick::User;
+        self.follow_model(cx);
+        cx.notify();
+    }
+
+    /// The model to run: the selected one, once the start-up default is known or the user picked.
+    fn run_model(&self) -> Option<HeadId> {
+        if self.pick == Pick::Probing { None } else { self.model.clone() }
+    }
+
+    /// The input on screen gets the selected model's answer.
+    fn follow_model(&mut self, cx: &mut Context<Self>) {
         match self.tab {
             TabKind::Classify => self.classify_follow_model(cx),
             TabKind::Demo => self.demo_follow_model(cx),
             TabKind::Bench => {}
         }
-        cx.notify();
     }
 
     fn next_model(&mut self, _: &NextModel, window: &mut Window, cx: &mut Context<Self>) {
@@ -674,9 +701,7 @@ pub fn run(opts: ModelOptions, demo_dir: Option<PathBuf>, gui: GuiOptions, initi
             cx.new(|cx| {
                 let mut app = DemoApp::new(service, demo_dir, initial, window, cx);
                 app.tab = gui.tab;
-                if gui.autorun {
-                    app.run_all(cx);
-                }
+                app.autorun = gui.autorun;
                 app
             })
         });

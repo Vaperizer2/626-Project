@@ -132,7 +132,7 @@ impl DemoApp {
     /// The selected entry gets the selected model's answer when it has none yet: on submission, after a model
     /// switch, and when another entry is selected.
     pub(super) fn classify_follow_model(&mut self, cx: &mut Context<Self>) {
-        let (Some(model), Some(ix)) = (self.model.clone(), self.classify.selected_ix()) else { return };
+        let (Some(model), Some(ix)) = (self.run_model(), self.classify.selected_ix()) else { return };
         let c = &mut self.classify;
         let e = &mut c.entries[ix];
         if e.results.get(&model).is_some() {

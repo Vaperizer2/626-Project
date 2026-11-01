@@ -15,7 +15,7 @@ use gpui_kit::{
 
 use super::{DemoApp, TabKind};
 use crate::inference::Inference;
-use crate::inference::fake::{FakeLoader, registry};
+use crate::inference::fake::{FakeLoader, Seen, registry};
 use crate::registry::Registry;
 
 fn stack_dir() -> PathBuf {
@@ -40,14 +40,16 @@ fn open(cx: &mut TestAppContext, registry: Arc<Registry>) -> (AnyWindowHandle, E
 }
 
 fn open_with(cx: &mut TestAppContext, registry: Arc<Registry>, loader: FakeLoader) -> (AnyWindowHandle, Entity<DemoApp>) {
-    open_sized(cx, registry, loader, size(px(1360.), px(860.)))
+    open_sized(cx, registry, loader, size(px(1360.), px(860.)), Vec::new())
 }
 
+/// The window over `registry` and `loader`, `window` big, given `initial` pictures as on the command line.
 fn open_sized(
     cx: &mut TestAppContext,
     registry: Arc<Registry>,
     loader: FakeLoader,
     window: Size<Pixels>,
+    initial: Vec<String>,
 ) -> (AnyWindowHandle, Entity<DemoApp>) {
     // The app's inference and thumbnail threads are real OS threads that wake GPUI tasks; tell the
     // deterministic test scheduler that this is expected.
@@ -63,7 +65,7 @@ fn open_sized(
         gpui_kit::open_window(
             WindowOptions { window_bounds: Some(WindowBounds::Windowed(bounds)), ..Default::default() },
             cx,
-            |window, cx| cx.new(|cx| DemoApp::new(service, Some(stack_dir()), Vec::new(), window, cx)),
+            |window, cx| cx.new(|cx| DemoApp::new(service, Some(stack_dir()), initial, window, cx)),
         )
         .expect("open test window")
     });
@@ -201,7 +203,7 @@ async fn escape_leaves_the_url_field_and_stops_only_the_visible_run(cx: &mut Tes
     cx.simulate_keystrokes(handle, "escape");
     assert!(app_focused(cx), "Esc hands the keyboard back to the app");
 
-    wait(cx, &view, "the default head", &|v| v.model.is_some());
+    wait(cx, &view, "the default head", &|v| v.run_model().is_some());
     cx.update(|cx| view.update(cx, |v, cx| v.bench_start(cx)));
     cx.update_window(handle, |_, window, cx| view.update(cx, |v, cx| v.set_tab(TabKind::Classify, window, cx))).unwrap();
     cx.simulate_keystrokes(handle, "escape");
@@ -274,8 +276,9 @@ async fn controls_stay_inside_the_smallest_window(cx: &mut TestAppContext) {
         return;
     }
     let loader = FakeLoader { run: Duration::from_millis(40), ..Default::default() };
-    let (handle, view) = open_sized(cx, registry(&[("x", 1), ("y", 1)], &["x", "y"]), loader, size(px(1024.), px(640.)));
-    wait(cx, &view, "the default head", &|v| v.model.is_some());
+    let small = size(px(1024.), px(640.));
+    let (handle, view) = open_sized(cx, registry(&[("x", 1), ("y", 1)], &["x", "y"]), loader, small, Vec::new());
+    wait(cx, &view, "the default head", &|v| v.run_model().is_some());
     let inside = |cx: &mut TestAppContext, tab: TabKind, start: &dyn Fn(&mut DemoApp, &mut gpui_kit::Context<DemoApp>)| {
         cx.update_window(handle, |_, window, cx| {
             view.update(cx, |v, cx| {
@@ -297,6 +300,23 @@ async fn controls_stay_inside_the_smallest_window(cx: &mut TestAppContext) {
     assert!(cx.update(|cx| view.read(cx).demo.running()), "the header was checked during Run all");
     inside(cx, TabKind::Bench, &|v, cx| v.bench_start(cx));
     assert!(cx.update(|cx| view.read(cx).bench.running()), "the header was checked during the benchmark");
+}
+
+#[gpui_kit::test]
+async fn pictures_given_at_start_wait_for_the_default_model(cx: &mut TestAppContext) {
+    if !stack_dir().join(crate::demo::STACK_FILE).is_file() {
+        return;
+    }
+    let loader = FakeLoader::default();
+    let ran = loader.seen.clone();
+    let picture = stack_dir().join("01_battery_holder.jpg").display().to_string();
+    // y is the default once the start-up probe passes it; x, the last default, is only the fallback
+    let reg = registry(&[("x", 1), ("y", 1)], &["y", "x"]);
+    let (_handle, view) = open_sized(cx, reg, loader, size(px(1360.), px(860.)), vec![picture]);
+    let y = crate::manifest::HeadId::new("y");
+    wait(cx, &view, "y's answer for the picture", &|v| v.classify.answered(&y));
+    let fallback_runs = ran.lock().unwrap().iter().filter(|s| matches!(s, Seen::Started { graph, .. } if graph == "x")).count();
+    assert_eq!(fallback_runs, 0, "the fallback model never ran");
 }
 
 #[gpui_kit::test]
