@@ -96,7 +96,7 @@ class Costs:
     A: dict[int, float]
     M: dict[int, float]
     G: dict[int, float]
-    fixed: float
+    fixed: dict
     harness: dict
 
     @classmethod
@@ -123,7 +123,7 @@ class Costs:
         raise KeyError(f"no measured token count shares the wave class of {t}")
 
     def ms(self, s: Schedule) -> float:
-        tot = self.fixed
+        tot = self.fixed["f0"] + self.fixed["f1"] * s.mlp_tokens()[-1]
         for b, (ti, to) in enumerate(zip(s.attn_tokens(), s.mlp_tokens())):
             tot += self.at(self.A, ti) + self.at(self.M, to) + (self.at(self.G, ti) if ti != to else 0.0)
         return tot
