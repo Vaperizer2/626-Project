@@ -252,18 +252,26 @@ with glibc 2.28 or newer (Ubuntu 20.04+, Debian 10+, Fedora 29+, RHEL 8+, Arch):
 
 ```
 dist/component-classifier-linux-x86_64/       2.2 GB: binary, CPU onnxruntime, models A/B/C/Deployed/Fast, demo_stack,
-                                              run.sh, run-nixos.sh, gpu-env.sh, README.txt (for the recipient),
-                                              LICENSES/, SHA256SUMS
+                                              run.sh, run-nixos.sh, app.env, gpu-env.sh, README.txt (for the
+                                              recipient), LICENSES/, SHA256SUMS
 dist/component-classifier-linux-x86_64.tar.gz (+ .sha256; split into 1900 MiB .part-* files if it is larger)
 ```
 
 ```bash
-# one-time build tools: cargo-zigbuild and a zig it supports (0.14 from PyPI), plus cmake + nasm
+# one-time build tools: cargo-zigbuild, zig 0.14 from PyPI, cmake + nasm
 cargo install cargo-zigbuild --locked
 uv venv ~/.local/share/zig-venv && uv pip install --python ~/.local/share/zig-venv ziglang==0.14.1
-export CARGO_ZIGBUILD_PYTHON_PATH=~/.local/share/zig-venv/bin/python
-apps/gpui-demo/scripts/package_linux.sh            # GLIBC=2.31, PART_MIB=1000, --skip-build, --no-archive
+export CARGO_ZIGBUILD_ZIG_PATH=$(ls -d ~/.local/share/zig-venv/lib/python3.*/site-packages/ziglang)/zig
+ORT_LIB=<CPU libonnxruntime.so.1.31.0> apps/gpui-demo/scripts/package_linux.sh   # GLIBC=2.31, PART_MIB=1000, --skip-build, --no-archive
 ```
+
+Use zig 0.14 even when a newer zig is installed. `CARGO_ZIGBUILD_ZIG_PATH` makes cargo-zigbuild take it over a `zig`
+on `PATH`. Arch's zig 0.17 compiles everything, but its linker rejects the system `/usr/lib/libxkbcommon.so`, which
+needs `GLIBC_2.33` and `GLIBC_2.38` symbols that the 2.28 stubs lack (2026-11-01, cargo-zigbuild 0.24).
+
+The bundle's name, binary and environment variables come from `packaging/app.env` (`APP_NAME`, `APP_TITLE`,
+`ENV_PREFIX`, `BIN`), which the script and both launchers source and which ships in the bundle. Keep it in step with
+`src/app.rs`.
 
 How the bundle stays portable:
 
@@ -283,12 +291,15 @@ How the bundle stays portable:
   text system at start-up (`theme::register_bundled_fonts`), so the type hierarchy is the same on machines
   whose UI font is a variable font or that lack Noto Sans.
 * **Paths**: the app already finds `exports/`, `demo_stack/` and `libonnxruntime` relative to its executable;
-  `run.sh` additionally sets `ORT_DYLIB_PATH`, `COMPCLASS_MODELS` and `COMPCLASS_DEMO_DIR` to the bundle
+  `run.sh` additionally sets `ORT_DYLIB_PATH`, `<ENV_PREFIX>_MODELS` and `<ENV_PREFIX>_DEMO_DIR` to the bundle
   (caller-set values win), passes all arguments through, and explains a missing display.
 * **GPU runtime**: not bundled (about 7 GB). Both launchers source `gpu-env.sh`, which looks for an onnxruntime-gpu
-  install (`$COMPCLASS_GPU_VENV`, `~/.local/share/component-classifier/gpu`, an active virtualenv, then the bundle
-  folder), puts its CUDA, cuDNN and TensorRT library folders on the loader path and prints one line saying which
-  runtime it chose and why. Without one, or with `COMPCLASS_GPU=0`, the bundled CPU library is used.
+  install in this order: `$COMPCLASS_GPU_VENV`; `${XDG_DATA_HOME:-~/.local/share}/onnxruntime-gpu/1.31`, one
+  install per machine shared by every app built from this template; the app's older
+  `~/.local/share/component-classifier/gpu`; an active virtualenv; then the bundle folder. It puts the runtime's CUDA,
+  cuDNN and TensorRT library folders on the loader path and prints one line saying which runtime it chose and why.
+  Without one, or with `COMPCLASS_GPU=0`, the bundled CPU library is used. `scripts/test_gpu_env.sh` (run by
+  `cargo test`) checks that order against fake venvs, and the variable names against a second `app.env`.
 * **Models**: only the files the app reads: `exports/models.json`, and per folder `model.json` plus the files it
   names: `exports/final/{model_multi.onnx, model.onnx.data, labels.json, ...}` (the 1.7 GB `model.onnx.data` is
   shared), `exports/fast/{model.onnx, model.onnx.data, ...}` and `exports/itri626/{A_scratch_cnn,
@@ -309,7 +320,12 @@ venv without `tensorrt-cu13-libs` (Deployed on CUDA, Fast passed over with its r
 found through `COMPCLASS_GPU_VENV`, `~/.local/share/component-classifier/gpu` or `VIRTUAL_ENV` (Fast on TensorRT).
 `run-nixos.sh` was run on Arch with Nix: `--doctor` and `models` work, and with the GPU venv but no
 `/run/opengl-driver` the app fell back to the CPU naming the missing `libcuda.so.1`. Not tested: a real NixOS
-machine with the NVIDIA driver, and `package_linux.sh` itself (cargo-zigbuild is not installed on legion).
+machine with the NVIDIA driver.
+
+`package_linux.sh --no-archive` itself was run on legion on 2026-11-01 (zig 0.14.1): GLIBC ceiling 2.28, the
+`DT_NEEDED` list unchanged, and the same files as before `app.env` existed, plus `app.env`. From `env -i` shells in
+that bundle, `run.sh` found a GPU runtime in the shared `onnxruntime-gpu/1.31` folder (Fast: TensorRT registers),
+`COMPCLASS_GPU=0` gave the CPU, and `classify` answered "battery holder" with Deployed on CPU and on CUDA.
 
 ## Design choices and pinned versions
 
@@ -362,16 +378,18 @@ model's manifest lists the providers to try (`--ep` overrides). What you need is
 CUDA 13 and cuDNN 9 libraries, plus TensorRT 10 for Fast, all from pip (about 7 GB):
 
 ```bash
-uv venv ~/.local/share/component-classifier/gpu --python 3.12
-uv pip install --python ~/.local/share/component-classifier/gpu/bin/python \
+uv venv ~/.local/share/onnxruntime-gpu/1.31 --python 3.12
+uv pip install --python ~/.local/share/onnxruntime-gpu/1.31/bin/python \
     'onnxruntime-gpu[cuda,cudnn]==1.31.1' 'tensorrt-cu13-libs==10.16.1.11'
 ```
 
-The bundle's `run.sh` finds that folder by itself (`packaging/gpu-env.sh`: `$COMPCLASS_GPU_VENV`, that folder, an
-active virtualenv) and prints which runtime it chose. From a source build, point at it yourself:
+That folder does not depend on the app, so one install serves every app made from this template. The bundle's
+`run.sh` finds it by itself (`packaging/gpu-env.sh`: `$COMPCLASS_GPU_VENV`, that folder, the older
+`~/.local/share/component-classifier/gpu`, an active virtualenv) and prints which runtime it chose. From a source
+build, point at it yourself:
 
 ```bash
-SP=$(ls -d ~/.local/share/component-classifier/gpu/lib/python3.*/site-packages)
+SP=$(ls -d ~/.local/share/onnxruntime-gpu/1.31/lib/python3.*/site-packages)
 export ORT_DYLIB_PATH=$(ls $SP/onnxruntime/capi/libonnxruntime.so.1.*)
 export LD_LIBRARY_PATH=$SP/onnxruntime/capi:$SP/nvidia/cu13/lib:$SP/nvidia/cudnn/lib:$SP/tensorrt_libs
 ./target/release/gpui-demo models          # which providers register for each graph, and why the others do not
@@ -462,7 +480,7 @@ src/gui/theme.rs       loads the Bench Light / Bench Dark themes; app roles (can
 src/gui/themes/        bench.json: the two GPUI Kit theme files (see docs/VISUAL_DIRECTION.md)
 src/gui/tests.rs       headless GUI smoke tests (GPUI Kit test platform)
 assets/fonts/          Noto Sans Regular + Bold (embedded) and OFL.txt
-packaging/             run.sh, run-nixos.sh, gpu-env.sh, README.txt and licence inputs for the bundle
+packaging/             app.env (the bundle's identity), run.sh, run-nixos.sh, gpu-env.sh, README.txt and licence inputs
 scripts/package_linux.sh   builds dist/component-classifier-linux-x86_64[.tar.gz] (see "Packaging")
 scripts/golden.py      compares classify --json output with results/demo/golden/ (row by row)
 scripts/parity.py      parity vs the Python/PyTorch reference on dev images

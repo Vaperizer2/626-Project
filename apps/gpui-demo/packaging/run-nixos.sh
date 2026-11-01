@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Component Classifier: launcher for NixOS (and any system without an FHS /lib64), e.g. niri / sway / Hyprland.
+# Launcher for NixOS (and any system without an FHS /lib64), e.g. niri / sway / Hyprland.
 #
 # Why this exists: the bundled binary is a normal "generic Linux" executable. On NixOS
 #   * there is no /lib64/ld-linux-x86-64.so.2 and no /usr/lib, so it cannot start at all (unless nix-ld is set up);
@@ -21,8 +21,9 @@
 set -euo pipefail
 
 HERE=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-BIN="$HERE/gpui-demo"
-CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/component-classifier"
+. "$HERE/app.env"
+BIN="$HERE/$BIN"
+CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/$APP_NAME"
 mkdir -p "$CACHE"
 
 say() { printf 'run-nixos.sh: %s\n' "$*" >&2; }
@@ -117,8 +118,9 @@ ORT_CPU="$HERE/libonnxruntime.so.1.31.0"
 . "$HERE/gpu-env.sh"
 [ -z "$GPU_LIBPATH" ] || LIBPATH="$GPU_LIBPATH:$LIBPATH"
 say "onnxruntime on $GPU_STATE"
-export COMPCLASS_MODELS="${COMPCLASS_MODELS:-$HERE/exports}"
-export COMPCLASS_DEMO_DIR="${COMPCLASS_DEMO_DIR:-$HERE/demo_stack}"
+models=$(app_env MODELS)
+demo_dir=$(app_env DEMO_DIR)
+export "${ENV_PREFIX}_MODELS=${models:-$HERE/exports}" "${ENV_PREFIX}_DEMO_DIR=${demo_dir:-$HERE/demo_stack}"
 # Cursor themes on NixOS live in the profiles, not /usr/share/icons.
 export XCURSOR_PATH="${XCURSOR_PATH:-$HOME/.icons:$HOME/.local/share/icons:$HOME/.nix-profile/share/icons:/etc/profiles/per-user/${USER:-$(id -un)}/share/icons:/run/current-system/sw/share/icons}"
 
