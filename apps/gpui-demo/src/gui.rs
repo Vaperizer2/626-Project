@@ -513,7 +513,7 @@ impl Render for DemoApp {
             .on_action(cx.listener(|this, _: &StepNext, w, cx| this.step(1, w, cx)))
             .on_action(cx.listener(|this, _: &Activate, _, cx| this.activate(cx)))
             .on_action(cx.listener(|this, _: &RunAll, _, cx| this.run_all(cx)))
-            .on_action(cx.listener(|this, _: &Cancel, _, cx| this.cancel(cx)))
+            .on_action(cx.listener(|this, _: &Cancel, w, cx| this.cancel(w, cx)))
             .on_mouse_down(
                 gpui_kit::MouseButton::Left,
                 cx.listener(|this, _, window, cx| {
@@ -567,9 +567,16 @@ impl DemoApp {
         }
     }
 
-    fn cancel(&mut self, cx: &mut Context<Self>) {
-        self.demo_cancel(cx);
-        self.bench_cancel(cx);
+    /// Esc steps back one level: out of a text field first, then it stops the visible tab's run.
+    fn cancel(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.focus.is_focused(window) {
+            return window.focus(&self.focus, cx);
+        }
+        match self.tab {
+            TabKind::Demo => self.demo_cancel(cx),
+            TabKind::Bench => self.bench_cancel(cx),
+            TabKind::Classify => {}
+        }
     }
 }
 
@@ -584,7 +591,8 @@ pub fn keymap() -> Vec<KeyBinding> {
         KeyBinding::new("ctrl-2", ShowDemo, Some(CTX)),
         KeyBinding::new("ctrl-3", ShowBench, Some(CTX)),
         KeyBinding::new("ctrl-r", RunAll, Some(CTX)),
-        KeyBinding::new("escape", Cancel, Some(CTX_NAV)),
+        // also while a text field has focus: the field handles Esc first, then it reaches Cancel
+        KeyBinding::new("escape", Cancel, Some(CTX)),
         KeyBinding::new("left", StepPrev, Some(CTX_NAV)),
         KeyBinding::new("right", StepNext, Some(CTX_NAV)),
         KeyBinding::new("up", StepPrev, Some(CTX_NAV)),
