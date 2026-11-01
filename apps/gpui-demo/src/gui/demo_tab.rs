@@ -16,16 +16,21 @@ use gpui_kit::component::{
     v_flex,
 };
 use gpui_kit::{
-    AnyElement, Context, FontWeight, ObjectFit, ScrollHandle, SharedString, TestSupportExt as _, Window, div, img,
-    prelude::*, px,
+    AnyElement, Context, Entity, FocusHandle, FontWeight, ObjectFit, ScrollHandle, SharedString, Subscription,
+    TestSupportExt as _, Window, div, img, prelude::*, px,
 };
 
+use super::models::{ModelEvent, Models};
 use super::results::HeadResult;
 use super::stack::{Item, Stack};
-use super::{DemoApp, theme, widgets};
+use super::{Activate, Cancel, Hint, RunAll, StepNext, StepPrev, theme, widgets};
 use crate::demo::Verdict;
-use inference::service::{Priority, RequestHandle, Ticket, Update};
+use inference::service::{Lane, Policy, Priority, RequestHandle, Ticket, Update};
 use inference::manifest::HeadId;
+
+/// The status bar's shortcuts while the tab is on screen.
+pub const HINTS: &[Hint] =
+    &[(&["left", "right"], "Step"), (&["enter"], "Classify"), (&["ctrl-r"], "Run all"), (&["escape"], "Stop")];
 
 /// Cards are at least this wide; the grid fits as many columns as the window allows and widens them evenly.
 const CARD_MIN_W: f32 = 176.;
@@ -41,25 +46,21 @@ struct RunState {
     _tickets: Vec<Ticket>,
 }
 
-pub struct DemoState {
+pub struct DemoTab {
+    models: Entity<Models>,
+    pub(super) stack: Entity<Stack>,
+    /// single classifications
+    interactive: Lane,
+    /// "Run all"
+    bulk: Lane,
+    pub(super) focus: FocusHandle,
     pub selected: usize,
     run: Option<RunState>,
     next_token: u64,
     scroll: ScrollHandle,
     /// the latest single classification of each image (a new one replaces and cancels it)
     single: HashMap<usize, Ticket>,
-}
-
-impl Default for DemoState {
-    fn default() -> Self {
-        Self { selected: 0, run: None, next_token: 1, scroll: ScrollHandle::new(), single: HashMap::new() }
-    }
-}
-
-impl DemoState {
-    pub fn running(&self, stack: &Stack) -> bool {
-        self.run.is_some() || stack.working()
-    }
+    _retries: Subscription,
 }
 
 /// Child index of image `i` in the flattened grid (one header element precedes each section).
@@ -91,13 +92,43 @@ fn selected_result<'a>(model: Option<&HeadId>, it: &'a Item) -> Option<&'a HeadR
     model.and_then(|m| it.results.get(m))
 }
 
-impl DemoApp {
+impl DemoTab {
+    pub fn new(models: Entity<Models>, stack: Entity<Stack>, cx: &mut Context<Self>) -> Self {
+        let inference = models.read(cx).inference();
+        let (interactive, bulk) =
+            (inference.lane(Priority::Interactive, Policy::Keep), inference.lane(Priority::Bulk, Policy::Keep));
+        let retries = cx.subscribe(&models, |this, _, ev, cx| {
+            if let ModelEvent::Retrying(heads) = ev {
+                this.forget_load_failures(heads, cx);
+            }
+        });
+        Self {
+            models,
+            stack,
+            interactive,
+            bulk,
+            focus: cx.focus_handle(),
+            selected: 0,
+            run: None,
+            next_token: 1,
+            scroll: ScrollHandle::new(),
+            single: HashMap::new(),
+            _retries: retries,
+        }
+    }
+
+    /// "Run all" is under way.
+    #[cfg(test)]
+    pub fn running(&self) -> bool {
+        self.run.is_some()
+    }
+
     /// Submit image `i` for `model`; its card shows the result. Bulk submissions count towards the running
     /// "Run all" with `token`.
-    fn demo_submit(&mut self, i: usize, model: HeadId, priority: Priority, cx: &mut Context<Self>) -> Option<(u64, Ticket)> {
+    fn submit(&mut self, i: usize, model: HeadId, priority: Priority, cx: &mut Context<Self>) -> Option<(u64, Ticket)> {
         let input = self.stack.read(cx).input(i)?;
-        let token = self.demo.next_token;
-        self.demo.next_token += 1;
+        let token = self.next_token;
+        self.next_token += 1;
         let lane = if priority == Priority::Bulk { &self.bulk } else { &self.interactive };
         let RequestHandle { updates: mut rx, ticket } = lane.submit(input, std::slice::from_ref(&model), None);
         self.stack.update(cx, |s, _| s.items[i].results.start(model.clone(), token));
@@ -113,7 +144,7 @@ impl DemoApp {
                             true
                         });
                         if applied && finished {
-                            this.demo_progress(token, i, cx);
+                            this.progress(token, i, cx);
                         }
                         cx.notify();
                     })
@@ -130,39 +161,39 @@ impl DemoApp {
 
     /// The selected card has `head`'s answer.
     #[cfg(test)]
-    pub(super) fn demo_answered(&self, head: &HeadId, cx: &gpui_kit::App) -> bool {
+    pub fn answered(&self, head: &HeadId, cx: &gpui_kit::App) -> bool {
         let items = &self.stack.read(cx).items;
-        matches!(items.get(self.demo.selected).and_then(|it| it.results.get(head)), Some(HeadResult::Done(..)))
+        matches!(items.get(self.selected).and_then(|it| it.results.get(head)), Some(HeadResult::Done(..)))
     }
 
     /// After a model switch: a card on screen that another model answered gets the selected model's answer too.
-    pub(super) fn demo_follow_model(&mut self, cx: &mut Context<Self>) {
-        let Some(it) = self.stack.read(cx).items.get(self.demo.selected) else { return };
+    pub fn follow_model(&mut self, cx: &mut Context<Self>) {
+        let Some(it) = self.stack.read(cx).items.get(self.selected) else { return };
         if !it.results.is_empty() && selected_result(self.models.read(cx).selected(), it).is_none() {
-            self.demo_classify_selected(cx);
+            self.classify_selected(cx);
         }
     }
 
-    pub(super) fn demo_classify_selected(&mut self, cx: &mut Context<Self>) {
+    pub fn classify_selected(&mut self, cx: &mut Context<Self>) {
         let stack = self.stack.read(cx);
         if stack.stack().is_none() {
             return;
         }
-        let i = self.demo.selected;
+        let i = self.selected;
         let Some(model) = self.models.read(cx).run_model() else { return };
         if matches!(stack.items.get(i).and_then(|it| it.results.get(&model)), Some(HeadResult::Working(_))) {
             return;
         }
-        if let Some((_, ticket)) = self.demo_submit(i, model, Priority::Interactive, cx) {
-            self.demo.single.insert(i, ticket);
+        if let Some((_, ticket)) = self.submit(i, model, Priority::Interactive, cx) {
+            self.single.insert(i, ticket);
         }
     }
 
     /// Submit the whole stack at once; the graph takes the images as fast as it can (batched when it allows).
-    pub(super) fn demo_run_all(&mut self, cx: &mut Context<Self>) {
+    pub fn run_all(&mut self, cx: &mut Context<Self>) {
         let Some(n) = self.stack.read(cx).stack().map(|s| s.images.len()) else { return };
-        if self.demo.run.is_some() {
-            return self.demo_cancel(cx);
+        if self.run.is_some() {
+            return self.cancel(cx);
         }
         let Some(model) = self.models.read(cx).run_model() else { return };
         self.stack.update(cx, |s, _| {
@@ -170,57 +201,59 @@ impl DemoApp {
                 it.results.clear(&model);
             }
         });
-        let token = self.demo.next_token;
-        let tickets = (0..n).filter_map(|i| self.demo_submit(i, model.clone(), Priority::Bulk, cx)).map(|t| t.1).collect();
+        let token = self.next_token;
+        let tickets = (0..n).filter_map(|i| self.submit(i, model.clone(), Priority::Bulk, cx)).map(|t| t.1).collect();
         // the run counts the requests submitted from `token` on
-        self.demo.run = Some(RunState { token, total: n, done: 0, _tickets: tickets });
+        self.run = Some(RunState { token, total: n, done: 0, _tickets: tickets });
         cx.notify();
     }
 
     /// Request `token` for image `i` finished; when it belongs to the running "Run all", follow it in the grid.
-    fn demo_progress(&mut self, token: u64, i: usize, cx: &mut Context<Self>) {
-        let Some(run) = self.demo.run.as_mut() else { return };
+    fn progress(&mut self, token: u64, i: usize, cx: &mut Context<Self>) {
+        let Some(run) = self.run.as_mut() else { return };
         if token < run.token || token >= run.token + run.total as u64 {
             return;
         }
         run.done += 1;
         if run.done >= run.total {
-            self.demo.run = None;
+            self.run = None;
         }
-        self.demo.selected = i;
+        self.selected = i;
         let ci = child_index(self.stack.read(cx), i);
-        self.demo.scroll.scroll_to_item(ci);
+        self.scroll.scroll_to_item(ci);
         cx.notify();
     }
 
-    pub(super) fn demo_forget_load_failures(&mut self, model: &HeadId, cx: &mut Context<Self>) {
+    fn forget_load_failures(&mut self, heads: &[HeadId], cx: &mut Context<Self>) {
         self.stack.update(cx, |s, _| {
             for it in &mut s.items {
-                it.results.forget_load_failure(model);
+                for h in heads {
+                    it.results.forget_load_failure(h);
+                }
             }
         });
     }
 
-    pub(super) fn demo_cancel(&mut self, cx: &mut Context<Self>) {
-        if self.demo.run.take().is_some() {
+    pub fn cancel(&mut self, cx: &mut Context<Self>) {
+        if self.run.take().is_some() {
             cx.notify();
         }
     }
 
-    pub(super) fn demo_step(&mut self, delta: isize, _window: &mut Window, cx: &mut Context<Self>) {
+    pub fn step(&mut self, delta: isize, cx: &mut Context<Self>) {
         let stack = self.stack.read(cx);
         let n = stack.items.len();
         if n == 0 {
             return;
         }
-        self.demo.selected = (self.demo.selected as isize + delta).rem_euclid(n as isize) as usize;
-        let ci = child_index(stack, self.demo.selected);
-        self.demo.scroll.scroll_to_item(ci);
+        self.selected = (self.selected as isize + delta).rem_euclid(n as isize) as usize;
+        let ci = child_index(stack, self.selected);
+        self.scroll.scroll_to_item(ci);
         cx.notify();
     }
 
     // ------------------------------------------------------------------------------------------ render
-    pub(super) fn render_demo(&mut self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
+    fn render_body(&self, window: &mut Window, cx: &mut Context<Self>) -> AnyElement {
         let t = cx.theme();
         if let Some(e) = self.stack.read(cx).error() {
             return div()
@@ -239,7 +272,7 @@ impl DemoApp {
         }
         v_flex()
             .size_full()
-            .child(self.render_demo_header(cx))
+            .child(self.render_header(cx))
             .child(
                 h_flex()
                     .flex_1()
@@ -251,7 +284,7 @@ impl DemoApp {
             .into_any_element()
     }
 
-    fn render_demo_header(&self, cx: &Context<Self>) -> impl IntoElement {
+    fn render_header(&self, cx: &Context<Self>) -> impl IntoElement {
         let t = cx.theme();
         let r = theme::roles(cx);
         let stack = self.stack.read(cx);
@@ -259,7 +292,7 @@ impl DemoApp {
         let models = self.models.read(cx);
         let (ok, judged, _) = summary(stack, models.selected());
         let short = models.selected().map(|m| models.short(m)).unwrap_or_default();
-        let running = self.demo.run.as_ref();
+        let running = self.run.as_ref();
         let progress = running.map(|run| {
             let done = run.done;
             h_flex()
@@ -294,14 +327,14 @@ impl DemoApp {
                     .icon(IconName::Square)
                     .label("Stop")
                     .tooltip("Stop: drop the images not classified yet (Esc)")
-                    .on_click(cx.listener(|this, _, _, cx| this.demo_cancel(cx)))
+                    .on_click(cx.listener(|this, _, _, cx| this.cancel(cx)))
             } else {
                 Button::new("demo-run")
                     .primary()
                     .icon(IconName::Play)
                     .label("Run all")
                     .tooltip("Classify every image in order (Ctrl+R)")
-                    .on_click(cx.listener(|this, _, _, cx| this.demo_run_all(cx)))
+                    .on_click(cx.listener(|this, _, _, cx| this.run_all(cx)))
             }),
             cx,
         )
@@ -355,7 +388,7 @@ impl DemoApp {
                     .test_support()
                     .size_full()
                     .overflow_y_scroll()
-                    .track_scroll(&self.demo.scroll)
+                    .track_scroll(&self.scroll)
                     .p(px(GRID_PAD))
                     .flex()
                     .flex_row()
@@ -364,7 +397,7 @@ impl DemoApp {
                     .gap(px(GRID_GAP))
                     .children(children),
             )
-            .vertical_scrollbar(&self.demo.scroll)
+            .vertical_scrollbar(&self.scroll)
             .into_any_element()
     }
 
@@ -375,7 +408,7 @@ impl DemoApp {
         let stack = self.stack.read(cx).stack().expect("stack loaded");
         let im = &stack.images[i];
         let it = &self.stack.read(cx).items[i];
-        let sel = self.demo.selected == i;
+        let sel = self.selected == i;
         let result = selected_result(self.models.read(cx).selected(), it);
         let verdict = match result {
             Some(HeadResult::Done(c, ..)) => Some(im.judge(c.best_label(), c.abstained())),
@@ -426,8 +459,8 @@ impl DemoApp {
             .hover(|s| s.border_color(r.accent.opacity(0.6)))
             .tooltip(move |window, cx| Tooltip::new(tip.clone()).build(window, cx))
             .on_click(cx.listener(move |this, _, _, cx| {
-                this.demo.selected = i;
-                this.demo_classify_selected(cx);
+                this.selected = i;
+                this.classify_selected(cx);
             }))
             .child(div().w_full().h(px(thumb_h)).overflow_hidden().bg(t.muted).child(match &it.thumb {
                 Some(th) => img(th.clone()).size_full().object_fit(ObjectFit::Cover).into_any_element(),
@@ -460,7 +493,7 @@ impl DemoApp {
         let t = cx.theme();
         let r = theme::roles(cx);
         let stack = self.stack.read(cx).stack().expect("stack loaded");
-        let i = self.demo.selected.min(stack.images.len() - 1);
+        let i = self.selected.min(stack.images.len() - 1);
         let im = &stack.images[i];
         let it = &self.stack.read(cx).items[i];
         let picture = div().w_full().h(px(280.)).rounded(t.radius_lg).bg(r.canvas).p_2().overflow_hidden().child(
@@ -518,7 +551,7 @@ impl DemoApp {
                         .large()
                         .icon(IconName::Play)
                         .label(format!("Classify with {short}"))
-                        .on_click(cx.listener(|this, _, _, cx| this.demo_classify_selected(cx))),
+                        .on_click(cx.listener(|this, _, _, cx| this.classify_selected(cx))),
                 )
                 .child(widgets::hint(&["enter"], "classify · ← → step through the stack", cx))
                 .into_any_element(),
@@ -568,5 +601,21 @@ impl DemoApp {
                     .p_4()
                     .child(v_flex().gap_4().child(picture.flex_none()).child(heading).child(result).child(attribution)),
             )
+    }
+}
+
+impl Render for DemoTab {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        div()
+            .id("demo-tab")
+            .track_focus(&self.focus)
+            .key_context("Demo")
+            .on_action(cx.listener(|this, _: &StepPrev, _, cx| this.step(-1, cx)))
+            .on_action(cx.listener(|this, _: &StepNext, _, cx| this.step(1, cx)))
+            .on_action(cx.listener(|this, _: &Activate, _, cx| this.classify_selected(cx)))
+            .on_action(cx.listener(|this, _: &RunAll, _, cx| this.run_all(cx)))
+            .on_action(cx.listener(|this, _: &Cancel, _, cx| this.cancel(cx)))
+            .size_full()
+            .child(self.render_body(window, cx))
     }
 }

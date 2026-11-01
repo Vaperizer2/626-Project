@@ -4,11 +4,11 @@
 //! model picker) · the active tab · Kit `StatusBar` (model / onnxruntime state, shortcuts as `Kbd`).
 //!
 //! One view (`DemoApp`) owns the window's state; each tab's state and rendering lives in its own module
-//! (`classify`, `demo_tab`, `bench`). The Benchmark tab is an entity of its own (`bench::BenchTab`) with its own
-//! focus, so it handles its keys itself. The models the tabs share (the service, load states, the selected head)
-//! are one entity, `models::Models`, and the demo stack the Demo and Benchmark tabs share is another,
-//! `stack::Stack`. Inference, model loading, image reading and decoding all run in the inference
-//! service (`inference::service`); results come back over channels that GPUI tasks await.
+//! (`classify`, `demo_tab`, `bench`). The Demo and Benchmark tabs are entities of their own (`demo_tab::DemoTab`,
+//! `bench::BenchTab`) with their own focus, so they handle their keys themselves. The models the tabs share (the
+//! service, load states, the selected head) are one entity, `models::Models`, and the demo stack the Demo and
+//! Benchmark tabs share is another, `stack::Stack`. Inference, model loading, image reading and decoding all run in
+//! the inference service (`inference::service`); results come back over channels that GPUI tasks await.
 
 mod bench;
 mod classify;
@@ -76,8 +76,6 @@ type Hint = (&'static [&'static str], &'static str);
 
 const CLASSIFY_HINTS: &[Hint] =
     &[(&["ctrl-o"], "Open"), (&["ctrl-v"], "Paste"), (&["ctrl-l"], "URL"), (&["up", "down"], "Recent")];
-const DEMO_HINTS: &[Hint] =
-    &[(&["left", "right"], "Step"), (&["enter"], "Classify"), (&["ctrl-r"], "Run all"), (&["escape"], "Stop")];
 
 /// Redraw `cx`'s view every 250 ms while `busy` holds, for the elapsed-time counters.
 fn tick_while<T: 'static>(cx: &mut Context<T>, busy: impl Fn(&T, &App) -> bool + 'static) {
@@ -121,17 +119,14 @@ pub struct DemoApp {
     focus: FocusHandle,
     tab: TabKind,
     models: Entity<Models>,
-    /// Classify submissions and single Demo classifications
+    /// Classify submissions
     interactive: Lane,
-    /// Demo "Run all"
-    bulk: Lane,
     /// `--autorun`, waiting for the start-up default
     autorun: bool,
     /// manifests that could not be read and defaults that name no model, beside the models that work; dismissible
     registry_problems: Vec<String>,
     classify: classify::ClassifyState,
-    demo: demo_tab::DemoState,
-    stack: Entity<stack::Stack>,
+    demo: Entity<demo_tab::DemoTab>,
     bench: Entity<bench::BenchTab>,
     /// textures evicted from the recent list, released on the next frame
     to_drop: Vec<std::sync::Arc<RenderImage>>,
@@ -149,24 +144,22 @@ impl DemoApp {
         tick_while(cx, Self::is_busy);
         let models = cx.new(|cx| Models::new(service, cx));
         let stack = cx.new(|cx| stack::Stack::new(demo_dir, cx));
-        let bench = cx.new(|cx| bench::BenchTab::new(models.clone(), stack.clone(), cx));
+        let demo = cx.new(|cx| demo_tab::DemoTab::new(models.clone(), stack.clone(), cx));
+        let bench = cx.new(|cx| bench::BenchTab::new(models.clone(), stack, cx));
         let (classify, mut subs) = classify::ClassifyState::new(window, cx);
         subs.push(cx.subscribe(&models, |this, _, ev, cx| this.on_model_event(ev, cx)));
         let m = models.read(cx);
         let registry_problems = if m.registry_error().is_some() { Vec::new() } else { m.registry().problems().to_vec() };
         let interactive = m.inference().lane(Priority::Interactive, Policy::Keep);
-        let bulk = m.inference().lane(Priority::Bulk, Policy::Keep);
         let mut this = Self {
             focus: cx.focus_handle(),
             tab: TabKind::Classify,
             models,
             interactive,
-            bulk,
             autorun: false,
             registry_problems,
             classify,
-            demo: demo_tab::DemoState::default(),
-            stack,
+            demo,
             bench,
             to_drop: Vec::new(),
             _subscriptions: subs,
@@ -181,7 +174,7 @@ impl DemoApp {
 
     /// Something is loading or running (elapsed-time counters, spinners).
     fn is_busy(&self, cx: &App) -> bool {
-        self.models.read(cx).loading() || self.classify.busy() || self.demo.running(self.stack.read(cx))
+        self.models.read(cx).loading() || self.classify.busy()
     }
 
     fn on_model_event(&mut self, ev: &ModelEvent, cx: &mut Context<Self>) {
@@ -195,7 +188,6 @@ impl DemoApp {
             ModelEvent::Retrying(heads) => {
                 for h in heads {
                     self.classify_forget_load_failures(h);
-                    self.demo_forget_load_failures(h, cx);
                 }
             }
         }
@@ -206,7 +198,7 @@ impl DemoApp {
     fn follow_model(&mut self, cx: &mut Context<Self>) {
         match self.tab {
             TabKind::Classify => self.classify_follow_model(cx),
-            TabKind::Demo => self.demo_follow_model(cx),
+            TabKind::Demo => self.demo.update(cx, |d, cx| d.follow_model(cx)),
             TabKind::Bench => {}
         }
     }
@@ -226,8 +218,9 @@ impl DemoApp {
     /// What has the keyboard while the tab is on screen: the tab when it is an entity, else this view.
     fn active_focus(&self, cx: &App) -> FocusHandle {
         match self.tab {
+            TabKind::Classify => self.focus.clone(),
+            TabKind::Demo => self.demo.read(cx).focus.clone(),
             TabKind::Bench => self.bench.read(cx).focus.clone(),
-            TabKind::Classify | TabKind::Demo => self.focus.clone(),
         }
     }
 
@@ -391,7 +384,7 @@ impl DemoApp {
         let left = left.join(" · ");
         let hints = match self.tab {
             TabKind::Classify => CLASSIFY_HINTS,
-            TabKind::Demo => DEMO_HINTS,
+            TabKind::Demo => demo_tab::HINTS,
             TabKind::Bench => bench::HINTS,
         };
         // laid out here rather than in the Kit's left/right slots, which shrink alike and clip the shortcuts
@@ -425,7 +418,7 @@ impl Render for DemoApp {
             "gui::build_tab_elements",
             match self.tab {
                 TabKind::Classify => self.render_classify(window, cx).into_any_element(),
-                TabKind::Demo => self.render_demo(window, cx).into_any_element(),
+                TabKind::Demo => self.demo.clone().into_any_element(),
                 TabKind::Bench => self.bench.clone().into_any_element(),
             }
         );
@@ -466,9 +459,8 @@ impl Render for DemoApp {
             .on_action(cx.listener(|this, _: &ShowClassify, w, cx| this.set_tab(TabKind::Classify, w, cx)))
             .on_action(cx.listener(|this, _: &ShowDemo, w, cx| this.set_tab(TabKind::Demo, w, cx)))
             .on_action(cx.listener(|this, _: &ShowBench, w, cx| this.set_tab(TabKind::Bench, w, cx)))
-            .on_action(cx.listener(|this, _: &StepPrev, w, cx| this.step(-1, w, cx)))
-            .on_action(cx.listener(|this, _: &StepNext, w, cx| this.step(1, w, cx)))
-            .on_action(cx.listener(|this, _: &Activate, _, cx| this.activate(cx)))
+            .on_action(cx.listener(|this, _: &StepPrev, _, cx| this.step(-1, cx)))
+            .on_action(cx.listener(|this, _: &StepNext, _, cx| this.step(1, cx)))
             .on_action(cx.listener(|this, _: &RunAll, _, cx| this.run_all(cx)))
             .on_action(cx.listener(|this, _: &Cancel, w, cx| this.cancel(w, cx)))
             .on_mouse_down(
@@ -503,39 +495,26 @@ impl Render for DemoApp {
 }
 
 impl DemoApp {
-    /// Left/Right, j/k, Up/Down: per tab.
-    fn step(&mut self, delta: isize, window: &mut Window, cx: &mut Context<Self>) {
-        match self.tab {
-            TabKind::Classify => self.classify_step(delta, cx),
-            TabKind::Demo => self.demo_step(delta, window, cx),
-            TabKind::Bench => {}
-        }
-    }
-
-    fn activate(&mut self, cx: &mut Context<Self>) {
-        if self.tab == TabKind::Demo {
-            self.demo_classify_selected(cx);
+    /// Up/Down, j/k, Left/Right on Classify: the recent list. The other tabs handle them themselves.
+    fn step(&mut self, delta: isize, cx: &mut Context<Self>) {
+        if self.tab == TabKind::Classify {
+            self.classify_step(delta, cx);
         }
     }
 
     fn run_all(&mut self, cx: &mut Context<Self>) {
         match self.tab {
-            TabKind::Demo => self.demo_run_all(cx),
+            TabKind::Demo => self.demo.update(cx, |d, cx| d.run_all(cx)),
             TabKind::Bench => self.bench.update(cx, |b, cx| b.start(cx)),
             TabKind::Classify => {}
         }
     }
 
-    /// Esc steps back one level: out of a text field first, then it stops the visible tab's run.
+    /// Esc steps back one level: out of a text field first. The Demo and Benchmark tabs stop their runs themselves.
     fn cancel(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let focus = self.active_focus(cx);
         if !focus.is_focused(window) {
-            return window.focus(&focus, cx);
-        }
-        match self.tab {
-            TabKind::Demo => self.demo_cancel(cx),
-            // Classify has no run, and the Benchmark tab handles Esc itself
-            TabKind::Classify | TabKind::Bench => {}
+            window.focus(&focus, cx);
         }
     }
 }
