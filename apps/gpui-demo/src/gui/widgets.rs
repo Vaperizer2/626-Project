@@ -2,11 +2,12 @@
 //! model state chips, keyboard hints, section captions. Colours come from the Kit theme or `theme::roles` only.
 
 use gpui_kit::component::{
-    ActiveTheme as _, Icon, IconName, Sizable as _, h_flex, kbd::Kbd, spinner::Spinner, tag::Tag, v_flex,
+    ActiveTheme as _, Icon, IconName, Sizable as _, alert::Alert, h_flex, kbd::Kbd, spinner::Spinner, tag::Tag,
+    v_flex,
 };
 use gpui_kit::{
-    AnyElement, App, Div, FontWeight, Hsla, IntoElement, Keystroke, ParentElement, Pixels, SharedString, Styled, div,
-    prelude::*, px, relative,
+    AnyElement, App, Div, ElementId, FontWeight, Hsla, IntoElement, Keystroke, ParentElement, Pixels, SharedString,
+    Styled, div, prelude::*, px, relative,
 };
 
 /// The complete bundled Lucide catalog (the component crate's `IconName` is a subset).
@@ -26,6 +27,7 @@ gpui_kit::assets::icon_assets!(
         ImageOff,
         ImagePlus,
         Images,
+        Layers,
         LayoutGrid,
         Microchip,
         ScanSearch,
@@ -55,7 +57,7 @@ impl gpui_kit::AssetSource for AppAssets {
 use super::theme::{self, Roles};
 use super::ModelState;
 use crate::classification::{Answer, Classification};
-use crate::inference::{LoadStage, Timing};
+use crate::inference::{LoadStage, RunError, Timing};
 use crate::demo::Verdict;
 
 pub fn pct(p: f32) -> String {
@@ -66,6 +68,11 @@ pub fn pct(p: f32) -> String {
     } else {
         format!("{:.0}%", p * 100.0)
     }
+}
+
+/// A load or run time: "16 ms" below a second, "2.1 s" above.
+pub fn duration(ms: f64) -> String {
+    if ms < 1000.0 { format!("{ms:.0} ms") } else { format!("{:.1} s", ms / 1000.0) }
 }
 
 /// A keyboard shortcut chip, e.g. `kbd("ctrl-o")`.
@@ -80,6 +87,34 @@ pub fn hint(keys: &[&str], label: &'static str, cx: &App) -> impl IntoElement {
         .items_center()
         .children(keys.iter().map(|k| kbd(k)))
         .child(div().text_xs().text_color(cx.theme().muted_foreground).child(label))
+}
+
+/// A tab's header row: title and subtitle on the left, `controls` on the right. The text gives way (truncates)
+/// so the controls stay inside the window at its smallest size.
+pub fn tab_header(title: &str, subtitle: String, controls: impl IntoElement, cx: &App) -> Div {
+    let (t, r) = (cx.theme(), theme::roles(cx));
+    h_flex()
+        .justify_between()
+        .items_center()
+        .gap_4()
+        .px_4()
+        .py_3()
+        .bg(r.chrome)
+        .border_b_1()
+        .border_color(t.border)
+        .child(
+            v_flex()
+                .flex_1()
+                .min_w_0()
+                .child(div().text_lg().font_weight(FontWeight::SEMIBOLD).truncate().child(title.to_string()))
+                .child(div().text_xs().text_color(t.muted_foreground).truncate().child(subtitle)),
+        )
+        .child(h_flex().flex_none().gap_4().items_center().child(controls))
+}
+
+/// An icon before text that wraps under itself instead of running past its container.
+pub fn icon_line(icon: Icon, text: impl Into<SharedString>) -> Div {
+    h_flex().gap_1().items_start().child(icon.flex_none()).child(div().flex_1().min_w_0().child(text.into()))
 }
 
 /// Small semibold muted caption above a group ("Prediction", "Other classes", "Photo credit").
@@ -198,13 +233,12 @@ pub fn prediction_block(
             )
             .when(low_confidence, |d| {
                 d.child(
-                    h_flex()
-                        .gap_1()
-                        .items_center()
-                        .text_xs()
-                        .text_color(r.muted_fg)
-                        .child(Icon::new(IconName::Info).xsmall())
-                        .child("Low confidence. This model is not calibrated, so it never abstains; it always answers."),
+                    icon_line(
+                        Icon::new(IconName::Info).xsmall(),
+                        "Low confidence. This model is not calibrated, so it never abstains; it always answers.",
+                    )
+                    .text_xs()
+                    .text_color(r.muted_fg),
                 )
             }),
     };
@@ -244,17 +278,39 @@ pub fn prediction_block(
                 .child(caption("Other classes", cx).pb_1())
                 .children(rest),
         )
-        .child(
-            h_flex()
-                .gap_1()
-                .items_center()
-                .text_xs()
-                .text_color(r.muted_fg)
-                .child(Icon::new(Lucide::Timer).xsmall())
-                .child(format!("{title} · preprocess + inference {:.0} ms", timing.ms()))
-                .when(timing.shared_by > 1, |d| d.child(format!("· one pass for {} heads", timing.shared_by))),
-        )
+        .child({
+            let shared = if timing.shared_by > 1 { format!(" · one pass for {} heads", timing.shared_by) } else { String::new() };
+            icon_line(
+                Icon::new(Lucide::Timer).xsmall(),
+                format!("{title} · preprocess + inference {:.0} ms{shared}", timing.ms()),
+            )
+            .text_xs()
+            .text_color(r.muted_fg)
+        })
         .into_any_element()
+}
+
+/// Short status of a failed answer: the picture could not be read, or the model failed.
+pub fn failure_label(e: &RunError) -> &'static str {
+    match e {
+        RunError::Read(_) | RunError::Decode(_) => "could not read",
+        RunError::Preprocess(_) => "could not prepare",
+        RunError::Unavailable(_) => "model unavailable",
+        RunError::Load(_) => "model failed to load",
+        RunError::Run(_) => "model failed",
+    }
+}
+
+/// Error alert for a failed answer from the model titled `model`, saying what failed.
+pub fn failure_alert(id: impl Into<ElementId>, e: &RunError, model: &str) -> Alert {
+    let (title, detail) = match e {
+        RunError::Read(d) | RunError::Decode(d) => ("Could not read this picture".to_string(), d),
+        RunError::Preprocess(d) => (format!("Could not prepare this picture for {model}"), d),
+        RunError::Unavailable(d) => (format!("{model} is unavailable"), d),
+        RunError::Load(d) => (format!("{model} failed to load"), d),
+        RunError::Run(d) => (format!("{model} failed on this picture"), d),
+    };
+    Alert::error(id, SharedString::from(detail.clone())).title(title)
 }
 
 /// Compact model state: spinner while loading, otherwise a short pill.
@@ -298,7 +354,7 @@ pub fn model_state_chip(state: &ModelState, cx: &App) -> AnyElement {
             .into_any_element(),
         ModelState::Ready(l) => pill(
             Lucide::CircleCheck,
-            format!("ready on {} · loaded in {:.1} s", l.placement.primary().name(), l.ms / 1000.0),
+            format!("ready on {} · loaded in {}", l.placement.primary().name(), duration(l.ms)),
             r.muted_fg,
         ),
         ModelState::Unavailable(_) => pill(Lucide::CircleOff, "not exported".into(), r.muted_fg),
@@ -310,6 +366,12 @@ pub fn model_state_chip(state: &ModelState, cx: &App) -> AnyElement {
 mod unit {
     use super::*;
     use gpui_kit::AssetSource as _;
+
+    #[test]
+    fn durations_keep_their_digits() {
+        assert_eq!(duration(16.4), "16 ms", "a fast load does not read as 0.0 s");
+        assert_eq!(duration(2137.0), "2.1 s");
+    }
 
     /// Every Lucide icon named in the GUI sources must resolve through `AppAssets`, or it renders blank.
     #[test]

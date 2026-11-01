@@ -12,6 +12,7 @@ mod classify;
 mod demo_tab;
 mod theme;
 mod images;
+mod results;
 mod widgets;
 
 use std::collections::HashMap;
@@ -31,8 +32,8 @@ use gpui_kit::component::{
 };
 use gpui_kit::component::{Disableable as _, Selectable as _};
 use gpui_kit::{
-    App, Bounds, Context, FocusHandle, FontWeight, KeyBinding, RenderImage, SharedString, Window, WindowBounds,
-    WindowOptions, actions, div, prelude::*, px, size,
+    App, Bounds, Context, FocusHandle, FontWeight, KeyBinding, RenderImage, SharedString, TestSupportExt as _, Window,
+    WindowBounds, WindowOptions, actions, div, prelude::*, px, size,
 };
 
 use crate::inference::{GraphState, Inference, Lane, LoadStage, Loaded, Policy, Priority, ServiceEvent};
@@ -105,6 +106,16 @@ impl ModelState {
     }
 }
 
+/// Where the selected model came from.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Pick {
+    /// the start-up probe has not picked the default yet: the fallback is shown, nothing runs on it
+    Probing,
+    Default,
+    /// the user picked; the start-up default no longer applies
+    User,
+}
+
 pub struct DemoApp {
     focus: FocusHandle,
     tab: TabKind,
@@ -115,8 +126,9 @@ pub struct DemoApp {
     bulk: Lane,
     /// selected head for Classify and Demo (none only when no model is available)
     model: Option<HeadId>,
-    /// the user picked a model, so the start-up default no longer applies
-    model_chosen: bool,
+    pick: Pick,
+    /// `--autorun`, waiting for the start-up default
+    autorun: bool,
     graphs: HashMap<GraphId, GraphState>,
     /// the preferred default heads passed over at start-up, and why
     passed_over: Vec<(HeadId, String)>,
@@ -169,7 +181,8 @@ impl DemoApp {
             bulk: inference.lane(Priority::Bulk, Policy::Keep),
             inference,
             model,
-            model_chosen: false,
+            pick: Pick::Probing,
+            autorun: false,
             graphs: HashMap::new(),
             passed_over: Vec::new(),
             registry_error,
@@ -205,11 +218,16 @@ impl DemoApp {
                 self.graphs.insert(g, st);
             }
             ServiceEvent::Default { head, passed_over } => {
-                if !self.model_chosen {
+                if self.pick != Pick::User {
                     self.inference.preload(&head);
                     self.model = Some(head);
+                    self.pick = Pick::Default;
                 }
                 self.passed_over = passed_over;
+                self.follow_model(cx);
+                if std::mem::take(&mut self.autorun) {
+                    self.run_all(cx);
+                }
             }
         }
         cx.notify();
@@ -270,8 +288,23 @@ impl DemoApp {
             self.inference.preload(&k);
         }
         self.model = Some(k);
-        self.model_chosen = true;
+        self.pick = Pick::User;
+        self.follow_model(cx);
         cx.notify();
+    }
+
+    /// The model to run: the selected one, once the start-up default is known or the user picked.
+    fn run_model(&self) -> Option<HeadId> {
+        if self.pick == Pick::Probing { None } else { self.model.clone() }
+    }
+
+    /// The input on screen gets the selected model's answer.
+    fn follow_model(&mut self, cx: &mut Context<Self>) {
+        match self.tab {
+            TabKind::Classify => self.classify_follow_model(cx),
+            TabKind::Demo => self.demo_follow_model(cx),
+            TabKind::Bench => {}
+        }
     }
 
     fn next_model(&mut self, _: &NextModel, window: &mut Window, cx: &mut Context<Self>) {
@@ -357,7 +390,7 @@ impl DemoApp {
                         } else {
                             "checksums not verified since the files changed (gpui-demo models --check)"
                         };
-                        format!("{name} — on {}, loaded in {:.1} s, {checked}{skipped}", l.placement, l.ms / 1000.0)
+                        format!("{name} — on {}, loaded in {}, {checked}{skipped}", l.placement, widgets::duration(l.ms))
                     }
                     ModelState::Loading { stage: LoadStage::BuildingEngine, .. } => {
                         format!("{name} — building its TensorRT engine (first run only)")
@@ -456,12 +489,22 @@ impl DemoApp {
                 widgets::hint(&["escape"], "Stop", cx).into_any_element(),
             ],
         };
-        StatusBar::new().left(div().text_xs().text_color(t.muted_foreground).child(left)).right(
-            h_flex().gap_4().children(hints).child(widgets::hint(&["ctrl-m"], "Model", cx)).child(widgets::hint(
-                &["ctrl-t"],
-                "Theme",
-                cx,
-            )),
+        // laid out here rather than in the Kit's left/right slots, which shrink alike and clip the shortcuts
+        StatusBar::new().child(
+            h_flex()
+                .w_full()
+                .gap_4()
+                .justify_between()
+                .child(div().flex_1().min_w_0().truncate().text_color(t.muted_foreground).child(left))
+                .child(
+                    h_flex()
+                        .id("status-hints")
+                        .flex_none()
+                        .gap_4()
+                        .children(hints)
+                        .child(widgets::hint(&["ctrl-m"], "Model", cx))
+                        .child(widgets::hint(&["ctrl-t"], "Theme", cx)),
+                ),
         )
     }
 }
@@ -487,11 +530,14 @@ impl Render for DemoApp {
                 .pt_3()
                 .child(Alert::error("registry-error", SharedString::from(e)).title("Model index not found").small())
         });
-        let fallback_alert = (!self.passed_over.is_empty()).then(|| {
-            let why: Vec<String> =
-                self.passed_over.iter().map(|(h, why)| format!("{} is not the default here: {why}.", self.title(h))).collect();
+        let fallback_alert = (self.pick == Pick::Default && !self.passed_over.is_empty()).then(|| {
+            let why: Vec<String> = self
+                .passed_over
+                .iter()
+                .map(|(h, why)| format!("{} is not the default here: {}.", self.title(h), why.trim_end_matches('.')))
+                .collect();
             let using = self.model.as_ref().map(|m| self.title(m)).unwrap_or_default();
-            div().px_4().pt_3().child(
+            div().id("fallback-notice").test_support().px_4().pt_3().child(
                 Alert::warning("default-fallback", SharedString::from(why.join(" ")))
                     .title(format!("Using {using}"))
                     .small(),
@@ -513,7 +559,7 @@ impl Render for DemoApp {
             .on_action(cx.listener(|this, _: &StepNext, w, cx| this.step(1, w, cx)))
             .on_action(cx.listener(|this, _: &Activate, _, cx| this.activate(cx)))
             .on_action(cx.listener(|this, _: &RunAll, _, cx| this.run_all(cx)))
-            .on_action(cx.listener(|this, _: &Cancel, _, cx| this.cancel(cx)))
+            .on_action(cx.listener(|this, _: &Cancel, w, cx| this.cancel(w, cx)))
             .on_mouse_down(
                 gpui_kit::MouseButton::Left,
                 cx.listener(|this, _, window, cx| {
@@ -567,9 +613,16 @@ impl DemoApp {
         }
     }
 
-    fn cancel(&mut self, cx: &mut Context<Self>) {
-        self.demo_cancel(cx);
-        self.bench_cancel(cx);
+    /// Esc steps back one level: out of a text field first, then it stops the visible tab's run.
+    fn cancel(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.focus.is_focused(window) {
+            return window.focus(&self.focus, cx);
+        }
+        match self.tab {
+            TabKind::Demo => self.demo_cancel(cx),
+            TabKind::Bench => self.bench_cancel(cx),
+            TabKind::Classify => {}
+        }
     }
 }
 
@@ -584,7 +637,8 @@ pub fn keymap() -> Vec<KeyBinding> {
         KeyBinding::new("ctrl-2", ShowDemo, Some(CTX)),
         KeyBinding::new("ctrl-3", ShowBench, Some(CTX)),
         KeyBinding::new("ctrl-r", RunAll, Some(CTX)),
-        KeyBinding::new("escape", Cancel, Some(CTX_NAV)),
+        // also while a text field has focus: the field handles Esc first, then it reaches Cancel
+        KeyBinding::new("escape", Cancel, Some(CTX)),
         KeyBinding::new("left", StepPrev, Some(CTX_NAV)),
         KeyBinding::new("right", StepNext, Some(CTX_NAV)),
         KeyBinding::new("up", StepPrev, Some(CTX_NAV)),
@@ -650,9 +704,7 @@ pub fn run(opts: ModelOptions, demo_dir: Option<PathBuf>, gui: GuiOptions, initi
             cx.new(|cx| {
                 let mut app = DemoApp::new(service, demo_dir, initial, window, cx);
                 app.tab = gui.tab;
-                if gui.autorun {
-                    app.run_all(cx);
-                }
+                app.autorun = gui.autorun;
                 app
             })
         });

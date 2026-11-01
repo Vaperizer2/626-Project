@@ -106,6 +106,7 @@ pub enum Policy {
     Latest,
 }
 
+#[derive(Clone)]
 pub enum ImageInput {
     Source(Source),
     Bytes(Vec<u8>),
@@ -824,6 +825,8 @@ pub(crate) mod fake {
         pub gates: HashMap<String, Arc<Gate>>,
         /// graphs whose preferred provider does not register
         pub no_provider: HashSet<String>,
+        /// graphs whose load fails
+        pub broken: HashSet<String>,
         pub seen: Arc<Mutex<Vec<Seen>>>,
         /// graphs dropped so far
         pub drops: Arc<AtomicUsize>,
@@ -843,6 +846,9 @@ pub(crate) mod fake {
             stage(LoadStage::Loading);
             if let Some(g) = self.gates.get(m.id.as_str()) {
                 g.wait();
+            }
+            if self.broken.contains(m.id.as_str()) {
+                return Err(format!("{}: Protobuf parsing failed", m.graph.display()));
             }
             let graph = FakeGraph { id: m.id.to_string(), run: self.run, seen: self.seen.clone(), drops: self.drops.clone() };
             let placement = Placement { registered: vec![EpKind::Cpu], skipped: vec![] };
