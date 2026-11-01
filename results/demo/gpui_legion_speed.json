@@ -609,5 +609,92 @@
     "n": 3
    }
   }
+ },
+ "watcher_fix_ab": {
+  "what": "bench of one image, 25 rounds, a = 340624c, b = the watcher fix, alternated, 5 rounds, one GPU lock hold",
+  "deployed-a": {
+   "run_ms": {
+    "median": 112.238,
+    "min": 111.752,
+    "max": 113.421,
+    "n": 5
+   },
+   "end_to_end_ms": {
+    "median": 115.182,
+    "min": 114.634,
+    "max": 116.187,
+    "n": 5
+   },
+   "stream_fps": {
+    "median": 8.86,
+    "min": 8.801,
+    "max": 8.911,
+    "n": 5
+   },
+   "errors": 0
+  },
+  "deployed-b": {
+   "run_ms": {
+    "median": 110.232,
+    "min": 109.979,
+    "max": 110.408,
+    "n": 5
+   },
+   "end_to_end_ms": {
+    "median": 112.997,
+    "min": 112.675,
+    "max": 113.722,
+    "n": 5
+   },
+   "stream_fps": {
+    "median": 8.964,
+    "min": 8.959,
+    "max": 8.991,
+    "n": 5
+   },
+   "errors": 0
+  },
+  "fast-a": {
+   "run_ms": {
+    "median": 15.45,
+    "min": 15.36,
+    "max": 15.595,
+    "n": 5
+   },
+   "end_to_end_ms": {
+    "median": 17.755,
+    "min": 17.683,
+    "max": 17.958,
+    "n": 5
+   },
+   "stream_fps": {
+    "median": 63.759,
+    "min": 62.818,
+    "max": 64.181,
+    "n": 5
+   },
+   "errors": 0
+  },
+  "fast-b": {
+   "run_ms": {
+    "median": 12.134,
+    "min": 12.075,
+    "max": 12.154,
+    "n": 5
+   },
+   "end_to_end_ms": {
+    "median": 14.382,
+    "min": 14.263,
+    "max": 14.429,
+    "n": 5
+   },
+   "stream_fps": {
+    "median": 78.216,
+    "min": 77.521,
+    "max": 78.385,
+    "n": 5
+   },
+   "errors": 0
+  }
  }
 }
