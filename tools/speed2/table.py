@@ -20,6 +20,9 @@ ROWS = {
     "speed2_int8_res308_mlp3840": ("compose_int8_res308", "MLP 4304 -> 3840 (FLAP fluct, bias-comp): fc1 in 2 waves"),
     "speed2_int8_res294": ("compose_int8_res308", "294 px (441 tokens), INT8 recalibrated: attention in 2 waves"),
     "speed2_int8_res308_heads15": ("compose_int8_res308", "attention heads 16 -> 15 per block (FLAP fluct, bias-comp)"),
+    "speed2_int8_res308_mlp3840s308": ("compose_int8_res308", "MLP 3840 as above, importance and bias-comp from 308 px stats"),
+    "speed2_int8_res294_mlp3840": ("speed2_int8_res294", "res294 + MLP 3840 (294 px stats)"),
+    "speed2_int8_res294_drop7": ("speed2_int8_res294", "res294 with block 7 removed (least damaging in the pool screen)"),
 }
 
 
