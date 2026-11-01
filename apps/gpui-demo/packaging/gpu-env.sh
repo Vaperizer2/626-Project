@@ -14,8 +14,13 @@
 
 GPU_LIBPATH=""
 GPU_STATE=""
+# the onnxruntime series the app and its CPU library are built and checked against
+GPU_ORT_SERIES=1.31
+# why the last venv with an onnxruntime-gpu was passed over
+gpu_why=""
 
-# gpu_try VENV: use VENV's onnxruntime-gpu (and the pip CUDA, cuDNN and TensorRT libraries beside it) if it has one.
+# gpu_try VENV: use VENV's onnxruntime-gpu (and the pip CUDA, cuDNN and TensorRT libraries beside it) if it has one
+# of the expected version.
 gpu_try() {
     [ -n "$1" ] || return 1
     gpu_sp=""
@@ -29,6 +34,14 @@ gpu_try() {
         if [ -f "$lib" ]; then gpu_ort="$lib"; fi
     done
     [ -n "$gpu_ort" ] || return 1
+    case "${gpu_ort##*.so.}" in
+        "$GPU_ORT_SERIES" | "$GPU_ORT_SERIES".*) ;;
+        *)
+            gpu_why="$1 has onnxruntime-gpu ${gpu_ort##*.so.}, the app needs $GPU_ORT_SERIES.x"
+            gpu_ort=""
+            return 1
+            ;;
+    esac
     GPU_LIBPATH="$gpu_sp/onnxruntime/capi"
     for d in "$gpu_sp"/nvidia/*/lib "$gpu_sp"/tensorrt_libs; do
         if [ -d "$d" ]; then GPU_LIBPATH="$GPU_LIBPATH:$d"; fi
@@ -55,6 +68,10 @@ gpu_find() {
         done
         GPU_LIBPATH="$HERE"
     fi
+    if [ -z "$gpu_ort" ] && [ -n "$gpu_why" ]; then
+        GPU_STATE="CPU ($gpu_why: see README.txt, GPU)"
+        return 0
+    fi
     if [ -z "$gpu_ort" ] && [ -n "${COMPCLASS_GPU_VENV:-}" ]; then
         GPU_STATE="CPU (COMPCLASS_GPU_VENV=$COMPCLASS_GPU_VENV holds no onnxruntime-gpu: see README.txt, GPU)"
         return 0
@@ -65,8 +82,12 @@ gpu_find() {
     fi
     ORT_DYLIB_PATH="$gpu_ort"
     gpu_trt=""
-    for d in $(printf '%s' "$GPU_LIBPATH" | tr ':' ' ') /usr/lib/x86_64-linux-gnu /usr/lib /opt/tensorrt/lib; do
-        if [ -z "$gpu_trt" ] && [ -f "$d/libnvinfer.so.10" ]; then gpu_trt="$d"; fi
+    # split on ':' only, so directories with spaces stay whole
+    gpu_rest="$GPU_LIBPATH:/usr/lib/x86_64-linux-gnu:/usr/lib:/opt/tensorrt/lib"
+    while [ -z "$gpu_trt" ] && [ -n "$gpu_rest" ]; do
+        d=${gpu_rest%%:*}
+        case "$gpu_rest" in *:*) gpu_rest=${gpu_rest#*:} ;; *) gpu_rest="" ;; esac
+        if [ -f "$d/libnvinfer.so.10" ]; then gpu_trt="$d"; fi
     done
     if [ -n "$gpu_trt" ]; then
         case ":$GPU_LIBPATH:" in *":$gpu_trt:"*) ;; *) GPU_LIBPATH="$GPU_LIBPATH:$gpu_trt" ;; esac

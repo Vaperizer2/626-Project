@@ -680,6 +680,15 @@ mod tests {
         assert!(rows[0].1.is_ok() && rows[1].1.is_err(), "the head that never answered counts as a failure");
     }
 
+    /// packaging/gpu-env.sh, through scripts/test_gpu_env.sh (fake venvs under a path with spaces)
+    #[cfg(unix)]
+    #[test]
+    fn gpu_env_passes_over_a_wrong_onnxruntime_and_keeps_paths_whole() {
+        let script = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("scripts/test_gpu_env.sh");
+        let out = std::process::Command::new("sh").arg(&script).output().unwrap();
+        assert!(out.status.success(), "{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr));
+    }
+
     #[test]
     fn models_check_fails_when_the_index_lists_a_manifest_it_cannot_read() {
         let dir = std::env::temp_dir().join(format!("gpui-demo-check-{}", std::process::id()));
