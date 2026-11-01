@@ -108,7 +108,24 @@ uv run --no-project --python 3.12 --with numpy --with pillow \
 For full development, use `uv sync --locked --group dev`, then `uv run pytest -q`.
 Python is pinned to 3.12; Linux training dependencies use CUDA 12.8 Torch wheels and require a substantial download.
 The tests use synthetic data. For webcam, GUI, CUDA and model contracts see [DEMO.md](DEMO.md).
-For Rust builds/options see [the app README](../apps/gpui-demo/README.md); use `cargo --locked`.
+
+## Build the desktop app from source
+
+The Rust code is one Cargo workspace at the repo root: `crates/inference` (the models, the inference service and
+onnxruntime, with no UI) and `apps/gpui-demo` (the window and the command line). Run cargo from the repo root. The
+binary lands in `target/release/`, not under `apps/gpui-demo/`.
+
+```bash
+export CARGO_BUILD_JOBS=8
+cargo build --release --locked -p gpui-demo --features turbojpeg   # libjpeg-turbo: the same JPEG pixels as Pillow
+cargo test --locked                                                 # needs no ONNX files and no display
+target/release/gpui-demo models                                     # finds exports/models.json by walking up
+```
+
+A clean build takes about 2.5 to 3 minutes on legion, nearly all of it GPUI Kit. `cargo test -p inference` builds
+the crate without GPUI in under a minute. Options, keys and the profiling setup are in
+[the app README](../apps/gpui-demo/README.md). A new desktop AI app starts from this one with `scripts/new_app.sh`;
+[TEMPLATE.md](TEMPLATE.md) has the procedure.
 
 ## Reproduce results and documents
 
@@ -142,8 +159,9 @@ For a changed app/model, follow the packaging prerequisites in the app README, t
 apps/gpui-demo/scripts/package_linux.sh
 ```
 
-The script builds a glibc-2.28-compatible binary and bundles onnxruntime, models, both launchers, credits and
-checksums. Verify the archive/checksums, extract to a temporary directory and run a headless prediction with all
+The script builds a glibc-2.28-compatible binary and bundles onnxruntime, both launchers, credits, checksums and
+what `apps/gpui-demo/packaging/bundle.txt` lists (the models, the demo stack and the dataset note). Add a new model's
+files to that list. Verify the archive/checksums, extract to a temporary directory and run a headless prediction with all
 models. Test the window on a supported desktop before claiming GUI validation. Publish under a new dated tag,
 attach the `.tar.gz` and `.tar.gz.sha256`, and update the links above and in README. Preserve prior releases so
 colleagues can reproduce their downloads. Publish source changes and the matching release together.
