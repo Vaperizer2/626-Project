@@ -34,10 +34,18 @@ use inference::registry::Registry;
 
 /// `--help`.
 fn help() -> String {
-    let (title, env) = (app::TITLE, app::ENV_PREFIX);
+    let (title, about, env) = (app::TITLE, app::ABOUT, app::ENV_PREFIX);
+    let titles: Vec<String> = app::TABS.iter().map(|t| t.title.to_lowercase()).collect();
+    let tabs = match titles.split_last() {
+        Some((last, [])) => last.clone(),
+        Some((last, rest)) => format!("{} or {last}", rest.join(", ")),
+        None => String::new(),
+    };
+    let first = titles.first().cloned().unwrap_or_default();
+    let keys = gui::keys_help();
     format!(
         "\
-gpui-demo - {title}: classify electronic components in pictures (GPUI + onnxruntime)
+gpui-demo - {title}: {about} (GPUI + onnxruntime)
 
 USAGE:
     gpui-demo [OPTIONS] [IMAGE|URL ...]                 open the window
@@ -68,16 +76,13 @@ OPTIONS:
                       `gpui-demo models` for the ids.
     --demo-dir DIR    window: folder with demo_stack.json (default: ${env}_DEMO_DIR, else the
                       first demo_stack/ found walking up from the current directory, then the executable)
-    --tab TAB         window: start on classify (default), demo or benchmark
-    --autorun         window: start Run all (Demo tab) or the benchmark (Benchmark tab) right away
+    --tab TAB         window: start on tab TAB, one of {tabs} (default: {first})
+    --autorun         window: start the tab's run (its Ctrl+R) once the default model is known
     --dark, --light   window: initial theme (default: follow the system)
     -h, --help        this help
     -V, --version     version
 
-KEYS (window): Ctrl+1/2/3 Classify / Demo / Benchmark tab, Ctrl+M next model, Ctrl+T light/dark theme,
-               Ctrl+Q quit. Classify: Ctrl+O open, Ctrl+V paste URL / path / image, Ctrl+L URL field,
-               Enter fetch, Up/Down recent images. Demo: Left/Right or J/K step, Enter classify,
-               Ctrl+R run all, Esc cancel. Benchmark: Ctrl+R run, Esc cancel"
+KEYS (window): {keys}"
     )
 }
 
@@ -90,7 +95,6 @@ struct Args {
     rounds: usize,
     warmup: usize,
     models: Vec<String>,
-    demo_dir: Option<PathBuf>,
     gui: gui::GuiOptions,
     rest: Vec<String>,
 }
@@ -139,14 +143,14 @@ fn parse_args() -> Result<Args> {
             "--check" => a.check = true,
             "--rounds" => a.rounds = value("--rounds")?.parse().context("--rounds")?,
             "--warmup" => a.warmup = value("--warmup")?.parse().context("--warmup")?,
-            "--demo-dir" => a.demo_dir = Some(PathBuf::from(value("--demo-dir")?)),
+            "--demo-dir" => a.gui.demo_dir = Some(PathBuf::from(value("--demo-dir")?)),
             "--tab" => {
-                a.gui.tab = match value("--tab")?.to_ascii_lowercase().as_str() {
-                    "classify" => gui::TabKind::Classify,
-                    "demo" => gui::TabKind::Demo,
-                    "bench" | "benchmark" => gui::TabKind::Bench,
-                    t => bail!("--tab {t}: expected classify, demo or benchmark"),
-                }
+                let name = value("--tab")?;
+                let Some(ix) = gui::tab_index(&name) else {
+                    let titles: Vec<&str> = app::TABS.iter().map(|t| t.title).collect();
+                    bail!("--tab {name}: expected one of {}", titles.join(", "));
+                };
+                a.gui.tab = ix;
             }
             "--autorun" => a.gui.autorun = true,
             "--dark" => a.gui.theme = Some(true),
@@ -208,9 +212,6 @@ fn heads(a: &Args, reg: &Registry) -> Result<Vec<HeadId>> {
     Ok(out)
 }
 
-/// The `label` of an abstaining head in classify output (the Python demo's spelling).
-const UNSURE: &str = "UNSURE";
-
 /// One `classify --json` row; an error row has the same keys.
 #[derive(serde::Serialize)]
 struct JsonRow<'a> {
@@ -233,7 +234,7 @@ impl<'a> JsonRow<'a> {
             Ok((HeadOutput::Classify(c), timing)) => JsonRow {
                 source,
                 model: head.as_str(),
-                label: Some(c.committed().map_or(UNSURE, |i| c.labels.name(i))),
+                label: Some(c.committed().map_or(app::UNSURE, |i| c.labels.name(i))),
                 top3: c.top(3).into_iter().map(|(i, p)| (c.labels.name(i), p)).collect(),
                 unsure: c.abstained(),
                 low_confidence: c.low_confidence(),
@@ -464,7 +465,7 @@ fn run_bench(a: &Args) -> Result<u8> {
         match (failed, results.into_iter().next()) {
             (None, Some((_, Ok(HeadOutput::Classify(c)), timing))) => {
                 if record {
-                    answers.push(c.committed().map_or(UNSURE, |i| c.labels.name(i)).to_string());
+                    answers.push(c.committed().map_or(app::UNSURE, |i| c.labels.name(i)).to_string());
                 }
                 Some((wall, timing))
             }
@@ -671,7 +672,7 @@ fn main() -> ExitCode {
         "models" => run_models(&args),
         "preprocess" => run_preprocess(&args),
         _ => {
-            gui::run(args.opts, args.demo_dir, args.gui, args.rest);
+            gui::run(args.opts, args.gui, args.rest);
             Ok(0)
         }
     };

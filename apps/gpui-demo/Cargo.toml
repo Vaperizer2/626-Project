@@ -44,5 +44,5 @@ hotpath = { version = "0.28", optional = true }
 [dev-dependencies]
 # GPUI Kit's headless test platform for the window smoke test (src/gui/tests.rs).
 gpui-kit = { version = "=0.7.3", features = ["test-support"] }
-# The service's fake loader (`inference::service::fake`) for the window tests.
+# The service's fake loader (`inference::testing`) for the window tests.
 inference = { path = "../../crates/inference", features = ["test-support"] }

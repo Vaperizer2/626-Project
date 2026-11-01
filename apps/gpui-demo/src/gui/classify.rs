@@ -1,6 +1,6 @@
-//! Classify tab: open / drop / paste / fetch pictures, the recent list, the picture and the result panel.
+//! Classify tab: the pictures the window gets (opened, dropped, pasted, fetched from a typed URL, or given on the
+//! command line), the recent list, the picture and the result panel.
 
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use futures::StreamExt;
@@ -11,24 +11,25 @@ use gpui_kit::component::{
     empty::{Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle},
     h_flex,
     input::{Input, InputEvent, InputState},
-    notification::NotificationType,
     scroll::ScrollableElement as _,
     spinner::Spinner,
     v_flex,
 };
 use gpui_kit::{
-    ClipboardEntry, Context, Entity, FontWeight, ObjectFit, PathPromptOptions, RenderImage, ScrollHandle, SharedString,
-    Subscription, Window, div, img, prelude::*, px,
+    Context, Entity, FocusHandle, FontWeight, ObjectFit, RenderImage, ScrollHandle, SharedString, Subscription, Window,
+    div, img, prelude::*, px,
 };
 
-use super::widgets::Lucide;
 use super::images::{DISPLAY_MAX_SIDE, render};
+use super::models::{ModelEvent, ModelState, Models};
 use super::results::{HeadResult, Results};
-use super::models::ModelState;
-use super::{DemoApp, FocusUrl, Open, Paste, theme, widgets};
+use super::widgets::Lucide;
+use super::{FocusUrl, Hint, Open, Paste, StepNext, StepPrev, Tab, theme, widgets};
+use crate::app;
 use inference::fetch::Source;
-use inference::service::{ImageInput, RequestHandle, RunError, Ticket, Update};
 use inference::manifest::HeadId;
+use inference::prof;
+use inference::service::{ImageInput, Lane, Policy, Priority, RequestHandle, RunError, Ticket, Update};
 
 const MAX_ENTRIES: usize = 40;
 
@@ -45,27 +46,90 @@ pub struct Entry {
     tickets: Vec<Ticket>,
 }
 
-pub struct ClassifyState {
+pub struct ClassifyTab {
+    models: Entity<Models>,
+    lane: Lane,
+    focus: FocusHandle,
     url: Entity<InputState>,
     entries: Vec<Entry>,
     selected: Option<u64>,
     next_id: u64,
     list_scroll: ScrollHandle,
+    /// textures evicted from the recent list, released on the next frame
+    to_drop: Vec<Arc<RenderImage>>,
+    _subscriptions: [Subscription; 2],
 }
 
-impl ClassifyState {
-    pub fn new(window: &mut Window, cx: &mut Context<DemoApp>) -> (Self, Vec<Subscription>) {
+impl Tab for ClassifyTab {
+    const TITLE: &'static str = "Classify";
+    const ICON: Lucide = Lucide::ScanSearch;
+    const HINTS: &'static [Hint] =
+        &[(&["ctrl-o"], "Open"), (&["ctrl-v"], "Paste"), (&["ctrl-l"], "URL"), (&["up", "down"], "Recent")];
+    const TAKES_INPUTS: bool = true;
+
+    fn new(models: Entity<Models>, _: &app::Shared, window: &mut Window, cx: &mut Context<Self>) -> Self {
         let url =
             cx.new(|cx| InputState::new(window, cx).placeholder("Paste or type an image URL or file path, then Enter"));
-        let sub = cx.subscribe_in(&url, window, |this: &mut DemoApp, _, ev: &InputEvent, window, cx| {
+        let enter = cx.subscribe_in(&url, window, |this, _, ev: &InputEvent, window, cx| {
             if let InputEvent::PressEnter { .. } = ev {
                 this.fetch_typed_url(window, cx);
             }
         });
-        let s = Self { url, entries: Vec::new(), selected: None, next_id: 1, list_scroll: ScrollHandle::new() };
-        (s, vec![sub])
+        // a retry of a failed graph: its heads' "failed to load" answers are stale
+        let retries = cx.subscribe(&models, |this, _, ev, _| {
+            if let ModelEvent::Retrying(heads) = ev {
+                for e in &mut this.entries {
+                    for h in heads {
+                        e.results.forget_load_failure(h);
+                    }
+                }
+            }
+        });
+        let lane = models.read(cx).inference().lane(Priority::Interactive, Policy::Keep);
+        Self {
+            models,
+            lane,
+            focus: cx.focus_handle(),
+            url,
+            entries: Vec::new(),
+            selected: None,
+            next_id: 1,
+            list_scroll: ScrollHandle::new(),
+            to_drop: Vec::new(),
+            _subscriptions: [enter, retries],
+        }
     }
 
+    fn focus_handle(&self) -> FocusHandle {
+        self.focus.clone()
+    }
+
+    /// The selected entry gets the selected model's answer when it has none yet: on submission, after a model
+    /// switch, and when another entry is selected. Entries never submitted (they arrived while the start-up default
+    /// was probed) get theirs too.
+    fn follow_model(&mut self, cx: &mut Context<Self>) {
+        let Some(model) = self.models.read(cx).run_model() else { return };
+        let waiting = self.entries.iter().enumerate().filter(|(_, e)| e.tickets.is_empty()).map(|(i, _)| i);
+        let todo: Vec<usize> = self.selected_ix().into_iter().chain(waiting).collect();
+        for ix in todo {
+            self.answer(ix, &model, cx);
+        }
+    }
+
+    fn take(&mut self, inputs: Vec<ImageInput>, window: &mut Window, cx: &mut Context<Self>) {
+        for input in inputs {
+            if let ImageInput::Source(Source::Url(u)) = &input {
+                let u = u.clone();
+                self.url.update(cx, |st, cx| st.set_value(u, window, cx));
+            }
+            self.submit(input, cx);
+        }
+    }
+}
+
+impl ClassifyTab {
+    /// Something is classifying (the spinners animate themselves; the tests wait for this).
+    #[cfg(test)]
     pub fn busy(&self) -> bool {
         self.entries.iter().any(|e| e.results.working())
     }
@@ -76,7 +140,7 @@ impl ClassifyState {
 
     /// The selected entry has `head`'s answer, its wall time and its display picture.
     #[cfg(test)]
-    pub fn answered(&self, head: &inference::manifest::HeadId) -> bool {
+    pub fn answered(&self, head: &HeadId) -> bool {
         self.selected_ix()
             .map(|i| &self.entries[i])
             .is_some_and(|e| matches!(e.results.get(head), Some(HeadResult::Done(_, _, Some(_)))) && e.image.is_some())
@@ -84,7 +148,7 @@ impl ClassifyState {
 
     /// How many entries have `head`'s answer and their display picture.
     #[cfg(test)]
-    pub fn answered_entries(&self, head: &inference::manifest::HeadId) -> usize {
+    pub fn answered_entries(&self, head: &HeadId) -> usize {
         self.entries
             .iter()
             .filter(|e| matches!(e.results.get(head), Some(HeadResult::Done(_, _, Some(_)))) && e.image.is_some())
@@ -93,7 +157,7 @@ impl ClassifyState {
 
     /// The short status the Recent list shows for the selected entry's failed answer from `head`.
     #[cfg(test)]
-    pub fn failure(&self, head: &inference::manifest::HeadId) -> Option<&'static str> {
+    pub fn failure(&self, head: &HeadId) -> Option<&'static str> {
         match self.entries[self.selected_ix()?].results.get(head) {
             Some(HeadResult::Failed(e)) => Some(widgets::failure_label(e)),
             _ => None,
@@ -104,21 +168,17 @@ impl ClassifyState {
     pub fn len(&self) -> usize {
         self.entries.len()
     }
-}
 
-impl DemoApp {
-    pub(super) fn submit_source(&mut self, src: Source, cx: &mut Context<Self>) {
-        let (name, full) = (src.display_name(), src.full());
-        self.submit(ImageInput::Source(src), name, full, cx);
-    }
-
-    fn submit(&mut self, input: ImageInput, name: String, full: String, cx: &mut Context<Self>) {
+    fn submit(&mut self, input: ImageInput, cx: &mut Context<Self>) {
         if self.models.read(cx).selected().is_none() {
             return;
         }
-        let c = &mut self.classify;
-        let id = c.next_id;
-        c.next_id += 1;
+        let (name, full) = match &input {
+            ImageInput::Source(src) => (src.display_name(), src.full()),
+            ImageInput::Bytes(_) | ImageInput::Decoded(_) => ("pasted image".to_string(), "clipboard".to_string()),
+        };
+        let id = self.next_id;
+        self.next_id += 1;
         let entry = Entry {
             id,
             name: name.into(),
@@ -129,42 +189,29 @@ impl DemoApp {
             results: Results::default(),
             tickets: Vec::new(),
         };
-        c.entries.insert(0, entry);
-        while c.entries.len() > MAX_ENTRIES {
-            if let Some(e) = c.entries.pop() {
+        self.entries.insert(0, entry);
+        while self.entries.len() > MAX_ENTRIES {
+            if let Some(e) = self.entries.pop() {
                 self.to_drop.extend(e.image);
             }
         }
-        c.selected = Some(id);
-        c.list_scroll.scroll_to_item(0);
-        self.classify_follow_model(cx);
-    }
-
-    /// The selected entry gets the selected model's answer when it has none yet: on submission, after a model
-    /// switch, and when another entry is selected. Entries never submitted (they arrived while the start-up default
-    /// was probed) get theirs too.
-    pub(super) fn classify_follow_model(&mut self, cx: &mut Context<Self>) {
-        let Some(model) = self.models.read(cx).run_model() else { return };
-        let c = &self.classify;
-        let waiting = c.entries.iter().enumerate().filter(|(_, e)| e.tickets.is_empty()).map(|(i, _)| i);
-        let todo: Vec<usize> = c.selected_ix().into_iter().chain(waiting).collect();
-        for ix in todo {
-            self.classify_answer(ix, &model, cx);
-        }
+        self.selected = Some(id);
+        self.list_scroll.scroll_to_item(0);
+        self.follow_model(cx);
     }
 
     /// Entry `ix` gets `model`'s answer unless it has one or is waiting for it.
-    fn classify_answer(&mut self, ix: usize, model: &HeadId, cx: &mut Context<Self>) {
-        let c = &mut self.classify;
-        let e = &mut c.entries[ix];
+    fn answer(&mut self, ix: usize, model: &HeadId, cx: &mut Context<Self>) {
+        let token = self.next_id;
+        let e = &mut self.entries[ix];
         if e.results.get(model).is_some() {
             return;
         }
-        let (id, token) = (e.id, c.next_id);
-        c.next_id += 1;
+        self.next_id += 1;
+        let id = e.id;
         let display = e.image.is_none().then_some(DISPLAY_MAX_SIDE);
         let RequestHandle { updates: mut rx, ticket } =
-            self.interactive.submit(e.input.clone(), std::slice::from_ref(model), display);
+            self.lane.submit(e.input.clone(), std::slice::from_ref(model), display);
         e.tickets.push(ticket);
         e.results.start(model.clone(), token);
         let model = model.clone();
@@ -172,7 +219,7 @@ impl DemoApp {
             while let Some(update) = rx.next().await {
                 let alive = this
                     .update(cx, |this, cx| {
-                        if let Some(e) = this.classify.entries.iter_mut().find(|e| e.id == id) {
+                        if let Some(e) = this.entries.iter_mut().find(|e| e.id == id) {
                             match update {
                                 Update::Decoded { size, display } => {
                                     e.dims = Some(size);
@@ -197,110 +244,33 @@ impl DemoApp {
         cx.notify();
     }
 
-    pub(super) fn classify_forget_load_failures(&mut self, model: &HeadId) {
-        for e in &mut self.classify.entries {
-            e.results.forget_load_failure(model);
-        }
-    }
-
     fn fetch_typed_url(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let text = self.classify.url.read(cx).value().to_string();
+        let text = self.url.read(cx).value().to_string();
         match Source::parse(&text) {
-            Some(src) => self.submit_source(src, cx),
+            Some(src) => self.submit(ImageInput::Source(src), cx),
             None => window.push_notification("Type or paste an image URL (or a file path) first.", cx),
         }
     }
 
-    pub(super) fn open(&mut self, _: &Open, window: &mut Window, cx: &mut Context<Self>) {
-        self.set_tab(super::TabKind::Classify, window, cx);
-        let rx = cx.prompt_for_paths(PathPromptOptions {
-            files: true,
-            directories: false,
-            multiple: true,
-            prompt: Some("Classify".into()),
-        });
-        cx.spawn_in(window, async move |this, cx| {
-            let result = rx.await;
-            this.update_in(cx, |this, window, cx| match result {
-                Ok(Ok(Some(paths))) => {
-                    for p in paths {
-                        this.submit_source(Source::File(p), cx);
-                    }
-                }
-                Ok(Ok(None)) => {}
-                Ok(Err(e)) => window.push_notification(
-                    (
-                        NotificationType::Warning,
-                        SharedString::from(format!(
-                            "File dialog unavailable ({e}). It needs xdg-desktop-portal; drag files onto the window \
-                             or paste a path with Ctrl+V instead."
-                        )),
-                    ),
-                    cx,
-                ),
-                Err(_) => window.push_notification("The file dialog closed unexpectedly.", cx),
-            })
-            .ok();
-        })
-        .detach();
+    fn focus_url(&mut self, _: &FocusUrl, window: &mut Window, cx: &mut Context<Self>) {
+        self.url.update(cx, |st, cx| st.focus(window, cx));
     }
 
-    pub(super) fn paste(&mut self, _: &Paste, window: &mut Window, cx: &mut Context<Self>) {
-        let Some(item) = cx.read_from_clipboard() else {
-            window.push_notification("The clipboard is empty.", cx);
-            return;
-        };
-        self.set_tab(super::TabKind::Classify, window, cx);
-        for entry in item.entries() {
-            match entry {
-                ClipboardEntry::Image(image) => {
-                    self.submit(ImageInput::Bytes(image.bytes.clone()), "pasted image".into(), "clipboard".into(), cx);
-                    return;
-                }
-                ClipboardEntry::ExternalPaths(paths) => {
-                    for p in paths.paths() {
-                        self.submit_source(Source::File(PathBuf::from(p)), cx);
-                    }
-                    return;
-                }
-                _ => {}
-            }
-        }
-        let Some(text) = item.text() else { return };
-        let sources: Vec<Source> = text.lines().filter_map(Source::parse).collect();
-        if sources.is_empty() {
-            window.push_notification("The clipboard has no URL, path or image.", cx);
-        }
-        for s in sources {
-            if let Source::Url(u) = &s {
-                let u = u.clone();
-                self.classify.url.update(cx, |st, cx| st.set_value(u, window, cx));
-            }
-            self.submit_source(s, cx);
-        }
-    }
-
-    pub(super) fn focus_url(&mut self, _: &FocusUrl, window: &mut Window, cx: &mut Context<Self>) {
-        self.set_tab(super::TabKind::Classify, window, cx);
-        self.classify.url.update(cx, |st, cx| st.focus(window, cx));
-    }
-
-    pub(super) fn classify_step(&mut self, delta: isize, cx: &mut Context<Self>) {
-        let c = &mut self.classify;
-        if c.entries.is_empty() {
+    fn step(&mut self, delta: isize, cx: &mut Context<Self>) {
+        if self.entries.is_empty() {
             return;
         }
-        let cur = c.selected.and_then(|id| c.entries.iter().position(|e| e.id == id)).unwrap_or(0) as isize;
-        let next = (cur + delta).clamp(0, c.entries.len() as isize - 1) as usize;
-        c.selected = Some(c.entries[next].id);
-        c.list_scroll.scroll_to_item(next);
-        self.classify_follow_model(cx);
+        let cur = self.selected_ix().unwrap_or(0) as isize;
+        let next = (cur + delta).clamp(0, self.entries.len() as isize - 1) as usize;
+        self.selected = Some(self.entries[next].id);
+        self.list_scroll.scroll_to_item(next);
+        self.follow_model(cx);
         cx.notify();
     }
 
     // ------------------------------------------------------------------------------------------ render
-    pub(super) fn render_classify(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let entry_ix = self.classify.selected_ix();
+    fn render_body(&self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let entry_ix = self.selected_ix();
         v_flex().size_full().child(self.render_toolbar(window, cx)).child(
             h_flex()
                 .flex_1()
@@ -327,11 +297,11 @@ impl DemoApp {
                     .icon(IconName::FolderOpen)
                     .label("Open image…")
                     .tooltip("Open files (Ctrl+O)")
-                    .on_click(cx.listener(|this, _, w, cx| this.open(&Open, w, cx))),
+                    .on_click(|_, window, cx| window.dispatch_action(Box::new(Open), cx)),
             )
             .child(
                 div().flex_1().min_w_0().child(
-                    Input::new(&self.classify.url)
+                    Input::new(&self.url)
                         .prefix(Icon::new(IconName::Globe).small().text_color(t.muted_foreground))
                         .cleanable(true),
                 ),
@@ -347,13 +317,13 @@ impl DemoApp {
                     .icon(IconName::Copy)
                     .label("Paste")
                     .tooltip("Classify the clipboard: image, URL or path (Ctrl+V)")
-                    .on_click(cx.listener(|this, _, w, cx| this.paste(&Paste, w, cx))),
+                    .on_click(|_, window, cx| window.dispatch_action(Box::new(Paste), cx)),
             )
     }
 
     fn render_recent(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.theme();
-        let c = &self.classify;
+        let c = self;
         let model = self.models.read(cx).selected();
         let rows = c.entries.iter().map(|e| {
             let id = e.id;
@@ -402,8 +372,8 @@ impl DemoApp {
                 .when(sel, |d| d.bg(t.list_active).border_1().border_color(t.list_active_border))
                 .when(!sel, |d| d.border_1().border_color(gpui_kit::transparent_black()).hover(|s| s.bg(t.list_hover)))
                 .on_click(cx.listener(move |this, _, _, cx| {
-                    this.classify.selected = Some(id);
-                    this.classify_follow_model(cx);
+                    this.selected = Some(id);
+                    this.follow_model(cx);
                     cx.notify();
                 }))
                 .child(
@@ -475,7 +445,7 @@ impl DemoApp {
 
     fn render_picture(&self, entry_ix: Option<usize>, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.theme();
-        let entry = entry_ix.map(|i| &self.classify.entries[i]);
+        let entry = entry_ix.map(|i| &self.entries[i]);
         let model = self.models.read(cx).selected();
         let unreadable = matches!(
             entry.and_then(|e| model.and_then(|m| e.results.get(m))),
@@ -555,7 +525,7 @@ impl DemoApp {
     fn render_result_body(&self, entry_ix: Option<usize>, cx: &mut Context<Self>) -> gpui_kit::Div {
         let t = cx.theme();
         let models = self.models.read(cx);
-        let entry = entry_ix.map(|i| &self.classify.entries[i]);
+        let entry = entry_ix.map(|i| &self.entries[i]);
         let mut panel = v_flex().gap_5().p_5();
         let Some(e) = entry else {
             // with a picture on screen, its answer from the failed model says this instead
@@ -609,5 +579,22 @@ impl DemoApp {
                 }))
             }
         }
+    }
+}
+
+impl Render for ClassifyTab {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        for im in self.to_drop.drain(..) {
+            window.drop_image(im).ok();
+        }
+        div()
+            .id("classify-tab")
+            .track_focus(&self.focus)
+            .key_context("Classify")
+            .on_action(cx.listener(Self::focus_url))
+            .on_action(cx.listener(|this, _: &StepPrev, _, cx| this.step(-1, cx)))
+            .on_action(cx.listener(|this, _: &StepNext, _, cx| this.step(1, cx)))
+            .size_full()
+            .child(prof!("gui::build_tab_elements", self.render_body(window, cx)))
     }
 }
