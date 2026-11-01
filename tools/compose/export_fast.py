@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -38,7 +39,7 @@ sys.path.insert(0, str(REPO / "tools/speed"))
 from evaluate import dataset, dev_rows  # noqa: E402
 from harness import DEPLOYED, INPUT, OUTPUT, ep_assignment, gpu_lock, latest, load_candidate  # noqa: E402
 
-WORK = Path("/home/vaper/Work/Prototypes/626-artifacts/compose/work")
+WORK = Path(os.environ.get("EXPORT_WORK", "/home/vaper/Work/Prototypes/626-artifacts/compose/work"))
 TOL = {"runtime": {"max_abs_prob": 0.05, "argmax_agree": 0.99}, "exact": {"max_abs_prob": 1e-5, "argmax_agree": 1.0}}
 HEAD_KEYS = ("mu", "sd", "coef", "intercept", "W", "t_zs", "w_zs", "temperature")
 
