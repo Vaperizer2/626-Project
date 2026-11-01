@@ -283,12 +283,7 @@ impl Runtime {
     pub fn engine_cache(&self, m: &Manifest) -> Option<PathBuf> {
         let trt = tensorrt_version()?;
         let base = crate::integrity::cache_dir()?.join("tensorrt");
-        let mut graph = sha2::Sha256::new();
-        for f in m.files.iter().filter(|f| f.path == m.graph || m.external.contains(&f.path)) {
-            graph.update(f.sha256.0);
-        }
-        let graph = crate::manifest::Sha256(graph.finalize().into()).short();
-        Some(base.join(format!("{}-{graph}-ort{}-trt{trt}-{}", m.id.as_str(), self.version, gpu_name())))
+        Some(base.join(format!("{}-{}-ort{}-trt{trt}-{}", m.id.as_str(), graph_key(m), self.version, gpu_name())))
     }
 
     /// An engine for `m` is already built (the next session loads it instead of building one).
@@ -298,6 +293,21 @@ impl Runtime {
                 it.any(|e| e.is_ok_and(|e| e.path().extension().is_some_and(|x| x == "engine")))
             })
     }
+}
+
+/// The part of an engine's cache key that comes from the graph: each graph file's recorded sha256, and its size and
+/// mtime on disk. A load checks only the size against the manifest, so a file replaced since the engine was built
+/// must not find that engine.
+fn graph_key(m: &Manifest) -> String {
+    let mut h = sha2::Sha256::new();
+    for f in m.files.iter().filter(|f| f.path == m.graph || m.external.contains(&f.path)) {
+        h.update(f.sha256.0);
+        if let Some((bytes, mtime_ns)) = crate::integrity::now_stamp(&f.path) {
+            h.update(bytes.to_le_bytes());
+            h.update(mtime_ns.to_le_bytes());
+        }
+    }
+    crate::manifest::Sha256(h.finalize().into()).short()
 }
 
 /// End the process without running exit handlers: for when a provider is still busy in another thread (an engine
@@ -536,6 +546,26 @@ mod tests {
         let mut m = Arc::try_unwrap(crate::inference::fake::manifest("fast", 1)).unwrap();
         m.runtime.providers = providers.iter().map(|&kind| Ep { kind, options: vec![] }).collect();
         m
+    }
+
+    #[test]
+    fn an_engine_built_from_a_replaced_graph_file_is_not_reused() {
+        let dir = std::env::temp_dir().join(format!("gpui-demo-engine-key-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let onnx = dir.join("model.onnx");
+        std::fs::write(&onnx, b"graph").unwrap();
+        let mut m = preferring(&[EpKind::TensorRt]);
+        let sha256 = crate::integrity::sha256_file(&onnx).unwrap();
+        m.graph = onnx.clone();
+        m.files = vec![crate::manifest::FileEntry { path: onnx.clone(), bytes: 5, sha256 }];
+        let before = graph_key(&m);
+        assert_eq!(graph_key(&m), before, "the same files give the same key");
+        // a copy with the recorded size but other bytes (the manifest's sha256 is unchanged; it is not re-hashed)
+        std::fs::write(&onnx, b"GRAPH").unwrap();
+        let file = std::fs::File::options().write(true).open(&onnx).unwrap();
+        file.set_modified(std::time::SystemTime::UNIX_EPOCH + Duration::from_secs(1)).unwrap();
+        assert_ne!(graph_key(&m), before, "the file on disk changed since the engine was built");
+        let _ = std::fs::remove_dir_all(&dir); // test scratch dir under the OS temp dir only
     }
 
     #[test]

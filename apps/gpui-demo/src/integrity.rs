@@ -38,7 +38,8 @@ fn key(p: &Path) -> String {
     p.canonicalize().unwrap_or_else(|_| p.to_path_buf()).display().to_string()
 }
 
-fn now_stamp(p: &Path) -> Option<(u64, u128)> {
+/// The size and mtime (ns) of `p` now.
+pub fn now_stamp(p: &Path) -> Option<(u64, u128)> {
     let md = std::fs::metadata(p).ok()?;
     let mtime = md.modified().ok()?.duration_since(UNIX_EPOCH).ok()?.as_nanos();
     Some((md.len(), mtime))
