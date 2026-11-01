@@ -3,6 +3,7 @@
 # recipe (static batch 1, pool calibration statistics, SmoothQuant 0.5, INT8 QDQ on every GEMM, fc2 inputs at
 # p99.999) -> fidelity screen against the winner's own fp32 and INT8 graphs.
 #   remote_build.sh <candidate_id> <tokens_recipe> <prune build.py args | none>
+# DROP_BLOCKS (comma-separated block indices) removes those blocks after pruning (blocks.py drop).
 # QDQ_EXCLUDE (comma-separated GEMM roles kept in fp16) defaults to none, as in the winner.
 set -euo pipefail
 id=$1 tok=$2
@@ -21,6 +22,10 @@ else
   PRUNE_BASE=$BASE $PY "$R/repo/tools/prune/build.py" "$1" "$W/fp32_384" "${@:2}"
   fp=$W/fp32_384
 fi
+if [ -n "${DROP_BLOCKS:-}" ]; then
+  $PY "$R/repo/tools/speed2/blocks.py" drop "$fp" "$W/drop_384" --blocks "$DROP_BLOCKS"
+  fp=$W/drop_384
+fi
 TOKENS_BASELINE=$fp TOKENS_OUT=$W/tok TOKENS_SHA=$SPEED2_SHA $PY "$R/repo/tools/tokens/build.py" "$tok"
 src=$W/tok/$tok
 cd "$R/repo/tools/quant"
@@ -35,8 +40,10 @@ if [ -f "$WIN/static1/preprocess.json" ] && cmp -s <(jq -S '{input_size, crop_pc
   flock /tmp/626-gpu.lock ./py ../speed2/screen.py "$WIN/static1" "$W/static1" \
     /home/carl/626-runs/compose/candidates/compose_int8_res308 "$R/candidates/$id"
 fi
-jq -n --arg prune "$*" --arg tok "$tok" --arg sha "$SPEED2_SHA" --slurpfile pre "$src/preprocess.json" \
-  '{prune_args: $prune, tokens_recipe: $tok, tools_sha: $sha, tokens_built_from: $pre[0].built_from}' \
+jq -n --arg prune "$*" --arg tok "$tok" --arg sha "$SPEED2_SHA" --arg drop "${DROP_BLOCKS:-}" \
+  --arg excl "${QDQ_EXCLUDE:-}" --slurpfile pre "$src/preprocess.json" \
+  '{prune_args: $prune, drop_blocks: $drop, qdq_exclude: $excl, tokens_recipe: $tok, tools_sha: $sha,
+    tokens_built_from: $pre[0].built_from}' \
   > "$R/candidates/$id/recipe.json"
 [ -f "$W/fp32_384/prune.json" ] && cp "$W/fp32_384/prune.json" "$R/candidates/$id/"
 rm -f "$W/stats/calib_stats.onnx" "$W/stats/model.onnx.data"
