@@ -170,10 +170,10 @@ pub enum Precision {
 }
 
 #[derive(Debug)]
-pub struct FileEntry {
-    pub path: PathBuf,
-    pub bytes: u64,
-    pub sha256: Sha256,
+pub(crate) struct FileEntry {
+    pub(crate) path: PathBuf,
+    pub(crate) bytes: u64,
+    pub(crate) sha256: Sha256,
 }
 
 #[derive(Debug)]
@@ -266,9 +266,9 @@ impl EpKind {
 /// One execution-provider preference. `options` are onnxruntime provider options, passed through unchanged
 /// (the TensorRT cache paths are the app's: see `runtime`).
 #[derive(Clone, Debug, PartialEq)]
-pub struct Ep {
-    pub kind: EpKind,
-    pub options: Vec<(String, String)>,
+pub(crate) struct Ep {
+    pub(crate) kind: EpKind,
+    pub(crate) options: Vec<(String, String)>,
 }
 
 impl Ep {
@@ -281,7 +281,7 @@ impl Ep {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum OptLevel {
+pub(crate) enum OptLevel {
     Disable,
     Basic,
     Extended,
@@ -290,29 +290,29 @@ pub enum OptLevel {
 }
 
 #[derive(Debug)]
-pub struct RuntimeSpec {
-    pub opt_level: OptLevel,
+pub(crate) struct RuntimeSpec {
+    pub(crate) opt_level: OptLevel,
     /// onnxruntime session config entries, sorted by key; every session of the graph gets them (e.g.
     /// `optimization.disable_specified_optimizers`, which keeps rewrites TensorRT miscompiles off the graph)
-    pub session_config: Vec<(String, String)>,
+    pub(crate) session_config: Vec<(String, String)>,
     /// preference order, never empty
-    pub providers: Vec<Ep>,
+    pub(crate) providers: Vec<Ep>,
 }
 
 #[derive(Debug)]
 pub struct Manifest {
     pub id: GraphId,
     /// the model.json this came from
-    pub path: PathBuf,
+    pub(crate) path: PathBuf,
     pub graph: PathBuf,
-    pub external: Vec<PathBuf>,
+    pub(crate) external: Vec<PathBuf>,
     pub precision: Precision,
     /// every file the graph needs (graph, external data, labels)
-    pub files: Vec<FileEntry>,
+    pub(crate) files: Vec<FileEntry>,
     pub input: InputSpec,
     /// never empty
     pub heads: Vec<HeadSpec>,
-    pub runtime: RuntimeSpec,
+    pub(crate) runtime: RuntimeSpec,
 }
 
 /// The index: manifests in UI order and the default heads in order of preference.

@@ -4,8 +4,8 @@
 //! The parts, in the order an app meets them:
 //!
 //! * [`registry`] reads the index (`exports/models.json`) and the `model.json` manifests it lists ([`manifest`]), as
-//!   pure data. [`Registry::locate`](registry::Registry::locate) finds the index. A graph whose files are missing or
-//!   have the wrong size stays listed, as unavailable.
+//!   pure data. [`Registry::open`](registry::Registry::open) finds and reads the index. A graph whose files are
+//!   missing or have the wrong size stays listed, as unavailable.
 //! * [`service::Inference`] runs the models. Two io threads read, fetch and decode pictures and make one tensor per
 //!   preprocessing spec. Each graph has a thread of its own, which loads the graph on first use and batches the
 //!   jobs already queued, up to the manifest's `batch.max`. A [`service::Lane`] is one stream of submissions with a
@@ -14,8 +14,10 @@
 //!   and the head to start with.
 //! * [`runtime::OrtLoader`] is the onnxruntime backend. It registers each manifest's execution providers in order
 //!   and skips, with the reason, those that fail. TensorRT engines are cached per graph, onnxruntime version,
-//!   TensorRT version and GPU under [`runtime::Settings::cache_dir`]. [`integrity`] hashes the weights against their
-//!   manifest and records stamps there, which later loads read.
+//!   TensorRT version and GPU under [`runtime::Settings::cache_dir`].
+//! * [`check::models`] says which execution providers register for each graph. Asked to verify, it hashes the
+//!   weights against their manifest and records stamps in the cache dir, which later loads read, then loads each
+//!   graph.
 //! * [`service::HeadOutput`] is one head's answer.
 //!
 //! The backend is a seam with two adapters. [`service::Loader`] builds [`service::Graph`]s from manifests, and
@@ -68,9 +70,10 @@ macro_rules! prof {
 #[doc(hidden)]
 pub use hotpath as __hotpath;
 
+pub mod check;
 pub mod classification;
 pub mod fetch;
-pub mod integrity;
+mod integrity;
 pub mod manifest;
 pub mod preprocess;
 pub mod registry;

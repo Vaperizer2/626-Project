@@ -20,7 +20,7 @@ struct Stamp {
     sha256: String,
 }
 
-pub struct Stamps {
+pub(crate) struct Stamps {
     path: Option<PathBuf>,
     map: BTreeMap<String, Stamp>,
 }
@@ -38,7 +38,7 @@ pub(crate) fn now_stamp(p: &Path) -> Option<(u64, u128)> {
 
 impl Stamps {
     /// The stamps in `dir/verified.json` (none yet when it is missing). Without a directory nothing is kept.
-    pub fn load(dir: Option<&Path>) -> Self {
+    pub(crate) fn load(dir: Option<&Path>) -> Self {
         let path = dir.map(|d| d.join("verified.json"));
         let map = path
             .as_ref()
@@ -70,7 +70,7 @@ impl Stamps {
         self.map.remove(&key(&f.path));
     }
 
-    pub fn save(&self) -> std::io::Result<()> {
+    pub(crate) fn save(&self) -> std::io::Result<()> {
         let Some(path) = &self.path else { return Ok(()) };
         if let Some(d) = path.parent() {
             std::fs::create_dir_all(d)?;
@@ -97,14 +97,14 @@ pub(crate) fn sha256_file(p: &Path) -> std::io::Result<Sha256> {
 
 /// The outcome of hashing one graph's files.
 #[derive(Debug)]
-pub enum Check {
+pub(crate) enum Check {
     Ok { bytes: u64 },
     Mismatch { file: PathBuf, expected: Sha256, found: Sha256 },
     Unreadable { file: PathBuf, error: String },
 }
 
 /// Hash every file of `m` against its manifest; stamps are recorded for files that match and dropped for the rest.
-pub fn check(m: &Manifest, stamps: &mut Stamps) -> Check {
+pub(crate) fn check(m: &Manifest, stamps: &mut Stamps) -> Check {
     check_with(m, stamps, sha256_file)
 }
 
