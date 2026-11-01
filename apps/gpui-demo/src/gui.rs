@@ -219,8 +219,11 @@ impl DemoApp {
             }
             ServiceEvent::Default { head, passed_over } => {
                 if self.pick != Pick::User {
-                    self.inference.preload(&head);
-                    self.model = Some(head);
+                    // with no head that can run, the fallback stays selected and says why it cannot answer
+                    if let Some(head) = head {
+                        self.inference.preload(&head);
+                        self.model = Some(head);
+                    }
                     self.pick = Pick::Default;
                 }
                 self.passed_over = passed_over;
@@ -531,16 +534,22 @@ impl Render for DemoApp {
                 .child(Alert::error("registry-error", SharedString::from(e)).title("Model index not found").small())
         });
         let fallback_alert = (self.pick == Pick::Default && !self.passed_over.is_empty()).then(|| {
+            let using = self.model.as_ref().filter(|m| self.model_usable(m)).map(|m| self.title(m));
             let why: Vec<String> = self
                 .passed_over
                 .iter()
-                .map(|(h, why)| format!("{} is not the default here: {}.", self.title(h), why.trim_end_matches('.')))
+                .map(|(h, why)| {
+                    let why = why.trim_end_matches('.');
+                    if using.is_some() {
+                        format!("{} is not the default here: {why}.", self.title(h))
+                    } else {
+                        format!("{}: {why}.", self.title(h))
+                    }
+                })
                 .collect();
-            let using = self.model.as_ref().map(|m| self.title(m)).unwrap_or_default();
+            let title = using.map_or_else(|| "No model can run here".to_string(), |u| format!("Using {u}"));
             div().id("fallback-notice").test_support().px_4().pt_3().child(
-                Alert::warning("default-fallback", SharedString::from(why.join(" ")))
-                    .title(format!("Using {using}"))
-                    .small(),
+                Alert::warning("default-fallback", SharedString::from(why.join(" "))).title(title).small(),
             )
         });
         div()
