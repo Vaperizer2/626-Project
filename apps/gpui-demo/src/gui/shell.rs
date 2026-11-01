@@ -405,9 +405,9 @@ impl Shell {
                             .map(|(ep, why)| format!("\n{} skipped: {why}", ep.name()))
                             .collect();
                         let checked = if l.verified {
-                            "checksums verified"
+                            "checksums verified".to_string()
                         } else {
-                            "checksums not verified since the files changed (gpui-demo models --check)"
+                            format!("checksums not verified since the files changed ({} models --check)", app::BIN)
                         };
                         format!(
                             "{name} — on {}, loaded in {}, {checked}{skipped}",

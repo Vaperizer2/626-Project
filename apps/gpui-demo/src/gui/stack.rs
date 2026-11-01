@@ -34,7 +34,7 @@ impl Stack {
         let stack = crate::demo::locate(dir.as_deref()).and_then(|d| DemoStack::load(&d)).map_err(|e| format!("{e:#}"));
         let items = match &stack {
             Ok(s) => {
-                eprintln!("[gpui-demo] demo stack: {} images in {}", s.images.len(), s.dir.display());
+                log!("demo stack: {} images in {}", s.images.len(), s.dir.display());
                 let mut rx = images::load_thumbnails((0..s.images.len()).map(|i| s.path(i)).collect());
                 cx.spawn(async move |this, cx| {
                     while let Some((i, r)) = rx.next().await {
@@ -62,7 +62,7 @@ impl Stack {
                 (0..s.images.len()).map(|_| Item::default()).collect()
             }
             Err(e) => {
-                eprintln!("[gpui-demo] demo stack unavailable: {e}");
+                log!("demo stack unavailable: {e}");
                 Vec::new()
             }
         };

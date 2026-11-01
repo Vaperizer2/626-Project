@@ -184,7 +184,7 @@ fn cache_dir() -> Option<PathBuf> {
 fn registry(a: &Args) -> Result<Arc<Registry>> {
     let reg = Registry::open(&a.opts)?;
     for p in reg.problems() {
-        eprintln!("[gpui-demo] {p}");
+        log!("{p}");
     }
     Ok(Arc::new(reg))
 }
@@ -228,10 +228,10 @@ impl Service {
         let Some(head) = head else {
             let why: Vec<String> = passed_over.iter().map(|(h, why)| format!("{h}: {why}")).collect();
             let why = if why.is_empty() { String::new() } else { format!(" ({})", why.join("; ")) };
-            bail!("no model can run here{why}; see `gpui-demo models`");
+            bail!("no model can run here{why}; see `{} models`", app::BIN);
         };
         for (h, why) in &passed_over {
-            eprintln!("[gpui-demo] {h} is not the default here: {why}; using {head}");
+            log!("{h} is not the default here: {why}; using {head}");
         }
         Ok(head)
     }
@@ -256,23 +256,23 @@ fn service(a: &Args, reg: &Arc<Registry>) -> Service {
             let heads: Vec<String> = reg.graph(&g).map_or(vec![], |g| g.manifest.heads.iter().map(|h| h.id.to_string()).collect());
             match state {
                 GraphState::Loading { stage: LoadStage::BuildingEngine, .. } => {
-                    eprintln!("[gpui-demo] {g} ({}): building the TensorRT engine (first run only)", heads.join(", "))
+                    log!("{g} ({}): building the TensorRT engine (first run only)", heads.join(", "))
                 }
                 GraphState::Ready(l) => {
                     seen.lock().expect("loaded lock").push((g.clone(), l.clone()));
                     let checked = if l.verified { "checksums verified" } else { "checksums not verified: models --check" };
-                    eprintln!(
-                        "[gpui-demo] {g} ({}) ready in {:.0} ms on {} ({}; {checked})",
+                    log!(
+                        "{g} ({}) ready in {:.0} ms on {} ({}; {checked})",
                         heads.join(", "),
                         l.ms,
                         l.placement,
                         l.runtime
                     );
                     for (ep, why) in &l.placement.skipped {
-                        eprintln!("[gpui-demo]   {} skipped: {why}", ep.name());
+                        log!("  {} skipped: {why}", ep.name());
                     }
                 }
-                GraphState::Failed(e) => eprintln!("[gpui-demo] {g} ({}) failed to load: {e}", heads.join(", ")),
+                GraphState::Failed(e) => log!("{g} ({}) failed to load: {e}", heads.join(", ")),
                 GraphState::Loading { .. } => {}
             }
         }
@@ -298,7 +298,7 @@ fn collect(h: &mut RequestHandle) -> (Vec<(HeadId, Result<HeadOutput, RunError>,
 /// running, leave with `code` without exit handlers rather than race its provider's teardown.
 fn end(inf: &Inference, code: u8) -> u8 {
     inf.shutdown_or_exit(std::time::Duration::from_secs(30), code.into(), || {
-        eprintln!("[gpui-demo] a model is still loading; exiting without waiting for it")
+        log!("a model is still loading; exiting without waiting for it")
     });
     code
 }

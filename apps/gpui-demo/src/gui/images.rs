@@ -44,7 +44,7 @@ pub fn load_thumbnails(paths: Vec<std::path::PathBuf>) -> fmpsc::UnboundedReceiv
                 let r = prof!("demo::decode_and_thumbnail", decode_one(&p));
                 let _ = tx.unbounded_send((i, r));
             });
-            eprintln!("[gpui-demo] demo stack decoded in {:.0} ms", t0.elapsed().as_secs_f64() * 1000.0);
+            log!("demo stack decoded in {:.0} ms", t0.elapsed().as_secs_f64() * 1000.0);
         })
         .expect("spawn thumbnail thread");
     rx

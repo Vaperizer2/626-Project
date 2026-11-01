@@ -1,7 +1,7 @@
 //! The curated demo stack (`demo_stack/demo_stack.json` + images) used by the Demo and Benchmark tabs.
 //!
 //! Located like the model folder: `--demo-dir`, then `$COMPCLASS_DEMO_DIR`, then the first `demo_stack/` (or
-//! `apps/gpui-demo/demo_stack/`) with a `demo_stack.json` found walking up from the current directory and from
+//! `apps/<bin>/demo_stack/`) with a `demo_stack.json` found walking up from the current directory and from
 //! the executable.
 
 use std::path::{Path, PathBuf};
@@ -126,7 +126,7 @@ fn is_stack(d: &Path) -> bool {
 }
 
 /// `--demo-dir`, `$COMPCLASS_DEMO_DIR`, else walk up from `starts` looking for `demo_stack/` or
-/// `apps/gpui-demo/demo_stack/`.
+/// `apps/<bin>/demo_stack/`.
 pub fn locate_in(explicit: Option<&Path>, env: Option<PathBuf>, starts: &[PathBuf]) -> Result<PathBuf> {
     if let Some(p) = explicit {
         if is_stack(p) {
@@ -142,7 +142,7 @@ pub fn locate_in(explicit: Option<&Path>, env: Option<PathBuf>, starts: &[PathBu
     }
     for s in starts {
         for a in s.ancestors() {
-            for c in [a.join("demo_stack"), a.join("apps").join("gpui-demo").join("demo_stack")] {
+            for c in [a.join("demo_stack"), a.join("apps").join(crate::app::BIN).join("demo_stack")] {
                 if is_stack(&c) {
                     return Ok(c);
                 }
@@ -211,8 +211,8 @@ mod tests {
 
     #[test]
     fn locates_by_flag_env_and_walking_up() {
-        let tmp = std::env::temp_dir().join(format!("gpui-demo-stack-{}", std::process::id()));
-        let stack = tmp.join("repo").join("apps").join("gpui-demo").join("demo_stack");
+        let tmp = std::env::temp_dir().join(format!("{}-stack-{}", crate::app::BIN, std::process::id()));
+        let stack = tmp.join("repo").join("apps").join(crate::app::BIN).join("demo_stack");
         std::fs::create_dir_all(&stack).unwrap();
         std::fs::write(stack.join(STACK_FILE), JSON).unwrap();
         let deep = tmp.join("repo").join("docs").join("x");

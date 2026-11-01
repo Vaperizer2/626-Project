@@ -82,7 +82,7 @@ fn run(a: &Args) -> Result<u8> {
         }
     }
     if let Some(e) = &report.stamps_error {
-        eprintln!("[gpui-demo] could not save the checksum stamps: {e}");
+        log!("could not save the checksum stamps: {e}");
     }
     Ok(if bad > 0 { 1 } else { 0 })
 }
@@ -95,7 +95,7 @@ mod tests {
 
     #[test]
     fn models_check_fails_when_the_index_lists_a_manifest_it_cannot_read() {
-        let dir = std::env::temp_dir().join(format!("gpui-demo-check-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("{}-check-{}", crate::app::BIN, std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(dir.join(registry::INDEX_FILE), r#"{"schema":"model-index/1","default":[],"manifests":["gone/model.json"]}"#)
             .unwrap();
