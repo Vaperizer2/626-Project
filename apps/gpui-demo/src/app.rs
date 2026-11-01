@@ -1,7 +1,9 @@
-//! The app's identity and its tabs. An app made from this one changes this file, its package name and `packaging/`.
+//! The app's identity, its tabs and its subcommands. An app made from this one changes this file, its package name
+//! and `packaging/`.
 
 use gpui_kit::{App, AppContext as _, Entity};
 
+use crate::cli::{self, Command};
 use crate::gui::bench::BenchTab;
 use crate::gui::classify::ClassifyTab;
 use crate::gui::demo_tab::DemoTab;
@@ -15,8 +17,8 @@ pub const TITLE: &str = "Component Classifier";
 pub const ABOUT: &str = "classify electronic components in pictures";
 /// Environment variables are `<ENV_PREFIX>_MODELS` and `<ENV_PREFIX>_DEMO_DIR`.
 pub const ENV_PREFIX: &str = "COMPCLASS";
-/// The Wayland app id: the binary's name.
-pub const APP_ID: &str = env!("CARGO_BIN_NAME");
+/// The binary's name: the Wayland app id, and what `--help` and the log lines call the app.
+pub const BIN: &str = env!("CARGO_BIN_NAME");
 /// The title bar's icon.
 pub const ICON: Lucide = Lucide::Microchip;
 /// What the title bar calls the selected head's labels, after their count.
@@ -26,6 +28,10 @@ pub const UNSURE: &str = "UNSURE";
 
 /// The window's tabs, in order; Ctrl+1 to Ctrl+9 show them. A tab is a module with a `gui::Tab` impl and a line here.
 pub const TABS: &[TabSpec] = &[TabSpec::of::<ClassifyTab>(), TabSpec::of::<DemoTab>(), TabSpec::of::<BenchTab>()];
+
+/// The subcommands, in `--help`'s order. A subcommand is a module with a `cli::Command` and a line here.
+pub const COMMANDS: &[Command] =
+    &[cli::classify::COMMAND, cli::preprocess::COMMAND, cli::bench::COMMAND, cli::models::COMMAND];
 
 /// What the tabs share besides the models: the demo stack, for the Demo and Benchmark tabs.
 pub struct Shared {

@@ -10,7 +10,7 @@ use gpui_kit::RenderImage;
 use image::{RgbImage, RgbaImage};
 use rayon::prelude::*;
 
-use crate::preprocess;
+use inference::preprocess;
 
 pub const DISPLAY_MAX_SIDE: u32 = 1280;
 /// Demo grid thumbnails: decoded once at 2x the card size (sharp on HiDPI, cheap to sample).
