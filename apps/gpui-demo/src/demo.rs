@@ -138,7 +138,7 @@ pub fn locate_in(explicit: Option<&Path>, env: Option<PathBuf>, starts: &[PathBu
         if is_stack(&p) {
             return Ok(p);
         }
-        bail!("COMPCLASS_DEMO_DIR={}: no {STACK_FILE} there", p.display());
+        bail!("{}_DEMO_DIR={}: no {STACK_FILE} there", crate::app::ENV_PREFIX, p.display());
     }
     for s in starts {
         for a in s.ancestors() {
@@ -162,7 +162,7 @@ pub fn locate(explicit: Option<&Path>) -> Result<PathBuf> {
     {
         starts.push(d.to_path_buf());
     }
-    locate_in(explicit, std::env::var_os("COMPCLASS_DEMO_DIR").map(PathBuf::from), &starts)
+    locate_in(explicit, std::env::var_os(format!("{}_DEMO_DIR", crate::app::ENV_PREFIX)).map(PathBuf::from), &starts)
 }
 
 #[cfg(test)]

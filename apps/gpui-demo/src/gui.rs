@@ -40,7 +40,7 @@ use gpui_kit::{
 use inference::service::{GraphState, Inference, Lane, LoadStage, Loaded, Policy, Priority, ServiceEvent};
 use inference::manifest::{GraphId, HeadId, Task};
 use inference::registry::{Head, Registry};
-use inference::runtime::{ModelOptions, OrtLoader};
+use inference::runtime::{Settings, OrtLoader};
 use widgets::Lucide;
 
 actions!(
@@ -370,7 +370,7 @@ impl DemoApp {
                             .text_color(t.primary_foreground)
                             .child(Icon::new(Lucide::Microchip).small()),
                     )
-                    .child(div().text_sm().font_weight(FontWeight::SEMIBOLD).child("Component Classifier"))
+                    .child(div().text_sm().font_weight(FontWeight::SEMIBOLD).child(crate::app::TITLE))
                     .children(self.model.as_ref().and_then(|m| self.head(m)).map(|h| {
                         let Task::Classify(c) = &h.spec.task;
                         div()
@@ -690,7 +690,7 @@ pub fn keymap() -> Vec<KeyBinding> {
 
 /// The model index (an empty one when it cannot be read, with the reason) and the service over it, backed by
 /// onnxruntime. Reading the index is a few small files; nothing is loaded until a model is used.
-fn service(opts: &ModelOptions) -> (Inference, fmpsc::UnboundedReceiver<ServiceEvent>) {
+fn service(opts: &Settings) -> (Inference, fmpsc::UnboundedReceiver<ServiceEvent>) {
     let registry = match Registry::locate(opts.models.as_deref()).and_then(|i| Registry::load(&i)) {
         Ok(r) => r,
         Err(e) => Registry::empty(e.to_string()),
@@ -700,7 +700,7 @@ fn service(opts: &ModelOptions) -> (Inference, fmpsc::UnboundedReceiver<ServiceE
 }
 
 /// Open the window. `initial` are image paths / URLs to classify straight away.
-pub fn run(opts: ModelOptions, demo_dir: Option<PathBuf>, gui: GuiOptions, initial: Vec<String>) {
+pub fn run(opts: Settings, demo_dir: Option<PathBuf>, gui: GuiOptions, initial: Vec<String>) {
     let unset = |v: &str| std::env::var_os(v).is_none_or(|s| s.is_empty());
     if cfg!(target_os = "linux") && unset("DISPLAY") && unset("WAYLAND_DISPLAY") {
         eprintln!(
@@ -735,7 +735,7 @@ pub fn run(opts: ModelOptions, demo_dir: Option<PathBuf>, gui: GuiOptions, initi
         };
         let opened = gpui_kit::open_window(options, cx, |window, cx| {
             theme::apply_initial(gui.theme, window, cx);
-            window.set_window_title("Component Classifier");
+            window.set_window_title(crate::app::TITLE);
             cx.new(|cx| {
                 let mut app = DemoApp::new(service, demo_dir, initial, window, cx);
                 app.tab = gui.tab;

@@ -1,5 +1,5 @@
-//! Image decoding and the model's eval transform, reproducing `compclass.demo.open_image` + `preprocess`
-//! (torchvision `Resize(short side, BICUBIC) -> CenterCrop -> ToTensor -> Normalize` on a PIL image).
+//! Image decoding and the model's eval transform, reproducing the Python reference: a PIL image opened as below,
+//! then torchvision `Resize(short side, BICUBIC) -> CenterCrop -> ToTensor -> Normalize`.
 //!
 //! The resize is a line-by-line port of Pillow's `libImaging/Resample.c` for 8-bit images (Keys cubic
 //! a = -0.5, support scaled by the downscale factor ("antialias"), coefficients normalised in double and then
@@ -20,7 +20,7 @@ const PRECISION_BITS: u32 = 22;
 
 // ------------------------------------------------------------------------------------------- decoding
 /// Decode bytes (JPEG/PNG/WebP/GIF first frame/BMP/TIFF), apply the EXIF orientation, flatten alpha onto
-/// white and return 8-bit RGB, like `compclass.demo.open_image`.
+/// white and return 8-bit RGB, as the Python reference opens a picture with PIL.
 pub fn decode(bytes: &[u8]) -> Result<RgbImage> {
     let reader = ImageReader::new(Cursor::new(bytes)).with_guessed_format().context("reading image header")?;
     if reader.format().is_none() {
@@ -267,7 +267,7 @@ pub fn center_crop_offsets(w: u32, h: u32, crop_w: u32, crop_h: u32) -> (u32, u3
     (l, t)
 }
 
-/// RGB image -> float32 NCHW tensor data of length 3*h*w, identical to `compclass.demo.preprocess`.
+/// RGB image -> float32 NCHW tensor data of length 3*h*w, identical to the Python reference's transform.
 pub fn to_tensor(img: &RgbImage, pre: &Preprocess) -> Result<Vec<f32>> {
     let Preprocess::ResizeShortCenterCrop { short, crop: (cw, ch), filter, scale, mean, std } = pre;
     let (cw, ch) = (*cw, *ch);

@@ -1,8 +1,8 @@
 //! The model registry: the index (`exports/models.json`) and the manifests it lists, as pure data. No onnxruntime
 //! here: whether a graph's files are present is a filesystem fact checked at load; how it runs is `runtime`'s job.
 //!
-//! Found like this: `--models PATH` (the index or its folder), then `$COMPCLASS_MODELS`, then the first
-//! `exports/models.json` walking up from the current directory and from the executable.
+//! Found like this: the path the app was given (the index or its folder), else the first `exports/models.json`
+//! walking up from the current directory and from the executable.
 
 use std::fmt;
 use std::path::{Path, PathBuf};
@@ -96,14 +96,11 @@ pub struct Registry {
 }
 
 impl Registry {
-    /// `--models`, then `$COMPCLASS_MODELS`, then walk up for `exports/models.json`.
+    /// `explicit` (the index or its folder), else walk up for `exports/models.json`.
     pub fn locate(explicit: Option<&Path>) -> Result<PathBuf, IndexError> {
         let as_index = |p: &Path| if p.is_dir() { p.join(INDEX_FILE) } else { p.to_path_buf() };
         if let Some(p) = explicit {
             return Ok(as_index(p));
-        }
-        if let Some(p) = std::env::var_os("COMPCLASS_MODELS").filter(|s| !s.is_empty()) {
-            return Ok(as_index(Path::new(&p)));
         }
         let searched: Vec<PathBuf> = search_bases().into_iter().map(|b| b.join("exports").join(INDEX_FILE)).collect();
         searched.iter().find(|p| p.is_file()).cloned().ok_or(IndexError::NotFound { searched })

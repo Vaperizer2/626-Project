@@ -20,15 +20,18 @@ use crate::service::{Graph, LoadStage, Loaded, Loader, RunFailure};
 use crate::manifest::{Ep, EpKind, Manifest, OptLevel};
 use crate::registry::search_bases;
 
-/// Options shared by the GUI and the headless CLI.
+/// How the app runs its models.
 #[derive(Debug, Clone, Default)]
-pub struct ModelOptions {
-    /// `--models`: the index (exports/models.json) or its folder
+pub struct Settings {
+    /// the index (exports/models.json) or its folder
     pub models: Option<PathBuf>,
     pub ort_lib: Option<PathBuf>,
     pub threads: Option<usize>,
-    /// `--ep`: these providers, in this order, for every graph instead of each manifest's list
+    /// these providers, in this order, for every graph instead of each manifest's list
     pub eps: Option<Vec<EpKind>>,
+    /// the app's per-user cache: the checksum stamps (`verified.json`) and the TensorRT engines (`tensorrt/`);
+    /// None keeps neither
+    pub cache_dir: Option<PathBuf>,
 }
 
 /// `<dir>/.venv/lib/python3.*/site-packages/onnxruntime/capi/libonnxruntime.so*`
@@ -143,12 +146,13 @@ pub struct Runtime {
     pub version: String,
     threads: Option<usize>,
     eps: Option<Vec<EpKind>>,
+    cache_dir: Option<PathBuf>,
 }
 
 impl Runtime {
     /// dlopen libonnxruntime (see [`resolve_ort_lib`]) and create the environment. No provider is registered on
     /// the environment: each session gets its own list.
-    pub fn init(opts: &ModelOptions, exports: Option<&Path>) -> Result<Self> {
+    pub fn init(opts: &Settings, exports: Option<&Path>) -> Result<Self> {
         let ort_lib = resolve_ort_lib(opts.ort_lib.as_deref(), exports);
         let env = ort::init_from(&ort_lib)
             .map_err(|e| {
@@ -165,7 +169,7 @@ impl Runtime {
         let real = ort_lib.canonicalize().unwrap_or_else(|_| ort_lib.clone());
         let name = real.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
         let version = name.split_once(".so.").map_or(name.as_str(), |(_, v)| v).to_string();
-        Ok(Self { env, ort_lib, version, threads: opts.threads, eps: opts.eps.clone() })
+        Ok(Self { env, ort_lib, version, threads: opts.threads, eps: opts.eps.clone(), cache_dir: opts.cache_dir.clone() })
     }
 
     /// The providers to try for `m`, in order (see [`preferences`]).
@@ -279,12 +283,13 @@ impl Runtime {
         .error_on_failure()
     }
 
-    /// A graph's TensorRT engines live in a per-user directory named by what an engine depends on: the graph's
+    /// A graph's TensorRT engines live in a directory of the app's cache named by what an engine depends on: the graph's
     /// files, the onnxruntime and TensorRT versions and the GPU. A new graph, library or GPU never meets a stale
-    /// engine; it builds its own once. None when no libnvinfer loads, since the provider cannot load either.
+    /// engine; it builds its own once. None when no libnvinfer loads, since the provider cannot load either, and
+    /// when the app keeps no cache.
     pub fn engine_cache(&self, m: &Manifest) -> Option<PathBuf> {
         let trt = tensorrt_version()?;
-        let base = crate::integrity::cache_dir()?.join("tensorrt");
+        let base = self.cache_dir.as_ref()?.join("tensorrt");
         Some(base.join(format!("{}-{}-ort{}-trt{trt}-{}", m.id.as_str(), graph_key(m), self.version, gpu_name())))
     }
 
@@ -502,13 +507,13 @@ impl Graph for Engine {
 
 /// The app's `Loader`: onnxruntime is loaded on first use (a load or a provider probe).
 pub struct OrtLoader {
-    opts: ModelOptions,
+    opts: Settings,
     exports: Option<PathBuf>,
     runtime: OnceLock<std::result::Result<Runtime, String>>,
 }
 
 impl OrtLoader {
-    pub fn new(opts: &ModelOptions, exports: Option<&Path>) -> Self {
+    pub fn new(opts: &Settings, exports: Option<&Path>) -> Self {
         Self { opts: opts.clone(), exports: exports.map(Path::to_path_buf), runtime: OnceLock::new() }
     }
 
@@ -524,7 +529,7 @@ impl Loader for OrtLoader {
     fn load(&self, m: &Arc<Manifest>, stage: &dyn Fn(LoadStage)) -> std::result::Result<(Box<dyn Graph>, Loaded), String> {
         let t0 = Instant::now();
         let rt = self.runtime()?;
-        let verified = crate::integrity::Stamps::load().all_verified(m);
+        let verified = crate::integrity::Stamps::load(self.opts.cache_dir.as_deref()).all_verified(m);
         let engine = Engine::load(rt, m.clone(), stage).map_err(|e| format!("{e:#}"))?;
         let loaded = Loaded {
             ms: t0.elapsed().as_secs_f64() * 1000.0,
@@ -589,7 +594,7 @@ mod tests {
     #[ignore]
     fn session_config_reaches_the_session_options() {
         use ort::AsPointer as _;
-        let rt = Runtime::init(&ModelOptions::default(), None).unwrap();
+        let rt = Runtime::init(&Settings::default(), None).unwrap();
         let mut m = preferring(&[EpKind::Cpu]);
         m.runtime.session_config = vec![(DISABLE.into(), "MatMulAddFusion;TransposeOptimizer".into())];
         let b = rt.builder(&m).unwrap();
