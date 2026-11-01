@@ -24,7 +24,8 @@ use gpui_kit::{
 use super::widgets::Lucide;
 use super::images::{DISPLAY_MAX_SIDE, render};
 use super::results::{HeadResult, Results};
-use super::{DemoApp, FocusUrl, ModelState, Open, Paste, theme, widgets};
+use super::models::ModelState;
+use super::{DemoApp, FocusUrl, Open, Paste, theme, widgets};
 use inference::fetch::Source;
 use inference::service::{ImageInput, RequestHandle, RunError, Ticket, Update};
 use inference::manifest::HeadId;
@@ -112,7 +113,7 @@ impl DemoApp {
     }
 
     fn submit(&mut self, input: ImageInput, name: String, full: String, cx: &mut Context<Self>) {
-        if self.model.is_none() {
+        if self.models.read(cx).selected().is_none() {
             return;
         }
         let c = &mut self.classify;
@@ -143,7 +144,7 @@ impl DemoApp {
     /// switch, and when another entry is selected. Entries never submitted (they arrived while the start-up default
     /// was probed) get theirs too.
     pub(super) fn classify_follow_model(&mut self, cx: &mut Context<Self>) {
-        let Some(model) = self.run_model() else { return };
+        let Some(model) = self.models.read(cx).run_model() else { return };
         let c = &self.classify;
         let waiting = c.entries.iter().enumerate().filter(|(_, e)| e.tickets.is_empty()).map(|(i, _)| i);
         let todo: Vec<usize> = c.selected_ix().into_iter().chain(waiting).collect();
@@ -353,10 +354,11 @@ impl DemoApp {
     fn render_recent(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.theme();
         let c = &self.classify;
+        let model = self.models.read(cx).selected();
         let rows = c.entries.iter().map(|e| {
             let id = e.id;
             let sel = c.selected == Some(id);
-            let status = match self.model.as_ref().and_then(|m| e.results.get(m)) {
+            let status = match model.and_then(|m| e.results.get(m)) {
                 None => div().text_color(t.muted_foreground).child("not classified yet").into_any_element(),
                 Some(HeadResult::Working(_)) => h_flex()
                     .gap_1()
@@ -474,8 +476,9 @@ impl DemoApp {
     fn render_picture(&self, entry_ix: Option<usize>, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.theme();
         let entry = entry_ix.map(|i| &self.classify.entries[i]);
+        let model = self.models.read(cx).selected();
         let unreadable = matches!(
-            entry.and_then(|e| self.model.as_ref().and_then(|m| e.results.get(m))),
+            entry.and_then(|e| model.and_then(|m| e.results.get(m))),
             Some(HeadResult::Failed(RunError::Read(_) | RunError::Decode(_)))
         );
         let body = match entry.and_then(|e| e.image.clone()) {
@@ -551,15 +554,16 @@ impl DemoApp {
 
     fn render_result_body(&self, entry_ix: Option<usize>, cx: &mut Context<Self>) -> gpui_kit::Div {
         let t = cx.theme();
+        let models = self.models.read(cx);
         let entry = entry_ix.map(|i| &self.classify.entries[i]);
         let mut panel = v_flex().gap_5().p_5();
         let Some(e) = entry else {
             // with a picture on screen, its answer from the failed model says this instead
-            if let Some(m) = &self.model
-                && let ModelState::Failed(msg) = self.state(m)
+            if let Some(m) = models.selected()
+                && let ModelState::Failed(msg) = models.state(m)
             {
                 panel = panel.child(
-                    Alert::error("model-failed", SharedString::from(msg)).title(format!("{} failed to load", self.title(m))),
+                    Alert::error("model-failed", SharedString::from(msg)).title(format!("{} failed to load", models.title(m))),
                 );
             }
             return panel.child(
@@ -584,22 +588,22 @@ impl DemoApp {
                     d.child(div().text_xs().text_color(t.muted_foreground).child(format!("{w} × {h} px")))
                 }),
         );
-        let Some(m) = &self.model else { return panel };
+        let Some(m) = models.selected() else { return panel };
         match e.results.get(m) {
             None | Some(HeadResult::Working(_)) => {
                 panel.child(h_flex().gap_2().items_center().child(Spinner::new().color(t.primary)).child(
-                    div().text_lg().child(if matches!(self.state(m), ModelState::Loading { .. }) {
-                        format!("Loading {}…", self.short(m))
+                    div().text_lg().child(if matches!(models.state(m), ModelState::Loading { .. }) {
+                        format!("Loading {}…", models.short(m))
                     } else {
                         "Classifying…".to_string()
                     }),
                 ))
             }
             Some(HeadResult::Failed(err)) => {
-                panel.child(widgets::failure_alert(("classify-error", e.id as usize), err, &self.title(m)))
+                panel.child(widgets::failure_alert(("classify-error", e.id as usize), err, &models.title(m)))
             }
             Some(HeadResult::Done(c, timing, wall)) => {
-                let block = widgets::prediction_block(c, timing, &self.title(m), None, cx);
+                let block = widgets::prediction_block(c, timing, &models.title(m), None, cx);
                 panel.child(block).children(wall.map(|ms| {
                     div().text_xs().text_color(t.muted_foreground).child(format!("Total incl. read and decode: {ms:.0} ms"))
                 }))

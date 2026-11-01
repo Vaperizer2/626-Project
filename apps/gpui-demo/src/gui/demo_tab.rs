@@ -103,6 +103,11 @@ impl DemoState {
     }
 }
 
+/// Item `it`'s result for the selected head `model`.
+fn selected_result<'a>(model: Option<&HeadId>, it: &'a Item) -> Option<&'a HeadResult> {
+    model.and_then(|m| it.results.get(m))
+}
+
 impl DemoApp {
     pub(super) fn demo_init(&mut self, dir: Option<PathBuf>, cx: &mut Context<Self>) {
         let stack = crate::demo::locate(dir.as_deref()).and_then(|d| DemoStack::load(&d)).map_err(|e| format!("{e:#}"));
@@ -183,15 +188,10 @@ impl DemoApp {
         matches!(self.demo.items.get(self.demo.selected).and_then(|it| it.results.get(head)), Some(HeadResult::Done(..)))
     }
 
-    /// Item `it`'s result for the selected head.
-    fn selected_result<'a>(&self, it: &'a Item) -> Option<&'a HeadResult> {
-        self.model.as_ref().and_then(|m| it.results.get(m))
-    }
-
     /// After a model switch: a card on screen that another model answered gets the selected model's answer too.
     pub(super) fn demo_follow_model(&mut self, cx: &mut Context<Self>) {
         let Some(it) = self.demo.items.get(self.demo.selected) else { return };
-        if !it.results.is_empty() && self.selected_result(it).is_none() {
+        if !it.results.is_empty() && selected_result(self.models.read(cx).selected(), it).is_none() {
             self.demo_classify_selected(cx);
         }
     }
@@ -201,7 +201,7 @@ impl DemoApp {
             return;
         }
         let i = self.demo.selected;
-        let Some(model) = self.run_model() else { return };
+        let Some(model) = self.models.read(cx).run_model() else { return };
         if matches!(self.demo.items.get(i).and_then(|it| it.results.get(&model)), Some(HeadResult::Working(_))) {
             return;
         }
@@ -216,7 +216,7 @@ impl DemoApp {
         if self.demo.run.is_some() {
             return self.demo_cancel(cx);
         }
-        let Some(model) = self.run_model() else { return };
+        let Some(model) = self.models.read(cx).run_model() else { return };
         for it in &mut self.demo.items {
             it.results.clear(&model);
         }
@@ -306,8 +306,9 @@ impl DemoApp {
         let t = cx.theme();
         let r = theme::roles(cx);
         let n = self.demo.items.len();
-        let (ok, judged, _) = self.demo.summary(self.model.as_ref());
-        let short = self.model.as_ref().map(|m| self.short(m)).unwrap_or_default();
+        let models = self.models.read(cx);
+        let (ok, judged, _) = self.demo.summary(models.selected());
+        let short = models.selected().map(|m| models.short(m)).unwrap_or_default();
         let running = self.demo.run.as_ref();
         let progress = running.map(|run| {
             let done = run.done;
@@ -363,10 +364,11 @@ impl DemoApp {
         let cols = ((avail + GRID_GAP) / (CARD_MIN_W + GRID_GAP)).floor().max(1.0);
         let card_w = ((avail - GRID_GAP * (cols - 1.0)) / cols).floor().max(CARD_MIN_W);
         let Some(stack) = self.demo.stack() else { return div().into_any_element() };
+        let model = self.models.read(cx).selected().cloned();
         let mut children: Vec<AnyElement> = Vec::new();
         for (si, section) in stack.sections.iter().enumerate() {
             let idx = stack.section_indices(section);
-            let (ok, n) = idx.iter().fold((0, 0), |(ok, n), &i| match self.selected_result(&self.demo.items[i]) {
+            let (ok, n) = idx.iter().fold((0, 0), |(ok, n), &i| match selected_result(model.as_ref(), &self.demo.items[i]) {
                 Some(HeadResult::Done(c, ..)) => {
                     (ok + usize::from(stack.images[i].judge(c.best_label(), c.abstained()) == Verdict::Correct), n + 1)
                 }
@@ -423,11 +425,12 @@ impl DemoApp {
         let im = &stack.images[i];
         let it = &self.demo.items[i];
         let sel = self.demo.selected == i;
-        let verdict = match self.selected_result(it) {
+        let result = selected_result(self.models.read(cx).selected(), it);
+        let verdict = match result {
             Some(HeadResult::Done(c, ..)) => Some(im.judge(c.best_label(), c.abstained())),
             _ => None,
         };
-        let result: AnyElement = match self.selected_result(it) {
+        let result: AnyElement = match result {
             Some(HeadResult::Working(_)) => h_flex()
                 .gap_1()
                 .items_center()
@@ -540,11 +543,12 @@ impl DemoApp {
                         .child(format!("Reference prediction in demo_stack.json: {p} {}", widgets::pct(c))),
                 )
             });
-        let short = self.model.as_ref().map(|m| self.short(m)).unwrap_or_default();
-        let result: AnyElement = match (self.selected_result(it), &self.model) {
+        let models = self.models.read(cx);
+        let short = models.selected().map(|m| models.short(m)).unwrap_or_default();
+        let result: AnyElement = match (selected_result(models.selected(), it), models.selected()) {
             (Some(HeadResult::Done(c, timing, _)), Some(m)) => {
                 let v = im.judge(c.best_label(), c.abstained());
-                widgets::prediction_block(c, timing, &self.title(m), Some((v, im.true_text())), cx)
+                widgets::prediction_block(c, timing, &models.title(m), Some((v, im.true_text())), cx)
             }
             (Some(HeadResult::Working(_)), _) => h_flex()
                 .gap_2()
@@ -553,7 +557,7 @@ impl DemoApp {
                 .child(Spinner::new().color(t.primary))
                 .child(div().text_lg().child(format!("Classifying with {short}…")))
                 .into_any_element(),
-            (Some(HeadResult::Failed(e)), Some(m)) => widgets::failure_alert("demo-error", e, &self.title(m)).into_any_element(),
+            (Some(HeadResult::Failed(e)), Some(m)) => widgets::failure_alert("demo-error", e, &models.title(m)).into_any_element(),
             _ => v_flex()
                 .gap_2()
                 .items_start()
