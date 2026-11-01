@@ -290,8 +290,11 @@ impl DemoApp {
             ModelState::Failed(_) => {
                 // picking a model whose load failed tries it again (the cause may be gone: memory, a driver)
                 self.inference.preload(&k);
-                self.classify_forget_load_failures(&k);
-                self.demo_forget_load_failures(&k);
+                // the retry is of the graph, so every head it serves gets a fresh chance
+                for h in self.registry().siblings(&k) {
+                    self.classify_forget_load_failures(&h);
+                    self.demo_forget_load_failures(&h);
+                }
             }
             ModelState::Idle => self.inference.preload(&k),
             ModelState::Loading { .. } | ModelState::Ready(_) => {}
