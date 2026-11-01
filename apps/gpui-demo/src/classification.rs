@@ -61,10 +61,13 @@ impl Classification {
     }
 }
 
-/// Indices of the `k` largest values, highest first (ties: lower index first, like a stable argsort).
+/// Indices of the `k` largest values, highest first (ties: lower index first, like a stable argsort; NaN last).
 pub fn top_k(probs: &[f32], k: usize) -> Vec<usize> {
     let mut idx: Vec<usize> = (0..probs.len()).collect();
-    idx.sort_by(|&a, &b| probs[b].partial_cmp(&probs[a]).unwrap_or(std::cmp::Ordering::Equal).then(a.cmp(&b)));
+    idx.sort_by(|&a, &b| {
+        let (x, y) = (probs[a], probs[b]);
+        x.is_nan().cmp(&y.is_nan()).then(y.partial_cmp(&x).unwrap_or(std::cmp::Ordering::Equal)).then(a.cmp(&b))
+    });
     idx.truncate(k);
     idx
 }
@@ -95,11 +98,14 @@ fn classify(t: &ClassifyTask, row: &[f32]) -> Result<Classification, String> {
     };
     let best = top_k(&probs, 1)[0];
     let p = probs[best];
+    // a NaN anywhere means the row cannot be trusted: abstain, or flag it when the head always answers
+    let broken = probs.iter().any(|v| v.is_nan());
     let answer = match t.decision {
-        Decision::Abstain { below } if p < below.get() => Answer::Abstain { best, p, below: below.get() },
+        Decision::Abstain { below } if broken || p < below.get() => Answer::Abstain { best, p, below: below.get() },
         Decision::Abstain { .. } => Answer::Class { idx: best, p, low_confidence: false },
         Decision::Commit { low_confidence_below } => {
-            Answer::Class { idx: best, p, low_confidence: low_confidence_below.is_some_and(|b| p < b.get()) }
+            let low = broken || low_confidence_below.is_some_and(|b| p < b.get());
+            Answer::Class { idx: best, p, low_confidence: low }
         }
     };
     Ok(Classification {
@@ -152,6 +158,24 @@ mod tests {
         assert_eq!(unsure.best_label(), "c1");
         assert_eq!(unsure.committed(), None);
         assert_eq!(unsure.top(2).iter().map(|x| x.0).collect::<Vec<_>>(), [1, 2]);
+    }
+
+    #[test]
+    fn nan_scores_never_make_a_confident_answer() {
+        let nan = f32::NAN;
+        assert_eq!(top_k(&[nan, 0.2, 0.7], 3), [2, 1, 0], "NaN sorts last");
+        let abstain = task(
+            Decision::Abstain { below: Prob::new(0.5).unwrap() },
+            Calibration::Temperature { t: 1.0, in_graph: true },
+            probs(),
+        );
+        assert!(read(&abstain, &[nan, 0.2, 0.7]).abstained(), "a row with a NaN is not trusted");
+        assert!(read(&abstain, &[nan, nan, nan]).abstained());
+        let commit = task(Decision::Commit { low_confidence_below: Prob::new(0.5) }, Calibration::None, probs());
+        assert!(
+            matches!(read(&commit, &[nan, 0.2, 0.7]).answer, Answer::Class { idx: 2, low_confidence: true, .. }),
+            "a head that always answers flags it"
+        );
     }
 
     #[test]
