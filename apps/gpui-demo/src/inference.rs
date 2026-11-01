@@ -86,8 +86,8 @@ pub enum GraphState {
 pub enum ServiceEvent {
     Graph(GraphId, GraphState),
     /// the head to start with: the first default whose preferred provider registers (the last default needs only
-    /// its files), with the defaults passed over and why
-    Default { head: HeadId, passed_over: Vec<(HeadId, String)> },
+    /// its files), else the first available head; None when no head can run here. Sent once, always.
+    Default { head: Option<HeadId>, passed_over: Vec<(HeadId, String)> },
 }
 
 // ---------------------------------------------------------------------------------------------- requests
@@ -493,6 +493,7 @@ impl Core {
     fn resolve_default(&self) {
         let order = self.registry.default_order();
         let mut passed_over = Vec::new();
+        let mut head = None;
         for (i, id) in order.iter().enumerate() {
             let Some(h) = self.registry.head(id) else { continue };
             if let Err(e) = h.available() {
@@ -505,12 +506,11 @@ impl Core {
                 passed_over.push((id.clone(), e));
                 continue;
             }
-            let _ = self.events.unbounded_send(ServiceEvent::Default { head: id.clone(), passed_over });
-            return;
+            head = Some(id.clone());
+            break;
         }
-        if let Some(h) = self.registry.heads().find(|h| h.available().is_ok()) {
-            let _ = self.events.unbounded_send(ServiceEvent::Default { head: h.id().clone(), passed_over });
-        }
+        let head = head.or_else(|| self.registry.heads().find(|h| h.available().is_ok()).map(|h| h.id().clone()));
+        let _ = self.events.unbounded_send(ServiceEvent::Default { head, passed_over });
     }
 
     /// Decode, then one tensor per distinct preprocessing spec, each handed to its graph as soon as it is ready.

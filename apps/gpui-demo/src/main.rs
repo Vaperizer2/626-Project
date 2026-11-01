@@ -211,11 +211,30 @@ struct JsonRow<'a> {
     timing: Timing,
 }
 
+/// The start-up default (see `ServiceEvent::Default`) and the defaults passed over on the way.
+type DefaultHead = (Option<HeadId>, Vec<(HeadId, String)>);
+
 /// The service with onnxruntime behind it, the start-up default head, and each graph's load once it is ready.
 struct Service {
     inf: Inference,
-    default: std::sync::mpsc::Receiver<HeadId>,
+    default: std::sync::mpsc::Receiver<DefaultHead>,
     loaded: Arc<std::sync::Mutex<Vec<(GraphId, Loaded)>>>,
+}
+
+impl Service {
+    /// The head to use without `--model`; an error saying why when no head can run here.
+    fn default_head(&self) -> Result<HeadId> {
+        let (head, passed_over) = self.default.recv().context("the inference service stopped before picking a model")?;
+        let Some(head) = head else {
+            let why: Vec<String> = passed_over.iter().map(|(h, why)| format!("{h}: {why}")).collect();
+            let why = if why.is_empty() { String::new() } else { format!(" ({})", why.join("; ")) };
+            bail!("no model can run here{why}; see `gpui-demo models`");
+        };
+        for (h, why) in &passed_over {
+            eprintln!("[gpui-demo] {h} is not the default here: {why}; using {head}");
+        }
+        Ok(head)
+    }
 }
 
 /// Start the service; graph load events also go to stderr.
@@ -230,10 +249,7 @@ fn service(a: &Args, reg: &Arc<Registry>) -> Service {
             let (g, state) = match ev {
                 ServiceEvent::Graph(g, state) => (g, state),
                 ServiceEvent::Default { head, passed_over } => {
-                    for (h, why) in &passed_over {
-                        eprintln!("[gpui-demo] {h} is not the default here: {why}; using {head}");
-                    }
-                    let _ = default_tx.send(head);
+                    let _ = default_tx.send((head, passed_over));
                     continue;
                 }
             };
@@ -285,13 +301,14 @@ fn run_classify(a: &Args) -> Result<u8> {
         bail!("classify needs at least one image path or URL");
     }
     let reg = registry(a)?;
-    let Service { inf, default, .. } = service(a, &reg);
+    let service = service(a, &reg);
     let keys = if a.models.is_empty() {
         // the first default whose preferred provider registers here, as in the window
-        vec![default.recv().context("no model is available")?]
+        vec![service.default_head()?]
     } else {
         heads(a, &reg)?
     };
+    let inf = &service.inf;
     let lane = inf.lane(Priority::Bulk, Policy::Keep);
     let mut requests: Vec<(&String, Option<RequestHandle>)> = a
         .rest
@@ -354,7 +371,7 @@ fn run_classify(a: &Args) -> Result<u8> {
     if a.json {
         println!("{}", serde_json::to_string_pretty(&rows)?);
     }
-    end(&inf);
+    end(inf);
     Ok(if failures > 0 { 2 } else { 0 })
 }
 
@@ -374,9 +391,9 @@ fn spread(mut v: Vec<f64>) -> serde_json::Value {
 /// images submitted at once to a bulk lane, FPS = images / wall time from the first submit to the last result.
 fn run_bench(a: &Args) -> Result<u8> {
     let reg = registry(a)?;
-    let Service { inf, default, loaded } = service(a, &reg);
+    let service = service(a, &reg);
     let head = if a.models.is_empty() {
-        default.recv().context("no model is available")?
+        service.default_head()?
     } else {
         match heads(a, &reg)?.as_slice() {
             [h] => h.clone(),
@@ -388,6 +405,7 @@ fn run_bench(a: &Args) -> Result<u8> {
     if sources.is_empty() {
         bail!("bench needs at least one image");
     }
+    let Service { inf, loaded, .. } = service;
     let keys = [head.clone()];
     let interactive = inf.lane(Priority::Interactive, Policy::Keep);
     let mut errors = 0usize;

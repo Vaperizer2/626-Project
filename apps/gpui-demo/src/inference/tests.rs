@@ -163,20 +163,36 @@ fn shutdown_waits_for_every_graph_to_let_go() {
     assert!(matches!(finish(&mut late).1, Finish::Failed(_)), "a stopped service refuses work");
 }
 
-#[test]
-fn the_default_skips_a_head_whose_provider_is_missing() {
-    let fake = FakeLoader { no_provider: ["fast".to_string()].into(), ..Default::default() };
-    let (_inf, mut ev) = Inference::spawn(registry(&[("fast", 1), ("deployed", 1)], &["fast", "deployed"]), fake);
+/// The service's start-up default, or panic after `WAIT`.
+fn default_of(ev: &mut fmpsc::UnboundedReceiver<ServiceEvent>) -> (Option<HeadId>, Vec<(HeadId, String)>) {
     let t0 = Instant::now();
-    let (head, passed_over) = loop {
+    loop {
         match ev.try_recv() {
-            Ok(ServiceEvent::Default { head, passed_over }) => break (head, passed_over),
+            Ok(ServiceEvent::Default { head, passed_over }) => return (head, passed_over),
             Ok(_) => {}
             Err(_) if t0.elapsed() < WAIT => std::thread::sleep(Duration::from_millis(1)),
             Err(e) => panic!("no Default event: {e:?}"),
         }
-    };
-    assert_eq!(head.as_str(), "deployed");
+    }
+}
+
+#[test]
+fn the_default_skips_a_head_whose_provider_is_missing() {
+    let fake = FakeLoader { no_provider: ["fast".to_string()].into(), ..Default::default() };
+    let (_inf, mut ev) = Inference::spawn(registry(&[("fast", 1), ("deployed", 1)], &["fast", "deployed"]), fake);
+    let (head, passed_over) = default_of(&mut ev);
+    assert_eq!(head, Some(HeadId::new("deployed")));
     assert_eq!(passed_over.len(), 1);
     assert!(passed_over[0].1.contains("TensorRT"), "{passed_over:?}");
+}
+
+#[test]
+fn the_default_says_so_when_no_head_can_run() {
+    let missing = || Err(crate::registry::Unavailable::Missing(vec!["/fake/x/model.onnx".into()]));
+    let graphs = vec![crate::registry::Graph { manifest: manifest("x", 1), availability: missing() }];
+    let reg = Registry::from_graphs("/fake/models.json".into(), graphs, ids(&["x"]), vec![]).unwrap();
+    let (_inf, mut ev) = Inference::spawn(Arc::new(reg), FakeLoader::default());
+    let (head, passed_over) = default_of(&mut ev);
+    assert_eq!(head, None, "nothing can run, and the service says so instead of staying silent");
+    assert!(matches!(&passed_over[..], [(x, why)] if x.as_str() == "x" && why.contains("missing")), "{passed_over:?}");
 }
