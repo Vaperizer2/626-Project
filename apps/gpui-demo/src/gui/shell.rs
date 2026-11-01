@@ -23,7 +23,6 @@ use super::widgets::{self, Lucide};
 use super::{CTX, Cancel, FocusUrl, GuiOptions, NextModel, Open, Paste, ShowTab, ToggleTheme, theme};
 use crate::app;
 use inference::fetch::Source;
-use inference::manifest::Task;
 use inference::service::{ImageInput, Inference, LoadStage, ServiceEvent};
 
 /// A shortcut the status bar shows: its keys and what they do.
@@ -363,14 +362,12 @@ impl Shell {
                             .child(Icon::new(app::ICON).small()),
                     )
                     .child(div().text_sm().font_weight(FontWeight::SEMIBOLD).child(app::TITLE))
-                    .children(m.selected().and_then(|k| m.head(k)).map(|h| {
-                        let Task::Classify(c) = &h.spec.task;
-                        div().text_xs().text_color(t.muted_foreground).child(format!(
-                            "· {} {}",
-                            c.labels.len(),
-                            app::LABELS
-                        ))
-                    })),
+                    .children(
+                        m.selected()
+                            .and_then(|k| m.head(k))
+                            .and_then(|h| app::subtitle(&h))
+                            .map(|note| div().text_xs().text_color(t.muted_foreground).child(format!("· {note}"))),
+                    ),
             )
             .child(
                 h_flex().pr_2().child(

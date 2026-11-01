@@ -76,13 +76,11 @@ OPTIONS:
                       executable, else the system library path)
     --threads N       onnxruntime intra-op threads (default: onnxruntime's choice)
     --ep LIST         execution providers for every model, in order of preference: tensorrt, cuda
-                      and/or cpu, comma-separated (default: each model's manifest; usually
-                      cuda,cpu, and tensorrt,cuda,cpu for the fast model)
+                      and/or cpu, comma-separated (default: each model's manifest)
     --json            classify: print a JSON array instead of text lines
     --model HEADS     classify with these models (comma-separated head ids, or all). Default: the
                       first of the index's defaults whose preferred execution provider registers here
-                      and is not displaced by --ep (fast with TensorRT, else deployed). See
-                      `{bin} models` for the ids.
+                      and is not displaced by --ep. See `{bin} models` for the ids.
     --demo-dir DIR    window: folder with demo_stack.json (default: ${env}_DEMO_DIR, else the
                       first demo_stack/ found walking up from the current directory, then the executable)
     --tab TAB         window: start on tab TAB, one of {tabs} (default: {first})

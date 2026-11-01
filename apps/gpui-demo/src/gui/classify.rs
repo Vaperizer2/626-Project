@@ -309,14 +309,14 @@ impl ClassifyTab {
             .child(
                 Button::new("fetch")
                     .label("Fetch")
-                    .tooltip("Download and classify the URL (Enter)")
+                    .tooltip("Fetch the URL or path and run the model on it (Enter)")
                     .on_click(cx.listener(|this, _, w, cx| this.fetch_typed_url(w, cx))),
             )
             .child(
                 Button::new("paste")
                     .icon(IconName::Copy)
                     .label("Paste")
-                    .tooltip("Classify the clipboard: image, URL or path (Ctrl+V)")
+                    .tooltip("Run the model on the clipboard: a picture, a URL or a path (Ctrl+V)")
                     .on_click(|_, window, cx| window.dispatch_action(Box::new(Paste), cx)),
             )
     }
@@ -489,17 +489,16 @@ impl ClassifyTab {
                         .header(
                             EmptyHeader::new()
                                 .media(EmptyMedia::new().child(Icon::new(Lucide::ImagePlus).large()))
-                                .title(EmptyTitle::new().child("Drop component pictures here"))
-                                .description(EmptyDescription::new().child(
-                                    "Or open files, paste a picture, URL or path, or try the curated images in the Demo tab.",
-                                )),
+                                .title(EmptyTitle::new().child("Drop pictures here"))
+                                .description(
+                                    EmptyDescription::new().child("Or open files, or paste a picture, a URL or a path."),
+                                ),
                         )
                         .child(
                             h_flex()
                                 .gap_4()
                                 .child(widgets::hint(&["ctrl-o"], "Open", cx))
-                                .child(widgets::hint(&["ctrl-v"], "Paste", cx))
-                                .child(widgets::hint(&["ctrl-2"], "Demo tab", cx)),
+                                .child(widgets::hint(&["ctrl-v"], "Paste", cx)),
                         ),
                 )
                 .into_any_element(),
