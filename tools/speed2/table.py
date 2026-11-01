@@ -18,7 +18,8 @@ ROWS = {
     "compose_int8_res308": ("compose_int8_res308", "starting winner: 308 px + INT8 SmoothQuant 0.5, all 112 GEMMs"),
     "speed2_int8_res308_opt5": ("compose_int8_res308", "TRT builder optimisation level 5"),
     "speed2_int8_res308_mlp3840": ("compose_int8_res308", "MLP 4304 -> 3840 (FLAP fluct, bias-comp): fc1 in 2 waves"),
-    "speed2_int8_res294": ("compose_int8_res308", "294 px (441 tokens), INT8 recalibrated"),
+    "speed2_int8_res294": ("compose_int8_res308", "294 px (441 tokens), INT8 recalibrated: attention in 2 waves"),
+    "speed2_int8_res308_heads15": ("compose_int8_res308", "attention heads 16 -> 15 per block (FLAP fluct, bias-comp)"),
 }
 
 
