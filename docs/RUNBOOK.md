@@ -1,6 +1,6 @@
 # Runbook
 
-Updated 2026-10-30. Source: https://github.com/Vaperizer2/626-Project (private).
+Updated 2026-11-01. Source: https://github.com/Vaperizer2/626-Project (private).
 Release: https://github.com/Vaperizer2/626-Project/releases/tag/share-2026-10-30.
 
 ## Give a colleague access
@@ -38,6 +38,32 @@ Later inference is offline once those dependencies are present. A graphical desk
 needed for the window; `classify` works headlessly. See the bundled `README.txt` for shortcuts and troubleshooting.
 Try the Demo tab, then Benchmark to compare A/B/C/Deployed. These 28 photos are a presentation set, not a new
 independent accuracy estimate. Allow several seconds for the initial SigLIP load.
+
+## Run the Fast model on an NVIDIA GPU
+
+Fast is the deployed model at 308 px with INT8 weights for TensorRT: the same cross-validated accuracy on the
+development folds (0.8268) at 14 ms per picture instead of 113 ms for Deployed on CUDA (RTX 3060 Laptop, in the app).
+The share-2026-10-30 release predates Fast and the GPU launcher: use a bundle built from this branch
+(`apps/gpui-demo/scripts/package_linux.sh`, see below for Fast's model files) or a source build. It needs the GPU
+runtime, which the bundle does not ship (about 7 GB, no root):
+
+```bash
+uv venv ~/.local/share/component-classifier/gpu --python 3.12
+uv pip install --python ~/.local/share/component-classifier/gpu/bin/python \
+  'onnxruntime-gpu[cuda,cudnn]==1.31.1' 'tensorrt-cu13-libs==10.16.1.11'
+./run.sh models        # first line: "run.sh: onnxruntime on GPU (onnxruntime 1.31.1, TensorRT from ...)"
+./run.sh --tab demo    # starts on Fast; the first start builds the TensorRT engine (about 46 s), later ones ~1-2 s
+```
+
+The driver must support CUDA 13. `run.sh` also finds the runtime through `COMPCLASS_GPU_VENV=<venv>` or an active
+virtualenv; `COMPCLASS_GPU=0` forces the CPU. Without TensorRT the app starts on Deployed (CUDA); without any GPU
+runtime it runs on the CPU and says so on the launcher's first line and in `./run.sh models`.
+
+Fast's ONNX files are not in any release yet. Copy `model.onnx` and `model.onnx.data` (440 MB) from the export (on
+legion: `/home/vaper/Work/Prototypes/626-artifacts/compose/exports/fast/`) into `exports/fast/` of a source
+checkout, whose other files (`model.json`, `preprocess.json`, `labels.json`, `runtime.json`) are tracked in git,
+then build the app or the bundle (`apps/gpui-demo/scripts/package_linux.sh` includes Fast).
+`gpui-demo models --check` verifies the copied files against the checksums in `exports/fast/model.json`.
 
 ## Download models into a source checkout
 
