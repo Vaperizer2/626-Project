@@ -243,6 +243,12 @@ impl DemoApp {
         cx.notify();
     }
 
+    pub(super) fn demo_forget_load_failures(&mut self, model: &HeadId) {
+        for it in &mut self.demo.items {
+            it.results.forget_load_failure(model);
+        }
+    }
+
     pub(super) fn demo_cancel(&mut self, cx: &mut Context<Self>) {
         if self.demo.run.take().is_some() {
             cx.notify();
