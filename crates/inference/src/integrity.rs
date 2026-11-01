@@ -1,5 +1,5 @@
 //! Weight integrity. The registry already refuses a file whose size differs from its manifest. Beyond that a load
-//! only asks, cheaply, whether each file is still the copy `models --check` last hashed: a per-user stamp cache maps
+//! only asks, cheaply, whether each file is still the copy `models --check` last hashed: a stamp file in the app's cache maps
 //! each path to the size, mtime and sha256 seen then. The full sha256 runs only in `models --check`, which records
 //! a stamp for every file that matches its manifest.
 
@@ -20,15 +20,6 @@ struct Stamp {
     sha256: String,
 }
 
-/// `$XDG_CACHE_HOME/component-classifier/verified.json` (or `~/.cache/...`).
-pub fn cache_dir() -> Option<PathBuf> {
-    let base = std::env::var_os("XDG_CACHE_HOME")
-        .filter(|s| !s.is_empty())
-        .map(PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cache")))?;
-    Some(base.join("component-classifier"))
-}
-
 pub struct Stamps {
     path: Option<PathBuf>,
     map: BTreeMap<String, Stamp>,
@@ -46,8 +37,9 @@ pub fn now_stamp(p: &Path) -> Option<(u64, u128)> {
 }
 
 impl Stamps {
-    pub fn load() -> Self {
-        let path = cache_dir().map(|d| d.join("verified.json"));
+    /// The stamps in `dir/verified.json` (none yet when it is missing). Without a directory nothing is kept.
+    pub fn load(dir: Option<&Path>) -> Self {
+        let path = dir.map(|d| d.join("verified.json"));
         let map = path
             .as_ref()
             .and_then(|p| std::fs::read_to_string(p).ok())

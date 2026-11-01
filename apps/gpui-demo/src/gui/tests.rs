@@ -460,7 +460,7 @@ async fn missing_index_is_reported(cx: &mut TestAppContext) {
 async fn real_benchmark_matches_the_golden_rows(cx: &mut TestAppContext) {
     let exports = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../exports");
     let reg = Arc::new(Registry::load(&exports.join("models.json")).unwrap());
-    let opts = inference::runtime::ModelOptions { eps: Some(vec![inference::manifest::EpKind::Cpu]), ..Default::default() };
+    let opts = inference::runtime::Settings { eps: Some(vec![inference::manifest::EpKind::Cpu]), ..Default::default() };
     let service = Inference::spawn(reg, inference::runtime::OrtLoader::new(&opts, Some(&exports)));
     cx.executor().allow_parking();
     cx.update(|cx| {

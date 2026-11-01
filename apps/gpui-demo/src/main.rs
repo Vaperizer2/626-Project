@@ -6,6 +6,7 @@
 //!   gpui-demo models [--check]                           list the model registry and what is available
 //!   gpui-demo bench [--model HEAD] IMAGE ...             latency by stage and streamed FPS through the service
 
+mod app;
 mod demo;
 mod gui;
 
@@ -28,11 +29,15 @@ use inference::service::{
 use inference::manifest::{GraphId, HeadId, Precision, Task};
 use inference::manifest::EpKind;
 use inference::service::Loader as _;
-use inference::runtime::{ModelOptions, OrtLoader};
+use inference::runtime::{Settings, OrtLoader};
 use inference::registry::Registry;
 
-const HELP: &str = "\
-gpui-demo - classify electronic components in pictures (GPUI + onnxruntime)
+/// `--help`.
+fn help() -> String {
+    let (title, env) = (app::TITLE, app::ENV_PREFIX);
+    format!(
+        "\
+gpui-demo - {title}: classify electronic components in pictures (GPUI + onnxruntime)
 
 USAGE:
     gpui-demo [OPTIONS] [IMAGE|URL ...]                 open the window
@@ -46,7 +51,7 @@ USAGE:
                                                         every file's sha256 and loads each graph
 
 OPTIONS:
-    --models PATH     the model index exports/models.json, or its folder (default: $COMPCLASS_MODELS,
+    --models PATH     the model index exports/models.json, or its folder (default: ${env}_MODELS,
                       else the first exports/models.json found walking up from the current directory,
                       then from the executable)
     --ort-lib PATH    libonnxruntime.so to load (default: $ORT_DYLIB_PATH, else
@@ -61,7 +66,7 @@ OPTIONS:
                       first of the index's defaults whose preferred execution provider registers here
                       and is not displaced by --ep (fast with TensorRT, else deployed). See
                       `gpui-demo models` for the ids.
-    --demo-dir DIR    window: folder with demo_stack.json (default: $COMPCLASS_DEMO_DIR, else the
+    --demo-dir DIR    window: folder with demo_stack.json (default: ${env}_DEMO_DIR, else the
                       first demo_stack/ found walking up from the current directory, then the executable)
     --tab TAB         window: start on classify (default), demo or benchmark
     --autorun         window: start Run all (Demo tab) or the benchmark (Benchmark tab) right away
@@ -72,12 +77,14 @@ OPTIONS:
 KEYS (window): Ctrl+1/2/3 Classify / Demo / Benchmark tab, Ctrl+M next model, Ctrl+T light/dark theme,
                Ctrl+Q quit. Classify: Ctrl+O open, Ctrl+V paste URL / path / image, Ctrl+L URL field,
                Enter fetch, Up/Down recent images. Demo: Left/Right or J/K step, Enter classify,
-               Ctrl+R run all, Esc cancel. Benchmark: Ctrl+R run, Esc cancel";
+               Ctrl+R run all, Esc cancel. Benchmark: Ctrl+R run, Esc cancel"
+    )
+}
 
 #[derive(Debug, Default)]
 struct Args {
     mode: String,
-    opts: ModelOptions,
+    opts: Settings,
     json: bool,
     check: bool,
     rounds: usize,
@@ -100,7 +107,7 @@ fn parse_args() -> Result<Args> {
         let mut value = |name: &str| it.next().with_context(|| format!("{name} needs a value"));
         match arg.as_str() {
             "-h" | "--help" => {
-                println!("{HELP}");
+                println!("{}", help());
                 std::process::exit(0);
             }
             "-V" | "--version" => {
@@ -151,7 +158,23 @@ fn parse_args() -> Result<Args> {
             _ => a.rest.push(arg),
         }
     }
+    a.opts.models = a.opts.models.or_else(|| env_path("MODELS"));
+    a.opts.cache_dir = cache_dir();
     Ok(a)
+}
+
+/// `$<ENV_PREFIX>_<name>`, when it is set and not empty.
+fn env_path(name: &str) -> Option<PathBuf> {
+    std::env::var_os(format!("{}_{name}", app::ENV_PREFIX)).filter(|s| !s.is_empty()).map(PathBuf::from)
+}
+
+/// `$XDG_CACHE_HOME/<NAME>`, else `~/.cache/<NAME>`.
+fn cache_dir() -> Option<PathBuf> {
+    let base = std::env::var_os("XDG_CACHE_HOME")
+        .filter(|s| !s.is_empty())
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cache")))?;
+    Some(base.join(app::NAME))
 }
 
 fn registry(a: &Args) -> Result<Arc<Registry>> {
@@ -565,7 +588,7 @@ fn run_models(a: &Args) -> Result<u8> {
         return Ok(0);
     }
     // --check: hash every file against its manifest, then load the graph the way the app does
-    let mut stamps = integrity::Stamps::load();
+    let mut stamps = integrity::Stamps::load(a.opts.cache_dir.as_deref());
     for g in reg.graphs() {
         let m = &g.manifest;
         if let Err(e) = &g.availability {
@@ -707,7 +730,7 @@ mod tests {
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(dir.join(registry::INDEX_FILE), r#"{"schema":"model-index/1","default":[],"manifests":["gone/model.json"]}"#)
             .unwrap();
-        let args = Args { check: true, opts: ModelOptions { models: Some(dir.clone()), ..Default::default() }, ..Default::default() };
+        let args = Args { check: true, opts: Settings { models: Some(dir.clone()), ..Default::default() }, ..Default::default() };
         assert_eq!(run_models(&args).unwrap(), 1, "a manifest that cannot be read is a failed check");
         let _ = std::fs::remove_dir_all(&dir); // test scratch dir under the OS temp dir only
     }

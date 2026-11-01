@@ -279,10 +279,11 @@ impl DemoApp {
                             .title("Demo stack not found")
                             .icon(IconName::Info),
                     )
-                    .child(div().pt_3().text_sm().text_color(t.muted_foreground).child(
+                    .child(div().pt_3().text_sm().text_color(t.muted_foreground).child(format!(
                         "Run the app from inside the repository, or pass --demo-dir apps/gpui-demo/demo_stack \
-                         (or set COMPCLASS_DEMO_DIR).",
-                    ))
+                         (or set {}_DEMO_DIR).",
+                        crate::app::ENV_PREFIX
+                    )))
                     .into_any_element();
             }
             Some(Ok(_)) => {}
