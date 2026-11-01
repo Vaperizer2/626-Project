@@ -28,6 +28,10 @@ use crate::registry::Registry;
 use crate::runtime::Placement;
 
 const IO_WORKERS: usize = 2;
+/// Bulk requests between the start of their preparation and the end of their last run. Their tensors wait in the
+/// graphs' queues, so without a bound a `classify` of thousands of pictures prepares them all at decode speed
+/// (deployed's tensor is 1.8 MB). Enough to fill a batch of 8 twice over.
+const BULK_IN_FLIGHT: usize = 16;
 
 // ------------------------------------------------------------------------------------------ backend seam
 /// Why a run produced no outputs.
@@ -252,25 +256,40 @@ impl Request {
 }
 
 // ------------------------------------------------------------------------------------------------ queues
-/// Two-class FIFO: interactive items before bulk ones. `pop` blocks; it returns None once closed.
+/// Two-class FIFO: interactive items before bulk ones. `pop` blocks; it returns None once closed. With a bulk
+/// limit, `pop` hands out a bulk item only while fewer than that many are out; each is given back with
+/// `release_bulk`. Interactive items never wait for it.
 struct Queue<T> {
-    state: Mutex<(VecDeque<T>, VecDeque<T>, bool)>,
+    state: Mutex<Lanes<T>>,
     ready: Condvar,
+    bulk_limit: Option<usize>,
+}
+
+struct Lanes<T> {
+    interactive: VecDeque<T>,
+    bulk: VecDeque<T>,
+    closed: bool,
+    bulk_out: usize,
 }
 
 impl<T> Queue<T> {
     fn new() -> Self {
-        Self { state: Mutex::new((VecDeque::new(), VecDeque::new(), false)), ready: Condvar::new() }
+        Self::bounded(None)
+    }
+
+    fn bounded(bulk_limit: Option<usize>) -> Self {
+        let lanes = Lanes { interactive: VecDeque::new(), bulk: VecDeque::new(), closed: false, bulk_out: 0 };
+        Self { state: Mutex::new(lanes), ready: Condvar::new(), bulk_limit }
     }
 
     fn push(&self, p: Priority, item: T) -> Result<(), T> {
         let mut s = self.state.lock().expect("queue lock");
-        if s.2 {
+        if s.closed {
             return Err(item);
         }
         match p {
-            Priority::Interactive => s.0.push_back(item),
-            Priority::Bulk => s.1.push_back(item),
+            Priority::Interactive => s.interactive.push_back(item),
+            Priority::Bulk => s.bulk.push_back(item),
         }
         self.ready.notify_one();
         Ok(())
@@ -279,10 +298,16 @@ impl<T> Queue<T> {
     fn pop(&self) -> Option<T> {
         let mut s = self.state.lock().expect("queue lock");
         loop {
-            if s.2 {
+            if s.closed {
                 return None;
             }
-            if let Some(x) = s.0.pop_front().or_else(|| s.1.pop_front()) {
+            if let Some(x) = s.interactive.pop_front() {
+                return Some(x);
+            }
+            if self.bulk_limit.is_none_or(|l| s.bulk_out < l)
+                && let Some(x) = s.bulk.pop_front()
+            {
+                s.bulk_out += usize::from(self.bulk_limit.is_some());
                 return Some(x);
             }
             s = self.ready.wait(s).expect("queue lock");
@@ -291,18 +316,32 @@ impl<T> Queue<T> {
 
     fn try_pop(&self) -> Option<T> {
         let mut s = self.state.lock().expect("queue lock");
-        s.0.pop_front().or_else(|| s.1.pop_front())
+        s.interactive.pop_front().or_else(|| s.bulk.pop_front())
+    }
+
+    fn release_bulk(&self) {
+        self.state.lock().expect("queue lock").bulk_out -= 1;
+        self.ready.notify_one();
     }
 
     fn close(&self) {
-        self.state.lock().expect("queue lock").2 = true;
+        self.state.lock().expect("queue lock").closed = true;
         self.ready.notify_all();
     }
 
     #[cfg(test)]
     fn len(&self) -> usize {
         let s = self.state.lock().expect("queue lock");
-        s.0.len() + s.1.len()
+        s.interactive.len() + s.bulk.len()
+    }
+}
+
+/// A bulk request's place in the io queue's budget, from its preparation to the end of its last graph job.
+struct BulkSlot(Arc<Queue<IoJob>>);
+
+impl Drop for BulkSlot {
+    fn drop(&mut self) {
+        self.0.release_bulk();
     }
 }
 
@@ -321,6 +360,7 @@ struct GraphJob {
     decode_ms: f64,
     preprocess_ms: f64,
     enqueued: Instant,
+    _slot: Option<Arc<BulkSlot>>,
 }
 
 enum Msg {
@@ -333,7 +373,7 @@ struct Core {
     registry: Arc<Registry>,
     loader: Arc<dyn Loader>,
     events: fmpsc::UnboundedSender<ServiceEvent>,
-    io: Queue<IoJob>,
+    io: Arc<Queue<IoJob>>,
     /// each graph's actor queue; None once the service is closed, so no actor starts after `shutdown` took the
     /// thread list
     actors: Mutex<Option<HashMap<GraphId, Arc<Queue<Msg>>>>>,
@@ -379,7 +419,7 @@ impl Inference {
             registry,
             loader: Arc::new(loader),
             events,
-            io: Queue::new(),
+            io: Arc::new(Queue::bounded(Some(BULK_IN_FLIGHT))),
             actors: Mutex::new(Some(HashMap::new())),
             threads: Mutex::new(Vec::new()),
         });
@@ -525,6 +565,8 @@ impl Core {
     /// Decode, then one tensor per distinct preprocessing spec, each handed to its graph as soon as it is ready.
     fn prepare(&self, job: IoJob) {
         let IoJob { req, input, heads, display } = job;
+        // `pop` counted a bulk job against the budget; its graph jobs give the place back when the last one ends
+        let slot = (req.priority == Priority::Bulk).then(|| Arc::new(BulkSlot(self.io.clone())));
         if !req.alive() {
             return req.finish();
         }
@@ -606,6 +648,7 @@ impl Core {
                 decode_ms,
                 preprocess_ms,
                 enqueued: Instant::now(),
+                _slot: slot.clone(),
             };
             let queued = self.actor(m).and_then(|q| q.push(req.priority, Msg::Job(job)).map_err(|_| STOPPED.to_string()));
             if let Err(e) = queued {

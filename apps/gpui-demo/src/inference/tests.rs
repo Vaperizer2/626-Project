@@ -247,3 +247,23 @@ fn a_default_no_manifest_provides_is_passed_over() {
     assert_eq!(head, Some(HeadId::new("deployed")));
     assert!(matches!(&passed_over[..], [(f, _)] if f.as_str() == "fast"), "the notice can say why: {passed_over:?}");
 }
+
+#[test]
+fn bulk_preparation_stays_bounded_while_a_graph_lags() {
+    let gate = Arc::new(Gate::default());
+    let fake = FakeLoader { gates: [("z".to_string(), gate.clone())].into(), ..Default::default() };
+    let (inf, _ev) = Inference::spawn(registry(&[("z", 1), ("y", 1)], &["z"]), fake.clone());
+    let bulk = inf.lane(Priority::Bulk, Policy::Keep);
+    let mut hs: Vec<RequestHandle> = (0..40).map(|v| bulk.submit(image(v), &ids(&["z"]), None)).collect();
+    // z's load holds one job; the io workers prepare only what the budget allows, not all forty tensors
+    let z = GraphId::new("z");
+    wait_until("the budget to fill", || gate.holds() && inf.queued(&z) == BULK_IN_FLIGHT - 1);
+    std::thread::sleep(Duration::from_millis(50));
+    assert_eq!(inf.queued(&z), BULK_IN_FLIGHT - 1, "no tensor is prepared past the budget");
+    let mut y = inf.lane(Priority::Interactive, Policy::Keep).submit(image(1), &ids(&["y"]), None);
+    assert!(matches!(finish(&mut y).1, Finish::Complete { .. }), "an interactive request does not wait for the budget");
+    gate.open();
+    for h in &mut hs {
+        assert!(matches!(finish(h).1, Finish::Complete { .. }), "every bulk request runs once places free up");
+    }
+}
