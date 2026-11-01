@@ -85,8 +85,4 @@ impl Stack {
             None => Some(ImageInput::Source(inference::fetch::Source::File(self.stack()?.path(i)))),
         }
     }
-
-    pub fn working(&self) -> bool {
-        self.items.iter().any(|i| i.results.working())
-    }
 }
