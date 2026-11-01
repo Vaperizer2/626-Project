@@ -497,16 +497,19 @@ impl Core {
     }
 
     fn resolve_default(&self) {
-        let order = self.registry.default_order();
+        let fallback = self.registry.last_default();
         let mut passed_over = Vec::new();
         let mut head = None;
-        for (i, id) in order.iter().enumerate() {
-            let Some(h) = self.registry.head(id) else { continue };
+        for id in self.registry.default_order() {
+            let Some(h) = self.registry.head(id) else {
+                passed_over.push((id.clone(), "no manifest in the model index provides it".into()));
+                continue;
+            };
             if let Err(e) = h.available() {
                 passed_over.push((id.clone(), e.to_string()));
                 continue;
             }
-            if i + 1 < order.len()
+            if Some(id) != fallback.as_ref()
                 && let Err(e) = self.loader.probe(h.manifest())
             {
                 passed_over.push((id.clone(), e));

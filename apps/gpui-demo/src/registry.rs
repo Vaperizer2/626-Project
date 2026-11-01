@@ -158,13 +158,12 @@ impl Registry {
             }
         }
         let mut reg = Self { index, graphs, heads, default: Vec::new(), problems: Vec::new() };
-        for d in default {
-            if reg.head(&d).is_some() {
-                reg.default.push(d);
-            } else {
+        for d in &default {
+            if reg.head(d).is_none() {
                 problems.push(format!("{}: default head {d:?} is not in any manifest", reg.index.display()));
             }
         }
+        reg.default = default;
         reg.problems = problems;
         Ok(reg)
     }
@@ -212,14 +211,19 @@ impl Registry {
         }
     }
 
-    /// Default heads in order of preference (only ids that exist).
+    /// Default heads in order of preference, as the index lists them: an id may name no head (see `problems`).
     pub fn default_order(&self) -> &[HeadId] {
         &self.default
     }
 
-    /// The first default head, else the first head.
+    /// The first default that names a head, else the first head.
     pub fn first_default(&self) -> Option<HeadId> {
-        self.default.first().cloned().or_else(|| self.heads().next().map(|h| h.id().clone()))
+        self.default.iter().find(|d| self.head(d).is_some()).cloned().or_else(|| self.heads().next().map(|h| h.id().clone()))
+    }
+
+    /// The last default that names a head: the fallback, which needs only its files.
+    pub fn last_default(&self) -> Option<HeadId> {
+        self.default.iter().rev().find(|d| self.head(d).is_some()).cloned()
     }
 
     pub fn problems(&self) -> &[String] {

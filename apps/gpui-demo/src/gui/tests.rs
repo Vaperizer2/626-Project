@@ -438,3 +438,21 @@ async fn real_benchmark_matches_the_golden_rows(cx: &mut TestAppContext) {
         eprintln!("benchmark tab: {compared} cells match the golden rows");
     });
 }
+
+#[gpui_kit::test]
+async fn registry_problems_are_shown_beside_working_models(cx: &mut TestAppContext) {
+    // "fast" names no head: a registry problem, and the start-up default passes it over
+    let (handle, view) = open(cx, registry(&[("x", 1)], &["fast", "x"]));
+    wait(cx, &view, "the default head", &|v| v.run_model().is_some());
+    let shown = |cx: &mut TestAppContext, id: &'static str| {
+        cx.update_window(handle, |_, window, cx| {
+            window.render_frame(cx);
+            window.try_find(id).is_some()
+        })
+        .unwrap()
+    };
+    assert!(shown(cx, "registry-problems"), "the index names a default no manifest provides");
+    assert!(shown(cx, "fallback-notice"), "the start-up notice says why fast was passed over");
+    cx.update(|cx| view.update(cx, |v, cx| v.dismiss_problems(cx)));
+    assert!(!shown(cx, "registry-problems"), "the notice can be dismissed");
+}

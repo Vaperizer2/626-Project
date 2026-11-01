@@ -134,6 +134,8 @@ pub struct DemoApp {
     passed_over: Vec<(HeadId, String)>,
     /// why there is no model at all (the index could not be read, or none of its manifests parsed)
     registry_error: Option<String>,
+    /// manifests that could not be read and defaults that name no model, beside the models that work; dismissible
+    registry_problems: Vec<String>,
     classify: classify::ClassifyState,
     demo: demo_tab::DemoState,
     bench: bench::BenchState,
@@ -172,8 +174,9 @@ impl DemoApp {
         let (classify, subs) = classify::ClassifyState::new(window, cx);
         // until the start-up probe picks the default, the fallback (the last default) is selected; nothing loads yet
         let reg = inference.registry();
-        let model = reg.default_order().last().cloned().or_else(|| reg.first_default());
+        let model = reg.last_default().or_else(|| reg.first_default());
         let registry_error = (reg.heads().next().is_none()).then(|| reg.problems().join("\n"));
+        let registry_problems = if registry_error.is_some() { Vec::new() } else { reg.problems().to_vec() };
         let mut this = Self {
             focus: cx.focus_handle(),
             tab: TabKind::Classify,
@@ -186,6 +189,7 @@ impl DemoApp {
             graphs: HashMap::new(),
             passed_over: Vec::new(),
             registry_error,
+            registry_problems,
             classify,
             demo: demo_tab::DemoState::default(),
             bench: bench::BenchState::default(),
@@ -324,6 +328,11 @@ impl DemoApp {
     fn set_tab(&mut self, tab: TabKind, window: &mut Window, cx: &mut Context<Self>) {
         self.tab = tab;
         window.focus(&self.focus, cx);
+        cx.notify();
+    }
+
+    fn dismiss_problems(&mut self, cx: &mut Context<Self>) {
+        self.registry_problems.clear();
         cx.notify();
     }
 
@@ -528,10 +537,17 @@ impl Render for DemoApp {
             }
         );
         let registry_alert = self.registry_error.clone().map(|e| {
-            div()
-                .px_4()
-                .pt_3()
-                .child(Alert::error("registry-error", SharedString::from(e)).title("Model index not found").small())
+            let found = !self.registry().index_path().as_os_str().is_empty();
+            let title = if found { "No model in the index could be read" } else { "Model index not found" };
+            div().px_4().pt_3().child(Alert::error("registry-error", SharedString::from(e)).title(title).small())
+        });
+        let problems_alert = (!self.registry_problems.is_empty()).then(|| {
+            div().id("registry-problems").test_support().px_4().pt_3().child(
+                Alert::warning("registry-problems-alert", SharedString::from(self.registry_problems.join("\n")))
+                    .title("Some models in the index could not be read")
+                    .small()
+                    .on_close(cx.listener(|this, _, _, cx| this.dismiss_problems(cx))),
+            )
         });
         let fallback_alert = (self.pick == Pick::Default && !self.passed_over.is_empty()).then(|| {
             let using = self.model.as_ref().filter(|m| self.model_usable(m)).map(|m| self.title(m));
@@ -592,6 +608,7 @@ impl Render for DemoApp {
             .child(self.render_title_bar(cx))
             .child(self.render_tab_row(cx))
             .children(registry_alert)
+            .children(problems_alert)
             .children(fallback_alert)
             .child(div().flex_1().min_h_0().child(body))
             .child(self.render_status_bar(cx))
