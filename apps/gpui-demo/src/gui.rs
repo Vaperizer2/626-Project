@@ -275,24 +275,26 @@ impl DemoApp {
     }
 
     fn select_model(&mut self, k: HeadId, window: &mut Window, cx: &mut Context<Self>) {
-        let state = self.state(&k);
-        if !state.usable() {
-            let why = match state {
-                ModelState::Unavailable(e) | ModelState::Failed(e) => e,
-                _ => String::new(),
-            };
-            use gpui_kit::component::WindowExt as _;
-            window.push_notification(
-                (
-                    gpui_kit::component::notification::NotificationType::Warning,
-                    SharedString::from(format!("{} is unavailable. {why}", self.title(&k))),
-                ),
-                cx,
-            );
-            return;
-        }
-        if matches!(state, ModelState::Idle) {
-            self.inference.preload(&k);
+        match self.state(&k) {
+            ModelState::Unavailable(why) => {
+                use gpui_kit::component::WindowExt as _;
+                window.push_notification(
+                    (
+                        gpui_kit::component::notification::NotificationType::Warning,
+                        SharedString::from(format!("{} is unavailable. {why}", self.title(&k))),
+                    ),
+                    cx,
+                );
+                return;
+            }
+            ModelState::Failed(_) => {
+                // picking a model whose load failed tries it again (the cause may be gone: memory, a driver)
+                self.inference.preload(&k);
+                self.classify_forget_load_failures(&k);
+                self.demo_forget_load_failures(&k);
+            }
+            ModelState::Idle => self.inference.preload(&k),
+            ModelState::Loading { .. } | ModelState::Ready(_) => {}
         }
         self.model = Some(k);
         self.pick = Pick::User;
@@ -391,11 +393,12 @@ impl DemoApp {
             .small()
             .outline()
             .children(self.head_ids().into_iter().map(|k| {
-                let usable = self.model_usable(&k);
+                let state = self.state(&k);
+                let pickable = !matches!(state, ModelState::Unavailable(_));
                 let name = self.title(&k);
-                let tip = match self.state(&k) {
+                let tip = match state {
                     ModelState::Unavailable(e) => format!("{name} — unavailable: {e}"),
-                    ModelState::Failed(e) => format!("{name} — failed to load: {e}"),
+                    ModelState::Failed(e) => format!("{name} — failed to load: {e}. Pick it to try again."),
                     ModelState::Ready(l) => {
                         let skipped: String =
                             l.placement.skipped.iter().map(|(ep, why)| format!("\n{} skipped: {why}", ep.name())).collect();
@@ -418,7 +421,7 @@ impl DemoApp {
                     .selected(selected)
                     // outline + primary: the chosen model reads as an accent tint, not a grey press state
                     .when(selected, |b| b.primary())
-                    .disabled(!usable)
+                    .disabled(!pickable)
                     .tooltip(tip)
             }))
             .on_click(cx.listener(|this, sel: &Vec<usize>, w, cx| {

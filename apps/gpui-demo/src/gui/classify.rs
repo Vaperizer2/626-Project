@@ -194,6 +194,12 @@ impl DemoApp {
         cx.notify();
     }
 
+    pub(super) fn classify_forget_load_failures(&mut self, model: &HeadId) {
+        for e in &mut self.classify.entries {
+            e.results.forget_load_failure(model);
+        }
+    }
+
     fn fetch_typed_url(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let text = self.classify.url.read(cx).value().to_string();
         match Source::parse(&text) {

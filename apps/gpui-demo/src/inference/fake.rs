@@ -93,14 +93,23 @@ pub struct FakeLoader {
     pub gates: HashMap<String, Arc<Gate>>,
     /// graphs whose preferred provider does not register
     pub no_provider: HashSet<String>,
-    /// graphs whose load fails
-    pub broken: HashSet<String>,
+    /// graphs whose load fails (until `repair`)
+    pub broken: Arc<Mutex<HashSet<String>>>,
     pub seen: Arc<Mutex<Vec<Seen>>>,
     /// graphs dropped so far
     pub drops: Arc<AtomicUsize>,
 }
 
 impl FakeLoader {
+    /// Loads of `graphs` fail.
+    pub fn breaking(graphs: &[&str]) -> Self {
+        let broken = graphs.iter().map(|g| g.to_string()).collect();
+        Self { broken: Arc::new(Mutex::new(broken)), ..Default::default() }
+    }
+    /// The next load of `graph` works.
+    pub fn repair(&self, graph: &str) {
+        self.broken.lock().unwrap().remove(graph);
+    }
     pub fn seen(&self) -> Vec<Seen> {
         self.seen.lock().unwrap().clone()
     }
@@ -116,7 +125,7 @@ impl Loader for FakeLoader {
             g.wait();
         }
         self.seen.lock().unwrap().push(Seen::Loaded { graph: m.id.to_string() });
-        if self.broken.contains(m.id.as_str()) {
+        if self.broken.lock().unwrap().contains(m.id.as_str()) {
             return Err(format!("{}: Protobuf parsing failed", m.graph.display()));
         }
         let graph = FakeGraph { id: m.id.to_string(), run: self.run, seen: self.seen.clone(), drops: self.drops.clone() };

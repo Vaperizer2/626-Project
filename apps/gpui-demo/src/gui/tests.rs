@@ -287,7 +287,7 @@ async fn a_model_that_fails_to_load_is_not_called_an_unreadable_picture(cx: &mut
     if !stack_dir().join(crate::demo::STACK_FILE).is_file() {
         return;
     }
-    let loader = FakeLoader { broken: ["x".to_string()].into(), ..Default::default() };
+    let loader = FakeLoader::breaking(&["x"]);
     let (_handle, view) = open_with(cx, registry(&[("x", 1), ("y", 1)], &["x", "y"]), loader);
     let x = crate::manifest::HeadId::new("x");
     wait(cx, &view, "the default head", &|v| v.model.as_ref() == Some(&x));
@@ -302,6 +302,23 @@ async fn a_model_that_fails_to_load_is_not_called_an_unreadable_picture(cx: &mut
     submit(cx, stack_dir().join("no_such_picture.jpg"));
     wait(cx, &view, "the read failure", &|v| v.classify.failure(&x).is_some());
     cx.update(|cx| assert_eq!(view.read(cx).classify.failure(&x), Some("could not read")));
+}
+
+#[gpui_kit::test]
+async fn picking_a_model_that_failed_to_load_tries_it_again(cx: &mut TestAppContext) {
+    if !stack_dir().join(crate::demo::STACK_FILE).is_file() {
+        return;
+    }
+    let loader = FakeLoader::breaking(&["x"]);
+    let (handle, view) = open_with(cx, registry(&[("x", 1), ("y", 1)], &["x", "y"]), loader.clone());
+    let x = crate::manifest::HeadId::new("x");
+    wait(cx, &view, "the default head", &|v| v.run_model().as_ref() == Some(&x));
+    let picture = stack_dir().join("01_battery_holder.jpg");
+    cx.update(|cx| view.update(cx, |v, cx| v.submit_source(crate::fetch::Source::File(picture), cx)));
+    wait(cx, &view, "x's failure", &|v| v.classify.failure(&x).is_some());
+    loader.repair("x"); // say, the user freed GPU memory
+    cx.update_window(handle, |_, window, cx| view.update(cx, |v, cx| v.select_model(x.clone(), window, cx))).unwrap();
+    wait(cx, &view, "x's answer after the retry", &|v| v.classify.answered(&x));
 }
 
 #[gpui_kit::test]

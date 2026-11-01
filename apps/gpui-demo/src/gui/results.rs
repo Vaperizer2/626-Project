@@ -43,6 +43,13 @@ impl Results {
         self.0.remove(head);
     }
 
+    /// Drop `head`'s answer when it is "the model failed to load", so a retried load answers again.
+    pub fn forget_load_failure(&mut self, head: &HeadId) {
+        if matches!(self.0.get(head), Some(HeadResult::Failed(RunError::Load(_)))) {
+            self.0.remove(head);
+        }
+    }
+
     /// Record update `u` of request `token`, which asked for `head`.
     pub fn apply(&mut self, head: &HeadId, token: u64, u: Update) {
         match u {
