@@ -320,6 +320,26 @@ async fn pictures_given_at_start_wait_for_the_default_model(cx: &mut TestAppCont
 }
 
 #[gpui_kit::test]
+async fn the_fallback_notice_goes_once_the_user_picks_a_model(cx: &mut TestAppContext) {
+    let loader = FakeLoader { no_provider: ["y".to_string()].into(), ..Default::default() };
+    let (handle, view) = open_with(cx, registry(&[("x", 1), ("y", 1)], &["y", "x"]), loader);
+    wait(cx, &view, "the fallback default", &|v| v.run_model().is_some_and(|m| m.as_str() == "x"));
+    let notice = |cx: &mut TestAppContext| {
+        cx.update_window(handle, |_, window, cx| {
+            window.render_frame(cx);
+            window.try_find("fallback-notice").is_some()
+        })
+        .unwrap()
+    };
+    assert!(notice(cx), "the start-up default says why y was passed over");
+    cx.update_window(handle, |_, window, cx| {
+        view.update(cx, |v, cx| v.select_model(crate::manifest::HeadId::new("y"), window, cx))
+    })
+    .unwrap();
+    assert!(!notice(cx), "after the user picks, the start-up notice no longer describes the model in use");
+}
+
+#[gpui_kit::test]
 async fn missing_index_is_reported(cx: &mut TestAppContext) {
     let (handle, view) = open(cx, Arc::new(Registry::empty("no exports/models.json found".into())));
     cx.update(|cx| assert!(view.read(cx).registry_error.is_some(), "a missing index must be reported"));
