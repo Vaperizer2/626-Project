@@ -309,12 +309,15 @@ async fn pictures_given_at_start_wait_for_the_default_model(cx: &mut TestAppCont
     }
     let loader = FakeLoader::default();
     let ran = loader.seen.clone();
-    let picture = stack_dir().join("01_battery_holder.jpg").display().to_string();
+    let pictures: Vec<String> = ["01_battery_holder.jpg", "02_breadboard.jpg", "03_capacitor.jpg"]
+        .iter()
+        .map(|f| stack_dir().join(f).display().to_string())
+        .collect();
     // y is the default once the start-up probe passes it; x, the last default, is only the fallback
     let reg = registry(&[("x", 1), ("y", 1)], &["y", "x"]);
-    let (_handle, view) = open_sized(cx, reg, loader, size(px(1360.), px(860.)), vec![picture]);
+    let (_handle, view) = open_sized(cx, reg, loader, size(px(1360.), px(860.)), pictures);
     let y = crate::manifest::HeadId::new("y");
-    wait(cx, &view, "y's answer for the picture", &|v| v.classify.answered(&y));
+    wait(cx, &view, "y's answer for every picture", &|v| v.classify.answered_entries(&y) == 3);
     let fallback_runs = ran.lock().unwrap().iter().filter(|s| matches!(s, Seen::Started { graph, .. } if graph == "x")).count();
     assert_eq!(fallback_runs, 0, "the fallback model never ran");
 }
