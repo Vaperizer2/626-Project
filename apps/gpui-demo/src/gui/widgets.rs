@@ -2,11 +2,12 @@
 //! model state chips, keyboard hints, section captions. Colours come from the Kit theme or `theme::roles` only.
 
 use gpui_kit::component::{
-    ActiveTheme as _, Icon, IconName, Sizable as _, h_flex, kbd::Kbd, spinner::Spinner, tag::Tag, v_flex,
+    ActiveTheme as _, Icon, IconName, Sizable as _, alert::Alert, h_flex, kbd::Kbd, spinner::Spinner, tag::Tag,
+    v_flex,
 };
 use gpui_kit::{
-    AnyElement, App, Div, FontWeight, Hsla, IntoElement, Keystroke, ParentElement, Pixels, SharedString, Styled, div,
-    prelude::*, px, relative,
+    AnyElement, App, Div, ElementId, FontWeight, Hsla, IntoElement, Keystroke, ParentElement, Pixels, SharedString,
+    Styled, div, prelude::*, px, relative,
 };
 
 /// The complete bundled Lucide catalog (the component crate's `IconName` is a subset).
@@ -55,7 +56,7 @@ impl gpui_kit::AssetSource for AppAssets {
 use super::theme::{self, Roles};
 use super::ModelState;
 use crate::classification::{Answer, Classification};
-use crate::inference::{LoadStage, Timing};
+use crate::inference::{LoadStage, RunError, Timing};
 use crate::demo::Verdict;
 
 pub fn pct(p: f32) -> String {
@@ -255,6 +256,29 @@ pub fn prediction_block(
                 .when(timing.shared_by > 1, |d| d.child(format!("· one pass for {} heads", timing.shared_by))),
         )
         .into_any_element()
+}
+
+/// Short status of a failed answer: the picture could not be read, or the model failed.
+pub fn failure_label(e: &RunError) -> &'static str {
+    match e {
+        RunError::Read(_) | RunError::Decode(_) => "could not read",
+        RunError::Preprocess(_) => "could not prepare",
+        RunError::Unavailable(_) => "model unavailable",
+        RunError::Load(_) => "model failed to load",
+        RunError::Run(_) => "model failed",
+    }
+}
+
+/// Error alert for a failed answer from the model titled `model`, saying what failed.
+pub fn failure_alert(id: impl Into<ElementId>, e: &RunError, model: &str) -> Alert {
+    let (title, detail) = match e {
+        RunError::Read(d) | RunError::Decode(d) => ("Could not read this picture".to_string(), d),
+        RunError::Preprocess(d) => (format!("Could not prepare this picture for {model}"), d),
+        RunError::Unavailable(d) => (format!("{model} is unavailable"), d),
+        RunError::Load(d) => (format!("{model} failed to load"), d),
+        RunError::Run(d) => (format!("{model} failed on this picture"), d),
+    };
+    Alert::error(id, SharedString::from(detail.clone())).title(title)
 }
 
 /// Compact model state: spinner while loading, otherwise a short pill.

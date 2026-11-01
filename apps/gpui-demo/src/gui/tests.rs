@@ -237,6 +237,28 @@ async fn switching_model_answers_the_picture_on_screen_with_it(cx: &mut TestAppC
 }
 
 #[gpui_kit::test]
+async fn a_model_that_fails_to_load_is_not_called_an_unreadable_picture(cx: &mut TestAppContext) {
+    if !stack_dir().join(crate::demo::STACK_FILE).is_file() {
+        return;
+    }
+    let loader = FakeLoader { broken: ["x".to_string()].into(), ..Default::default() };
+    let (_handle, view) = open_with(cx, registry(&[("x", 1), ("y", 1)], &["x", "y"]), loader);
+    let x = crate::manifest::HeadId::new("x");
+    wait(cx, &view, "the default head", &|v| v.model.as_ref() == Some(&x));
+    let submit = |cx: &mut TestAppContext, path: PathBuf| {
+        cx.update(|cx| view.update(cx, |v, cx| v.submit_source(crate::fetch::Source::File(path), cx)))
+    };
+
+    submit(cx, stack_dir().join("01_battery_holder.jpg"));
+    wait(cx, &view, "x's failure", &|v| v.classify.failure(&x).is_some());
+    cx.update(|cx| assert_eq!(view.read(cx).classify.failure(&x), Some("model failed to load")));
+
+    submit(cx, stack_dir().join("no_such_picture.jpg"));
+    wait(cx, &view, "the read failure", &|v| v.classify.failure(&x).is_some());
+    cx.update(|cx| assert_eq!(view.read(cx).classify.failure(&x), Some("could not read")));
+}
+
+#[gpui_kit::test]
 async fn missing_index_is_reported(cx: &mut TestAppContext) {
     let (handle, view) = open(cx, Arc::new(Registry::empty("no exports/models.json found".into())));
     cx.update(|cx| assert!(view.read(cx).registry_error.is_some(), "a missing index must be reported"));
