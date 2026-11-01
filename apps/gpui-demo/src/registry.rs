@@ -160,7 +160,7 @@ impl Registry {
         let mut reg = Self { index, graphs, heads, default: Vec::new(), problems: Vec::new() };
         for d in &default {
             if reg.head(d).is_none() {
-                problems.push(format!("{}: default head {d:?} is not in any manifest", reg.index.display()));
+                problems.push(format!("{}: default head \"{d}\" is not in any manifest", reg.index.display()));
             }
         }
         reg.default = default;
