@@ -3,7 +3,6 @@
 
 use std::sync::Arc;
 
-use futures::StreamExt;
 use gpui_kit::component::{
     ActiveTheme as _, Icon, IconName, Sizable as _, WindowExt as _,
     alert::Alert,
@@ -21,7 +20,7 @@ use gpui_kit::{
 };
 
 use super::images::{DISPLAY_MAX_SIDE, render};
-use super::models::{ModelEvent, ModelState, Models};
+use super::models::{ModelState, Models, on_retry};
 use super::results::{HeadResult, Results};
 use super::widgets::Lucide;
 use super::{Hint, Open, Paste, StepNext, StepPrev, Tab, theme, widgets};
@@ -75,14 +74,9 @@ impl Tab for ClassifyTab {
                 this.fetch_typed_url(window, cx);
             }
         });
-        // a retry of a failed graph: its heads' "failed to load" answers are stale
-        let retries = cx.subscribe(&models, |this, _, ev, _| {
-            if let ModelEvent::Retrying(heads) = ev {
-                for e in &mut this.entries {
-                    for h in heads {
-                        e.results.forget_load_failure(h);
-                    }
-                }
+        let retries = on_retry(&models, cx, |this, heads, _| {
+            for e in &mut this.entries {
+                e.results.forget_load_failures(heads);
             }
         });
         let lane = models.read(cx).inference().lane(Priority::Interactive, Policy::Keep);
@@ -214,37 +208,27 @@ impl ClassifyTab {
         self.next_id += 1;
         let id = e.id;
         let display = e.image.is_none().then_some(DISPLAY_MAX_SIDE);
-        let RequestHandle { updates: mut rx, ticket } =
+        let RequestHandle { updates, ticket } =
             self.lane.submit(e.input.clone(), std::slice::from_ref(model), display);
         e.tickets.push(ticket);
         e.results.start(model.clone(), token);
         let model = model.clone();
-        cx.spawn(async move |this, cx| {
-            while let Some(update) = rx.next().await {
-                let alive = this
-                    .update(cx, |this, cx| {
-                        if let Some(e) = this.entries.iter_mut().find(|e| e.id == id) {
-                            match update {
-                                Update::Decoded { size, display } => {
-                                    e.dims = Some(size);
-                                    // two requests (a model switch before the first decode) both carry a copy;
-                                    // keep the first, so no painted texture is replaced without drop_image
-                                    if e.image.is_none() {
-                                        e.image = display.map(render);
-                                    }
-                                }
-                                u => e.results.apply(&model, token, u),
-                            }
+        super::pump(cx, updates, move |this, update, cx| {
+            if let Some(e) = this.entries.iter_mut().find(|e| e.id == id) {
+                match update {
+                    Update::Decoded { size, display } => {
+                        e.dims = Some(size);
+                        // two requests (a model switch before the first decode) both carry a copy;
+                        // keep the first, so no painted texture is replaced without drop_image
+                        if e.image.is_none() {
+                            e.image = display.map(render);
                         }
-                        cx.notify();
-                    })
-                    .is_ok();
-                if !alive {
-                    break;
+                    }
+                    u => e.results.apply(&model, token, u),
                 }
             }
-        })
-        .detach();
+            cx.notify();
+        });
         cx.notify();
     }
 

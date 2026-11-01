@@ -36,11 +36,9 @@ impl Results {
         self.0.insert(head, HeadResult::Done(c, timing, None));
     }
 
-    /// Drop `head`'s answer when it is "the model failed to load", so a retried load answers again.
-    pub fn forget_load_failure(&mut self, head: &HeadId) {
-        if matches!(self.0.get(head), Some(HeadResult::Failed(RunError::Load(_)))) {
-            self.0.remove(head);
-        }
+    /// Drop the answers of `heads` that say "the model failed to load", so a retried load answers again.
+    pub fn forget_load_failures(&mut self, heads: &[HeadId]) {
+        self.0.retain(|h, r| !(heads.contains(h) && matches!(r, HeadResult::Failed(RunError::Load(_)))));
     }
 
     /// Record update `u` of request `token`, which asked for `head`.

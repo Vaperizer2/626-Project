@@ -25,6 +25,7 @@ pub use widgets::Lucide;
 use std::sync::Arc;
 use std::time::Duration;
 
+use futures::StreamExt;
 use futures::channel::mpsc as fmpsc;
 use gpui_kit::component::TitleBar;
 use gpui_kit::{
@@ -58,6 +59,22 @@ fn tick_while<T: 'static>(cx: &mut Context<T>, busy: impl Fn(&T, &App) -> bool +
             let Ok(busy) = this.update(cx, |this, cx| busy(this, cx)) else { break };
             if busy {
                 this.update(cx, |_, cx| cx.notify()).ok();
+            }
+        }
+    })
+    .detach();
+}
+
+/// Hand each item of `rx` to `f` on `cx`'s entity as it arrives, until the stream ends or the entity is gone.
+pub fn pump<T: 'static, I: 'static>(
+    cx: &mut Context<T>,
+    mut rx: impl futures::Stream<Item = I> + Unpin + 'static,
+    mut f: impl FnMut(&mut T, I, &mut Context<T>) + 'static,
+) {
+    cx.spawn(async move |this, cx| {
+        while let Some(item) = rx.next().await {
+            if this.update(cx, |this, cx| f(this, item, cx)).is_err() {
+                break;
             }
         }
     })

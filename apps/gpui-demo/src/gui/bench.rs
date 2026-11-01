@@ -4,7 +4,6 @@
 use std::collections::{HashMap, HashSet};
 use std::time::Instant;
 
-use futures::StreamExt;
 use gpui_kit::component::{
     ActiveTheme as _, Disableable as _, Icon, IconName, Sizable as _,
     alert::Alert,
@@ -172,47 +171,37 @@ impl Tab for BenchTab {
         self.next_id += 1;
         let mut tickets = Vec::new();
         for (i, input) in inputs.into_iter().enumerate() {
-            let RequestHandle { updates: mut rx, ticket } = self.lane.submit(input, &heads, None);
+            let RequestHandle { updates, ticket } = self.lane.submit(input, &heads, None);
             tickets.push(ticket);
-            cx.spawn(async move |this, cx| {
-                while let Some(u) = rx.next().await {
-                    let alive = this
-                        .update(cx, |this, cx| {
-                            if this.run.as_ref().is_none_or(|r| r.id != id) {
-                                return;
-                            }
-                            match u {
-                                Update::Head { head, result, timing } => {
-                                    let r = result.map(|HeadOutput::Classify(c)| (c, timing));
-                                    // share with the Demo tab so its cards show the result too
-                                    if let Ok((c, timing)) = &r {
-                                        this.stack.update(cx, |s, cx| {
-                                            if let Some(it) = s.items.get_mut(i) {
-                                                it.results.done(head.clone(), c.clone(), *timing);
-                                                cx.notify();
-                                            }
-                                        });
-                                    }
-                                    this.results.insert((i, head), r);
-                                }
-                                Update::Done(Finish::Failed(e)) => {
-                                    for k in this.heads.clone() {
-                                        this.results.insert((i, k), Err(e.clone()));
-                                    }
-                                    this.progress(i, cx);
-                                }
-                                Update::Done(_) => this.progress(i, cx),
-                                Update::Decoded { .. } => {}
-                            }
-                            cx.notify();
-                        })
-                        .is_ok();
-                    if !alive {
-                        break;
-                    }
+            super::pump(cx, updates, move |this, u, cx| {
+                if this.run.as_ref().is_none_or(|r| r.id != id) {
+                    return;
                 }
-            })
-            .detach();
+                match u {
+                    Update::Head { head, result, timing } => {
+                        let r = result.map(|HeadOutput::Classify(c)| (c, timing));
+                        // share with the Demo tab so its cards show the result too
+                        if let Ok((c, timing)) = &r {
+                            this.stack.update(cx, |s, cx| {
+                                if let Some(it) = s.items.get_mut(i) {
+                                    it.results.done(head.clone(), c.clone(), *timing);
+                                    cx.notify();
+                                }
+                            });
+                        }
+                        this.results.insert((i, head), r);
+                    }
+                    Update::Done(Finish::Failed(e)) => {
+                        for k in this.heads.clone() {
+                            this.results.insert((i, k), Err(e.clone()));
+                        }
+                        this.progress(i, cx);
+                    }
+                    Update::Done(_) => this.progress(i, cx),
+                    Update::Decoded { .. } => {}
+                }
+                cx.notify();
+            });
         }
         self.run = Some(BenchRun { id, total: n, finished: HashSet::new(), started: Instant::now(), _tickets: tickets });
         cx.notify();

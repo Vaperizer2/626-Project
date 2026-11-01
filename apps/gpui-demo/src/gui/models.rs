@@ -5,11 +5,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Instant;
 
-use futures::StreamExt;
 use futures::channel::mpsc as fmpsc;
 use gpui_kit::component::WindowExt as _;
 use gpui_kit::component::notification::NotificationType;
-use gpui_kit::{Context, EventEmitter, SharedString, Window};
+use gpui_kit::{Context, Entity, EventEmitter, SharedString, Subscription, Window};
 
 use inference::manifest::{GraphId, HeadId};
 use inference::registry::{Head, Registry};
@@ -48,6 +47,20 @@ pub enum ModelEvent {
     Retrying(Vec<HeadId>),
 }
 
+/// Call `f` on `cx`'s entity with the heads of a graph that failed to load and is loading again: their "failed to
+/// load" answers are stale.
+pub fn on_retry<T: 'static>(
+    models: &Entity<Models>,
+    cx: &mut Context<T>,
+    f: impl Fn(&mut T, &[HeadId], &mut Context<T>) + 'static,
+) -> Subscription {
+    cx.subscribe(models, move |this, _, ev, cx| {
+        if let ModelEvent::Retrying(heads) = ev {
+            f(this, heads, cx);
+        }
+    })
+}
+
 pub struct Models {
     inference: Inference,
     /// the selected head (none only when no model is available)
@@ -64,17 +77,10 @@ impl EventEmitter<ModelEvent> for Models {}
 
 impl Models {
     pub fn new(
-        (inference, mut events): (Inference, fmpsc::UnboundedReceiver<ServiceEvent>),
+        (inference, events): (Inference, fmpsc::UnboundedReceiver<ServiceEvent>),
         cx: &mut Context<Self>,
     ) -> Self {
-        cx.spawn(async move |this, cx| {
-            while let Some(ev) = events.next().await {
-                if this.update(cx, |this, cx| this.on_event(ev, cx)).is_err() {
-                    break;
-                }
-            }
-        })
-        .detach();
+        super::pump(cx, events, |this, ev, cx| this.on_event(ev, cx));
         // until the start-up probe picks the default, the fallback (the last default) is selected; nothing loads yet
         let reg = inference.registry();
         let model = reg.last_default().or_else(|| reg.first_default());
