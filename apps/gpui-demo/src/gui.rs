@@ -3,24 +3,24 @@
 //! Layout: Kit `TitleBar` (app name, theme toggle) · tab row (`TabBar`: Classify / Demo / Benchmark, plus the
 //! model picker) · the active tab · Kit `StatusBar` (model / onnxruntime state, shortcuts as `Kbd`).
 //!
-//! One view (`DemoApp`) owns all state; each tab's state and rendering lives in its own module
-//! (`classify`, `demo_tab`, `bench`). Inference, model loading, image reading and decoding all run in the
-//! inference service (`inference::service`); results come back over channels that GPUI tasks await.
+//! One view (`DemoApp`) owns the window's state; each tab's state and rendering lives in its own module
+//! (`classify`, `demo_tab`, `bench`). The models the tabs share (the service, load states, the selected head) are
+//! one entity, `models::Models`. Inference, model loading, image reading and decoding all run in the inference
+//! service (`inference::service`); results come back over channels that GPUI tasks await.
 
 mod bench;
 mod classify;
 mod demo_tab;
+mod models;
 mod theme;
 mod images;
 mod results;
 mod widgets;
 
-use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
-use futures::StreamExt;
 use futures::channel::mpsc as fmpsc;
 use inference::prof;
 use gpui_kit::component::{
@@ -33,14 +33,15 @@ use gpui_kit::component::{
 };
 use gpui_kit::component::{Disableable as _, Selectable as _};
 use gpui_kit::{
-    App, Bounds, Context, FocusHandle, FontWeight, KeyBinding, RenderImage, SharedString, TestSupportExt as _, Window,
-    WindowBounds, WindowOptions, actions, div, prelude::*, px, size,
+    App, Bounds, Context, Entity, FocusHandle, FontWeight, KeyBinding, RenderImage, SharedString, TestSupportExt as _,
+    Window, WindowBounds, WindowOptions, actions, div, prelude::*, px, size,
 };
 
-use inference::service::{GraphState, Inference, Lane, LoadStage, Loaded, Policy, Priority, ServiceEvent};
-use inference::manifest::{GraphId, HeadId, Task};
-use inference::registry::{Head, Registry};
+use inference::service::{Inference, Lane, LoadStage, Policy, Priority, ServiceEvent};
+use inference::manifest::Task;
+use inference::registry::Registry;
 use inference::runtime::{Settings, OrtLoader};
+use models::{ModelEvent, ModelState, Models};
 use widgets::Lucide;
 
 actions!(
@@ -91,50 +92,16 @@ impl TabKind {
     }
 }
 
-/// What the UI shows for one head: its graph's state, or why it cannot be used at all.
-#[derive(Clone, Debug)]
-pub enum ModelState {
-    Unavailable(String),
-    Idle,
-    Loading { since: Instant, stage: LoadStage },
-    Ready(Loaded),
-    Failed(String),
-}
-
-impl ModelState {
-    pub fn usable(&self) -> bool {
-        !matches!(self, ModelState::Unavailable(_) | ModelState::Failed(_))
-    }
-}
-
-/// Where the selected model came from.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-enum Pick {
-    /// the start-up probe has not picked the default yet: the fallback is shown, nothing runs on it
-    Probing,
-    Default,
-    /// the user picked; the start-up default no longer applies
-    User,
-}
-
 pub struct DemoApp {
     focus: FocusHandle,
     tab: TabKind,
-    inference: Inference,
+    models: Entity<Models>,
     /// Classify submissions and single Demo classifications
     interactive: Lane,
     /// Demo "Run all" and the benchmark
     bulk: Lane,
-    /// selected head for Classify and Demo (none only when no model is available)
-    model: Option<HeadId>,
-    pick: Pick,
     /// `--autorun`, waiting for the start-up default
     autorun: bool,
-    graphs: HashMap<GraphId, GraphState>,
-    /// the preferred default heads passed over at start-up, and why
-    passed_over: Vec<(HeadId, String)>,
-    /// why there is no model at all (the index could not be read, or none of its manifests parsed)
-    registry_error: Option<String>,
     /// manifests that could not be read and defaults that name no model, beside the models that work; dismissible
     registry_problems: Vec<String>,
     classify: classify::ClassifyState,
@@ -147,49 +114,37 @@ pub struct DemoApp {
 
 impl DemoApp {
     pub fn new(
-        (inference, mut events): (Inference, fmpsc::UnboundedReceiver<ServiceEvent>),
+        service: (Inference, fmpsc::UnboundedReceiver<ServiceEvent>),
         demo_dir: Option<PathBuf>,
         initial: Vec<String>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
-        cx.spawn(async move |this, cx| {
-            while let Some(ev) = events.next().await {
-                if this.update(cx, |this, cx| this.on_event(ev, cx)).is_err() {
-                    break;
-                }
-            }
-        })
-        .detach();
         // Tick while something is loading or running (elapsed-time counters, spinners).
         cx.spawn(async move |this, cx| {
             loop {
                 cx.background_executor().timer(Duration::from_millis(250)).await;
-                let Ok(busy) = this.update(cx, |this, _| this.is_busy()) else { break };
+                let Ok(busy) = this.update(cx, |this, cx| this.is_busy(cx)) else { break };
                 if busy {
                     this.update(cx, |_, cx| cx.notify()).ok();
                 }
             }
         })
         .detach();
-        let (classify, subs) = classify::ClassifyState::new(window, cx);
-        // until the start-up probe picks the default, the fallback (the last default) is selected; nothing loads yet
-        let reg = inference.registry();
-        let model = reg.last_default().or_else(|| reg.first_default());
-        let registry_error = (reg.heads().next().is_none()).then(|| reg.problems().join("\n"));
-        let registry_problems = if registry_error.is_some() { Vec::new() } else { reg.problems().to_vec() };
+        let models = cx.new(|cx| Models::new(service, cx));
+        let (classify, mut subs) = classify::ClassifyState::new(window, cx);
+        subs.push(cx.subscribe(&models, |this, _, ev, cx| this.on_model_event(ev, cx)));
+        let m = models.read(cx);
+        let registry_problems = if m.registry_error().is_some() { Vec::new() } else { m.registry().problems().to_vec() };
+        let interactive = m.inference().lane(Priority::Interactive, Policy::Keep);
+        let bulk = m.inference().lane(Priority::Bulk, Policy::Keep);
         let mut this = Self {
             focus: cx.focus_handle(),
             tab: TabKind::Classify,
-            interactive: inference.lane(Priority::Interactive, Policy::Keep),
-            bulk: inference.lane(Priority::Bulk, Policy::Keep),
-            inference,
-            model,
-            pick: Pick::Probing,
+            models,
+            interactive,
+            bulk,
             autorun: false,
-            graphs: HashMap::new(),
-            passed_over: Vec::new(),
-            registry_error,
             registry_problems,
             classify,
             demo: demo_tab::DemoState::default(),
@@ -206,109 +161,26 @@ impl DemoApp {
         this
     }
 
-    fn registry(&self) -> &Arc<Registry> {
-        self.inference.registry()
+    fn is_busy(&self, cx: &App) -> bool {
+        self.models.read(cx).loading() || self.classify.busy() || self.demo.running() || self.bench.running()
     }
 
-    fn is_busy(&self) -> bool {
-        self.graphs.values().any(|s| matches!(s, GraphState::Loading { .. }))
-            || self.classify.busy()
-            || self.demo.running()
-            || self.bench.running()
-    }
-
-    fn on_event(&mut self, ev: ServiceEvent, cx: &mut Context<Self>) {
+    fn on_model_event(&mut self, ev: &ModelEvent, cx: &mut Context<Self>) {
         match ev {
-            ServiceEvent::Graph(g, st) => {
-                self.graphs.insert(g, st);
-            }
-            ServiceEvent::Default { head, passed_over } => {
-                if self.pick != Pick::User {
-                    // with no head that can run, the fallback stays selected and says why it cannot answer
-                    if let Some(head) = head {
-                        self.inference.preload(&head);
-                        self.model = Some(head);
-                    }
-                    self.pick = Pick::Default;
-                }
-                self.passed_over = passed_over;
+            ModelEvent::Picked { startup } => {
                 self.follow_model(cx);
-                if std::mem::take(&mut self.autorun) {
+                if *startup && std::mem::take(&mut self.autorun) {
                     self.run_all(cx);
                 }
             }
-        }
-        cx.notify();
-    }
-
-    fn state(&self, k: &HeadId) -> ModelState {
-        let Some(h) = self.head(k) else { return ModelState::Unavailable("unknown model".into()) };
-        if let Err(e) = h.available() {
-            return ModelState::Unavailable(e.to_string());
-        }
-        match self.graphs.get(&h.manifest().id) {
-            None => ModelState::Idle,
-            Some(GraphState::Loading { since, stage }) => ModelState::Loading { since: *since, stage: *stage },
-            Some(GraphState::Ready(l)) => ModelState::Ready(l.clone()),
-            Some(GraphState::Failed(e)) => ModelState::Failed(e.clone()),
-        }
-    }
-
-    fn model_usable(&self, k: &HeadId) -> bool {
-        self.state(k).usable()
-    }
-
-    /// Every head in UI order (manifest order, then head order).
-    fn head_ids(&self) -> Vec<HeadId> {
-        self.registry().ids()
-    }
-
-    fn head(&self, id: &HeadId) -> Option<Head<'_>> {
-        self.registry().head(id)
-    }
-
-    fn title(&self, id: &HeadId) -> String {
-        self.head(id).map(|h| h.spec.title.clone()).unwrap_or_else(|| id.to_string())
-    }
-
-    fn short(&self, id: &HeadId) -> String {
-        self.head(id).map(|h| h.spec.short.clone()).unwrap_or_else(|| id.to_string())
-    }
-
-    fn select_model(&mut self, k: HeadId, window: &mut Window, cx: &mut Context<Self>) {
-        match self.state(&k) {
-            ModelState::Unavailable(why) => {
-                use gpui_kit::component::WindowExt as _;
-                window.push_notification(
-                    (
-                        gpui_kit::component::notification::NotificationType::Warning,
-                        SharedString::from(format!("{} is unavailable. {why}", self.title(&k))),
-                    ),
-                    cx,
-                );
-                return;
-            }
-            ModelState::Failed(_) => {
-                // picking a model whose load failed tries it again (the cause may be gone: memory, a driver)
-                self.inference.preload(&k);
-                // the retry is of the graph, so every head it serves gets a fresh chance
-                for h in self.registry().siblings(&k) {
-                    self.classify_forget_load_failures(&h);
-                    self.demo_forget_load_failures(&h);
+            ModelEvent::Retrying(heads) => {
+                for h in heads {
+                    self.classify_forget_load_failures(h);
+                    self.demo_forget_load_failures(h);
                 }
             }
-            ModelState::Idle => self.inference.preload(&k),
-            ModelState::Loading { .. } | ModelState::Ready(_) => {}
         }
-        self.model = Some(k);
-        self.pick = Pick::User;
-        self.follow_model(cx);
         cx.notify();
-    }
-
-    /// The model to run: the selected one, once the start-up default is known or the user picked.
-    fn run_model(&self) -> Option<HeadId> {
-        if self.pick == Pick::Probing { None } else { self.model.clone() }
     }
 
     /// The input on screen gets the selected model's answer.
@@ -321,14 +193,7 @@ impl DemoApp {
     }
 
     fn next_model(&mut self, _: &NextModel, window: &mut Window, cx: &mut Context<Self>) {
-        let ids = self.head_ids();
-        let i = ids.iter().position(|k| Some(k) == self.model.as_ref()).unwrap_or(0);
-        for step in 1..=ids.len() {
-            let k = &ids[(i + step) % ids.len()];
-            if self.model_usable(k) {
-                return self.select_model(k.clone(), window, cx);
-            }
-        }
+        self.models.update(cx, |m, cx| m.next_model(window, cx));
     }
 
     fn set_tab(&mut self, tab: TabKind, window: &mut Window, cx: &mut Context<Self>) {
@@ -354,6 +219,7 @@ impl DemoApp {
     fn render_title_bar(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.theme();
         let dark = t.is_dark();
+        let m = self.models.read(cx);
         TitleBar::new()
             .child(
                 h_flex()
@@ -371,7 +237,7 @@ impl DemoApp {
                             .child(Icon::new(Lucide::Microchip).small()),
                     )
                     .child(div().text_sm().font_weight(FontWeight::SEMIBOLD).child(crate::app::TITLE))
-                    .children(self.model.as_ref().and_then(|m| self.head(m)).map(|h| {
+                    .children(m.selected().and_then(|k| m.head(k)).map(|h| {
                         let Task::Classify(c) = &h.spec.task;
                         div()
                             .text_xs()
@@ -393,13 +259,14 @@ impl DemoApp {
 
     fn render_tab_row(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.theme();
+        let m = self.models.read(cx);
         let models = ButtonGroup::new("model-picker")
             .small()
             .outline()
-            .children(self.head_ids().into_iter().map(|k| {
-                let state = self.state(&k);
+            .children(m.head_ids().into_iter().map(|k| {
+                let state = m.state(&k);
                 let pickable = !matches!(state, ModelState::Unavailable(_));
-                let name = self.title(&k);
+                let name = m.title(&k);
                 let tip = match state {
                     ModelState::Unavailable(e) => format!("{name} — unavailable: {e}"),
                     ModelState::Failed(e) => format!("{name} — failed to load: {e}. Pick it to try again."),
@@ -419,9 +286,9 @@ impl DemoApp {
                     ModelState::Loading { .. } => format!("{name} — loading…"),
                     ModelState::Idle => format!("{name} — loads on first use (Ctrl+M cycles models)"),
                 };
-                let selected = self.model.as_ref() == Some(&k);
+                let selected = m.selected() == Some(&k);
                 Button::new(SharedString::from(format!("model-{k}")))
-                    .label(self.short(&k))
+                    .label(m.short(&k))
                     .selected(selected)
                     // outline + primary: the chosen model reads as an accent tint, not a grey press state
                     .when(selected, |b| b.primary())
@@ -429,9 +296,11 @@ impl DemoApp {
                     .tooltip(tip)
             }))
             .on_click(cx.listener(|this, sel: &Vec<usize>, w, cx| {
-                if let Some(k) = sel.first().and_then(|&i| this.head_ids().get(i).cloned()) {
-                    this.select_model(k, w, cx);
-                }
+                this.models.update(cx, |m, cx| {
+                    if let Some(k) = sel.first().and_then(|&i| m.head_ids().get(i).cloned()) {
+                        m.select_model(k, w, cx);
+                    }
+                });
             }));
         h_flex()
             .justify_between()
@@ -457,7 +326,7 @@ impl DemoApp {
                     .when(self.tab != TabKind::Bench, |d| {
                         d.child(div().text_xs().text_color(t.muted_foreground).child("Model"))
                             .child(models)
-                            .children(self.model.as_ref().map(|m| widgets::model_state_chip(&self.state(m), cx)))
+                            .children(m.selected().map(|k| widgets::model_state_chip(&m.state(k), cx)))
                     })
                     .when(self.tab == TabKind::Bench, |d| {
                         d.child(div().text_xs().text_color(t.muted_foreground).child("Runs every available model"))
@@ -468,9 +337,10 @@ impl DemoApp {
     fn render_status_bar(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let t = cx.theme();
         let mut left = Vec::new();
-        if let Some(m) = &self.model {
-            let short = self.short(m);
-            match self.state(m) {
+        let m = self.models.read(cx);
+        if let Some(k) = m.selected() {
+            let short = m.short(k);
+            match m.state(k) {
                 ModelState::Ready(l) => {
                     let skipped: Vec<&str> = l.placement.skipped.iter().map(|(ep, _)| ep.name()).collect();
                     left.push(if skipped.is_empty() {
@@ -545,10 +415,14 @@ impl Render for DemoApp {
                 TabKind::Bench => self.render_bench(cx).into_any_element(),
             }
         );
-        let registry_alert = self.registry_error.clone().map(|e| {
-            let found = !self.registry().index_path().as_os_str().is_empty();
+        let m = self.models.read(cx);
+        let registry_alert = m.registry_error().map(|e| {
+            let found = !m.registry().index_path().as_os_str().is_empty();
             let title = if found { "No model in the index could be read" } else { "Model index not found" };
-            div().px_4().pt_3().child(Alert::error("registry-error", SharedString::from(e)).title(title).small())
+            div()
+                .px_4()
+                .pt_3()
+                .child(Alert::error("registry-error", SharedString::from(e.to_string())).title(title).small())
         });
         let problems_alert = (!self.registry_problems.is_empty()).then(|| {
             div().id("registry-problems").test_support().px_4().pt_3().child(
@@ -558,24 +432,13 @@ impl Render for DemoApp {
                     .on_close(cx.listener(|this, _, _, cx| this.dismiss_problems(cx))),
             )
         });
-        let fallback_alert = (self.pick == Pick::Default && !self.passed_over.is_empty()).then(|| {
-            let using = self.model.as_ref().filter(|m| self.model_usable(m)).map(|m| self.title(m));
-            let why: Vec<String> = self
-                .passed_over
-                .iter()
-                .map(|(h, why)| {
-                    let why = why.trim_end_matches('.');
-                    if using.is_some() {
-                        format!("{} is not the default here: {why}.", self.title(h))
-                    } else {
-                        format!("{}: {why}.", self.title(h))
-                    }
-                })
-                .collect();
-            let title = using.map_or_else(|| "No model can run here".to_string(), |u| format!("Using {u}"));
-            div().id("fallback-notice").test_support().px_4().pt_3().child(
-                Alert::warning("default-fallback", SharedString::from(why.join(" "))).title(title).small(),
-            )
+        let fallback_alert = m.fallback_notice().map(|(title, why)| {
+            div()
+                .id("fallback-notice")
+                .test_support()
+                .px_4()
+                .pt_3()
+                .child(Alert::warning("default-fallback", SharedString::from(why)).title(title).small())
         });
         div()
             .id("root")

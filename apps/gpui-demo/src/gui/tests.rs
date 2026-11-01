@@ -9,11 +9,12 @@ use std::time::Duration;
 
 use gpui_kit::test::TestWindowExt as _;
 use gpui_kit::{
-    AnyWindowHandle, AppContext as _, Bounds, Entity, Pixels, Point, SharedString, Size, TestAppContext, WindowBounds,
-    WindowOptions, px, size,
+    AnyWindowHandle, App, AppContext as _, Bounds, Entity, Pixels, Point, SharedString, Size, TestAppContext,
+    WindowBounds, WindowOptions, px, size,
 };
 
 use super::{DemoApp, TabKind};
+use inference::manifest::HeadId;
 use inference::service::Inference;
 use inference::testing::{FakeLoader, Seen, registry, shared_registry};
 use inference::registry::Registry;
@@ -89,9 +90,10 @@ async fn window_renders_every_tab(cx: &mut TestAppContext) {
     let (handle, view) = open(cx, Arc::new(Registry::load(&index.join("models.json")).unwrap()));
     cx.update(|cx| {
         let v = view.read(cx);
-        assert!(v.registry_error.is_none());
-        assert_eq!(v.model.as_ref().map(|m| m.as_str()), Some("a"), "the index's default head is selected");
-        assert!(!v.model_usable(v.model.as_ref().unwrap()), "a model without its graph file is unavailable");
+        let m = v.models.read(cx);
+        assert!(m.registry_error().is_none());
+        assert_eq!(m.selected().map(|m| m.as_str()), Some("a"), "the index's default head is selected");
+        assert!(!m.model_usable(m.selected().unwrap()), "a model without its graph file is unavailable");
         let n = v.demo.stack().map(|s| s.images.len()).unwrap_or(0);
         if stack_dir().join(crate::demo::STACK_FILE).is_file() {
             assert!(n >= 20, "demo stack loaded");
@@ -144,19 +146,9 @@ async fn benchmark_and_classify_run_through_the_service(cx: &mut TestAppContext)
         return;
     }
     let (_handle, view) = open(cx, registry(&[("x", 1), ("y", 4)], &["y", "x"]));
-    let wait = |cx: &mut TestAppContext, what: &str, done: &dyn Fn(&DemoApp) -> bool| {
-        for _ in 0..200 {
-            cx.run_until_parked();
-            if cx.update(|cx| done(view.read(cx))) {
-                return;
-            }
-            std::thread::sleep(Duration::from_millis(25));
-        }
-        panic!("timed out waiting for {what}");
-    };
-    wait(cx, "the default head", &|v| v.model.as_ref().is_some_and(|m| m.as_str() == "y"));
+    wait(cx, &view, "the default head", &|v, cx| selected(v, cx).is_some_and(|m| m.as_str() == "y"));
     cx.update(|cx| view.update(cx, |v, cx| v.bench_start(cx)));
-    wait(cx, "the benchmark to finish", &|v| !v.bench.running());
+    wait(cx, &view, "the benchmark to finish", &|v, _| !v.bench.running());
     cx.update(|cx| {
         let v = view.read(cx);
         let n = v.demo.items.len();
@@ -164,27 +156,44 @@ async fn benchmark_and_classify_run_through_the_service(cx: &mut TestAppContext)
         assert!(v.bench.results.values().all(|r| r.is_ok()));
         let stack = v.demo.stack().unwrap();
         for h in ["x", "y"] {
-            let s = super::bench::stats(stack, &v.bench.results, &inference::manifest::HeadId::new(h));
+            let s = super::bench::stats(stack, &v.bench.results, &HeadId::new(h));
             assert_eq!(s.judged, n, "{h} judged every image");
         }
     });
     let picture = stack_dir().join("01_battery_holder.jpg");
     cx.update(|cx| view.update(cx, |v, cx| v.submit_source(inference::fetch::Source::File(picture), cx)));
-    wait(cx, "the Classify result", &|v| !v.classify.busy());
-    let y = inference::manifest::HeadId::new("y");
+    wait(cx, &view, "the Classify result", &|v, _| !v.classify.busy());
+    let y = HeadId::new("y");
     cx.update(|cx| assert!(view.read(cx).classify.answered(&y), "the entry has an answer and its picture"));
 }
 
 /// Poll `done` while the service threads work, or panic after about 5 s.
-fn wait(cx: &mut TestAppContext, view: &Entity<DemoApp>, what: &str, done: &dyn Fn(&DemoApp) -> bool) {
+fn wait(cx: &mut TestAppContext, view: &Entity<DemoApp>, what: &str, done: &dyn Fn(&DemoApp, &App) -> bool) {
     for _ in 0..200 {
         cx.run_until_parked();
-        if cx.update(|cx| done(view.read(cx))) {
+        if cx.update(|cx| done(view.read(cx), cx)) {
             return;
         }
         std::thread::sleep(Duration::from_millis(25));
     }
     panic!("timed out waiting for {what}");
+}
+
+fn selected(v: &DemoApp, cx: &App) -> Option<HeadId> {
+    v.models.read(cx).selected().cloned()
+}
+
+fn run_model(v: &DemoApp, cx: &App) -> Option<HeadId> {
+    v.models.read(cx).run_model()
+}
+
+/// The user picks `k` in the model picker.
+fn select(cx: &mut TestAppContext, handle: AnyWindowHandle, view: &Entity<DemoApp>, k: &HeadId) {
+    cx.update_window(handle, |_, window, cx| {
+        let models = view.read(cx).models.clone();
+        models.update(cx, |m, cx| m.select_model(k.clone(), window, cx))
+    })
+    .unwrap()
 }
 
 #[gpui_kit::test]
@@ -203,7 +212,7 @@ async fn escape_leaves_the_url_field_and_stops_only_the_visible_run(cx: &mut Tes
     cx.simulate_keystrokes(handle, "escape");
     assert!(app_focused(cx), "Esc hands the keyboard back to the app");
 
-    wait(cx, &view, "the default head", &|v| v.run_model().is_some());
+    wait(cx, &view, "the default head", &|v, cx| run_model(v, cx).is_some());
     cx.update(|cx| view.update(cx, |v, cx| v.bench_start(cx)));
     cx.update_window(handle, |_, window, cx| view.update(cx, |v, cx| v.set_tab(TabKind::Classify, window, cx))).unwrap();
     cx.simulate_keystrokes(handle, "escape");
@@ -219,17 +228,15 @@ async fn switching_model_answers_the_picture_on_screen_with_it(cx: &mut TestAppC
         return;
     }
     let (handle, view) = open(cx, registry(&[("x", 1), ("y", 1)], &["y", "x"]));
-    let (x, y) = (inference::manifest::HeadId::new("x"), inference::manifest::HeadId::new("y"));
-    wait(cx, &view, "the default head", &|v| v.model.as_ref() == Some(&y));
-    let select = |cx: &mut TestAppContext, k: &inference::manifest::HeadId| {
-        cx.update_window(handle, |_, window, cx| view.update(cx, |v, cx| v.select_model(k.clone(), window, cx))).unwrap()
-    };
+    let (x, y) = (HeadId::new("x"), HeadId::new("y"));
+    wait(cx, &view, "the default head", &|v, cx| selected(v, cx).as_ref() == Some(&y));
+    let select = |cx: &mut TestAppContext, k: &HeadId| select(cx, handle, &view, k);
 
     let picture = stack_dir().join("01_battery_holder.jpg");
     cx.update(|cx| view.update(cx, |v, cx| v.submit_source(inference::fetch::Source::File(picture), cx)));
-    wait(cx, &view, "y's answer", &|v| v.classify.answered(&y));
+    wait(cx, &view, "y's answer", &|v, _| v.classify.answered(&y));
     select(cx, &x);
-    wait(cx, &view, "x's answer for the same picture", &|v| v.classify.answered(&x));
+    wait(cx, &view, "x's answer for the same picture", &|v, _| v.classify.answered(&x));
     cx.update(|cx| {
         let v = view.read(cx);
         assert_eq!(v.classify.len(), 1, "the switch answers the picture in place, not as a new entry");
@@ -243,9 +250,9 @@ async fn switching_model_answers_the_picture_on_screen_with_it(cx: &mut TestAppC
         })
     })
     .unwrap();
-    wait(cx, &view, "x's answer on the selected card", &|v| v.demo_answered(&x));
+    wait(cx, &view, "x's answer on the selected card", &|v, _| v.demo_answered(&x));
     select(cx, &y);
-    wait(cx, &view, "y's answer on the same card", &|v| v.demo_answered(&y));
+    wait(cx, &view, "y's answer on the same card", &|v, _| v.demo_answered(&y));
 }
 
 #[gpui_kit::test]
@@ -254,8 +261,8 @@ async fn switching_tab_answers_its_input_with_the_model_picked_elsewhere(cx: &mu
         return;
     }
     let (handle, view) = open(cx, registry(&[("x", 1), ("y", 1), ("z", 1)], &["y", "x"]));
-    let [x, y, z] = ["x", "y", "z"].map(inference::manifest::HeadId::new);
-    wait(cx, &view, "the default head", &|v| v.run_model().as_ref() == Some(&y));
+    let [x, y, z] = ["x", "y", "z"].map(HeadId::new);
+    wait(cx, &view, "the default head", &|v, cx| run_model(v, cx).as_ref() == Some(&y));
     let on = |cx: &mut TestAppContext, tab: TabKind, f: &dyn Fn(&mut DemoApp, &mut gpui_kit::Window, &mut gpui_kit::Context<DemoApp>)| {
         cx.update_window(handle, |_, window, cx| {
             view.update(cx, |v, cx| {
@@ -267,19 +274,19 @@ async fn switching_tab_answers_its_input_with_the_model_picked_elsewhere(cx: &mu
     };
     let picture = stack_dir().join("01_battery_holder.jpg");
     on(cx, TabKind::Classify, &|v, _, cx| v.submit_source(inference::fetch::Source::File(picture.clone()), cx));
-    wait(cx, &view, "y's answer for the picture", &|v| v.classify.answered(&y));
+    wait(cx, &view, "y's answer for the picture", &|v, _| v.classify.answered(&y));
     on(cx, TabKind::Demo, &|v, _, cx| v.demo_classify_selected(cx));
-    wait(cx, &view, "y's answer on the selected card", &|v| v.demo_answered(&y));
+    wait(cx, &view, "y's answer on the selected card", &|v, _| v.demo_answered(&y));
 
-    on(cx, TabKind::Classify, &|v, w, cx| v.select_model(x.clone(), w, cx));
-    wait(cx, &view, "x's answer for the picture", &|v| v.classify.answered(&x));
+    on(cx, TabKind::Classify, &|v, w, cx| v.models.update(cx, |m, cx| m.select_model(x.clone(), w, cx)));
+    wait(cx, &view, "x's answer for the picture", &|v, _| v.classify.answered(&x));
     on(cx, TabKind::Demo, &|_, _, _| {});
-    wait(cx, &view, "x's answer on the card shown when the tab opens", &|v| v.demo_answered(&x));
+    wait(cx, &view, "x's answer on the card shown when the tab opens", &|v, _| v.demo_answered(&x));
 
-    on(cx, TabKind::Demo, &|v, w, cx| v.select_model(z.clone(), w, cx));
-    wait(cx, &view, "z's answer on the card", &|v| v.demo_answered(&z));
+    on(cx, TabKind::Demo, &|v, w, cx| v.models.update(cx, |m, cx| m.select_model(z.clone(), w, cx)));
+    wait(cx, &view, "z's answer on the card", &|v, _| v.demo_answered(&z));
     on(cx, TabKind::Classify, &|_, _, _| {});
-    wait(cx, &view, "z's answer for the picture shown when the tab opens", &|v| v.classify.answered(&z));
+    wait(cx, &view, "z's answer for the picture shown when the tab opens", &|v, _| v.classify.answered(&z));
 }
 
 #[gpui_kit::test]
@@ -289,18 +296,18 @@ async fn a_model_that_fails_to_load_is_not_called_an_unreadable_picture(cx: &mut
     }
     let loader = FakeLoader::breaking(&["x"]);
     let (_handle, view) = open_with(cx, registry(&[("x", 1), ("y", 1)], &["x", "y"]), loader);
-    let x = inference::manifest::HeadId::new("x");
-    wait(cx, &view, "the default head", &|v| v.model.as_ref() == Some(&x));
+    let x = HeadId::new("x");
+    wait(cx, &view, "the default head", &|v, cx| selected(v, cx).as_ref() == Some(&x));
     let submit = |cx: &mut TestAppContext, path: PathBuf| {
         cx.update(|cx| view.update(cx, |v, cx| v.submit_source(inference::fetch::Source::File(path), cx)))
     };
 
     submit(cx, stack_dir().join("01_battery_holder.jpg"));
-    wait(cx, &view, "x's failure", &|v| v.classify.failure(&x).is_some());
+    wait(cx, &view, "x's failure", &|v, _| v.classify.failure(&x).is_some());
     cx.update(|cx| assert_eq!(view.read(cx).classify.failure(&x), Some("model failed to load")));
 
     submit(cx, stack_dir().join("no_such_picture.jpg"));
-    wait(cx, &view, "the read failure", &|v| v.classify.failure(&x).is_some());
+    wait(cx, &view, "the read failure", &|v, _| v.classify.failure(&x).is_some());
     cx.update(|cx| assert_eq!(view.read(cx).classify.failure(&x), Some("could not read")));
 }
 
@@ -311,14 +318,14 @@ async fn picking_a_model_that_failed_to_load_tries_it_again(cx: &mut TestAppCont
     }
     let loader = FakeLoader::breaking(&["x"]);
     let (handle, view) = open_with(cx, registry(&[("x", 1), ("y", 1)], &["x", "y"]), loader.clone());
-    let x = inference::manifest::HeadId::new("x");
-    wait(cx, &view, "the default head", &|v| v.run_model().as_ref() == Some(&x));
+    let x = HeadId::new("x");
+    wait(cx, &view, "the default head", &|v, cx| run_model(v, cx).as_ref() == Some(&x));
     let picture = stack_dir().join("01_battery_holder.jpg");
     cx.update(|cx| view.update(cx, |v, cx| v.submit_source(inference::fetch::Source::File(picture), cx)));
-    wait(cx, &view, "x's failure", &|v| v.classify.failure(&x).is_some());
+    wait(cx, &view, "x's failure", &|v, _| v.classify.failure(&x).is_some());
     loader.repair("x"); // say, the user freed GPU memory
-    cx.update_window(handle, |_, window, cx| view.update(cx, |v, cx| v.select_model(x.clone(), window, cx))).unwrap();
-    wait(cx, &view, "x's answer after the retry", &|v| v.classify.answered(&x));
+    select(cx, handle, &view, &x);
+    wait(cx, &view, "x's answer after the retry", &|v, _| v.classify.answered(&x));
 }
 
 #[gpui_kit::test]
@@ -328,21 +335,19 @@ async fn a_retry_clears_every_head_of_the_recovered_graph(cx: &mut TestAppContex
     }
     let loader = FakeLoader::breaking(&["g"]);
     let (handle, view) = open_with(cx, shared_registry("g", &["x", "y"], &["x"]), loader.clone());
-    let (x, y) = (inference::manifest::HeadId::new("x"), inference::manifest::HeadId::new("y"));
-    let select = |cx: &mut TestAppContext, k: &inference::manifest::HeadId| {
-        cx.update_window(handle, |_, window, cx| view.update(cx, |v, cx| v.select_model(k.clone(), window, cx))).unwrap();
-    };
-    wait(cx, &view, "the default head", &|v| v.run_model().as_ref() == Some(&x));
+    let (x, y) = (HeadId::new("x"), HeadId::new("y"));
+    let select = |cx: &mut TestAppContext, k: &HeadId| select(cx, handle, &view, k);
+    wait(cx, &view, "the default head", &|v, cx| run_model(v, cx).as_ref() == Some(&x));
     let picture = stack_dir().join("01_battery_holder.jpg");
     cx.update(|cx| view.update(cx, |v, cx| v.submit_source(inference::fetch::Source::File(picture), cx)));
-    wait(cx, &view, "x's failure", &|v| v.classify.failure(&x).is_some());
+    wait(cx, &view, "x's failure", &|v, _| v.classify.failure(&x).is_some());
     select(cx, &y); // the graph is still broken: y fails too
-    wait(cx, &view, "y's failure", &|v| v.classify.failure(&y).is_some());
+    wait(cx, &view, "y's failure", &|v, _| v.classify.failure(&y).is_some());
     loader.repair("g");
     select(cx, &x);
-    wait(cx, &view, "x's answer after the retry", &|v| v.classify.answered(&x));
+    wait(cx, &view, "x's answer after the retry", &|v, _| v.classify.answered(&x));
     select(cx, &y); // g is Ready now; y's old failure must not block it
-    wait(cx, &view, "y's answer from the recovered graph", &|v| v.classify.answered(&y));
+    wait(cx, &view, "y's answer from the recovered graph", &|v, _| v.classify.answered(&y));
 }
 
 #[gpui_kit::test]
@@ -353,7 +358,7 @@ async fn controls_stay_inside_the_smallest_window(cx: &mut TestAppContext) {
     let loader = FakeLoader { run: Duration::from_millis(40), ..Default::default() };
     let small = size(px(1024.), px(640.));
     let (handle, view) = open_sized(cx, registry(&[("x", 1), ("y", 1)], &["x", "y"]), loader, small, Vec::new());
-    wait(cx, &view, "the default head", &|v| v.run_model().is_some());
+    wait(cx, &view, "the default head", &|v, cx| run_model(v, cx).is_some());
     let inside = |cx: &mut TestAppContext, tab: TabKind, start: &dyn Fn(&mut DemoApp, &mut gpui_kit::Context<DemoApp>)| {
         cx.update_window(handle, |_, window, cx| {
             view.update(cx, |v, cx| {
@@ -391,8 +396,8 @@ async fn pictures_given_at_start_wait_for_the_default_model(cx: &mut TestAppCont
     // y is the default once the start-up probe passes it; x, the last default, is only the fallback
     let reg = registry(&[("x", 1), ("y", 1)], &["y", "x"]);
     let (_handle, view) = open_sized(cx, reg, loader, size(px(1360.), px(860.)), pictures);
-    let y = inference::manifest::HeadId::new("y");
-    wait(cx, &view, "y's answer for every picture", &|v| v.classify.answered_entries(&y) == 3);
+    let y = HeadId::new("y");
+    wait(cx, &view, "y's answer for every picture", &|v, _| v.classify.answered_entries(&y) == 3);
     let fallback_runs = ran.lock().unwrap().iter().filter(|s| matches!(s, Seen::Started { graph, .. } if graph == "x")).count();
     assert_eq!(fallback_runs, 0, "the fallback model never ran");
 }
@@ -401,7 +406,7 @@ async fn pictures_given_at_start_wait_for_the_default_model(cx: &mut TestAppCont
 async fn the_fallback_notice_goes_once_the_user_picks_a_model(cx: &mut TestAppContext) {
     let loader = FakeLoader { no_provider: ["y".to_string()].into(), ..Default::default() };
     let (handle, view) = open_with(cx, registry(&[("x", 1), ("y", 1)], &["y", "x"]), loader);
-    wait(cx, &view, "the fallback default", &|v| v.run_model().is_some_and(|m| m.as_str() == "x"));
+    wait(cx, &view, "the fallback default", &|v, cx| run_model(v, cx).is_some_and(|m| m.as_str() == "x"));
     let notice = |cx: &mut TestAppContext| {
         cx.update_window(handle, |_, window, cx| {
             window.render_frame(cx);
@@ -410,10 +415,7 @@ async fn the_fallback_notice_goes_once_the_user_picks_a_model(cx: &mut TestAppCo
         .unwrap()
     };
     assert!(notice(cx), "the start-up default says why y was passed over");
-    cx.update_window(handle, |_, window, cx| {
-        view.update(cx, |v, cx| v.select_model(inference::manifest::HeadId::new("y"), window, cx))
-    })
-    .unwrap();
+    select(cx, handle, &view, &HeadId::new("y"));
     assert!(!notice(cx), "after the user picks, the start-up notice no longer describes the model in use");
 }
 
@@ -434,17 +436,17 @@ async fn the_best_model_is_named_when_the_benchmark_ends(cx: &mut TestAppContext
         .unwrap()
     };
     cx.update(|cx| view.update(cx, |v, cx| v.bench_start(cx)));
-    wait(cx, &view, "the benchmark to be under way", &|v| !v.bench.results.is_empty());
+    wait(cx, &view, "the benchmark to be under way", &|v, _| !v.bench.results.is_empty());
     assert!(cx.update(|cx| view.read(cx).bench.running()));
     assert_eq!(badges(cx), 0, "no model is called best while the counts are partial");
-    wait(cx, &view, "the benchmark to finish", &|v| !v.bench.running());
+    wait(cx, &view, "the benchmark to finish", &|v, _| !v.bench.running());
     assert!(badges(cx) >= 1, "the finished benchmark names the best model");
 }
 
 #[gpui_kit::test]
 async fn missing_index_is_reported(cx: &mut TestAppContext) {
     let (handle, view) = open(cx, Arc::new(Registry::empty("no exports/models.json found".into())));
-    cx.update(|cx| assert!(view.read(cx).registry_error.is_some(), "a missing index must be reported"));
+    cx.update(|cx| assert!(view.read(cx).models.read(cx).registry_error().is_some(), "a missing index must be reported"));
     cx.update_window(handle, |_, window, cx| {
         window.render_frame(cx);
         assert!(window.try_find("open").is_some(), "the window still renders without models");
@@ -502,7 +504,7 @@ async fn real_benchmark_matches_the_golden_rows(cx: &mut TestAppContext) {
         for row in &golden {
             let file = Path::new(row["source"].as_str().unwrap()).file_name().unwrap().to_str().unwrap();
             let i = stack.images.iter().position(|im| im.file == file).unwrap();
-            let head = inference::manifest::HeadId::new(row["model"].as_str().unwrap());
+            let head = HeadId::new(row["model"].as_str().unwrap());
             let (c, _) = v.bench.results[&(i, head.clone())].as_ref().unwrap();
             let label = c.committed().map_or("UNSURE", |k| c.labels.name(k));
             assert_eq!(label, row["label"].as_str().unwrap(), "{file} {head}");
@@ -521,7 +523,7 @@ async fn real_benchmark_matches_the_golden_rows(cx: &mut TestAppContext) {
 async fn registry_problems_are_shown_beside_working_models(cx: &mut TestAppContext) {
     // "fast" names no head: a registry problem, and the start-up default passes it over
     let (handle, view) = open(cx, registry(&[("x", 1)], &["fast", "x"]));
-    wait(cx, &view, "the default head", &|v| v.run_model().is_some());
+    wait(cx, &view, "the default head", &|v, cx| run_model(v, cx).is_some());
     let shown = |cx: &mut TestAppContext, id: &'static str| {
         cx.update_window(handle, |_, window, cx| {
             window.render_frame(cx);

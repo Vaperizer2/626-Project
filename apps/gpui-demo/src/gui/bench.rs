@@ -22,7 +22,8 @@ use gpui_kit::{
 };
 
 use super::widgets::Lucide;
-use super::{DemoApp, ModelState, theme, widgets};
+use super::models::ModelState;
+use super::{DemoApp, theme, widgets};
 use inference::classification::{Classification, HeadOutput};
 use crate::demo::Verdict;
 use inference::service::{Finish, ImageInput, RequestHandle, RunError, Ticket, Timing, Update};
@@ -139,7 +140,8 @@ impl DemoApp {
             return self.bench_cancel(cx);
         }
         let Some(n) = self.demo.stack().map(|s| s.images.len()) else { return };
-        let models: Vec<HeadId> = self.head_ids().into_iter().filter(|k| self.model_usable(k)).collect();
+        let m = self.models.read(cx);
+        let models: Vec<HeadId> = m.head_ids().into_iter().filter(|k| m.model_usable(k)).collect();
         if models.is_empty() {
             return;
         }
@@ -222,13 +224,14 @@ impl DemoApp {
     }
 
     /// "one pass with X" when other benchmarked heads read the same graph as `k`.
-    fn shared_pass(&self, k: &HeadId) -> Option<String> {
-        let others: Vec<String> = self
+    fn shared_pass(&self, k: &HeadId, cx: &App) -> Option<String> {
+        let m = self.models.read(cx);
+        let others: Vec<String> = m
             .registry()
             .siblings(k)
             .iter()
             .filter(|s| *s != k && self.bench.models.contains(s))
-            .map(|s| self.short(s))
+            .map(|s| m.short(s))
             .collect();
         (!others.is_empty()).then(|| format!("one pass with {}", others.join(" and ")))
     }
@@ -256,13 +259,14 @@ impl DemoApp {
         };
         let n = stack.images.len();
         let running = self.bench.run.as_ref();
-        let available: Vec<HeadId> = self.head_ids().into_iter().filter(|k| self.model_usable(k)).collect();
-        let unavailable: Vec<String> = self
+        let m = self.models.read(cx);
+        let available: Vec<HeadId> = m.head_ids().into_iter().filter(|k| m.model_usable(k)).collect();
+        let unavailable: Vec<String> = m
             .head_ids()
             .into_iter()
-            .filter_map(|k| match self.state(&k) {
-                    ModelState::Unavailable(_) => Some(format!("{} (not exported)", self.short(&k))),
-                ModelState::Failed(_) => Some(format!("{} (failed to load)", self.short(&k))),
+            .filter_map(|k| match m.state(&k) {
+                ModelState::Unavailable(_) => Some(format!("{} (not exported)", m.short(&k))),
+                ModelState::Failed(_) => Some(format!("{} (failed to load)", m.short(&k))),
                 _ => None,
             })
             .collect();
@@ -373,7 +377,7 @@ impl DemoApp {
         let leading = s.judged > 0 && best == Some(s.correct);
         let meta =
             |icon: Lucide, text: String| h_flex().gap_1().items_center().child(Icon::new(icon).xsmall()).child(text);
-        let title = self.title(k);
+        let title = self.models.read(cx).title(k);
         v_flex()
             .id(SharedString::from(format!("bench-card-{k}")))
             .flex_1()
@@ -390,7 +394,7 @@ impl DemoApp {
                     .justify_between()
                     .items_start()
                     .gap_2()
-                    .child(div().flex_1().min_w_0().text_sm().font_weight(FontWeight::SEMIBOLD).truncate().child(self.short(k)))
+                    .child(div().flex_1().min_w_0().text_sm().font_weight(FontWeight::SEMIBOLD).truncate().child(self.models.read(cx).short(k)))
                     .when(leading, |d| {
                         d.child(
                             h_flex()
@@ -444,7 +448,7 @@ impl DemoApp {
                         Lucide::Timer,
                         if s.judged > 0 { format!("{:.0} ms / image", s.mean_ms) } else { "– ms / image".into() },
                     ))
-                    .when_some(self.shared_pass(k), |d, note| d.child(widgets::icon_line(Icon::new(Lucide::Layers).xsmall(), note).w_full()))
+                    .when_some(self.shared_pass(k, cx), |d, note| d.child(widgets::icon_line(Icon::new(Lucide::Layers).xsmall(), note).w_full()))
                     .when(s.unsure > 0, |d| d.child(meta(Lucide::CircleQuestionMark, format!("{} unsure", s.unsure))))
                     .when(s.errors > 0, |d| d.child(meta(Lucide::CircleAlert, format!("{} errors", s.errors)))),
             )
@@ -465,7 +469,7 @@ impl DemoApp {
             .border_b_1()
             .border_color(t.border)
             .child(div().w(px(300.)).flex_none().child("Image · true label"))
-            .children(models.iter().map(|k| div().flex_1().min_w_0().truncate().child(self.short(k))));
+            .children(models.iter().map(|k| div().flex_1().min_w_0().truncate().child(self.models.read(cx).short(k))));
         let rows: Vec<AnyElement> = self
             .bench_rows()
             .into_iter()
