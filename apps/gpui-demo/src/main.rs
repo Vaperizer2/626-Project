@@ -398,8 +398,7 @@ fn run_classify(a: &Args) -> Result<u8> {
     if a.json {
         println!("{}", serde_json::to_string_pretty(&rows)?);
     }
-    end(inf);
-    Ok(if failures > 0 { 2 } else { 0 })
+    Ok(end(inf, if failures > 0 { 2 } else { 0 }))
 }
 
 /// Median, 10th and 90th percentile (nearest rank), min and max.
@@ -503,18 +502,18 @@ fn run_bench(a: &Args) -> Result<u8> {
         "answers": answers,
     });
     println!("{}", serde_json::to_string_pretty(&report)?);
-    end(&inf);
-    Ok(if errors > 0 { 2 } else { 0 })
+    Ok(end(&inf, if errors > 0 { 2 } else { 0 }))
 }
 
-/// Release every session before the process exits (see `Inference::shutdown`); if a load is still running, leave
-/// without exit handlers rather than race its provider's teardown.
-fn end(inf: &Inference) {
+/// Release every session before the process exits with `code` (see `Inference::shutdown`); if a load is still
+/// running, leave with `code` without exit handlers rather than race its provider's teardown.
+fn end(inf: &Inference, code: u8) -> u8 {
     if !inf.shutdown(std::time::Duration::from_secs(30)) {
         eprintln!("[gpui-demo] a model is still loading; exiting without waiting for it");
         let _ = std::io::stdout().flush();
-        runtime::exit_now(0);
+        runtime::exit_now(code.into());
     }
+    code
 }
 
 /// The heads and their files, then per graph which of its execution providers register here (a probe: the
