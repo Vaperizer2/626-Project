@@ -32,8 +32,8 @@ use gpui_kit::component::{
 };
 use gpui_kit::component::{Disableable as _, Selectable as _};
 use gpui_kit::{
-    App, Bounds, Context, FocusHandle, FontWeight, KeyBinding, RenderImage, SharedString, Window, WindowBounds,
-    WindowOptions, actions, div, prelude::*, px, size,
+    App, Bounds, Context, FocusHandle, FontWeight, KeyBinding, RenderImage, SharedString, TestSupportExt as _, Window,
+    WindowBounds, WindowOptions, actions, div, prelude::*, px, size,
 };
 
 use crate::inference::{GraphState, Inference, Lane, LoadStage, Loaded, Policy, Priority, ServiceEvent};
@@ -530,11 +530,14 @@ impl Render for DemoApp {
                 .pt_3()
                 .child(Alert::error("registry-error", SharedString::from(e)).title("Model index not found").small())
         });
-        let fallback_alert = (!self.passed_over.is_empty()).then(|| {
-            let why: Vec<String> =
-                self.passed_over.iter().map(|(h, why)| format!("{} is not the default here: {why}.", self.title(h))).collect();
+        let fallback_alert = (self.pick == Pick::Default && !self.passed_over.is_empty()).then(|| {
+            let why: Vec<String> = self
+                .passed_over
+                .iter()
+                .map(|(h, why)| format!("{} is not the default here: {}.", self.title(h), why.trim_end_matches('.')))
+                .collect();
             let using = self.model.as_ref().map(|m| self.title(m)).unwrap_or_default();
-            div().px_4().pt_3().child(
+            div().id("fallback-notice").test_support().px_4().pt_3().child(
                 Alert::warning("default-fallback", SharedString::from(why.join(" ")))
                     .title(format!("Using {using}"))
                     .small(),
