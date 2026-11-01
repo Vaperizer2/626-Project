@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
-# Build the portable Linux x86_64 bundle of gpui-demo ("Component Classifier") for another machine:
-#   dist/component-classifier-linux-x86_64/          binary + onnxruntime + models + demo stack + run.sh + docs
-#   dist/component-classifier-linux-x86_64.tar.gz    (+ .sha256, + .part-aa/ab/... of 1900 MiB for 2 GB upload caps)
+# Build the portable Linux x86_64 bundle of the app named in packaging/app.env, for another machine:
+#   dist/<APP_NAME>-linux-x86_64/          binary + onnxruntime + models + demo stack + run.sh + docs
+#   dist/<APP_NAME>-linux-x86_64.tar.gz    (+ .sha256, + .part-aa/ab/... of 1900 MiB for 2 GB upload caps)
 #
 # The binary is linked against an old glibc with cargo-zigbuild (default 2.28, the same floor as the manylinux_2_28 onnxruntime; GLIBC=2.31 etc. also work) and decodes
 # JPEGs with a statically linked, vendored libjpeg-turbo (feature `turbojpeg-vendored`), so it has no
 # libjpeg-turbo runtime dependency and keeps bit-exact parity with the Python/Pillow pipeline.
 #
-# Needs on the build machine: rustup/cargo, cargo-zigbuild (`cargo install cargo-zigbuild`), zig (on PATH, or
-# `python -m ziglang` from `uv pip install ziglang==0.14.1` with CARGO_ZIGBUILD_PYTHON_PATH=<that python>),
+# Needs on the build machine: rustup/cargo, cargo-zigbuild (`cargo install cargo-zigbuild`), zig 0.14 (`uv pip install
+# ziglang==0.14.1`, then CARGO_ZIGBUILD_ZIG_PATH=<site-packages>/ziglang/zig; zig 0.17 fails to link, see README.md),
 # cmake + nasm (libjpeg-turbo), python3, binutils (readelf/objdump/strip), tar, gzip, split, sha256sum.
 # Inputs: exports/{final,fast}, exports/itri626/{A_scratch_cnn,B_convnext_tiny}, apps/gpui-demo/demo_stack and a
 # CPU onnxruntime 1.31 library (ORT_LIB, default target/release/libonnxruntime.so.1.31.0). The GPU
@@ -20,8 +20,9 @@ set -euo pipefail
 
 APP=$(CDPATH='' cd -- "$(dirname -- "$0")/.." && pwd)
 REPO=$(CDPATH='' cd -- "$APP/../.." && pwd)
+. "$APP/packaging/app.env"
 DIST=${DIST:-$REPO/dist}
-NAME=component-classifier-linux-x86_64
+NAME=$APP_NAME-linux-x86_64
 OUT=$DIST/$NAME
 GLIBC=${GLIBC:-2.28}
 TRIPLE=x86_64-unknown-linux-gnu
@@ -39,23 +40,25 @@ for a in "$@"; do
 done
 say() { printf '\n== %s\n' "$*"; }
 die() { echo "package_linux.sh: $*" >&2; exit 1; }
+case $APP_NAME in "" | *[!a-z0-9-]*) die "APP_NAME='$APP_NAME' in packaging/app.env: use a-z, 0-9 and -" ;; esac
+case $ENV_PREFIX in "" | [0-9]* | *[!A-Z0-9_]*) die "ENV_PREFIX='$ENV_PREFIX' in packaging/app.env: use A-Z, 0-9 and _" ;; esac
 
 mkdir -p "$DIST"
-BIN=$CARGO_TARGET_DIR/$TRIPLE/release/gpui-demo
+BUILT=$CARGO_TARGET_DIR/$TRIPLE/release/$BIN
 
 # ---------------------------------------------------------------------------------------------- 1. build
 if [ "$SKIP_BUILD" = 0 ]; then
     say "building with cargo-zigbuild for glibc $GLIBC"
     (cd "$APP" && cargo zigbuild --release --locked --features turbojpeg-vendored --target "$TRIPLE.$GLIBC")
 fi
-[ -x "$BIN" ] || die "no binary at $BIN"
+[ -x "$BUILT" ] || die "no binary at $BUILT"
 
 # ---------------------------------------------------------------------------------------------- 2. verify
 say "checking the binary"
-maxglibc=$(objdump -T "$BIN" | grep -o 'GLIBC_[0-9.]*' | sed 's/GLIBC_//' | sort -uV | tail -1)
+maxglibc=$(objdump -T "$BUILT" | grep -o 'GLIBC_[0-9.]*' | sed 's/GLIBC_//' | sort -uV | tail -1)
 echo "max GLIBC symbol version: $maxglibc (limit $GLIBC)"
 [ "$(printf '%s\n%s\n' "$maxglibc" "$GLIBC" | sort -V | tail -1)" = "$GLIBC" ] || die "binary needs GLIBC_$maxglibc > $GLIBC"
-needed=$(readelf -d "$BIN" | sed -n 's/.*(NEEDED).*\[\(.*\)\]/\1/p' | tr '\n' ' ')
+needed=$(readelf -d "$BUILT" | sed -n 's/.*(NEEDED).*\[\(.*\)\]/\1/p' | tr '\n' ' ')
 echo "DT_NEEDED: $needed"
 for lib in $needed; do
     case $lib in
@@ -73,10 +76,9 @@ done
 
 # ---------------------------------------------------------------------------------------------- 3. bundle
 say "assembling $OUT"
-case $OUT in "$DIST"/component-classifier-linux-x86_64) ;; *) die "refusing to replace $OUT" ;; esac
 rm -rf "$OUT"
 mkdir -p "$OUT/exports/final" "$OUT/exports/itri626" "$OUT/LICENSES"
-cp "$BIN" "$OUT/gpui-demo" && strip --strip-all "$OUT/gpui-demo"
+cp "$BUILT" "$OUT/$BIN" && strip --strip-all "$OUT/$BIN"
 cp "$ORT_LIB" "$OUT/libonnxruntime.so.1.31.0"
 # what the app reads: the index, each model.json and the files it lists (model_multi.onnx carries Deployed + C
 # in one graph over model.onnx.data), plus preprocess.json as the human-readable contract
@@ -95,8 +97,8 @@ for f in model.onnx model.onnx.data model.json preprocess.json runtime.json labe
     cp --reflink=auto "$REPO/exports/fast/$f" "$OUT/exports/fast/"
 done
 cp -r "$APP/demo_stack" "$OUT/demo_stack"
-cp "$APP/packaging/run.sh" "$OUT/run.sh" && cp "$APP/packaging/run-nixos.sh" "$OUT/run-nixos.sh" && chmod 755 "$OUT/run.sh" "$OUT/run-nixos.sh" "$OUT/gpui-demo"
-cp "$APP/packaging/gpu-env.sh" "$OUT/gpu-env.sh"
+cp "$APP/packaging/run.sh" "$OUT/run.sh" && cp "$APP/packaging/run-nixos.sh" "$OUT/run-nixos.sh" && chmod 755 "$OUT/run.sh" "$OUT/run-nixos.sh" "$OUT/$BIN"
+cp "$APP/packaging/app.env" "$OUT/app.env" && cp "$APP/packaging/gpu-env.sh" "$OUT/gpu-env.sh"
 cp "$APP/packaging/README.txt" "$OUT/README.txt"
 
 # ---------------------------------------------------------------------------------------------- 4. licences

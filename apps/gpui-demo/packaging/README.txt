@@ -48,13 +48,14 @@ GPU (optional, NVIDIA)
 ----------------------
 The bundle ships the CPU build of ONNX Runtime. The GPU build (onnxruntime-gpu with the CUDA 13 and cuDNN 9
 libraries, plus TensorRT 10 for the Fast model) is a separate install of about 7 GB. Install it once, no root,
-with uv (https://docs.astral.sh/uv/):
-    uv venv ~/.local/share/component-classifier/gpu --python 3.12
-    uv pip install --python ~/.local/share/component-classifier/gpu/bin/python \
+with uv (https://docs.astral.sh/uv/). The folder is shared: other apps that use onnxruntime-gpu 1.31 find it too.
+    uv venv ~/.local/share/onnxruntime-gpu/1.31 --python 3.12
+    uv pip install --python ~/.local/share/onnxruntime-gpu/1.31/bin/python \
         'onnxruntime-gpu[cuda,cudnn]==1.31.1' 'tensorrt-cu13-libs==10.16.1.11'
 It needs an NVIDIA driver that supports CUDA 13: the header of nvidia-smi shows a CUDA version of 13.0 or newer.
-run.sh looks for it in $COMPCLASS_GPU_VENV, then in that folder, then in an active virtualenv, and says on its
-first line which runtime it uses:
+run.sh looks for it in $COMPCLASS_GPU_VENV, then in that folder, then in ~/.local/share/component-classifier/gpu
+(where earlier versions said to install it), then in an active virtualenv, and says on its first line which runtime
+it uses:
     run.sh: onnxruntime on GPU (onnxruntime 1.31.1, TensorRT from .../tensorrt_libs)
     run.sh: onnxruntime on GPU without TensorRT (...)      CUDA only: the app starts on Deployed
     run.sh: onnxruntime on CPU (no onnxruntime-gpu found: ...)
@@ -126,6 +127,7 @@ exports/fast/              Fast: model.onnx, model.onnx.data, preprocess.json, r
 exports/itri626/           A_scratch_cnn/ and B_convnext_tiny/: model.onnx, preprocess.json, labels.json
 demo_stack/                the 28 demo photos, demo_stack.json, ATTRIBUTION.md (author/licence of each photo)
 run.sh                     launcher (sets the paths above; passes arguments through)
+app.env                    the app's name, its environment variable prefix and binary, read by the launchers
 gpu-env.sh                 used by run.sh and run-nixos.sh: finds the GPU runtime (see GPU)
 LICENSES/                  licences: onnxruntime (MIT), Noto Sans (SIL OFL 1.1, embedded in the binary),
                            GPUI Kit (Apache-2.0), Rust crates, dataset note, photo credits pointer
