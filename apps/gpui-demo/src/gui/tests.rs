@@ -15,7 +15,7 @@ use gpui_kit::{
 
 use super::{DemoApp, TabKind};
 use crate::inference::Inference;
-use crate::inference::fake::{FakeLoader, Seen, registry};
+use crate::inference::fake::{FakeLoader, Seen, registry, shared_registry};
 use crate::registry::Registry;
 
 fn stack_dir() -> PathBuf {
@@ -319,6 +319,30 @@ async fn picking_a_model_that_failed_to_load_tries_it_again(cx: &mut TestAppCont
     loader.repair("x"); // say, the user freed GPU memory
     cx.update_window(handle, |_, window, cx| view.update(cx, |v, cx| v.select_model(x.clone(), window, cx))).unwrap();
     wait(cx, &view, "x's answer after the retry", &|v| v.classify.answered(&x));
+}
+
+#[gpui_kit::test]
+async fn a_retry_clears_every_head_of_the_recovered_graph(cx: &mut TestAppContext) {
+    if !stack_dir().join(crate::demo::STACK_FILE).is_file() {
+        return;
+    }
+    let loader = FakeLoader::breaking(&["g"]);
+    let (handle, view) = open_with(cx, shared_registry("g", &["x", "y"], &["x"]), loader.clone());
+    let (x, y) = (crate::manifest::HeadId::new("x"), crate::manifest::HeadId::new("y"));
+    let select = |cx: &mut TestAppContext, k: &crate::manifest::HeadId| {
+        cx.update_window(handle, |_, window, cx| view.update(cx, |v, cx| v.select_model(k.clone(), window, cx))).unwrap();
+    };
+    wait(cx, &view, "the default head", &|v| v.run_model().as_ref() == Some(&x));
+    let picture = stack_dir().join("01_battery_holder.jpg");
+    cx.update(|cx| view.update(cx, |v, cx| v.submit_source(crate::fetch::Source::File(picture), cx)));
+    wait(cx, &view, "x's failure", &|v| v.classify.failure(&x).is_some());
+    select(cx, &y); // the graph is still broken: y fails too
+    wait(cx, &view, "y's failure", &|v| v.classify.failure(&y).is_some());
+    loader.repair("g");
+    select(cx, &x);
+    wait(cx, &view, "x's answer after the retry", &|v| v.classify.answered(&x));
+    select(cx, &y); // g is Ready now; y's old failure must not block it
+    wait(cx, &view, "y's answer from the recovered graph", &|v| v.classify.answered(&y));
 }
 
 #[gpui_kit::test]

@@ -11,13 +11,20 @@ use std::path::PathBuf;
 
 /// A graph `id` with one head `id`, a 4x4 input, two classes and `max_batch`.
 pub fn manifest(id: &str, max_batch: u16) -> Arc<Manifest> {
+    manifest_with_heads(id, max_batch, &[id])
+}
+
+/// A graph `id` whose one forward pass serves every head in `heads`, all reading the same output.
+pub fn manifest_with_heads(id: &str, max_batch: u16, heads: &[&str]) -> Arc<Manifest> {
     let labels = Arc::new(Labels::new(vec!["dark".into(), "light".into()]).unwrap());
-    let task = Task::Classify(ClassifyTask {
-        readout: Readout::Probs { output: "probs".into() },
-        labels,
-        calibration: Calibration::Temperature { t: 1.0, in_graph: true },
-        decision: Decision::Abstain { below: Prob::new(0.5).unwrap() },
-    });
+    let task = || {
+        Task::Classify(ClassifyTask {
+            readout: Readout::Probs { output: "probs".into() },
+            labels: labels.clone(),
+            calibration: Calibration::Temperature { t: 1.0, in_graph: true },
+            decision: Decision::Abstain { below: Prob::new(0.5).unwrap() },
+        })
+    };
     Arc::new(Manifest {
         id: GraphId::new(id),
         path: PathBuf::from(format!("/fake/{id}/model.json")),
@@ -38,7 +45,10 @@ pub fn manifest(id: &str, max_batch: u16) -> Arc<Manifest> {
                 std: [1.0; 3],
             },
         },
-        heads: vec![HeadSpec { id: HeadId::new(id), title: id.to_uppercase(), short: id.into(), task }],
+        heads: heads
+            .iter()
+            .map(|h| HeadSpec { id: HeadId::new(h), title: h.to_uppercase(), short: (*h).into(), task: task() })
+            .collect(),
         runtime: RuntimeSpec {
             opt_level: OptLevel::All,
             session_config: vec![],
@@ -51,6 +61,15 @@ pub fn registry(graphs: &[(&str, u16)], default: &[&str]) -> Arc<Registry> {
     let graphs = graphs.iter().map(|&(id, max)| RegGraph { manifest: manifest(id, max), availability: Ok(()) });
     Arc::new(
         Registry::from_graphs(PathBuf::from("/fake/models.json"), graphs.collect(), default.iter().map(|d| HeadId::new(d)).collect(), vec![])
+            .unwrap(),
+    )
+}
+
+/// One graph `graph` whose single forward pass serves every head in `heads` (as Deployed and C share `final`).
+pub fn shared_registry(graph: &str, heads: &[&str], default: &[&str]) -> Arc<Registry> {
+    let graphs = vec![RegGraph { manifest: manifest_with_heads(graph, 1, heads), availability: Ok(()) }];
+    Arc::new(
+        Registry::from_graphs(PathBuf::from("/fake/models.json"), graphs, default.iter().map(|d| HeadId::new(d)).collect(), vec![])
             .unwrap(),
     )
 }
