@@ -221,9 +221,10 @@ impl Registry {
         self.default.iter().find(|d| self.head(d).is_some()).cloned().or_else(|| self.heads().next().map(|h| h.id().clone()))
     }
 
-    /// The last default that names a head: the fallback, which needs only its files.
+    /// The last listed default, when a head provides it: the fallback, which needs only its files. When that id
+    /// names no head there is no fallback; an earlier default does not inherit the exemption from probing.
     pub fn last_default(&self) -> Option<HeadId> {
-        self.default.iter().rev().find(|d| self.head(d).is_some()).cloned()
+        self.default.last().filter(|d| self.head(d).is_some()).cloned()
     }
 
     pub fn problems(&self) -> &[String] {
