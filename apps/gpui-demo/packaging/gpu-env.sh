@@ -19,6 +19,15 @@ GPU_ORT_SERIES=1.31
 # why the last venv with an onnxruntime-gpu was passed over
 gpu_why=""
 
+# gpu_series_ok LIB WHERE: LIB (libonnxruntime.so.X.Y.Z) is of the expected series; else say why WHERE was passed over.
+gpu_series_ok() {
+    case "${1##*.so.}" in
+        "$GPU_ORT_SERIES" | "$GPU_ORT_SERIES".*) return 0 ;;
+    esac
+    gpu_why="$2 has onnxruntime-gpu ${1##*.so.}, the app needs $GPU_ORT_SERIES.x"
+    return 1
+}
+
 # gpu_try VENV: use VENV's onnxruntime-gpu (and the pip CUDA, cuDNN and TensorRT libraries beside it) if it has one
 # of the expected version.
 gpu_try() {
@@ -34,14 +43,10 @@ gpu_try() {
         if [ -f "$lib" ]; then gpu_ort="$lib"; fi
     done
     [ -n "$gpu_ort" ] || return 1
-    case "${gpu_ort##*.so.}" in
-        "$GPU_ORT_SERIES" | "$GPU_ORT_SERIES".*) ;;
-        *)
-            gpu_why="$1 has onnxruntime-gpu ${gpu_ort##*.so.}, the app needs $GPU_ORT_SERIES.x"
-            gpu_ort=""
-            return 1
-            ;;
-    esac
+    if ! gpu_series_ok "$gpu_ort" "$1"; then
+        gpu_ort=""
+        return 1
+    fi
     GPU_LIBPATH="$gpu_sp/onnxruntime/capi"
     for d in "$gpu_sp"/nvidia/*/lib "$gpu_sp"/tensorrt_libs; do
         if [ -d "$d" ]; then GPU_LIBPATH="$GPU_LIBPATH:$d"; fi
@@ -66,7 +71,11 @@ gpu_find() {
         for lib in "$HERE"/libonnxruntime.so.*; do
             if [ -f "$lib" ] && [ "$lib" != "$ORT_CPU" ]; then gpu_ort="$lib"; fi
         done
-        GPU_LIBPATH="$HERE"
+        if [ -n "$gpu_ort" ] && gpu_series_ok "$gpu_ort" "the bundle folder"; then
+            GPU_LIBPATH="$HERE"
+        else
+            gpu_ort=""
+        fi
     fi
     if [ -z "$gpu_ort" ] && [ -n "$gpu_why" ]; then
         GPU_STATE="CPU ($gpu_why: see README.txt, GPU)"
