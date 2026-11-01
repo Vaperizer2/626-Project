@@ -63,7 +63,7 @@ impl std::error::Error for IndexError {}
 #[derive(Debug)]
 pub struct GraphEntry {
     pub manifest: Arc<Manifest>,
-    pub availability: Result<(), Unavailable>,
+    pub(crate) availability: Result<(), Unavailable>,
 }
 
 /// A head together with the graph serving it.
@@ -215,7 +215,7 @@ impl Registry {
     }
 
     /// Default heads in order of preference, as the index lists them: an id may name no head (see `problems`).
-    pub fn default_order(&self) -> &[HeadId] {
+    pub(crate) fn default_order(&self) -> &[HeadId] {
         &self.default
     }
 

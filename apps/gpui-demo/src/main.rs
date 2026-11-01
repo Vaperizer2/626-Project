@@ -18,7 +18,7 @@ use std::time::Instant;
 
 use anyhow::{Context, Result, anyhow, bail};
 use futures::StreamExt;
-use inference::{integrity, preprocess, registry};
+use inference::{check, preprocess, registry};
 
 use inference::fetch::Source;
 use inference::service::{
@@ -27,8 +27,8 @@ use inference::service::{
 };
 use inference::manifest::{GraphId, HeadId, Precision, Task};
 use inference::manifest::EpKind;
-use inference::service::Loader as _;
-use inference::runtime::{Settings, OrtLoader};
+use inference::check::Verification;
+use inference::runtime::{OrtLoader, Settings};
 use inference::registry::Registry;
 
 /// `--help`.
@@ -534,7 +534,7 @@ fn end(inf: &Inference, code: u8) -> u8 {
 }
 
 /// The heads and their files, then per graph which of its execution providers register here (a probe: the
-/// provider library is loaded, no session is built).
+/// provider library is loaded, no session is built); `--check` then verifies each graph's files and loads it.
 fn run_models(a: &Args) -> Result<u8> {
     let reg = registry(a)?;
     for h in reg.heads() {
@@ -555,67 +555,50 @@ fn run_models(a: &Args) -> Result<u8> {
     if bad > 0 {
         println!("index     {bad} problem(s) with {}", reg.index_path().display());
     }
-    let loader = OrtLoader::new(&a.opts, &reg);
-    let rt = match loader.runtime() {
+    let report = check::models(&reg, &a.opts, a.check);
+    let (version, lib) = match &report.runtime {
         Ok(rt) => rt,
         Err(e) => {
             println!("execution providers: unknown, {e}");
             return Ok(if a.check { 1 } else { 0 });
         }
     };
-    println!("onnxruntime {} ({})", rt.version, rt.ort_lib.display());
-    for g in reg.graphs() {
-        let m = &g.manifest;
-        let probes: Vec<String> = rt
-            .preferences(m)
+    println!("onnxruntime {version} ({})", lib.display());
+    for g in &report.graphs {
+        let probes: Vec<String> = g
+            .providers
             .iter()
-            .map(|ep| match rt.probe(ep, m) {
-                Ok(()) => format!("{} registers", ep.kind.name()),
-                Err(e) => format!("{} does not ({e})", ep.kind.name()),
+            .map(|(ep, r)| match r {
+                Ok(()) => format!("{} registers", ep.name()),
+                Err(e) => format!("{} does not ({e})", ep.name()),
             })
             .collect();
-        let precision = match m.precision {
+        let precision = match g.precision {
             Precision::Fp32 => "fp32",
             Precision::Fp16 => "fp16",
             Precision::Int8Qdq => "int8 QDQ",
         };
-        println!("{:9} {precision} graph; {}", m.id, probes.join("; "));
+        println!("{:9} {precision} graph; {}", g.id, probes.join("; "));
     }
-    if !a.check {
-        return Ok(0);
-    }
-    // --check: hash every file against its manifest, then load the graph the way the app does
-    let mut stamps = integrity::Stamps::load(a.opts.cache_dir.as_deref());
-    for g in reg.graphs() {
-        let m = &g.manifest;
-        if let Err(e) = &g.availability {
-            bad += 1;
-            println!("{:9} UNAVAILABLE  {e}", m.id);
-            continue;
-        }
-        let t0 = Instant::now();
-        match integrity::check(m, &mut stamps) {
-            integrity::Check::Ok { bytes } => {
-                let hashed = format!("sha256 ok ({:.1} MB in {:.1} s)", bytes as f64 / 1e6, t0.elapsed().as_secs_f64());
-                match loader.load(m, &|_| {}) {
-                    Ok((_, l)) => println!("{:9} READY  {hashed}; loaded in {:.0} ms on {}", m.id, l.ms, l.placement),
-                    Err(e) => {
-                        bad += 1;
-                        println!("{:9} FAILED  {hashed}; load: {e}", m.id);
-                    }
+    for g in &report.graphs {
+        let Some(v) = &g.verified else { continue };
+        bad += usize::from(!v.ok());
+        match v {
+            Verification::Unavailable(e) => println!("{:9} UNAVAILABLE  {e}", g.id),
+            Verification::Hashed { bytes, secs, load } => {
+                let hashed = format!("sha256 ok ({:.1} MB in {secs:.1} s)", *bytes as f64 / 1e6);
+                match load {
+                    Ok(l) => println!("{:9} READY  {hashed}; loaded in {:.0} ms on {}", g.id, l.ms, l.placement),
+                    Err(e) => println!("{:9} FAILED  {hashed}; load: {e}", g.id),
                 }
             }
-            integrity::Check::Mismatch { file, expected, found } => {
-                bad += 1;
-                println!("{:9} CHECKSUM  {}: sha256 {found}, the manifest says {expected}", m.id, file.display());
+            Verification::Mismatch { file, expected, found } => {
+                println!("{:9} CHECKSUM  {}: sha256 {found}, the manifest says {expected}", g.id, file.display())
             }
-            integrity::Check::Unreadable { file, error } => {
-                bad += 1;
-                println!("{:9} UNREADABLE  {}: {error}", m.id, file.display());
-            }
+            Verification::Unreadable { file, error } => println!("{:9} UNREADABLE  {}: {error}", g.id, file.display()),
         }
     }
-    if let Err(e) = stamps.save() {
+    if let Some(e) = &report.stamps_error {
         eprintln!("[gpui-demo] could not save the checksum stamps: {e}");
     }
     Ok(if bad > 0 { 1 } else { 0 })

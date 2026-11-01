@@ -139,11 +139,11 @@ impl fmt::Display for Placement {
 }
 
 /// The process-wide onnxruntime environment (ort allows exactly one per process) plus session options.
-pub struct Runtime {
+pub(crate) struct Runtime {
     env: ort::environment::Environment,
-    pub ort_lib: PathBuf,
+    pub(crate) ort_lib: PathBuf,
     /// e.g. "1.31.1"
-    pub version: String,
+    pub(crate) version: String,
     threads: Option<usize>,
     eps: Option<Vec<EpKind>>,
     cache_dir: Option<PathBuf>,
@@ -193,7 +193,7 @@ impl Runtime {
 
     /// The providers to try for `m`, in order: the manifest's list, or `Settings::eps` with the manifest's options
     /// for a provider it lists.
-    pub fn preferences(&self, m: &Manifest) -> Vec<Ep> {
+    pub(crate) fn preferences(&self, m: &Manifest) -> Vec<Ep> {
         preferences(self.eps.as_deref(), m)
     }
 
@@ -263,7 +263,7 @@ impl Runtime {
     }
 
     /// Would `ep` register for a session? (Loads the provider library; builds no session.)
-    pub fn probe(&self, ep: &Ep, m: &Manifest) -> Result<(), String> {
+    pub(crate) fn probe(&self, ep: &Ep, m: &Manifest) -> Result<(), String> {
         if ep.kind == EpKind::Cpu {
             return Ok(());
         }
@@ -535,7 +535,7 @@ impl OrtLoader {
         Self { opts: settings.clone(), exports, runtime: OnceLock::new() }
     }
 
-    pub fn runtime(&self) -> std::result::Result<&Runtime, String> {
+    pub(crate) fn runtime(&self) -> std::result::Result<&Runtime, String> {
         self.runtime
             .get_or_init(|| Runtime::init(&self.opts, self.exports.as_deref()).map_err(|e| format!("{e:#}")))
             .as_ref()
