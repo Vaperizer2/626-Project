@@ -189,6 +189,9 @@ impl Runtime {
         if let Some(n) = self.threads {
             b = b.with_intra_threads(n).map_err(|e| anyhow!("{e}"))?;
         }
+        for (k, v) in &m.runtime.session_config {
+            b = b.with_config_entry(k, v).map_err(|e| anyhow!("session config {k}={v}: {e}"))?;
+        }
         Ok(b)
     }
 
@@ -296,10 +299,13 @@ impl Runtime {
 }
 
 /// The part of an engine's cache key that comes from the graph: each graph file's recorded sha256, and its size and
-/// mtime on disk. A load checks only the size against the manifest, so a file replaced since the engine was built
-/// must not find that engine.
+/// mtime on disk (a load checks only the size against the manifest, so a file replaced since the engine was built
+/// must not find that engine), then the session config that decides which rewrites reach TensorRT.
 fn graph_key(m: &Manifest) -> String {
     let mut h = sha2::Sha256::new();
+    for (k, v) in &m.runtime.session_config {
+        h.update(format!("{k}={v}\n"));
+    }
     for f in m.files.iter().filter(|f| f.path == m.graph || m.external.contains(&f.path)) {
         h.update(f.sha256.0);
         if let Some((bytes, mtime_ns)) = crate::integrity::now_stamp(&f.path) {
@@ -566,6 +572,35 @@ mod tests {
         file.set_modified(std::time::SystemTime::UNIX_EPOCH + Duration::from_secs(1)).unwrap();
         assert_ne!(graph_key(&m), before, "the file on disk changed since the engine was built");
         let _ = std::fs::remove_dir_all(&dir); // test scratch dir under the OS temp dir only
+    }
+
+    const DISABLE: &str = "optimization.disable_specified_optimizers";
+
+    #[test]
+    fn another_session_config_never_meets_an_old_engine() {
+        let m = preferring(&[EpKind::TensorRt]);
+        let mut fixed = preferring(&[EpKind::TensorRt]);
+        fixed.runtime.session_config = vec![(DISABLE.into(), "MatMulAddFusion;TransposeOptimizer".into())];
+        assert_ne!(graph_key(&m), graph_key(&fixed));
+    }
+
+    /// The manifest's session config reaches onnxruntime's session options, read back through the C API. Needs
+    /// onnxruntime:   ORT_DYLIB_PATH=... cargo test --release -- --ignored session_config_reaches
+    #[test]
+    #[ignore]
+    fn session_config_reaches_the_session_options() {
+        use ort::AsPointer as _;
+        let rt = Runtime::init(&ModelOptions::default(), None).unwrap();
+        let mut m = preferring(&[EpKind::Cpu]);
+        m.runtime.session_config = vec![(DISABLE.into(), "MatMulAddFusion;TransposeOptimizer".into())];
+        let b = rt.builder(&m).unwrap();
+        let key = std::ffi::CString::new(DISABLE).unwrap();
+        let mut value = [0u8; 64];
+        let mut len = value.len();
+        // SAFETY: a live session options pointer, a NUL-terminated key, and `len` bytes of output buffer
+        let status = unsafe { (ort::api().GetSessionConfigEntry)(b.ptr(), key.as_ptr(), value.as_mut_ptr().cast(), &mut len) };
+        assert!(status.0.is_null(), "the entry is set");
+        assert_eq!(&value[..len], b"MatMulAddFusion;TransposeOptimizer\0");
     }
 
     #[test]
