@@ -5,6 +5,9 @@
 The baseline was made at 07e569c with onnxruntime 1.31.1 on the CPU EP, from apps/gpui-demo:
     gpui-demo classify --model all --json demo_stack/*.jpg   (classify_all.json, 112 rows)
     gpui-demo classify --json demo_stack/*.jpg               (classify_default.json, 28 rows of model.onnx)
+Make the candidate with the same heads and `--ep cpu`. For classify_default.json that is `--model deployed`: the
+default head now depends on the machine (Fast where TensorRT registers), and a default run's rows are Fast's there.
+    gpui-demo classify --ep cpu --model deployed --json demo_stack/*.jpg > NEW.json
 On the CPU EP two runs are bit-identical. Rows are matched on (image file name, model; a row without one is
 "deployed"). A row passes when the label, the abstain flag and the top-3 labels are equal and every probability is
 within --tol. Exit status 1 on any failure or missing row.
@@ -33,6 +36,10 @@ def main():
     a = ap.parse_args()
     heads = set(a.heads.split(",")) if a.heads else None
     base, cand = rows(a.baseline, heads), rows(a.candidate, heads)
+    base_heads, cand_heads = {m for _, m in base}, {m for _, m in rows(a.candidate, None)}
+    if base_heads - cand_heads:
+        print(f"the candidate has no rows for {sorted(base_heads - cand_heads)} (it has {sorted(cand_heads)}); "
+              f"make it with --model {','.join(sorted(base_heads))}", file=sys.stderr)
     fails, worst = [], 0.0
     for key, b in sorted(base.items()):
         c = cand.get(key)

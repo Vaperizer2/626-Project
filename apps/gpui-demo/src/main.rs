@@ -129,6 +129,16 @@ fn parse_args() -> Result<Args> {
                 std::process::exit(0);
             }
             "--models" => a.opts.models = Some(PathBuf::from(value("--models")?)),
+            // the export folder (exports/final) of the app before the model index; not in --help
+            "--model-dir" => {
+                let dir = PathBuf::from(value("--model-dir")?);
+                let index = match dir.parent() {
+                    Some(p) if !dir.join(registry::INDEX_FILE).is_file() => p.to_path_buf(),
+                    _ => dir,
+                };
+                eprintln!("[gpui-demo] --model-dir is deprecated: use --models {}", index.display());
+                a.opts.models = Some(index);
+            }
             "--ort-lib" => a.opts.ort_lib = Some(PathBuf::from(value("--ort-lib")?)),
             "--threads" => a.opts.threads = Some(value("--threads")?.parse().context("--threads")?),
             "--ep" => {

@@ -59,6 +59,13 @@ cargo build --release --locked --features turbojpeg   # Arch has libjpeg-turbo: 
 ./target/release/gpui-demo bench --model fast demo_stack/*.jpg      # latency by stage and streamed FPS (JSON)
 ```
 
+**Output change since the registry (2026-10-31).** Each `classify` text line now has the model's head id as its second
+column (`source, model, label, p, top3, ms`), and each JSON row has a `model` field. Scripts that split the old
+five-column lines or keyed rows by source alone need updating. Without `--model` the head is the machine's default
+(Fast where TensorRT registers, else Deployed), so pass `--model deployed` when output must match across machines.
+`--model-dir DIR` (the old export folder option) still works for now: it means `--models` of the index next to `DIR`,
+with a warning.
+
 The default model is the first entry of `exports/models.json`'s `default` list whose preferred execution provider
 registers here: Fast when TensorRT loads, else Deployed. `--ep` does not change that choice: with `--ep cuda` or
 `--ep cpu` Fast would not run on TensorRT, so Deployed is the default (`--model fast --ep cpu` still runs Fast on the
