@@ -1,7 +1,10 @@
 """Structured attention-head pruning of a So400m trunk graph (FLAP-style, no training).
 
-    heads.py stats <model_dir> <out.npz> [--n 256]           # per block: sum and sum of squares over tokens of
-                                                             # every attn.proj input channel, pool calib images
+    heads.py stats <model_dir> <out.npz> [--n 256] [--role attn.proj]
+                                                             # per block: mean and mean square over tokens of every
+                                                             # input channel of that GEMM, pool calib images; with
+                                                             # --role mlp.fc2 the npz also has the mean_act / rms_act
+                                                             # keys tools/prune/build.py reads
     heads.py prune <src_dir> <stats.npz> <dst_dir> --keep 14  # keep the 14 highest-scoring heads in every block
 
 A head's score is the sum over its 72 channels of std(channel) x ||proj weight row||, the fluctuation criterion the
@@ -34,7 +37,7 @@ def blocks_of(m: onnx.ModelProto) -> list[int]:
     return sorted({int(k.split(".")[1]) for k in gemm_table(m) if k.startswith("blocks.")})
 
 
-def stats(src: Path, out: Path, n: int) -> None:
+def stats(src: Path, out: Path, n: int, role: str = "attn.proj") -> None:
     import onnxruntime as ort
 
     from common import pool_images, preprocess, spec_of
@@ -45,7 +48,7 @@ def stats(src: Path, out: Path, n: int) -> None:
     g.initializer.append(numpy_helper.from_array(np.array([0, 1], np.int64), "hs.axes01"))
     names = []
     for b in blocks_of(m):
-        x = t[f"blocks.{b}.attn.proj"][0].input[0]
+        x = t[f"blocks.{b}.{role}"][0].input[0]
         g.node.extend([helper.make_node("ReduceSum", [x, "hs.axes01"], [f"hs.sum{b}"], keepdims=0),
                        helper.make_node("Mul", [x, x], [f"hs.sq{b}"]),
                        helper.make_node("ReduceSum", [f"hs.sq{b}", "hs.axes01"], [f"hs.sumsq{b}"], keepdims=0)])
@@ -68,8 +71,9 @@ def stats(src: Path, out: Path, n: int) -> None:
         acc = [a.astype(np.float64) for a in r] if acc is None else [a + b for a, b in zip(acc, r)]
     del s
     tokens = (spec_of(src).input_size // 14) ** 2 * len(X)
-    np.savez(out, mean=np.stack(acc[0::2]) / tokens, meansq=np.stack(acc[1::2]) / tokens,
-             blocks=np.array(blocks_of(m)), n_images=len(X))
+    mean, meansq = np.stack(acc[0::2]) / tokens, np.stack(acc[1::2]) / tokens
+    np.savez(out, mean=mean, meansq=meansq, mean_act=mean, rms_act=np.sqrt(meansq), role=role,
+             blocks=np.array(blocks_of(m)), n_images=len(X), input_size=spec_of(src).input_size)
     tmp.unlink()
     for f in src.glob("model.onnx.*"):
         (out.parent / f.name).unlink()
@@ -154,6 +158,7 @@ def main() -> None:
     s.add_argument("src", type=Path)
     s.add_argument("out", type=Path)
     s.add_argument("--n", type=int, default=256)
+    s.add_argument("--role", default="attn.proj")
     p = sub.add_parser("prune")
     p.add_argument("src", type=Path)
     p.add_argument("stats", type=Path)
@@ -161,7 +166,7 @@ def main() -> None:
     p.add_argument("--keep", type=int, required=True)
     a = ap.parse_args()
     if a.cmd == "stats":
-        stats(a.src, a.out, a.n)
+        stats(a.src, a.out, a.n, a.role)
     else:
         prune(a.src, a.stats, a.dst, a.keep)
 
