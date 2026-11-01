@@ -66,7 +66,7 @@ fn find_ort_in(dir: &Path) -> Option<PathBuf> {
 
 /// Resolve libonnxruntime: `--ort-lib`, `$ORT_DYLIB_PATH`, the project's uv venv
 /// (`<repo>/.venv/.../onnxruntime/capi/`), a copy next to the executable, else the system loader path.
-pub fn resolve_ort_lib(explicit: Option<&Path>, exports: Option<&Path>) -> PathBuf {
+pub(crate) fn resolve_ort_lib(explicit: Option<&Path>, exports: Option<&Path>) -> PathBuf {
     if let Some(p) = explicit {
         return p.to_path_buf();
     }
@@ -152,7 +152,7 @@ pub struct Runtime {
 impl Runtime {
     /// dlopen libonnxruntime (see [`resolve_ort_lib`]) and create the environment. No provider is registered on
     /// the environment: each session gets its own list.
-    pub fn init(opts: &Settings, exports: Option<&Path>) -> Result<Self> {
+    pub(crate) fn init(opts: &Settings, exports: Option<&Path>) -> Result<Self> {
         let ort_lib = resolve_ort_lib(opts.ort_lib.as_deref(), exports);
         let env = ort::init_from(&ort_lib)
             .map_err(|e| {
@@ -172,7 +172,8 @@ impl Runtime {
         Ok(Self { env, ort_lib, version, threads: opts.threads, eps: opts.eps.clone(), cache_dir: opts.cache_dir.clone() })
     }
 
-    /// The providers to try for `m`, in order (see [`preferences`]).
+    /// The providers to try for `m`, in order: the manifest's list, or `Settings::eps` with the manifest's options
+    /// for a provider it lists.
     pub fn preferences(&self, m: &Manifest) -> Vec<Ep> {
         preferences(self.eps.as_deref(), m)
     }
@@ -201,7 +202,7 @@ impl Runtime {
     /// Load `m`'s graph with the first providers that work. A session that fails with a GPU provider is retried
     /// without it, so a provider that registers but cannot build its part of the graph (an unsupported GPU, an
     /// engine that does not fit) still ends up as a visible skip rather than a dead model.
-    pub fn session(&self, m: &Manifest, stage: &dyn Fn(LoadStage)) -> Result<(Session, Placement)> {
+    pub(crate) fn session(&self, m: &Manifest, stage: &dyn Fn(LoadStage)) -> Result<(Session, Placement)> {
         let mut candidates = self.preferences(m);
         let mut skipped: Vec<(EpKind, String)> = Vec::new();
         loop {
@@ -287,7 +288,7 @@ impl Runtime {
     /// files, the onnxruntime and TensorRT versions and the GPU. A new graph, library or GPU never meets a stale
     /// engine; it builds its own once. None when no libnvinfer loads, since the provider cannot load either, and
     /// when the app keeps no cache.
-    pub fn engine_cache(&self, m: &Manifest) -> Option<PathBuf> {
+    pub(crate) fn engine_cache(&self, m: &Manifest) -> Option<PathBuf> {
         let trt = tensorrt_version()?;
         let base = self.cache_dir.as_ref()?.join("tensorrt");
         Some(base.join(format!("{}-{}-ort{}-trt{trt}-{}", m.id.as_str(), graph_key(m), self.version, gpu_name())))
@@ -398,14 +399,14 @@ fn reason(e: &str) -> String {
 }
 
 /// One loaded ONNX graph; serves every head of its manifest (one per output).
-pub struct Engine {
+pub(crate) struct Engine {
     session: Session,
     pub manifest: Arc<Manifest>,
     pub placement: Placement,
 }
 
 impl Engine {
-    pub fn load(rt: &Runtime, manifest: Arc<Manifest>, stage: &dyn Fn(LoadStage)) -> Result<Self> {
+    pub(crate) fn load(rt: &Runtime, manifest: Arc<Manifest>, stage: &dyn Fn(LoadStage)) -> Result<Self> {
         let (session, placement) = rt.session(&manifest, stage)?;
         check_io(&session, &manifest)?;
         Ok(Self { session, manifest, placement })
@@ -553,7 +554,7 @@ mod tests {
 
     /// A manifest preferring `providers`, in order.
     fn preferring(providers: &[EpKind]) -> Manifest {
-        let mut m = Arc::try_unwrap(crate::service::fake::manifest("fast", 1)).unwrap();
+        let mut m = Arc::try_unwrap(crate::testing::manifest("fast", 1)).unwrap();
         m.runtime.providers = providers.iter().map(|&kind| Ep { kind, options: vec![] }).collect();
         m
     }

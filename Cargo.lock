@@ -3673,6 +3673,7 @@ dependencies = [
  "futures",
  "hotpath",
  "image",
+ "inference",
  "ort",
  "rayon",
  "serde",

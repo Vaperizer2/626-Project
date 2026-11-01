@@ -692,7 +692,7 @@ mod tests {
     #[test]
     fn a_requested_head_without_a_result_is_a_failed_row() {
         let (x, y) = (HeadId::new("x"), HeadId::new("y"));
-        let task = &inference::service::fake::manifest("x", 1).heads[0].task;
+        let task = &inference::testing::manifest("x", 1).heads[0].task;
         let answer = classification::read_head(task, &[0.9, 0.1]).unwrap();
         let rows = rows_of(&[x.clone(), y.clone()], vec![(x.clone(), Ok(answer), Timing::default())], None);
         let heads: Vec<&HeadId> = rows.iter().map(|r| &r.0).collect();
@@ -712,7 +712,7 @@ mod tests {
     #[test]
     fn json_rows_have_one_shape_and_flag_low_confidence() {
         let head = HeadId::new("x");
-        let mut m = Arc::try_unwrap(inference::service::fake::manifest("x", 1)).unwrap();
+        let mut m = Arc::try_unwrap(inference::testing::manifest("x", 1)).unwrap();
         let Task::Classify(t) = &mut m.heads[0].task;
         t.decision = manifest::Decision::Commit { low_confidence_below: manifest::Prob::new(0.95) };
         let answer = classification::read_head(&m.heads[0].task, &[0.9, 0.1]).unwrap();

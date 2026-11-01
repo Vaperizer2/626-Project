@@ -106,7 +106,6 @@ pub enum Policy {
     /// every submit runs (Classify history, Run all)
     Keep,
     /// a submit supersedes the lane's queued and running work (for a live camera; no tab streams yet)
-    #[cfg_attr(not(test), allow(dead_code))]
     Latest,
 }
 
@@ -794,9 +793,6 @@ fn run_batch(m: &Manifest, g: &mut dyn Graph, batch: Vec<GraphJob>) {
         j.req.graph_done();
     }
 }
-
-#[cfg(any(test, feature = "test-support"))]
-pub mod fake;
 
 #[cfg(test)]
 mod tests;

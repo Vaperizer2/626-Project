@@ -38,3 +38,7 @@ sha2 = "0.10"
 anyhow = "1"
 turbojpeg = { version = "=1.5.1", default-features = false, features = ["pkg-config"], optional = true }
 hotpath = { version = "0.28", optional = true }
+
+[dev-dependencies]
+# the crate doc's example runs on `testing`
+inference = { path = ".", features = ["test-support"] }

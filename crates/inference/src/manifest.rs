@@ -14,8 +14,8 @@ use std::sync::Arc;
 
 use serde::Deserialize;
 
-pub const SCHEMA: &str = "model-manifest/1";
-pub const INDEX_SCHEMA: &str = "model-index/1";
+pub(crate) const SCHEMA: &str = "model-manifest/1";
+pub(crate) const INDEX_SCHEMA: &str = "model-index/1";
 
 /// A head's id: unique across the index, the `--model` name and the JSON `model` field.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -71,7 +71,7 @@ impl Sha256 {
         Some(Self(out))
     }
 
-    pub fn short(&self) -> String {
+    pub(crate) fn short(&self) -> String {
         self.to_string()[..12].to_string()
     }
 }
@@ -272,10 +272,10 @@ pub struct Ep {
 }
 
 impl Ep {
-    pub fn option(&self, key: &str) -> Option<&str> {
+    pub(crate) fn option(&self, key: &str) -> Option<&str> {
         self.options.iter().find(|(k, _)| k == key).map(|(_, v)| v.as_str())
     }
-    pub fn flag(&self, key: &str) -> bool {
+    pub(crate) fn flag(&self, key: &str) -> bool {
         matches!(self.option(key), Some("1" | "true" | "True"))
     }
 }
@@ -317,7 +317,7 @@ pub struct Manifest {
 
 /// The index: manifests in UI order and the default heads in order of preference.
 #[derive(Debug)]
-pub struct Index {
+pub(crate) struct Index {
     pub default: Vec<HeadId>,
     pub manifests: Vec<PathBuf>,
 }
@@ -472,7 +472,7 @@ fn read(path: &Path) -> Result<String, ManifestError> {
 
 /// Parse `<dir>/model.json` (and the labels files it names). Files the graph needs are not opened here; see
 /// `registry` for their availability.
-pub fn parse_manifest(path: &Path) -> Result<Manifest, ManifestError> {
+pub(crate) fn parse_manifest(path: &Path) -> Result<Manifest, ManifestError> {
     let text = read(path)?;
     let w: WireManifest =
         serde_json::from_str(&text).map_err(|e| ManifestError { path: path.to_path_buf(), msg: e.to_string() })?;
@@ -646,7 +646,7 @@ fn from_wire(w: WireManifest, path: &Path, dir: &Path) -> Result<Manifest, Strin
 }
 
 /// Parse `exports/models.json`. Manifest paths are relative to it.
-pub fn parse_index(path: &Path) -> Result<Index, ManifestError> {
+pub(crate) fn parse_index(path: &Path) -> Result<Index, ManifestError> {
     let err = |msg: String| ManifestError { path: path.to_path_buf(), msg };
     let w: WireIndex = serde_json::from_str(&read(path)?).map_err(|e| err(e.to_string()))?;
     if w.schema != INDEX_SCHEMA {

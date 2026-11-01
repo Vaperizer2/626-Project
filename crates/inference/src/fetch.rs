@@ -5,11 +5,11 @@ use std::time::Duration;
 
 use anyhow::{Context, Result, bail};
 
-pub const MAX_URL_BYTES: u64 = 20 * 1024 * 1024;
-pub const URL_TIMEOUT: Duration = Duration::from_secs(20);
+pub(crate) const MAX_URL_BYTES: u64 = 20 * 1024 * 1024;
+pub(crate) const URL_TIMEOUT: Duration = Duration::from_secs(20);
 /// Wikimedia (and some other hosts) answer HTTP 403 to anonymous/default agents and ask automated clients to
 /// identify themselves; this names the crate.
-pub const USER_AGENT: &str = concat!("inference/", env!("CARGO_PKG_VERSION"), " (Rust ureq)");
+pub(crate) const USER_AGENT: &str = concat!("inference/", env!("CARGO_PKG_VERSION"), " (Rust ureq)");
 
 /// What the user gave us.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -98,7 +98,7 @@ fn percent_decode(s: &str) -> String {
 }
 
 /// HTTP GET with a descriptive user agent, a 20 s timeout and a 20 MB cap.
-pub fn fetch_url(url: &str) -> Result<Vec<u8>> {
+pub(crate) fn fetch_url(url: &str) -> Result<Vec<u8>> {
     let agent: ureq::Agent = ureq::Agent::config_builder()
         .timeout_global(Some(URL_TIMEOUT))
         .user_agent(USER_AGENT)
