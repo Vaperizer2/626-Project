@@ -70,6 +70,11 @@ pub fn pct(p: f32) -> String {
     }
 }
 
+/// A load or run time: "16 ms" below a second, "2.1 s" above.
+pub fn duration(ms: f64) -> String {
+    if ms < 1000.0 { format!("{ms:.0} ms") } else { format!("{:.1} s", ms / 1000.0) }
+}
+
 /// A keyboard shortcut chip, e.g. `kbd("ctrl-o")`.
 pub fn kbd(keys: &str) -> Kbd {
     Kbd::new(Keystroke::parse(keys).unwrap_or_else(|_| Keystroke::parse("escape").expect("valid keystroke")))
@@ -349,7 +354,7 @@ pub fn model_state_chip(state: &ModelState, cx: &App) -> AnyElement {
             .into_any_element(),
         ModelState::Ready(l) => pill(
             Lucide::CircleCheck,
-            format!("ready on {} · loaded in {:.1} s", l.placement.primary().name(), l.ms / 1000.0),
+            format!("ready on {} · loaded in {}", l.placement.primary().name(), duration(l.ms)),
             r.muted_fg,
         ),
         ModelState::Unavailable(_) => pill(Lucide::CircleOff, "not exported".into(), r.muted_fg),
@@ -361,6 +366,12 @@ pub fn model_state_chip(state: &ModelState, cx: &App) -> AnyElement {
 mod unit {
     use super::*;
     use gpui_kit::AssetSource as _;
+
+    #[test]
+    fn durations_keep_their_digits() {
+        assert_eq!(duration(16.4), "16 ms", "a fast load does not read as 0.0 s");
+        assert_eq!(duration(2137.0), "2.1 s");
+    }
 
     /// Every Lucide icon named in the GUI sources must resolve through `AppAssets`, or it renders blank.
     #[test]

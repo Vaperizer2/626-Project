@@ -390,7 +390,7 @@ impl DemoApp {
                         } else {
                             "checksums not verified since the files changed (gpui-demo models --check)"
                         };
-                        format!("{name} — on {}, loaded in {:.1} s, {checked}{skipped}", l.placement, l.ms / 1000.0)
+                        format!("{name} — on {}, loaded in {}, {checked}{skipped}", l.placement, widgets::duration(l.ms))
                     }
                     ModelState::Loading { stage: LoadStage::BuildingEngine, .. } => {
                         format!("{name} — building its TensorRT engine (first run only)")
