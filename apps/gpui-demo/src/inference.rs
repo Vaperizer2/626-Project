@@ -803,15 +803,20 @@ pub(crate) mod fake {
     }
 
     #[derive(Default)]
-    pub struct Gate(Mutex<bool>, Condvar);
+    pub struct Gate(Mutex<bool>, Condvar, AtomicBool);
 
     impl Gate {
         pub fn open(&self) {
             *self.0.lock().unwrap() = true;
             self.1.notify_all();
         }
+        /// a load is waiting here, so its actor holds the job that asked for it
+        pub fn holds(&self) -> bool {
+            self.2.load(Ordering::SeqCst)
+        }
         fn wait(&self) {
             let mut open = self.0.lock().unwrap();
+            self.2.store(true, Ordering::SeqCst);
             while !*open {
                 open = self.1.wait(open).unwrap();
             }
@@ -998,7 +1003,7 @@ mod tests {
         let lane = inf.lane(Priority::Bulk, Policy::Keep);
         let mut hs: Vec<RequestHandle> = (0..8).map(|v| lane.submit(image(v * 30), &ids(&["z"]), None)).collect();
         // the first job is held by the loading actor, the other seven wait in its queue
-        wait_until("seven queued jobs", || inf.queued(&GraphId::new("z")) == 7);
+        wait_until("one held job and seven queued", || gate.holds() && inf.queued(&GraphId::new("z")) == 7);
         gate.open();
         for h in &mut hs {
             assert!(matches!(finish(h).1, Finish::Complete { .. }));
@@ -1020,13 +1025,16 @@ mod tests {
 
         let a = lane.submit(image(1), &ids(&["z"]), None);
         let mut b = lane.submit(image(2), &ids(&["z"]), None);
-        wait_until("one queued job", || inf.queued(&GraphId::new("z")) == 1);
+        wait_until("one held job and one queued", || gate.holds() && inf.queued(&GraphId::new("z")) == 1);
         gate.open();
         wait_until("a batch of two to start", || started(1));
         let RequestHandle { updates: mut a_updates, ticket } = a;
         drop(ticket);
         assert!(matches!(finish(&mut b).1, Finish::Complete { .. }), "b survives a's cancel");
-        assert!(fake.seen().contains(&Seen::Ran { graph: "z".into(), rows: vec![1, 2] }), "the run was not stopped");
+        // two io workers may hand b to the graph before a, so the rows come in either order
+        let seen = fake.seen();
+        let ran_both = |rows: &[u8]| rows.len() == 2 && rows.contains(&1) && rows.contains(&2);
+        assert!(seen.iter().any(|s| matches!(s, Seen::Ran { rows, .. } if ran_both(rows))), "the run was not stopped: {seen:?}");
         let a_done = loop {
             match a_updates.try_recv() {
                 Ok(Update::Done(f)) => break f,
