@@ -50,4 +50,17 @@ case_ "a venv with another onnxruntime version is passed over" "$GOOD/onnxruntim
     "GPU (onnxruntime 1.31.1, TensorRT from $GOOD/tensorrt_libs)" COMPCLASS_GPU_VENV="$T/old venv" VIRTUAL_ENV="$T/good venv"
 case_ "only a wrong version: the CPU library, saying why" "$T/bundle/libonnxruntime.so.1.31.0" "CPU (*1.30.0*1.31*)" \
     COMPCLASS_GPU_VENV="$T/old venv"
+# bundle VERSION DIR: a bundle folder carrying onnxruntime-gpu VERSION beside the CPU library
+bundle() {
+    mkdir -p "$2"
+    : > "$2/libonnxruntime_providers_cuda.so"
+    : > "$2/libonnxruntime.so.1.31.0"
+    : > "$2/libonnxruntime.so.$1"
+}
+bundle 1.30.0 "$T/old bundle"
+bundle 1.31.1 "$T/good bundle"
+case_ "a bundled onnxruntime-gpu of another version is passed over" "$T/old bundle/libonnxruntime.so.1.31.0" \
+    "CPU (*bundle folder*1.30.0*1.31*)" HERE="$T/old bundle" ORT_CPU="$T/old bundle/libonnxruntime.so.1.31.0"
+case_ "a bundled onnxruntime-gpu of the right version is used" "$T/good bundle/libonnxruntime.so.1.31.1" "GPU*" \
+    HERE="$T/good bundle" ORT_CPU="$T/good bundle/libonnxruntime.so.1.31.0"
 exit $fails
