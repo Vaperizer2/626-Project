@@ -292,6 +292,9 @@ pub enum OptLevel {
 #[derive(Debug)]
 pub struct RuntimeSpec {
     pub opt_level: OptLevel,
+    /// onnxruntime session config entries, sorted by key; every session of the graph gets them (e.g.
+    /// `optimization.disable_specified_optimizers`, which keeps rewrites TensorRT miscompiles off the graph)
+    pub session_config: Vec<(String, String)>,
     /// preference order, never empty
     pub providers: Vec<Ep>,
 }
@@ -437,6 +440,8 @@ enum WireDecision {
 struct WireRuntime {
     #[serde(default = "default_opt_level")]
     graph_optimization_level: String,
+    #[serde(default)]
+    session_config: std::collections::BTreeMap<String, String>,
     providers: Vec<WireEp>,
 }
 
@@ -605,6 +610,13 @@ fn from_wire(w: WireManifest, path: &Path, dir: &Path) -> Result<Manifest, Strin
     if w.runtime.providers.is_empty() {
         return Err("runtime.providers is empty".into());
     }
+    let session_config: Vec<(String, String)> = w.runtime.session_config.into_iter().collect();
+    for (k, v) in &session_config {
+        // onnxruntime takes "A,B" as one unknown optimizer name and silently disables nothing
+        if k == "optimization.disable_specified_optimizers" && v.contains(',') {
+            return Err(format!("runtime.session_config {k}: {v:?}: the optimizer names must be separated by ';'"));
+        }
+    }
     let mut providers = Vec::new();
     for p in w.runtime.providers {
         let kind = EpKind::parse(&p.ep).ok_or_else(|| format!("unknown execution provider {:?}", p.ep))?;
@@ -629,7 +641,7 @@ fn from_wire(w: WireManifest, path: &Path, dir: &Path) -> Result<Manifest, Strin
         files,
         input,
         heads,
-        runtime: RuntimeSpec { opt_level, providers },
+        runtime: RuntimeSpec { opt_level, session_config, providers },
     })
 }
 
@@ -738,6 +750,21 @@ mod tests {
             assert!(e.contains(why), "{to}: {e}");
         }
         assert!(parse_text(&MANIFEST.replace(r#""id": "g","#, r#""id": "g", "extra": 1,"#)).is_err(), "unknown keys");
+    }
+
+    #[test]
+    fn session_config_entries_are_carried_and_checked() {
+        let providers = r#""runtime": {"providers""#;
+        let with = |v: &str| {
+            MANIFEST.replace(providers, &format!(r#""runtime": {{"session_config": {{"optimization.disable_specified_optimizers": "{v}"}}, "providers""#))
+        };
+        let m = parse_text(&with("MatMulAddFusion;TransposeOptimizer")).unwrap();
+        let want = [("optimization.disable_specified_optimizers".to_string(), "MatMulAddFusion;TransposeOptimizer".to_string())];
+        assert_eq!(m.runtime.session_config, want);
+        assert!(parse_text(MANIFEST).unwrap().runtime.session_config.is_empty());
+        // onnxruntime reads "A,B" as one unknown optimizer name and disables nothing
+        let e = parse_text(&with("MatMulAddFusion,TransposeOptimizer")).unwrap_err();
+        assert!(e.contains("separated by ';'"), "{e}");
     }
 
     #[test]

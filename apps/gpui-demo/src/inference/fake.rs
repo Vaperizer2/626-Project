@@ -39,7 +39,11 @@ pub fn manifest(id: &str, max_batch: u16) -> Arc<Manifest> {
             },
         },
         heads: vec![HeadSpec { id: HeadId::new(id), title: id.to_uppercase(), short: id.into(), task }],
-        runtime: RuntimeSpec { opt_level: OptLevel::All, providers: vec![Ep { kind: EpKind::Cpu, options: vec![] }] },
+        runtime: RuntimeSpec {
+            opt_level: OptLevel::All,
+            session_config: vec![],
+            providers: vec![Ep { kind: EpKind::Cpu, options: vec![] }],
+        },
     })
 }
 

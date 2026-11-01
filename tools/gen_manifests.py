@@ -2,16 +2,17 @@
 
     python tools/gen_manifests.py [--exports exports] [--check]
 
-A manifest is derived from the files an export already ships (preprocess.json, labels.json, runtime.json,
-model_multi.json, export_report.json) plus the size and sha256 of every file the app reads. The only facts written
-here by hand are in MODELS below: which graph file, the head ids, titles, readout outputs and decision rules. Every
-derived field is asserted against its source, and so are the checksums the export recorded. With the `onnx` module
-the graph's input and outputs are checked too (the harness venv has it; plain python3 skips that check).
+A manifest is derived from the files an export already ships (preprocess.json, labels.json, runtime.json with its
+providers, optimisation level and session_config, model_multi.json, export_report.json) plus the size and sha256 of
+every file the app reads. The only facts written here by hand are in MODELS below: which graph file, the head ids,
+titles, readout outputs and decision rules. Every derived field is asserted against its source, and so are the
+checksums the export recorded. With the `onnx` module the graph's input and outputs are checked too (the harness venv
+has it; plain python3 skips that check).
 
 --check regenerates in memory and exits 1 if a committed model.json or the index differs, or if a graph's IO can be
 checked neither against a recorded export report nor with the `onnx` module (then run it with the harness venv's
-python). Run it after replacing an export; rerun without --check to rewrite. Adding a model is a row in MODELS (or a hand-written model.json in its
-folder plus a line in exports/models.json; the app needs no code change).
+python). Run it after replacing an export; rerun without --check to rewrite. Adding a model is a row in MODELS (or a
+hand-written model.json in its folder plus a line in exports/models.json; the app needs no code change).
 """
 from __future__ import annotations
 
@@ -121,10 +122,10 @@ def graph_io(path: Path):
 
 
 def runtime_of(d: Path, spec: dict):
-    """(graph_optimization_level, providers, max batch): from runtime.json when the export has one."""
+    """(graph_optimization_level, session_config, providers, max batch): from runtime.json when the export has one."""
     rp = d / "runtime.json"
     if not rp.is_file():
-        return spec["opt_level"], spec["providers"], 1
+        return spec["opt_level"], {}, spec["providers"], 1
     rt = load(rp)
     providers = []
     for name in rt.get("provider_order", [rt["provider"]]):
@@ -134,7 +135,12 @@ def runtime_of(d: Path, spec: dict):
             if opts:
                 entry["options"] = opts
         providers.append(entry)
-    return rt.get("graph_optimization_level", "ORT_ENABLE_ALL"), providers, rt.get("static_batch", 1)
+    session_config = rt.get("session_config", {})
+    check(all(isinstance(v, str) for v in session_config.values()), f"{rp}: session_config values must be strings")
+    # onnxruntime reads "A,B" as one unknown optimizer name and disables nothing
+    check("," not in session_config.get("optimization.disable_specified_optimizers", ""),
+          f"{rp}: optimization.disable_specified_optimizers takes names separated by ';'")
+    return rt.get("graph_optimization_level", "ORT_ENABLE_ALL"), session_config, providers, rt.get("static_batch", 1)
 
 
 def build(exports: Path, spec: dict, checking: bool) -> dict:
@@ -149,7 +155,7 @@ def build(exports: Path, spec: dict, checking: bool) -> dict:
     sums = {f: sha256(d / f) for f in files}
     for f, want in recorded_sha(d, spec["graph"]).items():
         check(sums.get(f) == want, f"{d / f}: sha256 {sums.get(f)} but the export recorded {want}")
-    opt_level, providers, max_batch = runtime_of(d, spec)
+    opt_level, session_config, providers, max_batch = runtime_of(d, spec)
 
     io = recorded_io(d, spec["graph"])
     actual = graph_io(d / spec["graph"])
@@ -206,7 +212,8 @@ def build(exports: Path, spec: dict, checking: bool) -> dict:
             },
         },
         "heads": heads,
-        "runtime": {"graph_optimization_level": opt_level, "providers": providers},
+        "runtime": {"graph_optimization_level": opt_level,
+                    **({"session_config": session_config} if session_config else {}), "providers": providers},
         "provenance": provenance,
     }
     verify(manifest, d, pre)
@@ -230,6 +237,7 @@ def verify(m: dict, d: Path, pre: dict) -> None:
         first = m["runtime"]["providers"][0]
         want = {k: v for k, v in rt["options"].items() if k not in APP_OWNED_OPTIONS}
         check(PROVIDERS[rt["provider"]] == first["ep"] and first.get("options", {}) == want, "runtime options")
+        check(m["runtime"].get("session_config", {}) == rt.get("session_config", {}), "runtime session_config")
     for h in m["heads"]:
         t = h["task"]
         check(t["decision"]["kind"] != "abstain" or t["calibration"]["kind"] != "none", "abstain needs calibration")
