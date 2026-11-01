@@ -69,10 +69,9 @@ impl Stamps {
         m.files.iter().all(|f| self.verified(f))
     }
 
-    fn record(&mut self, f: &FileEntry) {
-        if let Some((bytes, mtime_ns)) = now_stamp(&f.path) {
-            self.map.insert(key(&f.path), Stamp { bytes, mtime_ns, sha256: f.sha256.to_string() });
-        }
+    /// `f` had size and mtime `(bytes, mtime_ns)` before and after it was hashed and found matching.
+    fn record(&mut self, f: &FileEntry, (bytes, mtime_ns): (u64, u128)) {
+        self.map.insert(key(&f.path), Stamp { bytes, mtime_ns, sha256: f.sha256.to_string() });
     }
 
     fn forget(&mut self, f: &FileEntry) {
@@ -114,18 +113,33 @@ pub enum Check {
 
 /// Hash every file of `m` against its manifest; stamps are recorded for files that match and dropped for the rest.
 pub fn check(m: &Manifest, stamps: &mut Stamps) -> Check {
+    check_with(m, stamps, sha256_file)
+}
+
+fn check_with(m: &Manifest, stamps: &mut Stamps, hash: impl Fn(&Path) -> std::io::Result<Sha256>) -> Check {
     let mut bytes = 0;
     for f in &m.files {
-        match sha256_file(&f.path) {
-            Ok(found) if found == f.sha256 => {
-                stamps.record(f);
+        // the stamp comes from before the hash and must still hold after it, so it vouches for the bytes hashed
+        let before = now_stamp(&f.path);
+        let found = hash(&f.path);
+        let stamp = before.filter(|b| now_stamp(&f.path).as_ref() == Some(b));
+        match (found, stamp) {
+            (Ok(_), None) => {
+                stamps.forget(f);
+                return Check::Unreadable {
+                    file: f.path.clone(),
+                    error: "it changed while it was hashed (still being copied?); check again".into(),
+                };
+            }
+            (Ok(found), Some(stamp)) if found == f.sha256 => {
+                stamps.record(f, stamp);
                 bytes += f.bytes;
             }
-            Ok(found) => {
+            (Ok(found), Some(_)) => {
                 stamps.forget(f);
                 return Check::Mismatch { file: f.path.clone(), expected: f.sha256, found };
             }
-            Err(e) => {
+            (Err(e), _) => {
                 stamps.forget(f);
                 return Check::Unreadable { file: f.path.clone(), error: e.to_string() };
             }
@@ -159,11 +173,33 @@ mod tests {
         let f = FileEntry { path: p.clone(), bytes: 3, sha256: sha };
         let mut s = Stamps { path: None, map: BTreeMap::new() };
         assert!(!s.verified(&f), "never checked");
-        s.record(&f);
+        s.record(&f, now_stamp(&p).unwrap());
         assert!(s.verified(&f));
         std::thread::sleep(std::time::Duration::from_millis(10));
         std::fs::write(&p, b"abd").unwrap();
         assert!(!s.verified(&f), "rewritten since the check");
+        let _ = std::fs::remove_dir_all(&dir); // test scratch dir under the OS temp dir only
+    }
+
+    #[test]
+    fn a_file_that_changes_while_it_is_hashed_is_not_stamped() {
+        let dir = std::env::temp_dir().join(format!("gpui-demo-stamp-race-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let p = dir.join("w.bin");
+        std::fs::write(&p, b"abc").unwrap();
+        let mut m = std::sync::Arc::try_unwrap(crate::inference::fake::manifest("x", 1)).unwrap();
+        m.files = vec![FileEntry { path: p.clone(), bytes: 3, sha256: sha256_file(&p).unwrap() }];
+        let mut s = Stamps { path: None, map: BTreeMap::new() };
+        // the hash reads "abc"; a copy then finishes writing "abd" before the hash returns
+        let check = check_with(&m, &mut s, |path| {
+            let sha = sha256_file(path);
+            std::fs::write(path, b"abd").unwrap();
+            let f = std::fs::File::options().write(true).open(path).unwrap();
+            f.set_modified(std::time::SystemTime::now() + std::time::Duration::from_secs(5)).unwrap();
+            sha
+        });
+        assert!(!matches!(check, Check::Ok { .. }), "the bytes on disk are not the ones hashed: {check:?}");
+        assert!(!s.verified(&m.files[0]), "no stamp vouches for the new bytes");
         let _ = std::fs::remove_dir_all(&dir); // test scratch dir under the OS temp dir only
     }
 }
