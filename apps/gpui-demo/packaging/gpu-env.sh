@@ -1,16 +1,22 @@
-# Find the GPU runtime for the Component Classifier; sourced by run.sh and run-nixos.sh (POSIX sh, set -eu safe).
+# Find the GPU runtime for the app; sourced by run.sh and run-nixos.sh after app.env (POSIX sh, set -eu safe).
 #
 # The bundle ships a CPU onnxruntime. The GPU runtime (onnxruntime-gpu 1.31 with its CUDA 13 + cuDNN 9 libraries,
-# and TensorRT 10 for the fast model) is a separate download of several GB, usually a Python venv:
-#     uv venv ~/.local/share/component-classifier/gpu --python 3.12
-#     uv pip install --python ~/.local/share/component-classifier/gpu/bin/python \
+# and TensorRT 10) is a separate download of several GB, usually a Python venv. It does not depend on the app, so
+# one install per machine serves every app built from this template:
+#     uv venv ~/.local/share/onnxruntime-gpu/1.31 --python 3.12
+#     uv pip install --python ~/.local/share/onnxruntime-gpu/1.31/bin/python \
 #         'onnxruntime-gpu[cuda,cudnn]==1.31.1' 'tensorrt-cu13-libs==10.16.1.11'
-# It is looked for in $COMPCLASS_GPU_VENV, that default location, an active $VIRTUAL_ENV, then the bundle folder.
+# It is looked for in $<ENV_PREFIX>_GPU_VENV, that shared folder (under $XDG_DATA_HOME when set), the app's own
+# older folder <data>/<APP_NAME>/gpu, an active $VIRTUAL_ENV, then the bundle folder.
 # Found: ORT_DYLIB_PATH points at its libonnxruntime and GPU_LIBPATH lists the directories the loader needs. Not
 # found: the bundled CPU library is used. GPU_STATE says which, and why, in one line.
-# COMPCLASS_GPU=0 skips the search; an ORT_DYLIB_PATH you set yourself is kept.
+# <ENV_PREFIX>_GPU=0 skips the search; an ORT_DYLIB_PATH you set yourself is kept.
 #
-# In: HERE (bundle folder), ORT_CPU (the bundled CPU library). Out: ORT_DYLIB_PATH, GPU_LIBPATH, GPU_STATE.
+# In: HERE (bundle folder), ORT_CPU (the bundled CPU library), APP_NAME and ENV_PREFIX (app.env).
+# Out: ORT_DYLIB_PATH, GPU_LIBPATH, GPU_STATE, and app_env for the launchers.
+
+# app_env NAME: the value of $<ENV_PREFIX>_NAME, empty when unset
+app_env() { eval "printf '%s' \"\${${ENV_PREFIX}_$1-}\""; }
 
 GPU_LIBPATH=""
 GPU_STATE=""
@@ -55,8 +61,8 @@ gpu_try() {
 }
 
 gpu_find() {
-    if [ "${COMPCLASS_GPU:-1}" = 0 ]; then
-        GPU_STATE="CPU (COMPCLASS_GPU=0)"
+    if [ "$(app_env GPU)" = 0 ]; then
+        GPU_STATE="CPU (${ENV_PREFIX}_GPU=0)"
         return 0
     fi
     if ! ls /proc/driver/nvidia/gpus/* >/dev/null 2>&1; then
@@ -64,7 +70,9 @@ gpu_find() {
         return 0
     fi
     gpu_ort=""
-    if gpu_try "${COMPCLASS_GPU_VENV:-}" || gpu_try "${XDG_DATA_HOME:-$HOME/.local/share}/component-classifier/gpu" \
+    gpu_venv=$(app_env GPU_VENV)
+    gpu_data="${XDG_DATA_HOME:-$HOME/.local/share}"
+    if gpu_try "$gpu_venv" || gpu_try "$gpu_data/onnxruntime-gpu/$GPU_ORT_SERIES" || gpu_try "$gpu_data/$APP_NAME/gpu" \
         || gpu_try "${VIRTUAL_ENV:-}"; then
         :
     elif [ -f "$HERE/libonnxruntime_providers_cuda.so" ]; then
@@ -81,12 +89,12 @@ gpu_find() {
         GPU_STATE="CPU ($gpu_why: see README.txt, GPU)"
         return 0
     fi
-    if [ -z "$gpu_ort" ] && [ -n "${COMPCLASS_GPU_VENV:-}" ]; then
-        GPU_STATE="CPU (COMPCLASS_GPU_VENV=$COMPCLASS_GPU_VENV holds no onnxruntime-gpu: see README.txt, GPU)"
+    if [ -z "$gpu_ort" ] && [ -n "$gpu_venv" ]; then
+        GPU_STATE="CPU (${ENV_PREFIX}_GPU_VENV=$gpu_venv holds no onnxruntime-gpu: see README.txt, GPU)"
         return 0
     fi
     if [ -z "$gpu_ort" ]; then
-        GPU_STATE="CPU (no onnxruntime-gpu found: install one as README.txt says under GPU, or set COMPCLASS_GPU_VENV)"
+        GPU_STATE="CPU (no onnxruntime-gpu found: install one as README.txt says under GPU, or set ${ENV_PREFIX}_GPU_VENV)"
         return 0
     fi
     ORT_DYLIB_PATH="$gpu_ort"

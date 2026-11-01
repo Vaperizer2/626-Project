@@ -1,5 +1,5 @@
 #!/bin/sh
-# Component Classifier: launcher for the portable Linux bundle.
+# Launcher for the portable Linux bundle; the app's name and variables come from app.env.
 # Everything (binary, onnxruntime, models, demo pictures) is found relative to this script, so the folder can
 # live anywhere and be started from any directory. All arguments are passed through to the app:
 #   ./run.sh                          open the window
@@ -8,16 +8,18 @@
 #   ./run.sh --help                   all options
 set -eu
 HERE=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
-BIN="$HERE/gpui-demo"
-
-# Explicit paths (an environment variable already set by the caller wins).
-export COMPCLASS_MODELS="${COMPCLASS_MODELS:-$HERE/exports}"
-export COMPCLASS_DEMO_DIR="${COMPCLASS_DEMO_DIR:-$HERE/demo_stack}"
+. "$HERE/app.env"
+BIN="$HERE/$BIN"
 
 # onnxruntime: an installed onnxruntime-gpu (CUDA, and TensorRT for the fast model) when there is one, else the
 # bundled CPU library. gpu-env.sh says which in one line.
 ORT_CPU="$HERE/libonnxruntime.so.1.31.0"
 . "$HERE/gpu-env.sh"
+
+# Explicit paths (an environment variable already set by the caller wins).
+models=$(app_env MODELS)
+demo_dir=$(app_env DEMO_DIR)
+export "${ENV_PREFIX}_MODELS=${models:-$HERE/exports}" "${ENV_PREFIX}_DEMO_DIR=${demo_dir:-$HERE/demo_stack}"
 if [ -n "$GPU_LIBPATH" ]; then
     export LD_LIBRARY_PATH="$GPU_LIBPATH${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 fi

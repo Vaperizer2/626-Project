@@ -48,15 +48,16 @@ The share-2026-10-30 release predates Fast and the GPU launcher: use a bundle bu
 runtime, which the bundle does not ship (about 7 GB, no root):
 
 ```bash
-uv venv ~/.local/share/component-classifier/gpu --python 3.12
-uv pip install --python ~/.local/share/component-classifier/gpu/bin/python \
+uv venv ~/.local/share/onnxruntime-gpu/1.31 --python 3.12
+uv pip install --python ~/.local/share/onnxruntime-gpu/1.31/bin/python \
   'onnxruntime-gpu[cuda,cudnn]==1.31.1' 'tensorrt-cu13-libs==10.16.1.11'
 ./run.sh models        # first line: "run.sh: onnxruntime on GPU (onnxruntime 1.31.1, TensorRT from ...)"
 ./run.sh --tab demo    # starts on Fast; the first start builds the TensorRT engine (about 46 s), later ones ~1-2 s
 ```
 
-The driver must support CUDA 13. `run.sh` also finds the runtime through `COMPCLASS_GPU_VENV=<venv>` or an active
-virtualenv; `COMPCLASS_GPU=0` forces the CPU. Without TensorRT the app starts on Deployed (CUDA); without any GPU
+The driver must support CUDA 13. That folder is one install per machine, shared by every app built from the template.
+`run.sh` also finds the runtime through `COMPCLASS_GPU_VENV=<venv>`, the older `~/.local/share/component-classifier/gpu`
+or an active virtualenv; `COMPCLASS_GPU=0` forces the CPU. Without TensorRT the app starts on Deployed (CUDA); without any GPU
 runtime it runs on the CPU and says so on the launcher's first line and in `./run.sh models`.
 
 Fast's ONNX files are not in any release yet. Copy `model.onnx` and `model.onnx.data` (440 MB) from the export (on
