@@ -259,15 +259,15 @@ impl Runtime {
 
     /// A graph's TensorRT engines live in a per-user directory named by what an engine depends on: the graph's
     /// files, the onnxruntime and TensorRT versions and the GPU. A new graph, library or GPU never meets a stale
-    /// engine; it builds its own once.
+    /// engine; it builds its own once. None when no libnvinfer loads, since the provider cannot load either.
     pub fn engine_cache(&self, m: &Manifest) -> Option<PathBuf> {
+        let trt = tensorrt_version()?;
         let base = crate::integrity::cache_dir()?.join("tensorrt");
         let mut graph = sha2::Sha256::new();
         for f in m.files.iter().filter(|f| f.path == m.graph || m.external.contains(&f.path)) {
             graph.update(f.sha256.0);
         }
         let graph = crate::manifest::Sha256(graph.finalize().into()).short();
-        let trt = tensorrt_version().unwrap_or_else(|| "unknown".into());
         Some(base.join(format!("{}-{graph}-ort{}-trt{trt}-{}", m.id.as_str(), self.version, gpu_name())))
     }
 
