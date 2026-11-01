@@ -175,8 +175,10 @@ impl DemoApp {
                             match update {
                                 Update::Decoded { size, display } => {
                                     e.dims = Some(size);
-                                    if let Some(d) = display {
-                                        e.image = Some(render(d));
+                                    // two requests (a model switch before the first decode) both carry a copy;
+                                    // keep the first, so no painted texture is replaced without drop_image
+                                    if e.image.is_none() {
+                                        e.image = display.map(render);
                                     }
                                 }
                                 u => e.results.apply(&model, token, u),
