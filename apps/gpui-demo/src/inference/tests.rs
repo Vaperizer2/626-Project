@@ -239,3 +239,11 @@ fn a_picture_read_during_shutdown_starts_no_graph() {
     assert!(fake.seen().is_empty(), "no graph loaded or ran after shutdown: {:?}", fake.seen());
     let _ = std::fs::remove_dir_all(&dir); // test scratch dir under the OS temp dir only
 }
+
+#[test]
+fn a_default_no_manifest_provides_is_passed_over() {
+    let (_inf, mut ev) = Inference::spawn(registry(&[("deployed", 1)], &["fast", "deployed"]), FakeLoader::default());
+    let (head, passed_over) = default_of(&mut ev);
+    assert_eq!(head, Some(HeadId::new("deployed")));
+    assert!(matches!(&passed_over[..], [(f, _)] if f.as_str() == "fast"), "the notice can say why: {passed_over:?}");
+}
