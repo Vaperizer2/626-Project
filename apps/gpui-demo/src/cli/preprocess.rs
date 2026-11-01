@@ -7,6 +7,7 @@ use inference::fetch::Source;
 use inference::preprocess;
 
 use super::{Args, Command, heads, registry};
+use crate::app;
 
 pub const COMMAND: Command = Command {
     name: "preprocess",
@@ -16,7 +17,7 @@ pub const COMMAND: Command = Command {
 };
 
 fn run(a: &Args) -> Result<u8> {
-    let [img, out] = a.rest.as_slice() else { bail!("usage: gpui-demo preprocess IMAGE OUT.f32 [--model HEAD]") };
+    let [img, out] = a.rest.as_slice() else { bail!("usage: {} preprocess IMAGE OUT.f32 [--model HEAD]", app::BIN) };
     let reg = registry(a)?;
     let head = match heads(a, &reg)?.as_slice() {
         [h] => h.clone(),
@@ -32,6 +33,6 @@ fn run(a: &Args) -> Result<u8> {
         buf.extend_from_slice(&v.to_le_bytes());
     }
     std::fs::write(out, buf)?;
-    eprintln!("[gpui-demo] {} -> {} ({} floats, {:.1} ms)", img, out, t.len(), t0.elapsed().as_secs_f64() * 1000.0);
+    log!("{} -> {} ({} floats, {:.1} ms)", img, out, t.len(), t0.elapsed().as_secs_f64() * 1000.0);
     Ok(0)
 }

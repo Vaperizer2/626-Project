@@ -1,5 +1,12 @@
 //! The window, or one subcommand of `app::COMMANDS` over the same models and without a window (see `--help`).
 
+/// `eprintln!` behind the binary's name in brackets, as every log line of the app starts.
+macro_rules! log {
+    ($($arg:tt)*) => {
+        eprintln!("[{}] {}", $crate::app::BIN, format_args!($($arg)*))
+    };
+}
+
 mod app;
 mod cli;
 mod demo;
@@ -12,7 +19,7 @@ fn main() -> ExitCode {
     // HOTPATH_SHUTDOWN_MS=N (e.g. for a GUI session): print the report and exit after N ms.
     #[cfg(feature = "hotpath")]
     let _hotpath = {
-        let b = hotpath::HotpathGuardBuilder::new("gpui-demo").percentiles(&[50.0, 95.0]).limit(0);
+        let b = hotpath::HotpathGuardBuilder::new(app::BIN).percentiles(&[50.0, 95.0]).limit(0);
         if std::env::var_os("HOTPATH_SHUTDOWN_MS").is_some() {
             b.build_with_shutdown(std::time::Duration::ZERO);
             None
@@ -23,7 +30,7 @@ fn main() -> ExitCode {
     let args = match cli::parse_args() {
         Ok(a) => a,
         Err(e) => {
-            eprintln!("gpui-demo: {e:#}");
+            eprintln!("{}: {e:#}", app::BIN);
             return ExitCode::from(64);
         }
     };
@@ -37,7 +44,7 @@ fn main() -> ExitCode {
     match r {
         Ok(code) => ExitCode::from(code),
         Err(e) => {
-            eprintln!("gpui-demo: {e:#}");
+            eprintln!("{}: {e:#}", app::BIN);
             ExitCode::from(1)
         }
     }

@@ -38,18 +38,18 @@ use inference::service::{Inference, ServiceEvent};
 use shell::Shell;
 
 actions!(
-    gpui_demo,
+    app,
     [Open, Paste, FocusUrl, ToggleTheme, Quit, NextModel, StepPrev, StepNext, Activate, RunAll, Cancel]
 );
 
 /// Ctrl+1 to Ctrl+9: show the tab at this index.
 #[derive(Clone, PartialEq, Action)]
-#[action(namespace = gpui_demo, no_json)]
+#[action(namespace = app, no_json)]
 pub struct ShowTab(pub usize);
 
 /// Key context of the root view; arrows, j/k and Enter only fire when no text field has focus.
-const CTX: &str = "GpuiDemo";
-const CTX_NAV: &str = "GpuiDemo && !Input";
+const CTX: &str = "Shell";
+const CTX_NAV: &str = "Shell && !Input";
 
 /// Redraw `cx`'s view every 250 ms while `busy` holds, for the elapsed-time counters.
 fn tick_while<T: 'static>(cx: &mut Context<T>, busy: impl Fn(&T, &App) -> bool + 'static) {
@@ -114,8 +114,9 @@ pub fn run(opts: Settings, gui: GuiOptions, initial: Vec<String>) {
     let unset = |v: &str| std::env::var_os(v).is_none_or(|s| s.is_empty());
     if cfg!(target_os = "linux") && unset("DISPLAY") && unset("WAYLAND_DISPLAY") {
         eprintln!(
-            "gpui-demo: no display (neither WAYLAND_DISPLAY nor DISPLAY is set). Run it from a desktop session, \
-             or use `gpui-demo classify <images>` for headless output."
+            "{bin}: no display (neither WAYLAND_DISPLAY nor DISPLAY is set). Run it from a desktop session, \
+             or use `{bin} classify <images>` for headless output.",
+            bin = crate::app::BIN
         );
         std::process::exit(1);
     }
@@ -129,7 +130,7 @@ pub fn run(opts: Settings, gui: GuiOptions, initial: Vec<String>) {
         let quit = move |cx: &mut App| {
             // release every session before exit handlers run (see Inference::shutdown)
             inference.shutdown_or_exit(Duration::from_secs(3), 0, || {
-                eprintln!("[gpui-demo] a model is still loading; quitting without waiting for it")
+                log!("a model is still loading; quitting without waiting for it")
             });
             cx.quit();
         };
@@ -159,7 +160,8 @@ pub fn run(opts: Settings, gui: GuiOptions, initial: Vec<String>) {
             }
             Err(e) => {
                 eprintln!(
-                    "gpui-demo: failed to open the window: {e:#} (see README troubleshooting: Wayland/X11/Vulkan)"
+                    "{}: failed to open the window: {e:#} (see README troubleshooting: Wayland/X11/Vulkan)",
+                    crate::app::BIN
                 );
                 quit(cx);
                 return;

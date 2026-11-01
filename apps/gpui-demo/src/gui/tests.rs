@@ -59,7 +59,7 @@ fn bench<'a>(v: &Shell, cx: &'a App) -> &'a BenchTab {
 
 /// An index with model A's manifest and labels but not its graph.
 fn index_without_graphs(tag: &str) -> PathBuf {
-    let tmp = std::env::temp_dir().join(format!("gpui-demo-gui-{tag}-{}", std::process::id()));
+    let tmp = std::env::temp_dir().join(format!("{}-gui-{tag}-{}", crate::app::BIN, std::process::id()));
     let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../exports/itri626/A_scratch_cnn");
     std::fs::create_dir_all(tmp.join("A")).unwrap();
     for f in ["model.json", "labels.json"] {

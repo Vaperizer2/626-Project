@@ -46,7 +46,7 @@ const BUNDLED_FONTS: [&[u8]; 2] =
 pub fn register_bundled_fonts(cx: &mut App) {
     let fonts = BUNDLED_FONTS.iter().map(|b| std::borrow::Cow::Borrowed(*b)).collect();
     if let Err(e) = cx.text_system().add_fonts(fonts) {
-        eprintln!("gpui-demo: could not register the bundled Noto Sans ({e:#}); using system fonts");
+        eprintln!("{}: could not register the bundled Noto Sans ({e:#}); using system fonts", crate::app::BIN);
     }
 }
 
@@ -56,7 +56,7 @@ pub fn install(cx: &mut App) {
     let installed = cx.text_system().all_font_names();
     let family = UI_FONTS.iter().copied().find(|f| installed.iter().any(|n| n == f));
     if let Err(e) = ThemeRegistry::global_mut(cx).load_themes_from_str(&theme_set_with_font(family)) {
-        eprintln!("gpui-demo: built-in theme failed to load ({e:#}); using the GPUI Kit defaults");
+        eprintln!("{}: built-in theme failed to load ({e:#}); using the GPUI Kit defaults", crate::app::BIN);
         return;
     }
     let (light, dark) = {
