@@ -161,7 +161,7 @@ pub fn run(opts: Settings, gui: GuiOptions, initial: Vec<String>) {
         let opened = gpui_kit::open_window(options, cx, |window, cx| {
             theme::apply_initial(gui.theme, window, cx);
             window.set_window_title(crate::app::TITLE);
-            cx.new(|cx| Shell::new(service, &gui, initial, window, cx))
+            cx.new(|cx| Shell::new(service, &gui, initial, crate::app::TABS, window, cx))
         });
         match opened {
             Ok((handle, view)) => {

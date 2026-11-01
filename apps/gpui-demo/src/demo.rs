@@ -224,9 +224,6 @@ mod tests {
     fn shipped_stack_is_valid() {
         // the demo_stack/ committed next to Cargo.toml
         let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("demo_stack");
-        if !dir.join(STACK_FILE).is_file() {
-            return;
-        }
         let s = DemoStack::load(&dir).unwrap();
         assert!(s.images.len() >= 20);
         for (i, im) in s.images.iter().enumerate() {

@@ -614,3 +614,6 @@ impl Render for DemoTab {
             .child(prof!("gui::build_tab_elements", self.render_body(window, cx)))
     }
 }
+
+#[cfg(test)]
+mod tests;

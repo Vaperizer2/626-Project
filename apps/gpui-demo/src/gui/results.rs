@@ -23,11 +23,6 @@ impl Results {
         self.0.get(head)
     }
 
-    #[cfg(test)]
-    pub fn working(&self) -> bool {
-        self.0.values().any(|r| matches!(r, HeadResult::Working(_)))
-    }
-
     pub fn start(&mut self, head: HeadId, token: u64) {
         self.0.insert(head, HeadResult::Working(token));
     }

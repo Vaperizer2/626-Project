@@ -126,12 +126,6 @@ impl Tab for ClassifyTab {
 }
 
 impl ClassifyTab {
-    /// Something is classifying (the spinners animate themselves; the tests wait for this).
-    #[cfg(test)]
-    pub fn busy(&self) -> bool {
-        self.entries.iter().any(|e| e.results.working())
-    }
-
     fn selected_ix(&self) -> Option<usize> {
         self.selected.and_then(|id| self.entries.iter().position(|e| e.id == id))
     }
@@ -580,3 +574,6 @@ impl Render for ClassifyTab {
             .child(prof!("gui::build_tab_elements", self.render_body(window, cx)))
     }
 }
+
+#[cfg(test)]
+mod tests;
