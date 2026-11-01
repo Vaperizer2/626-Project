@@ -19,7 +19,7 @@ turbojpeg-vendored = ["turbojpeg", "turbojpeg/cmake", "turbojpeg/require-simd"]
 # Profiling with hotpath (https://hotpath.rs): `prof!` blocks are measured. Off by default: without the feature
 # the crate is not even in the build and every `prof!` block compiles to plain code.
 hotpath = ["dep:hotpath", "hotpath/hotpath"]
-# The fake loader and fixtures of `service::fake`, for the tests of crates that depend on this one.
+# The fake loader and fixtures of `testing`, for the tests of crates that depend on this one.
 test-support = []
 
 [dependencies]

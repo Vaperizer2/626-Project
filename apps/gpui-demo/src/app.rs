@@ -9,6 +9,8 @@ use crate::gui::classify::ClassifyTab;
 use crate::gui::demo_tab::DemoTab;
 use crate::gui::stack::Stack;
 use crate::gui::{GuiOptions, Lucide, TabSpec};
+use inference::manifest::Task;
+use inference::registry::Head;
 
 /// The per-user cache is `$XDG_CACHE_HOME/<NAME>` (or `~/.cache/<NAME>`).
 pub const NAME: &str = "component-classifier";
@@ -21,8 +23,6 @@ pub const ENV_PREFIX: &str = "COMPCLASS";
 pub const BIN: &str = env!("CARGO_BIN_NAME");
 /// The title bar's icon.
 pub const ICON: Lucide = Lucide::Microchip;
-/// What the title bar calls the selected head's labels, after their count.
-pub const LABELS: &str = "electronic-component classes";
 /// The `label` of an abstaining head in `classify` output (the Python demo's spelling).
 pub const UNSURE: &str = "UNSURE";
 
@@ -32,6 +32,12 @@ pub const TABS: &[TabSpec] = &[TabSpec::of::<ClassifyTab>(), TabSpec::of::<DemoT
 /// The subcommands, in `--help`'s order. A subcommand is a module with a `cli::Command` and a line here.
 pub const COMMANDS: &[Command] =
     &[cli::classify::COMMAND, cli::preprocess::COMMAND, cli::bench::COMMAND, cli::models::COMMAND];
+
+/// The title bar's note on the selected head, after the app's title.
+pub fn subtitle(head: &Head) -> Option<String> {
+    let Task::Classify(c) = &head.spec.task;
+    Some(format!("{} electronic-component classes", c.labels.len()))
+}
 
 /// What the tabs share besides the models: the demo stack, for the Demo and Benchmark tabs.
 pub struct Shared {
