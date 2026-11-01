@@ -91,10 +91,10 @@ pub fn picture(tag: &str) -> PathBuf {
     p
 }
 
-/// An index with model A's manifest and labels but not its graph.
+/// An index with model A's manifest and labels (the inference crate's test fixtures) but not its graph.
 pub fn index_without_graphs(tag: &str) -> PathBuf {
     let tmp = std::env::temp_dir().join(format!("{}-gui-{tag}-{}", app::BIN, std::process::id()));
-    let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../exports/itri626/A_scratch_cnn");
+    let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../crates/inference/tests/fixtures/itri626/A_scratch_cnn");
     std::fs::create_dir_all(tmp.join("A")).unwrap();
     for f in ["model.json", "labels.json"] {
         std::fs::copy(src.join(f), tmp.join("A").join(f)).unwrap();

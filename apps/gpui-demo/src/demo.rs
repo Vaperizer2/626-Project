@@ -220,6 +220,21 @@ mod tests {
         let _ = std::fs::remove_dir_all(&tmp); // test scratch dir under the OS temp dir only
     }
 
+    /// The index in exports/ loads without problems; with REQUIRE_EXPORTS=1 every head's files must be present too.
+    #[test]
+    fn shipped_index_is_valid() {
+        use inference::{registry::Registry, runtime::Settings};
+        let models = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../exports");
+        let r = Registry::open(&Settings { models: Some(models), ..Default::default() }).unwrap();
+        assert!(r.problems().is_empty(), "{:?}", r.problems());
+        assert_eq!(r.ids().len(), 5, "A, B, C, Deployed and Fast");
+        if std::env::var_os("REQUIRE_EXPORTS").is_some_and(|v| v == "1") {
+            for h in r.heads() {
+                h.available().unwrap_or_else(|e| panic!("{}: {e}", h.id()));
+            }
+        }
+    }
+
     #[test]
     fn shipped_stack_is_valid() {
         // the demo_stack/ committed next to Cargo.toml

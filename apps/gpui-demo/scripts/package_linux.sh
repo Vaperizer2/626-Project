@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Build the portable Linux x86_64 bundle of the app named in packaging/app.env, for another machine:
-#   dist/<APP_NAME>-linux-x86_64/          binary + onnxruntime + models + demo stack + run.sh + docs
+#   dist/<APP_NAME>-linux-x86_64/          binary + onnxruntime + run.sh + README.txt + packaging/bundle.txt's entries
 #   dist/<APP_NAME>-linux-x86_64.tar.gz    (+ .sha256, + .part-aa/ab/... of 1900 MiB for 2 GB upload caps)
 #
 # The binary is linked against an old glibc with cargo-zigbuild (default 2.28, the same floor as the manylinux_2_28 onnxruntime; GLIBC=2.31 etc. also work) and decodes
@@ -10,11 +10,11 @@
 # Needs on the build machine: rustup/cargo, cargo-zigbuild (`cargo install cargo-zigbuild`), zig 0.14 (`uv pip install
 # ziglang==0.14.1`, then CARGO_ZIGBUILD_ZIG_PATH=<site-packages>/ziglang/zig; zig 0.17 fails to link, see README.md),
 # cmake + nasm (libjpeg-turbo), python3, binutils (readelf/objdump/strip), tar, gzip, split, sha256sum.
-# Inputs: exports/{final,fast}, exports/itri626/{A_scratch_cnn,B_convnext_tiny}, apps/gpui-demo/demo_stack and a
-# CPU onnxruntime 1.31 library (ORT_LIB, default target/release/libonnxruntime.so.1.31.0). The GPU
-# runtime is not bundled (several GB); run.sh finds an installed one (packaging/gpu-env.sh).
+# Inputs: what packaging/bundle.txt lists (the models, and whatever else the app ships) and a CPU onnxruntime 1.31
+# library (ORT_LIB, default target/release/libonnxruntime.so.1.31.0). The GPU runtime is not bundled (several GB);
+# run.sh finds an installed one (packaging/gpu-env.sh).
 #
-# Usage: apps/gpui-demo/scripts/package_linux.sh [--skip-build] [--no-archive]
+# Usage: apps/<app>/scripts/package_linux.sh [--skip-build] [--no-archive]
 # Env:   GLIBC=2.28  PART_MIB=1900  CARGO_BUILD_JOBS=4  CARGO_TARGET_DIR=dist/.build-target  ORT_LIB=...  DIST=<repo>/dist
 set -euo pipefail
 
@@ -68,35 +68,24 @@ for lib in $needed; do
     esac
 done
 [ -f "$ORT_LIB" ] || die "onnxruntime library not found: $ORT_LIB (set ORT_LIB)"
-for f in "$REPO/exports/final/model.onnx.data" "$REPO/exports/final/model_multi.onnx" \
-    "$REPO/exports/itri626/A_scratch_cnn/model.onnx" "$REPO/exports/itri626/B_convnext_tiny/model.onnx" \
-    "$REPO/exports/fast/model.onnx" "$REPO/exports/fast/model.onnx.data" "$APP/demo_stack/demo_stack.json"; do
-    [ -f "$f" ] || die "missing input $f"
+# "<path from the repo root> [<place in the bundle>]" per entry
+mapfile -t ENTRIES < <(grep -v '^[[:space:]]*\(#\|$\)' "$APP/packaging/bundle.txt" || true)
+for e in "${ENTRIES[@]}"; do
+    read -r src _ <<< "$e"
+    [ -e "$REPO/$src" ] || die "missing input $REPO/$src (listed in packaging/bundle.txt)"
 done
 
 # ---------------------------------------------------------------------------------------------- 3. bundle
 say "assembling $OUT"
 rm -rf "$OUT"
-mkdir -p "$OUT/exports/final" "$OUT/exports/itri626" "$OUT/LICENSES"
+mkdir -p "$OUT/LICENSES"
 cp "$BUILT" "$OUT/$BIN" && strip --strip-all "$OUT/$BIN"
 cp "$ORT_LIB" "$OUT/libonnxruntime.so.1.31.0"
-# what the app reads: the index, each model.json and the files it lists (model_multi.onnx carries Deployed + C
-# in one graph over model.onnx.data), plus preprocess.json as the human-readable contract
-cp "$REPO/exports/models.json" "$OUT/exports/models.json"
-for f in model.onnx.data model_multi.onnx model.json preprocess.json labels.json; do
-    cp --reflink=auto "$REPO/exports/final/$f" "$OUT/exports/final/"
+for e in "${ENTRIES[@]}"; do
+    read -r src dst <<< "$e"
+    dst=$OUT/${dst:-$src}
+    mkdir -p "$(dirname "$dst")" && cp -r --reflink=auto "$REPO/$src" "$dst"
 done
-for m in A_scratch_cnn B_convnext_tiny; do
-    mkdir -p "$OUT/exports/itri626/$m"
-    for f in model.onnx model.json preprocess.json labels.json; do cp "$REPO/exports/itri626/$m/$f" "$OUT/exports/itri626/$m/"; done
-done
-# the fast model (440 MB): its TensorRT engine is built on the user's GPU on first use; without TensorRT the app
-# starts on Deployed and fast still runs on CUDA
-mkdir -p "$OUT/exports/fast"
-for f in model.onnx model.onnx.data model.json preprocess.json runtime.json labels.json; do
-    cp --reflink=auto "$REPO/exports/fast/$f" "$OUT/exports/fast/"
-done
-cp -r "$APP/demo_stack" "$OUT/demo_stack"
 cp "$APP/packaging/run.sh" "$OUT/run.sh" && cp "$APP/packaging/run-nixos.sh" "$OUT/run-nixos.sh" && chmod 755 "$OUT/run.sh" "$OUT/run-nixos.sh" "$OUT/$BIN"
 cp "$APP/packaging/app.env" "$OUT/app.env" && cp "$APP/packaging/gpu-env.sh" "$OUT/gpu-env.sh"
 cp "$APP/packaging/README.txt" "$OUT/README.txt"
@@ -114,7 +103,6 @@ cp "$REG"/turbojpeg-sys-*/libjpeg-turbo/README.ijg "$L/libjpeg-turbo-README.ijg"
 cp "$REG"/gpui-kit-assets-*/LICENSE-LUCIDE "$L/Lucide-icons-LICENSE.txt"
 cp "$(find "$REG" -maxdepth 2 -path "*/serde-1.*/LICENSE-APACHE" | sort -V | tail -1)" "$L/Apache-2.0.txt"
 cp "$(find "$REG" -maxdepth 2 -path "*/serde-1.*/LICENSE-MIT" | sort -V | tail -1)" "$L/MIT-template.txt"
-cp "$APP/packaging/licenses/DATASET.txt" "$L/DATASET.txt"
 cargo metadata --format-version 1 --manifest-path "$APP/Cargo.toml" --locked --features turbojpeg-vendored \
     --filter-platform "$TRIPLE" | python3 "$APP/packaging/crate_licenses.py" > "$L/THIRD-PARTY-CRATES.txt"
 echo "$(grep -c '^[a-z0-9]' "$L/THIRD-PARTY-CRATES.txt") crates listed"
