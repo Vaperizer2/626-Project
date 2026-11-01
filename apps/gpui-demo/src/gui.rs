@@ -105,12 +105,8 @@ pub fn keymap() -> Vec<KeyBinding> {
 /// The model index (an empty one when it cannot be read, with the reason) and the service over it, backed by
 /// onnxruntime. Reading the index is a few small files; nothing is loaded until a model is used.
 fn service(opts: &Settings) -> (Inference, fmpsc::UnboundedReceiver<ServiceEvent>) {
-    let registry = match Registry::locate(opts.models.as_deref()).and_then(|i| Registry::load(&i)) {
-        Ok(r) => r,
-        Err(e) => Registry::empty(e.to_string()),
-    };
-    let exports = registry.index_path().parent().map(PathBuf::from);
-    Inference::spawn(Arc::new(registry), OrtLoader::new(opts, exports.as_deref()))
+    let registry = Arc::new(Registry::open(opts).unwrap_or_else(|e| Registry::empty(e.to_string())));
+    Inference::spawn(registry.clone(), OrtLoader::new(opts, &registry))
 }
 
 /// Open the window. `initial` are image paths / URLs for the tab that takes pictures.
@@ -132,10 +128,9 @@ pub fn run(opts: Settings, gui: GuiOptions, initial: Vec<String>) {
         let inference = service.0.clone();
         let quit = move |cx: &mut App| {
             // release every session before exit handlers run (see Inference::shutdown)
-            if !inference.shutdown(Duration::from_secs(3)) {
-                eprintln!("[gpui-demo] a model is still loading; quitting without waiting for it");
-                inference::runtime::exit_now(0);
-            }
+            inference.shutdown_or_exit(Duration::from_secs(3), 0, || {
+                eprintln!("[gpui-demo] a model is still loading; quitting without waiting for it")
+            });
             cx.quit();
         };
         let on_quit = quit.clone();

@@ -1,14 +1,15 @@
 //! The model registry: the index (`exports/models.json`) and the manifests it lists, as pure data. No onnxruntime
 //! here: whether a graph's files are present is a filesystem fact checked at load; how it runs is `runtime`'s job.
 //!
-//! Found like this: the path the app was given (the index or its folder), else the first `exports/models.json`
-//! walking up from the current directory and from the executable.
+//! Found like this: the path the app was given (`Settings::models`: the index or its folder), else the first
+//! `exports/models.json` walking up from the current directory and from the executable.
 
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use crate::manifest::{self, GraphId, HeadId, HeadSpec, Manifest, ManifestError};
+use crate::runtime::Settings;
 
 pub const INDEX_FILE: &str = "models.json";
 
@@ -96,8 +97,13 @@ pub struct Registry {
 }
 
 impl Registry {
+    /// The index `settings.models` names, else the first one found walking up, with the manifests it lists.
+    pub fn open(settings: &Settings) -> Result<Self, IndexError> {
+        Self::load(&Self::locate(settings.models.as_deref())?)
+    }
+
     /// `explicit` (the index or its folder), else walk up for `exports/models.json`.
-    pub fn locate(explicit: Option<&Path>) -> Result<PathBuf, IndexError> {
+    pub(crate) fn locate(explicit: Option<&Path>) -> Result<PathBuf, IndexError> {
         let as_index = |p: &Path| if p.is_dir() { p.join(INDEX_FILE) } else { p.to_path_buf() };
         if let Some(p) = explicit {
             return Ok(as_index(p));
@@ -106,7 +112,7 @@ impl Registry {
         searched.iter().find(|p| p.is_file()).cloned().ok_or(IndexError::NotFound { searched })
     }
 
-    pub fn load(index: &Path) -> Result<Self, IndexError> {
+    pub(crate) fn load(index: &Path) -> Result<Self, IndexError> {
         let idx = manifest::parse_index(index).map_err(IndexError::Manifest)?;
         let mut problems = Vec::new();
         let mut graphs = Vec::new();

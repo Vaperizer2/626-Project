@@ -24,6 +24,7 @@ use inference::manifest::HeadId;
 use inference::service::{ImageInput, Inference};
 use inference::testing::{FakeLoader, Seen, registry, shared_registry};
 use inference::registry::Registry;
+use inference::runtime::Settings;
 
 fn stack_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("demo_stack")
@@ -121,7 +122,7 @@ fn open_sized(
 #[gpui_kit::test]
 async fn window_renders_every_tab(cx: &mut TestAppContext) {
     let index = index_without_graphs("tabs");
-    let (handle, view) = open(cx, Arc::new(Registry::load(&index.join("models.json")).unwrap()));
+    let (handle, view) = open(cx, Arc::new(Registry::open(&Settings { models: Some(index.clone()), ..Default::default() }).unwrap()));
     cx.update(|cx| {
         let v = view.read(cx);
         let m = v.models.read(cx);
@@ -603,9 +604,9 @@ async fn missing_index_is_reported(cx: &mut TestAppContext) {
 #[ignore]
 async fn real_benchmark_matches_the_golden_rows(cx: &mut TestAppContext) {
     let exports = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../exports");
-    let reg = Arc::new(Registry::load(&exports.join("models.json")).unwrap());
-    let opts = inference::runtime::Settings { eps: Some(vec![inference::manifest::EpKind::Cpu]), ..Default::default() };
-    let service = Inference::spawn(reg, inference::runtime::OrtLoader::new(&opts, Some(&exports)));
+    let opts = Settings { models: Some(exports), eps: Some(vec![inference::manifest::EpKind::Cpu]), ..Default::default() };
+    let reg = Arc::new(Registry::open(&opts).unwrap());
+    let service = Inference::spawn(reg.clone(), inference::runtime::OrtLoader::new(&opts, &reg));
     cx.executor().allow_parking();
     cx.update(|cx| {
         gpui_kit::init(cx);

@@ -18,12 +18,12 @@ use ort::value::TensorRef;
 
 use crate::service::{Graph, LoadStage, Loaded, Loader, RunFailure};
 use crate::manifest::{Ep, EpKind, Manifest, OptLevel};
-use crate::registry::search_bases;
+use crate::registry::{Registry, search_bases};
 
 /// How the app runs its models.
 #[derive(Debug, Clone, Default)]
 pub struct Settings {
-    /// the index (exports/models.json) or its folder
+    /// the index (exports/models.json) or its folder for [`Registry::open`]; None looks for it
     pub models: Option<PathBuf>,
     pub ort_lib: Option<PathBuf>,
     pub threads: Option<usize>,
@@ -338,7 +338,7 @@ fn graph_key(m: &Manifest) -> String {
 
 /// End the process without running exit handlers: for when a provider is still busy in another thread (an engine
 /// build cannot be interrupted) and its process-wide teardown would race it.
-pub fn exit_now(code: i32) -> ! {
+pub(crate) fn exit_now(code: i32) -> ! {
     #[cfg(unix)]
     {
         unsafe extern "C" {
@@ -529,8 +529,10 @@ pub struct OrtLoader {
 }
 
 impl OrtLoader {
-    pub fn new(opts: &Settings, exports: Option<&Path>) -> Self {
-        Self { opts: opts.clone(), exports: exports.map(Path::to_path_buf), runtime: OnceLock::new() }
+    /// onnxruntime for the graphs of `registry`, as `settings` says. The library is looked for next to the index too.
+    pub fn new(settings: &Settings, registry: &Registry) -> Self {
+        let exports = registry.index_path().parent().map(Path::to_path_buf);
+        Self { opts: settings.clone(), exports, runtime: OnceLock::new() }
     }
 
     pub fn runtime(&self) -> std::result::Result<&Runtime, String> {

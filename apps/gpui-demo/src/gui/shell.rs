@@ -226,12 +226,13 @@ impl Shell {
         (tab.spec.follow_model)(&tab.view, cx);
     }
 
-    /// Has the keyboard while the active tab is on screen.
     /// The index in `app::TABS` of the tab on screen.
+    #[cfg(test)]
     pub fn active_tab(&self) -> usize {
         self.active
     }
 
+    /// Has the keyboard while the active tab is on screen.
     pub fn active_focus(&self) -> FocusHandle {
         self.tabs[self.active].focus.clone()
     }

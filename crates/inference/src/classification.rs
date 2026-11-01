@@ -5,12 +5,7 @@
 use std::sync::Arc;
 
 use crate::manifest::{Calibration, ClassifyTask, Decision, Labels, Readout, Task};
-
-/// One head's output. Tabs match on the variants they can show.
-#[derive(Debug, Clone)]
-pub enum HeadOutput {
-    Classify(Classification),
-}
+use crate::service::HeadOutput;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Answer {

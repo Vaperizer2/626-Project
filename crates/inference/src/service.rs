@@ -20,7 +20,7 @@ use std::time::{Duration, Instant};
 use futures::channel::mpsc as fmpsc;
 use image::{RgbImage, RgbaImage};
 
-use crate::classification::{HeadOutput, read_head};
+use crate::classification::{Classification, read_head};
 use crate::fetch::Source;
 use crate::manifest::{GraphId, HeadId, Manifest, Preprocess, Task};
 use crate::preprocess;
@@ -161,6 +161,12 @@ impl Timing {
         self.preprocess_ms + self.run_ms + self.post_ms
     }
 
+}
+
+/// One head's answer on one image. Tabs match on the variants they can show.
+#[derive(Debug, Clone)]
+pub enum HeadOutput {
+    Classify(Classification),
 }
 
 pub enum Update {
@@ -460,6 +466,16 @@ impl Inference {
             }
         }
         all
+    }
+
+    /// [`shutdown`](Self::shutdown); when a worker is still busy after `grace`, `busy` runs (to say so) and the
+    /// process ends with `code` at once, without exit handlers, which would race the busy provider's teardown.
+    pub fn shutdown_or_exit(&self, grace: Duration, code: i32, busy: impl FnOnce()) {
+        if !self.shutdown(grace) {
+            busy();
+            let _ = std::io::Write::flush(&mut std::io::stdout());
+            crate::runtime::exit_now(code);
+        }
     }
 
     pub fn registry(&self) -> &Arc<Registry> {

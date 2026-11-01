@@ -3,8 +3,8 @@
 
 use std::collections::HashMap;
 
-use inference::classification::{Classification, HeadOutput};
-use inference::service::{Finish, RunError, Timing, Update};
+use inference::classification::Classification;
+use inference::service::{Finish, HeadOutput, RunError, Timing, Update};
 use inference::manifest::HeadId;
 
 pub enum HeadResult {

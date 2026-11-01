@@ -16,15 +16,14 @@
 //!   and skips, with the reason, those that fail. TensorRT engines are cached per graph, onnxruntime version,
 //!   TensorRT version and GPU under [`runtime::Settings::cache_dir`]. [`integrity`] hashes the weights against their
 //!   manifest and records stamps there, which later loads read.
-//! * [`classification::HeadOutput`] is one head's answer.
+//! * [`service::HeadOutput`] is one head's answer.
 //!
 //! The backend is a seam with two adapters. [`service::Loader`] builds [`service::Graph`]s from manifests, and
 //! `testing::FakeLoader` (feature `test-support`) does so without model files:
 //!
 //! ```
 //! use futures::StreamExt;
-//! use inference::classification::HeadOutput;
-//! use inference::service::{Inference, Policy, Priority, Update};
+//! use inference::service::{HeadOutput, Inference, Policy, Priority, Update};
 //! use inference::testing::{FakeLoader, image, registry};
 //!
 //! // one graph "x" with one head "x" and batches of up to 4; "x" is the default head
