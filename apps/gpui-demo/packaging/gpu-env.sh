@@ -4,7 +4,7 @@
 # and TensorRT 10 for the fast model) is a separate download of several GB, usually a Python venv:
 #     uv venv ~/.local/share/component-classifier/gpu --python 3.12
 #     uv pip install --python ~/.local/share/component-classifier/gpu/bin/python \
-#         'onnxruntime-gpu[cuda,cudnn]==1.31.1' 'tensorrt-cu13-libs==10.16.1'
+#         'onnxruntime-gpu[cuda,cudnn]==1.31.1' 'tensorrt-cu13-libs==10.16.1.11'
 # It is looked for in $COMPCLASS_GPU_VENV, that default location, an active $VIRTUAL_ENV, then the bundle folder.
 # Found: ORT_DYLIB_PATH points at its libonnxruntime and GPU_LIBPATH lists the directories the loader needs. Not
 # found: the bundled CPU library is used. GPU_STATE says which, and why, in one line.
@@ -55,8 +55,12 @@ gpu_find() {
         done
         GPU_LIBPATH="$HERE"
     fi
+    if [ -z "$gpu_ort" ] && [ -n "${COMPCLASS_GPU_VENV:-}" ]; then
+        GPU_STATE="CPU (COMPCLASS_GPU_VENV=$COMPCLASS_GPU_VENV holds no onnxruntime-gpu: see README.txt, GPU)"
+        return 0
+    fi
     if [ -z "$gpu_ort" ]; then
-        GPU_STATE="CPU (no onnxruntime-gpu found: install one as README.txt says, or set COMPCLASS_GPU_VENV)"
+        GPU_STATE="CPU (no onnxruntime-gpu found: install one as README.txt says under GPU, or set COMPCLASS_GPU_VENV)"
         return 0
     fi
     ORT_DYLIB_PATH="$gpu_ort"
@@ -65,9 +69,10 @@ gpu_find() {
         if [ -z "$gpu_trt" ] && [ -f "$d/libnvinfer.so.10" ]; then gpu_trt="$d"; fi
     done
     if [ -n "$gpu_trt" ]; then
+        case ":$GPU_LIBPATH:" in *":$gpu_trt:"*) ;; *) GPU_LIBPATH="$GPU_LIBPATH:$gpu_trt" ;; esac
         GPU_STATE="GPU (onnxruntime ${gpu_ort##*.so.}, TensorRT from $gpu_trt)"
     else
-        GPU_STATE="GPU without TensorRT (no libnvinfer.so.10: the fast model is not the default, Deployed runs on CUDA)"
+        GPU_STATE="GPU without TensorRT (no libnvinfer.so.10: Fast is not the default, Deployed runs on CUDA; README.txt, GPU)"
     fi
     return 0
 }

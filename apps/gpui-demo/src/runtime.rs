@@ -186,12 +186,17 @@ impl Runtime {
         loop {
             let mut b = self.builder(m)?;
             let mut registered = Vec::new();
+            let mut failed = Vec::new();
             for ep in candidates.iter().filter(|e| e.kind != EpKind::Cpu) {
                 match self.provider(ep, m).register(&mut b) {
                     Ok(()) => registered.push(ep.kind),
-                    Err(e) => skipped.push((ep.kind, reason(&e.to_string()))),
+                    Err(e) => {
+                        skipped.push((ep.kind, reason(&e.to_string())));
+                        failed.push(ep.kind);
+                    }
                 }
             }
+            candidates.retain(|c| !failed.contains(&c.kind));
             if registered.is_empty() && !candidates.iter().any(|e| e.kind == EpKind::Cpu) {
                 let tried: Vec<String> = skipped.iter().map(|(k, e)| format!("{}: {e}", k.name())).collect();
                 bail!("{}: none of its execution providers is available ({})", m.graph.display(), tried.join("; "));
@@ -344,12 +349,17 @@ fn gpu_name() -> String {
 }
 
 /// The cause in an onnxruntime error, without its source location ("... with error: libnvinfer.so.10: cannot
-/// open shared object file" becomes the part after "with error: ").
+/// open shared object file" becomes the part after "with error: "; "/onnxruntime_src/...cc:2465
+/// onnxruntime::...GetProviderInfo_CUDA() CUDA Provider not available" the part after the function).
 fn reason(e: &str) -> String {
     let e = e.trim();
     let tail = e.rsplit_once("with error: ").map_or(e, |(_, t)| t);
     let tail = tail.rsplit_once("] : ").map_or(tail, |(_, t)| t);
-    tail.trim().to_string()
+    let tail = match tail.rsplit_once("() ") {
+        Some((location, cause)) if location.contains(".cc:") || location.contains(".h:") => cause,
+        _ => tail,
+    };
+    tail.trim().trim_end_matches('.').to_string()
 }
 
 /// One loaded ONNX graph; serves every head of its manifest (one per output).
@@ -497,5 +507,35 @@ impl Loader for OrtLoader {
         let rt = self.runtime()?;
         let ep = rt.preferences(m).into_iter().next().ok_or("the manifest lists no execution provider")?;
         rt.probe(&ep, m).map_err(|e| format!("{} does not register here: {e}", ep.kind.name()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::reason;
+
+    #[test]
+    fn reasons_drop_onnxruntime_source_locations() {
+        assert_eq!(
+            reason(
+                "/onnxruntime_src/onnxruntime/core/session/provider_bridge_ort.cc:2043 onnxruntime::Provider& \
+                    onnxruntime::ProviderLibrary::Get() [ONNXRuntimeError] : 1 : FAIL : Failed to load library \
+                    libonnxruntime_providers_cuda.so with error: libcuda.so.1: cannot open shared object file: No such \
+                    file or directory"
+            ),
+            "libcuda.so.1: cannot open shared object file: No such file or directory"
+        );
+        assert_eq!(
+            reason(
+                "/onnxruntime_src/onnxruntime/core/session/provider_bridge_ort.cc:2465 \
+                    onnxruntime::ProviderInfo_CUDA& onnxruntime::GetProviderInfo_CUDA() CUDA Provider not available, \
+                    can't get interface for it"
+            ),
+            "CUDA Provider not available, can't get interface for it"
+        );
+        assert_eq!(
+            reason("CUDA execution provider is not enabled in this build."),
+            "CUDA execution provider is not enabled in this build"
+        );
     }
 }

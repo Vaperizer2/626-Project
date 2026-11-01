@@ -33,7 +33,7 @@ if [ ! -x "$BIN" ]; then
 fi
 
 case "${1:-}" in
-    classify | preprocess | models | -h | --help | -V | --version)
+    classify | preprocess | models | bench | -h | --help | -V | --version)
         exec "$BIN" "$@" ;;
 esac
 
