@@ -58,6 +58,7 @@ pub fn image(v: u8) -> ImageInput {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Seen {
+    Loaded { graph: String },
     Started { graph: String, n: usize },
     /// first input value of each row
     Ran { graph: String, rows: Vec<u8> },
@@ -114,6 +115,7 @@ impl Loader for FakeLoader {
         if let Some(g) = self.gates.get(m.id.as_str()) {
             g.wait();
         }
+        self.seen.lock().unwrap().push(Seen::Loaded { graph: m.id.to_string() });
         if self.broken.contains(m.id.as_str()) {
             return Err(format!("{}: Protobuf parsing failed", m.graph.display()));
         }
