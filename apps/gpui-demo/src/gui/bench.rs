@@ -22,7 +22,7 @@ use gpui_kit::{
 };
 
 use super::models::{ModelState, Models};
-use super::stack::Stack;
+use super::stack::{Stack, verdict_colors, verdict_icon};
 use super::widgets::Lucide;
 use super::{Cancel, Hint, RunAll, Tab, theme, widgets};
 use crate::app;
@@ -516,7 +516,7 @@ impl BenchTab {
                     match self.results.get(&(i, k.clone())) {
                         Some(Ok((out, _))) => {
                             let v = im.judge(out.best_label(), out.abstained());
-                            let c = r.verdict(v).0;
+                            let c = verdict_colors(v, cx).0;
                             let (best, p) = (out.best_label(), out.best().1);
                             let label = if out.abstained() { format!("unsure · {best}") } else { best.to_string() };
                             cell.bg(r.surface)
@@ -527,7 +527,7 @@ impl BenchTab {
                                             .gap_1()
                                             .items_center()
                                             .min_w_0()
-                                            .child(Icon::new(widgets::verdict_icon(v)).small().text_color(c))
+                                            .child(Icon::new(verdict_icon(v)).small().text_color(c))
                                             .child(
                                                 div()
                                                     .flex_1()

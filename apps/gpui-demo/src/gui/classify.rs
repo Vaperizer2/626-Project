@@ -346,7 +346,7 @@ impl ClassifyTab {
                 Some(HeadResult::Done(c, ..)) if c.abstained() => h_flex()
                     .gap_1()
                     .items_center()
-                    .child(widgets::verdict_tag(crate::demo::Verdict::Unsure, true, cx))
+                    .child(widgets::unsure_tag(cx))
                     .child(div().text_xs().text_color(t.muted_foreground).truncate().child(c.best_label().to_string()))
                     .into_any_element(),
                 Some(HeadResult::Done(c, ..)) => h_flex()

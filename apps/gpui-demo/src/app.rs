@@ -8,7 +8,7 @@ use crate::gui::bench::BenchTab;
 use crate::gui::classify::ClassifyTab;
 use crate::gui::demo_tab::DemoTab;
 use crate::gui::stack::Stack;
-use crate::gui::{GuiOptions, Lucide, TabSpec};
+use crate::gui::{Lucide, TabSpec};
 use inference::manifest::Task;
 use inference::registry::Head;
 
@@ -17,7 +17,7 @@ pub const NAME: &str = "component-classifier";
 pub const TITLE: &str = "Component Classifier";
 /// What the app does, after its title in `--help`.
 pub const ABOUT: &str = "classify electronic components in pictures";
-/// Environment variables are `<ENV_PREFIX>_MODELS` and `<ENV_PREFIX>_DEMO_DIR`.
+/// Environment variables are `<ENV_PREFIX>_MODELS` and, for the demo stack, `<ENV_PREFIX>_DEMO_DIR`.
 pub const ENV_PREFIX: &str = "COMPCLASS";
 /// The binary's name: the Wayland app id, and what `--help` and the log lines call the app.
 pub const BIN: &str = env!("CARGO_BIN_NAME");
@@ -44,6 +44,6 @@ pub struct Shared {
     pub stack: Entity<Stack>,
 }
 
-pub fn shared(gui: &GuiOptions, cx: &mut App) -> Shared {
-    Shared { stack: cx.new(|cx| Stack::new(gui.demo_dir.clone(), cx)) }
+pub fn shared(cx: &mut App) -> Shared {
+    Shared { stack: cx.new(Stack::new) }
 }

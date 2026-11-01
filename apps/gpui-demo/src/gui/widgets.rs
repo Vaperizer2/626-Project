@@ -1,5 +1,5 @@
-//! Small presentational pieces shared by the tabs: bars, probability rows, the prediction block, verdict pills,
-//! model state chips, keyboard hints, section captions. Colours come from the Kit theme or `theme::roles` only.
+//! Small presentational pieces shared by the tabs: bars, probability rows, the prediction block, pills, model
+//! state chips, keyboard hints, section captions. Colours come from the Kit theme or `theme::roles` only.
 
 use gpui_kit::component::{
     ActiveTheme as _, Icon, IconName, Sizable as _, alert::Alert, h_flex, kbd::Kbd, spinner::Spinner, tag::Tag,
@@ -58,7 +58,6 @@ use super::theme::{self, Roles};
 use super::models::ModelState;
 use inference::classification::{Answer, Classification};
 use inference::service::{LoadStage, RunError, Timing};
-use crate::demo::Verdict;
 
 pub fn pct(p: f32) -> String {
     if p >= 0.995 {
@@ -134,34 +133,22 @@ pub fn bar(value: f32, fill: Hsla, height: Pixels, r: &Roles) -> Div {
         .child(div().h_full().w(relative(v)).rounded_full().bg(fill))
 }
 
-/// The verdict's icon: three different shapes, so the verdict never rests on colour alone.
-pub fn verdict_icon(v: Verdict) -> Lucide {
-    match v {
-        Verdict::Correct => Lucide::CircleCheck,
-        Verdict::Wrong => Lucide::CircleX,
-        Verdict::Unsure => Lucide::CircleQuestionMark,
-    }
-}
-
-pub fn verdict_text(v: Verdict) -> &'static str {
-    match v {
-        Verdict::Correct => "Correct",
-        Verdict::Wrong => "Wrong",
-        Verdict::Unsure => "Unsure",
-    }
-}
-
-/// Pill: icon + word on a soft tint of the verdict colour.
-pub fn verdict_tag(v: Verdict, small: bool, cx: &App) -> Tag {
-    let (c, soft) = theme::roles(cx).verdict(v);
-    let tag = Tag::custom(soft, c, c.opacity(0.35)).rounded_full().child(
+/// Pill: icon + word on a soft tint of `color`.
+pub fn tag(icon: Lucide, text: &'static str, (color, soft): (Hsla, Hsla), small: bool) -> Tag {
+    let tag = Tag::custom(soft, color, color.opacity(0.35)).rounded_full().child(
         h_flex()
             .gap_1()
             .items_center()
-            .child(Icon::new(verdict_icon(v)).xsmall())
-            .child(div().font_weight(FontWeight::SEMIBOLD).child(verdict_text(v))),
+            .child(Icon::new(icon).xsmall())
+            .child(div().font_weight(FontWeight::SEMIBOLD).child(text)),
     );
     if small { tag.small() } else { tag }
+}
+
+/// The small pill of an answer whose head abstained.
+pub fn unsure_tag(cx: &App) -> Tag {
+    let r = theme::roles(cx);
+    tag(Lucide::CircleQuestionMark, "Unsure", (r.unsure, r.unsure_soft), true)
 }
 
 /// Label + percentage + bar. `strong` = the committed top-1 (accent bar), others are muted.
@@ -189,12 +176,13 @@ pub fn prob_row(label: &str, p: f32, strong: bool, large: bool, cx: &App) -> Any
         .into_any_element()
 }
 
-/// Headline + top-3 + all classes. Used by the Classify result panel and the Demo detail pane.
+/// Headline + top-3 + all classes, with `note` under the headline (the Demo detail pane's verdict). Used by the
+/// Classify result panel and the Demo detail pane.
 pub fn prediction_block(
     c: &Classification,
     timing: &Timing,
     title: &str,
-    verdict: Option<(Verdict, &str)>,
+    note: Option<AnyElement>,
     cx: &App,
 ) -> AnyElement {
     let r = theme::roles(cx);
@@ -242,13 +230,6 @@ pub fn prediction_block(
                 )
             }),
     };
-    let verdict_row = verdict.map(|(v, truth)| {
-        h_flex()
-            .gap_2()
-            .items_center()
-            .child(verdict_tag(v, false, cx))
-            .child(div().text_sm().text_color(r.muted_fg).child(format!("True label: {truth}")))
-    });
     let ranked = c.top(c.labels.len());
     let strong = c.committed();
     let rest = ranked.iter().skip(3).map(|&(i, p)| {
@@ -262,7 +243,7 @@ pub fn prediction_block(
     v_flex()
         .gap_5()
         .child(headline)
-        .children(verdict_row)
+        .children(note)
         .child(
             v_flex()
                 .gap_3()

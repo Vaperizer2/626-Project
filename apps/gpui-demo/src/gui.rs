@@ -22,7 +22,6 @@ pub mod widgets;
 pub use shell::{Hint, Tab, TabSpec, keys_help, tab_index};
 pub use widgets::Lucide;
 
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -65,7 +64,7 @@ fn tick_while<T: 'static>(cx: &mut Context<T>, busy: impl Fn(&T, &App) -> bool +
     .detach();
 }
 
-/// Window start-up options (`--tab`, `--autorun`, `--dark`/`--light`, `--demo-dir`).
+/// Window start-up options (`--tab`, `--autorun`, `--dark`/`--light`).
 #[derive(Debug, Clone, Default)]
 pub struct GuiOptions {
     /// index into `app::TABS`
@@ -73,7 +72,6 @@ pub struct GuiOptions {
     pub autorun: bool,
     /// Some(true) = dark, Some(false) = light, None = follow the system
     pub theme: Option<bool>,
-    pub demo_dir: Option<PathBuf>,
 }
 
 pub fn keymap() -> Vec<KeyBinding> {
