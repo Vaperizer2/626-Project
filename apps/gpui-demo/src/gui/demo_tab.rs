@@ -26,8 +26,8 @@ use super::images;
 use super::results::{HeadResult, Results};
 use super::{DemoApp, theme, widgets};
 use crate::demo::{DemoStack, Verdict};
-use crate::inference::{ImageInput, Priority, RequestHandle, Ticket, Update};
-use crate::manifest::HeadId;
+use inference::service::{ImageInput, Priority, RequestHandle, Ticket, Update};
+use inference::manifest::HeadId;
 
 /// Cards are at least this wide; the grid fits as many columns as the window allows and widens them evenly.
 const CARD_MIN_W: f32 = 176.;
@@ -149,7 +149,7 @@ impl DemoApp {
         let it = self.demo.items.get_mut(i)?;
         let input = match &it.rgb {
             Some(rgb) => ImageInput::Decoded(rgb.clone()),
-            None => ImageInput::Source(crate::fetch::Source::File(path)),
+            None => ImageInput::Source(inference::fetch::Source::File(path)),
         };
         let lane = if priority == Priority::Bulk { &self.bulk } else { &self.interactive };
         let RequestHandle { updates: mut rx, ticket } = lane.submit(input, std::slice::from_ref(&model), None);

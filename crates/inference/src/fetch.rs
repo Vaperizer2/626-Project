@@ -8,9 +8,8 @@ use anyhow::{Context, Result, bail};
 pub const MAX_URL_BYTES: u64 = 20 * 1024 * 1024;
 pub const URL_TIMEOUT: Duration = Duration::from_secs(20);
 /// Wikimedia (and some other hosts) answer HTTP 403 to anonymous/default agents and ask automated clients to
-/// identify themselves; this names the demo honestly (same policy as compclass.demo).
-pub const USER_AGENT: &str =
-    concat!("compclass-gpui-demo/", env!("CARGO_PKG_VERSION"), " (educational image-classification demo; Rust ureq)");
+/// identify themselves; this names the crate.
+pub const USER_AGENT: &str = concat!("inference/", env!("CARGO_PKG_VERSION"), " (Rust ureq)");
 
 /// What the user gave us.
 #[derive(Debug, Clone, PartialEq, Eq)]

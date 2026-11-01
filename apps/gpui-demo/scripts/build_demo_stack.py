@@ -8,7 +8,7 @@ Every image is NOT used for training or model selection: all but two come from t
 Commons web holdout (data/web_holdout_v1, evaluated once), the two out-of-scope photos are the credited demo
 images in results/demo/wikimedia_credits.json (downloaded from Commons, sha256-checked).
 
-    uv run --no-config apps/gpui-demo/scripts/build_demo_stack.py [--bin apps/gpui-demo/target/release/gpui-demo]
+    uv run --no-config apps/gpui-demo/scripts/build_demo_stack.py [--bin target/release/gpui-demo]
 
 Writes demo_stack/*.jpg (long side <= 1024 px; holdout files are copied byte-for-byte, they are <= 512 px),
 demo_stack/demo_stack.json and demo_stack/ATTRIBUTION.md. With --bin, every image is classified by the built

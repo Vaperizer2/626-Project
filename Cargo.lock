@@ -2272,14 +2272,11 @@ dependencies = [
  "gpui-kit",
  "hotpath",
  "image",
- "ort",
+ "inference",
  "rayon",
  "serde",
  "serde_json",
- "sha2 0.10.9",
  "smallvec",
- "turbojpeg",
- "ureq",
 ]
 
 [[package]]
@@ -3666,6 +3663,23 @@ dependencies = [
  "hashbrown 0.17.1",
  "serde",
  "serde_core",
+]
+
+[[package]]
+name = "inference"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "futures",
+ "hotpath",
+ "image",
+ "ort",
+ "rayon",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "turbojpeg",
+ "ureq",
 ]
 
 [[package]]

@@ -11,7 +11,7 @@
 # `python -m ziglang` from `uv pip install ziglang==0.14.1` with CARGO_ZIGBUILD_PYTHON_PATH=<that python>),
 # cmake + nasm (libjpeg-turbo), python3, binutils (readelf/objdump/strip), tar, gzip, split, sha256sum.
 # Inputs: exports/{final,fast}, exports/itri626/{A_scratch_cnn,B_convnext_tiny}, apps/gpui-demo/demo_stack and a
-# CPU onnxruntime 1.31 library (ORT_LIB, default apps/gpui-demo/target/release/libonnxruntime.so.1.31.0). The GPU
+# CPU onnxruntime 1.31 library (ORT_LIB, default target/release/libonnxruntime.so.1.31.0). The GPU
 # runtime is not bundled (several GB); run.sh finds an installed one (packaging/gpu-env.sh).
 #
 # Usage: apps/gpui-demo/scripts/package_linux.sh [--skip-build] [--no-archive]
@@ -27,7 +27,7 @@ GLIBC=${GLIBC:-2.28}
 TRIPLE=x86_64-unknown-linux-gnu
 export CARGO_TARGET_DIR=${CARGO_TARGET_DIR:-$DIST/.build-target}
 export CARGO_BUILD_JOBS=${CARGO_BUILD_JOBS:-4}
-ORT_LIB=${ORT_LIB:-$APP/target/release/libonnxruntime.so.1.31.0}
+ORT_LIB=${ORT_LIB:-$REPO/target/release/libonnxruntime.so.1.31.0}
 PART_MIB=${PART_MIB:-1900}
 SKIP_BUILD=0; ARCHIVE=1
 for a in "$@"; do

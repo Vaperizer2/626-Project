@@ -711,7 +711,7 @@ mod tests {
     fn parse_text(text: &str) -> Result<Manifest, String> {
         static N: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
         let n = N.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        let dir = std::env::temp_dir().join(format!("gpui-demo-manifest-{}-{n}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("inference-manifest-{}-{n}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(dir.join("labels.json"), r#"["a","b"]"#).unwrap();
         let w: WireManifest = serde_json::from_str(text).map_err(|e| e.to_string())?;

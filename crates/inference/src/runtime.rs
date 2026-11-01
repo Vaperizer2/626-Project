@@ -16,7 +16,7 @@ use ort::ep::ArbitrarilyConfigurableExecutionProvider as _;
 use ort::session::{RunOptions, Session, builder::GraphOptimizationLevel, builder::SessionBuilder};
 use ort::value::TensorRef;
 
-use crate::inference::{Graph, LoadStage, Loaded, Loader, RunFailure};
+use crate::service::{Graph, LoadStage, Loaded, Loader, RunFailure};
 use crate::manifest::{Ep, EpKind, Manifest, OptLevel};
 use crate::registry::search_bases;
 
@@ -154,12 +154,11 @@ impl Runtime {
             .map_err(|e| {
                 anyhow!(
                     "cannot load the onnxruntime library {}: {e}\n  install one with `uv pip install onnxruntime` \
-                     and pass --ort-lib .../onnxruntime/capi/libonnxruntime.so.<version> (or set ORT_DYLIB_PATH); \
-                     see apps/gpui-demo/README.md",
+                     and pass --ort-lib .../onnxruntime/capi/libonnxruntime.so.<version> (or set ORT_DYLIB_PATH)",
                     ort_lib.display()
                 )
             })?
-            .with_name("gpui-demo")
+            .with_name("inference")
             .build()
             .map_err(|e| anyhow!("creating onnxruntime environment: {e}"))?;
         // the build info string has no version; the library's file name does (libonnxruntime.so.1.31.1)
@@ -549,14 +548,14 @@ mod tests {
 
     /// A manifest preferring `providers`, in order.
     fn preferring(providers: &[EpKind]) -> Manifest {
-        let mut m = Arc::try_unwrap(crate::inference::fake::manifest("fast", 1)).unwrap();
+        let mut m = Arc::try_unwrap(crate::service::fake::manifest("fast", 1)).unwrap();
         m.runtime.providers = providers.iter().map(|&kind| Ep { kind, options: vec![] }).collect();
         m
     }
 
     #[test]
     fn an_engine_built_from_a_replaced_graph_file_is_not_reused() {
-        let dir = std::env::temp_dir().join(format!("gpui-demo-engine-key-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("inference-engine-key-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let onnx = dir.join("model.onnx");
         std::fs::write(&onnx, b"graph").unwrap();
