@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Build speed2 candidates on carlpc2 and judge them with the frozen harness on legion.
-#   build.sh start <id> <tokens_recipe> <prune build.py args | none>   # sync code, launch remote_build.sh
+#   [DROP_BLOCKS=i,j] [QDQ_EXCLUDE=roles] build.sh start <id> <tokens_recipe> <prune build.py args | none>
+#                                                                      # sync code, launch remote_build.sh
 #   build.sh fetch <id>                                                # once the remote log ends in "done"
 #   build.sh judge <id>                                                # harness eval, time, compare x2 (legion)
 # judge compares against the deployed baseline (acceptance) and the current winner (speed).
@@ -22,7 +23,8 @@ start)
   for d in tools/quant tools/speed tools/compose tools/prune tools/tokens tools/speed2 src/compclass; do
     rsync -a --delete --exclude __pycache__ "$REPO/$d/" "carlpc2:$R/repo/$d/"
   done
-  ssh carlpc2 "SPEED2_SHA=$sha QUANT_GIT_SHA=$sha setsid nohup bash $R/repo/tools/speed2/remote_build.sh $id $(printf '%q ' "$@") \
+  env="SPEED2_SHA=$sha QUANT_GIT_SHA=$sha DROP_BLOCKS=${DROP_BLOCKS:-} QDQ_EXCLUDE=${QDQ_EXCLUDE:-}"
+  ssh carlpc2 "$env setsid nohup bash $R/repo/tools/speed2/remote_build.sh $id $(printf '%q ' "$@") \
     > $R/logs/$id.log 2>&1 < /dev/null &"
   echo "started $id @ $sha; log carlpc2:$R/logs/$id.log"
   ;;
