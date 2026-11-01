@@ -154,7 +154,7 @@ mod tests {
 
     #[test]
     fn sha256_of_a_known_string() {
-        let p = std::env::temp_dir().join(format!("gpui-demo-sha-{}", std::process::id()));
+        let p = std::env::temp_dir().join(format!("inference-sha-{}", std::process::id()));
         std::fs::write(&p, b"abc").unwrap();
         assert_eq!(
             sha256_file(&p).unwrap().to_string(),
@@ -165,7 +165,7 @@ mod tests {
 
     #[test]
     fn a_stamp_holds_until_the_file_changes() {
-        let dir = std::env::temp_dir().join(format!("gpui-demo-stamp-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("inference-stamp-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let p = dir.join("w.bin");
         std::fs::write(&p, b"abc").unwrap();
@@ -183,11 +183,11 @@ mod tests {
 
     #[test]
     fn a_file_that_changes_while_it_is_hashed_is_not_stamped() {
-        let dir = std::env::temp_dir().join(format!("gpui-demo-stamp-race-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("inference-stamp-race-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let p = dir.join("w.bin");
         std::fs::write(&p, b"abc").unwrap();
-        let mut m = std::sync::Arc::try_unwrap(crate::inference::fake::manifest("x", 1)).unwrap();
+        let mut m = std::sync::Arc::try_unwrap(crate::service::fake::manifest("x", 1)).unwrap();
         m.files = vec![FileEntry { path: p.clone(), bytes: 3, sha256: sha256_file(&p).unwrap() }];
         let mut s = Stamps { path: None, map: BTreeMap::new() };
         // the hash reads "abc"; a copy then finishes writing "abd" before the hash returns

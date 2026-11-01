@@ -3,9 +3,9 @@
 
 use std::collections::HashMap;
 
-use crate::classification::{Classification, HeadOutput};
-use crate::inference::{Finish, RunError, Timing, Update};
-use crate::manifest::HeadId;
+use inference::classification::{Classification, HeadOutput};
+use inference::service::{Finish, RunError, Timing, Update};
+use inference::manifest::HeadId;
 
 pub enum HeadResult {
     /// submitted; the token tells this request's late "cancelled" apart from a newer request's

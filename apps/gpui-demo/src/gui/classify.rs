@@ -25,9 +25,9 @@ use super::widgets::Lucide;
 use super::images::{DISPLAY_MAX_SIDE, render};
 use super::results::{HeadResult, Results};
 use super::{DemoApp, FocusUrl, ModelState, Open, Paste, theme, widgets};
-use crate::fetch::Source;
-use crate::inference::{ImageInput, RequestHandle, RunError, Ticket, Update};
-use crate::manifest::HeadId;
+use inference::fetch::Source;
+use inference::service::{ImageInput, RequestHandle, RunError, Ticket, Update};
+use inference::manifest::HeadId;
 
 const MAX_ENTRIES: usize = 40;
 
@@ -75,7 +75,7 @@ impl ClassifyState {
 
     /// The selected entry has `head`'s answer, its wall time and its display picture.
     #[cfg(test)]
-    pub fn answered(&self, head: &crate::manifest::HeadId) -> bool {
+    pub fn answered(&self, head: &inference::manifest::HeadId) -> bool {
         self.selected_ix()
             .map(|i| &self.entries[i])
             .is_some_and(|e| matches!(e.results.get(head), Some(HeadResult::Done(_, _, Some(_)))) && e.image.is_some())
@@ -83,7 +83,7 @@ impl ClassifyState {
 
     /// How many entries have `head`'s answer and their display picture.
     #[cfg(test)]
-    pub fn answered_entries(&self, head: &crate::manifest::HeadId) -> usize {
+    pub fn answered_entries(&self, head: &inference::manifest::HeadId) -> usize {
         self.entries
             .iter()
             .filter(|e| matches!(e.results.get(head), Some(HeadResult::Done(_, _, Some(_)))) && e.image.is_some())
@@ -92,7 +92,7 @@ impl ClassifyState {
 
     /// The short status the Recent list shows for the selected entry's failed answer from `head`.
     #[cfg(test)]
-    pub fn failure(&self, head: &crate::manifest::HeadId) -> Option<&'static str> {
+    pub fn failure(&self, head: &inference::manifest::HeadId) -> Option<&'static str> {
         match self.entries[self.selected_ix()?].results.get(head) {
             Some(HeadResult::Failed(e)) => Some(widgets::failure_label(e)),
             _ => None,

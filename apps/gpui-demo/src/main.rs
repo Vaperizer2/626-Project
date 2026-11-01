@@ -6,30 +6,8 @@
 //!   gpui-demo models [--check]                           list the model registry and what is available
 //!   gpui-demo bench [--model HEAD] IMAGE ...             latency by stage and streamed FPS through the service
 
-/// Profile a block with hotpath when built with `--features hotpath`; otherwise expands to the block itself.
-#[cfg(feature = "hotpath")]
-macro_rules! prof {
-    ($label:literal, $e:expr) => {
-        hotpath::measure_block!($label, { $e })
-    };
-}
-#[cfg(not(feature = "hotpath"))]
-macro_rules! prof {
-    ($label:literal, $e:expr) => {
-        $e
-    };
-}
-
-mod classification;
 mod demo;
-mod fetch;
 mod gui;
-mod inference;
-mod integrity;
-mod manifest;
-mod preprocess;
-mod registry;
-mod runtime;
 
 use std::io::Write;
 use std::path::PathBuf;
@@ -39,18 +17,19 @@ use std::time::Instant;
 
 use anyhow::{Context, Result, anyhow, bail};
 use futures::StreamExt;
+use inference::{integrity, preprocess, registry, runtime};
 
-use crate::classification::HeadOutput;
-use crate::fetch::Source;
-use crate::inference::{
+use inference::classification::HeadOutput;
+use inference::fetch::Source;
+use inference::service::{
     Finish, GraphState, ImageInput, Inference, LoadStage, Loaded, Policy, Priority, RequestHandle, RunError,
     ServiceEvent, Timing, Update,
 };
-use crate::manifest::{GraphId, HeadId, Precision, Task};
-use crate::manifest::EpKind;
-use crate::inference::Loader as _;
-use crate::runtime::{ModelOptions, OrtLoader};
-use crate::registry::Registry;
+use inference::manifest::{GraphId, HeadId, Precision, Task};
+use inference::manifest::EpKind;
+use inference::service::Loader as _;
+use inference::runtime::{ModelOptions, OrtLoader};
+use inference::registry::Registry;
 
 const HELP: &str = "\
 gpui-demo - classify electronic components in pictures (GPUI + onnxruntime)
@@ -685,11 +664,12 @@ fn main() -> ExitCode {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use inference::{classification, manifest};
 
     #[test]
     fn a_requested_head_without_a_result_is_a_failed_row() {
         let (x, y) = (HeadId::new("x"), HeadId::new("y"));
-        let task = &inference::fake::manifest("x", 1).heads[0].task;
+        let task = &inference::service::fake::manifest("x", 1).heads[0].task;
         let answer = classification::read_head(task, &[0.9, 0.1]).unwrap();
         let rows = rows_of(&[x.clone(), y.clone()], vec![(x.clone(), Ok(answer), Timing::default())], None);
         let heads: Vec<&HeadId> = rows.iter().map(|r| &r.0).collect();
@@ -709,7 +689,7 @@ mod tests {
     #[test]
     fn json_rows_have_one_shape_and_flag_low_confidence() {
         let head = HeadId::new("x");
-        let mut m = Arc::try_unwrap(inference::fake::manifest("x", 1)).unwrap();
+        let mut m = Arc::try_unwrap(inference::service::fake::manifest("x", 1)).unwrap();
         let Task::Classify(t) = &mut m.heads[0].task;
         t.decision = manifest::Decision::Commit { low_confidence_below: manifest::Prob::new(0.95) };
         let answer = classification::read_head(&m.heads[0].task, &[0.9, 0.1]).unwrap();

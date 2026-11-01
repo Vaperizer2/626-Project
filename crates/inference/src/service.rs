@@ -795,8 +795,8 @@ fn run_batch(m: &Manifest, g: &mut dyn Graph, batch: Vec<GraphJob>) {
     }
 }
 
-#[cfg(test)]
-pub(crate) mod fake;
+#[cfg(any(test, feature = "test-support"))]
+pub mod fake;
 
 #[cfg(test)]
 mod tests;

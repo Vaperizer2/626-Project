@@ -212,7 +212,7 @@ fn a_picture_read_during_shutdown_starts_no_graph() {
     use std::io::Write as _;
     use std::os::unix::fs::OpenOptionsExt as _;
     const O_NONBLOCK: i32 = 0o4000;
-    let dir = std::env::temp_dir().join(format!("gpui-demo-shutdown-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("inference-shutdown-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let fifo = dir.join("picture.png");
     assert!(std::process::Command::new("mkfifo").arg(&fifo).status().unwrap().success());

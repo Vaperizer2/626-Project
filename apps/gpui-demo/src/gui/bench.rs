@@ -23,10 +23,10 @@ use gpui_kit::{
 
 use super::widgets::Lucide;
 use super::{DemoApp, ModelState, theme, widgets};
-use crate::classification::{Classification, HeadOutput};
+use inference::classification::{Classification, HeadOutput};
 use crate::demo::Verdict;
-use crate::inference::{Finish, ImageInput, RequestHandle, RunError, Ticket, Timing, Update};
-use crate::manifest::HeadId;
+use inference::service::{Finish, ImageInput, RequestHandle, RunError, Ticket, Timing, Update};
+use inference::manifest::HeadId;
 
 /// One benchmark run: every image was submitted at once; dropping the run cancels what has not run yet.
 struct BenchRun {
@@ -153,7 +153,7 @@ impl DemoApp {
         for i in 0..n {
             let input = match (self.demo.items.get(i).and_then(|it| it.rgb.clone()), self.demo.stack()) {
                 (Some(rgb), _) => ImageInput::Decoded(rgb),
-                (None, Some(s)) => ImageInput::Source(crate::fetch::Source::File(s.path(i))),
+                (None, Some(s)) => ImageInput::Source(inference::fetch::Source::File(s.path(i))),
                 (None, None) => return,
             };
             let RequestHandle { updates: mut rx, ticket } = self.bulk.submit(input, &models, None);
@@ -628,9 +628,9 @@ impl DemoApp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::classification::read_head;
+    use inference::classification::read_head;
     use crate::demo::DemoStack;
-    use crate::manifest::{Calibration, ClassifyTask, Decision, Labels, Prob, Readout, Task};
+    use inference::manifest::{Calibration, ClassifyTask, Decision, Labels, Prob, Readout, Task};
     use std::path::Path;
     use std::sync::Arc;
 

@@ -56,8 +56,8 @@ impl gpui_kit::AssetSource for AppAssets {
 
 use super::theme::{self, Roles};
 use super::ModelState;
-use crate::classification::{Answer, Classification};
-use crate::inference::{LoadStage, RunError, Timing};
+use inference::classification::{Answer, Classification};
+use inference::service::{LoadStage, RunError, Timing};
 use crate::demo::Verdict;
 
 pub fn pct(p: f32) -> String {

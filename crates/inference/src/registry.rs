@@ -291,7 +291,7 @@ mod tests {
 
     #[test]
     fn missing_or_truncated_files_make_a_graph_unavailable() {
-        let tmp = std::env::temp_dir().join(format!("gpui-demo-registry-{}", std::process::id()));
+        let tmp = std::env::temp_dir().join(format!("inference-registry-{}", std::process::id()));
         let src = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../exports/itri626/A_scratch_cnn");
         let dir = tmp.join("A");
         std::fs::create_dir_all(&dir).unwrap();

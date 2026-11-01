@@ -1,10 +1,11 @@
 //! Display textures, and the demo stack decoded once at start-up on its own thread (rayon), producing display-size
-//! textures and the decoded RGB that later requests reuse. Model work happens in `crate::inference`.
+//! textures and the decoded RGB that later requests reuse. Model work happens in `inference::service`.
 
 use std::sync::Arc;
 use std::time::Instant;
 
 use futures::channel::mpsc as fmpsc;
+use inference::prof;
 use gpui_kit::RenderImage;
 use image::{RgbImage, RgbaImage};
 use rayon::prelude::*;

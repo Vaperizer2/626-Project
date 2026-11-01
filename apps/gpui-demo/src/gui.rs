@@ -5,7 +5,7 @@
 //!
 //! One view (`DemoApp`) owns all state; each tab's state and rendering lives in its own module
 //! (`classify`, `demo_tab`, `bench`). Inference, model loading, image reading and decoding all run in the
-//! inference service (`crate::inference`); results come back over channels that GPUI tasks await.
+//! inference service (`inference::service`); results come back over channels that GPUI tasks await.
 
 mod bench;
 mod classify;
@@ -22,6 +22,7 @@ use std::time::{Duration, Instant};
 
 use futures::StreamExt;
 use futures::channel::mpsc as fmpsc;
+use inference::prof;
 use gpui_kit::component::{
     ActiveTheme as _, Icon, IconName, Sizable as _, Theme, ThemeMode, TitleBar,
     alert::Alert,
@@ -36,10 +37,10 @@ use gpui_kit::{
     WindowBounds, WindowOptions, actions, div, prelude::*, px, size,
 };
 
-use crate::inference::{GraphState, Inference, Lane, LoadStage, Loaded, Policy, Priority, ServiceEvent};
-use crate::manifest::{GraphId, HeadId, Task};
-use crate::registry::{Head, Registry};
-use crate::runtime::{ModelOptions, OrtLoader};
+use inference::service::{GraphState, Inference, Lane, LoadStage, Loaded, Policy, Priority, ServiceEvent};
+use inference::manifest::{GraphId, HeadId, Task};
+use inference::registry::{Head, Registry};
+use inference::runtime::{ModelOptions, OrtLoader};
 use widgets::Lucide;
 
 actions!(
@@ -198,7 +199,7 @@ impl DemoApp {
         };
         this.demo_init(demo_dir, cx);
         for s in initial {
-            if let Some(src) = crate::fetch::Source::parse(&s) {
+            if let Some(src) = inference::fetch::Source::parse(&s) {
                 this.submit_source(src, cx);
             }
         }
@@ -489,7 +490,7 @@ impl DemoApp {
                 ModelState::Unavailable(_) => left.push(format!("{short} unavailable")),
             }
         }
-        left.push(format!("jpeg: {}", crate::preprocess::JPEG_DECODER));
+        left.push(format!("jpeg: {}", inference::preprocess::JPEG_DECODER));
         let left = left.join(" · ");
         let hints: Vec<gpui_kit::AnyElement> = match self.tab {
             TabKind::Classify => vec![
@@ -604,7 +605,7 @@ impl Render for DemoApp {
             .on_drop(cx.listener(|this, paths: &gpui_kit::ExternalPaths, w, cx| {
                 this.set_tab(TabKind::Classify, w, cx);
                 for p in paths.paths() {
-                    this.submit_source(crate::fetch::Source::File(p.clone()), cx);
+                    this.submit_source(inference::fetch::Source::File(p.clone()), cx);
                 }
             }))
             .drag_over::<gpui_kit::ExternalPaths>(move |style, _, _, _| style.border_2().border_color(drop_border))
@@ -719,7 +720,7 @@ pub fn run(opts: ModelOptions, demo_dir: Option<PathBuf>, gui: GuiOptions, initi
             // release every session before exit handlers run (see Inference::shutdown)
             if !inference.shutdown(Duration::from_secs(3)) {
                 eprintln!("[gpui-demo] a model is still loading; quitting without waiting for it");
-                crate::runtime::exit_now(0);
+                inference::runtime::exit_now(0);
             }
             cx.quit();
         };
