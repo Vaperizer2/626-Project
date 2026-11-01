@@ -60,8 +60,9 @@ cargo build --release --locked --features turbojpeg   # Arch has libjpeg-turbo: 
 ```
 
 The default model is the first entry of `exports/models.json`'s `default` list whose preferred execution provider
-registers here: Fast when TensorRT loads, else Deployed. The window and the CLI say which one was passed over and
-why. For the GPU see "GPU: CUDA and TensorRT" below.
+registers here: Fast when TensorRT loads, else Deployed. `--ep` does not change that choice: with `--ep cuda` or
+`--ep cpu` Fast would not run on TensorRT, so Deployed is the default (`--model fast --ep cpu` still runs Fast on the
+CPU). The window and the CLI say which one was passed over and why. For the GPU see "GPU: CUDA and TensorRT" below.
 
 `cargo build --release --locked` (without `turbojpeg`) also works; it uses the pure-Rust JPEG decoder (see
 "Preprocessing parity"). The first build takes about 5 minutes (GPUI is large); later builds take seconds. The deployed

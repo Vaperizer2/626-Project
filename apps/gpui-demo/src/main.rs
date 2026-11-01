@@ -80,7 +80,8 @@ OPTIONS:
     --json            classify: print a JSON array instead of text lines
     --model HEADS     classify with these models (comma-separated head ids, or all). Default: the
                       first of the index's defaults whose preferred execution provider registers here
-                      (fast with TensorRT, else deployed). See `gpui-demo models` for the ids.
+                      and is not displaced by --ep (fast with TensorRT, else deployed). See
+                      `gpui-demo models` for the ids.
     --demo-dir DIR    window: folder with demo_stack.json (default: $COMPCLASS_DEMO_DIR, else the
                       first demo_stack/ found walking up from the current directory, then the executable)
     --tab TAB         window: start on classify (default), demo or benchmark
