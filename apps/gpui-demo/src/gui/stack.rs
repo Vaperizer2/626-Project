@@ -98,7 +98,8 @@ struct Decoded {
     full: Arc<RenderImage>,
 }
 
-/// Decode every demo image in parallel, once; results arrive in completion order as (index, result).
+/// Decode every demo image once, in parallel on a pool of their own (one at a time if no pool can be built); results
+/// arrive in completion order as (index, result).
 /// The decodes run on a pool of their own, half the cores: on rayon's global pool the inference service's
 /// preprocessing would queue behind every picture of the stack.
 fn load_thumbnails(paths: Vec<std::path::PathBuf>) -> fmpsc::UnboundedReceiver<(usize, Result<Decoded, String>)> {
