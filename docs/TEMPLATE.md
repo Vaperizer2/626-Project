@@ -45,7 +45,7 @@ docs/TEMPLATE.md                     this file
 
 Edit `ABOUT` first. The script sets it to "classify pictures".
 
-**The first build.** A clean build compiles GPUI Kit, about 500 crates, which takes 2.5 to 3 minutes on legion. Two apps that share one target dir share that work. Point `CARGO_TARGET_DIR` at another app's `target/` and the new app's first build compiles only the inference crate and the app.
+**The first build.** A clean build compiles GPUI Kit, about 500 crates, which takes 2.5 to 3 minutes on legion. Give each app its own target dir, and do not point `CARGO_TARGET_DIR` at another app's `target/`. Both apps have `crates/inference` at the same relative path, cargo names a path crate's artifacts by that path, and in a shared target dir one app can link or test the other app's copy without rebuilding.
 
 ## 2. Add a model
 
