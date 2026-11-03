@@ -95,15 +95,18 @@ def _register(key: str, family: str, timm_name: str | None = None, zeroshot: tup
 
 # ---------------------------------------------------------------------------------- 0. from scratch
 @_register("scratch_cnn", "Scratch CNN")
-def _scratch(num_classes: int, pretrained: bool, width: int = 32, dropout: float = 0.3, input_size: int = 160):
+def _scratch(num_classes: int, pretrained: bool, width: int = 32, dropout: float = 0.3, input_size: int = 160,
+             residual: bool = False, blocks: int = 1, identity_init: bool = False, whiten_stem: bool = False):
     """Plain VGG-style CNN trained from random initialisation (see models/scratch_cnn.py).
 
     No pretraining: everything -- edges, textures, part detectors -- must be learned from ~3k images. It is the
-    lower bound that shows how much the pretrained families gain from transfer learning.
+    lower bound that shows how much the pretrained families gain from transfer learning. ``residual=True``
+    swaps each stage's conv pair for a ResNet basic block; ``blocks`` sets blocks (or conv pairs) per stage.
+    ``identity_init`` / ``whiten_stem`` select the airbench-style initialisations (see scratch_cnn.py).
     """
     from .scratch_cnn import ScratchCNN
 
-    return ScratchCNN(num_classes, width, dropout), PreprocessSpec(input_size, (0.5,) * 3, (0.5,) * 3, "bilinear", 0.875)
+    return ScratchCNN(num_classes, width, dropout, residual, blocks, identity_init, whiten_stem), PreprocessSpec(input_size, (0.5,) * 3, (0.5,) * 3, "bilinear", 0.875)
 
 
 # ---------------------------------------------------------------------------------- 1. classic CNNs

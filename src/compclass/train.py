@@ -120,6 +120,35 @@ def set_backbone_trainable(model: nn.Module, trainable: bool, frozen: set[int] =
         p.requires_grad_((trainable or id(p) in head) and id(p) not in frozen)
 
 
+class _WithIndex(torch.utils.data.Dataset):
+    """(x, y) -> (x, y, i) so a batch can look up its rows' precomputed teacher logits."""
+
+    def __init__(self, ds):
+        self.ds = ds
+
+    def __len__(self):
+        return len(self.ds)
+
+    def __getitem__(self, i):
+        x, y = self.ds[i]
+        return x, y, i
+
+
+def load_teacher(distill: dict[str, Any], fold: int, train_rows, fingerprint: str, device) -> torch.Tensor:
+    """Teacher logits aligned with ``train_rows`` from ``distill.teacher`` (a path with ``{fold}``).
+
+    Refuses a teacher built on another manifest or one that was fitted on this fold's validation rows.
+    """
+    tf = np.load(str(distill["teacher"]).format(fold=fold), allow_pickle=False)
+    if str(tf["manifest"]) != fingerprint:
+        raise SystemExit(f"teacher manifest {tf['manifest']} != {fingerprint}")
+    pos = {i: j for j, i in enumerate(tf["ids"].tolist())}
+    idx = np.array([pos[r["id"]] for r in train_rows])
+    if not bool(tf["is_train"][idx].all()):
+        raise SystemExit("teacher was fitted on rows outside this fold's training split")
+    return torch.tensor(tf["logits"][idx], dtype=torch.float32, device=device)
+
+
 def run(cfg: Config, fold: int, test: bool = False) -> dict[str, Any]:
     """Train one model on one CV fold; returns the record appended to the run log.
 
@@ -148,10 +177,16 @@ def run(cfg: Config, fold: int, test: bool = False) -> dict[str, Any]:
 
     nw = d.get("num_workers", 4)
     common = dict(num_workers=nw, pin_memory=device.type == "cuda", persistent_workers=nw > 0)
-    train_dl = DataLoader(ImageDataset(train_rows, m.root, m.class_to_idx, build_transforms(spec, a, True)),
-                          batch_size=t["batch_size"], shuffle=True, drop_last=True, **common)
+    distill = t.get("distill")
+    train_ds: torch.utils.data.Dataset = ImageDataset(train_rows, m.root, m.class_to_idx, build_transforms(spec, a, True))
+    if distill:
+        train_ds = _WithIndex(train_ds)
+    train_dl = DataLoader(train_ds, batch_size=t["batch_size"], shuffle=True, drop_last=True, **common)
     val_dl = DataLoader(ImageDataset(val_rows, m.root, m.class_to_idx, build_transforms(spec, a, False)),
                         batch_size=t.get("eval_batch_size", 2 * t["batch_size"]), **common)
+
+    if hasattr(model, "init_from_data"):  # data-dependent initialisation (e.g. whitened stem), before any step
+        model.init_from_data(train_dl, device)
 
     mixup = build_mixup(a, len(m.classes), t.get("label_smoothing", 0.0))
     if mixup is not None:
@@ -161,16 +196,29 @@ def run(cfg: Config, fold: int, test: bool = False) -> dict[str, Any]:
     else:
         criterion = nn.CrossEntropyLoss(label_smoothing=t.get("label_smoothing", 0.0))
 
+    teacher = None
+    if distill:  # knowledge distillation from precomputed per-image teacher logits (tools/make_teacher.py)
+        if mixup is not None:
+            raise SystemExit("distillation is not combined with mixup/cutmix")
+        teacher = load_teacher(distill, fold, train_rows, m.fingerprint, device)
+        kd_alpha, kd_temp = float(distill.get("alpha", 0.5)), float(distill.get("temperature", 4.0))
+        print(f"[{cfg['name']} f{fold}] distilling from {distill['teacher']}  alpha {kd_alpha}  T {kd_temp}", flush=True)
     accum = t.get("accum_steps", 1)
     steps_per_epoch = min(len(train_dl), t.get("max_steps_per_epoch") or len(train_dl))
     opt_steps = math.ceil(steps_per_epoch / accum)
-    frozen = permanently_frozen(model, t.get("trainable_blocks"))
+    frozen = permanently_frozen(model, t.get("trainable_blocks")) | set(getattr(model, "frozen_param_ids", ()))
     set_backbone_trainable(model, True, frozen)  # timm's optimizer skips requires_grad=False params
     n_trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     opt = make_optimizer(model, t)
     sched = warmup_cosine(opt, int(t.get("warmup_epochs", 0) * opt_steps), t["epochs"] * opt_steps,
                           frozen=int(t.get("freeze_epochs", 0) * opt_steps))
     scaler = torch.amp.GradScaler(device.type, enabled=amp_dtype == torch.float16)
+    ema = None
+    if t.get("ema"):  # exponential moving average of the weights; evaluated and saved instead of the raw model
+        from timm.utils import ModelEmaV3
+
+        ema = ModelEmaV3(model, decay=float(t["ema"]), use_warmup=True, device=device)
+    eval_model = ema.module if ema is not None else model
 
     if device.type == "cuda":
         torch.cuda.reset_peak_memory_stats()
@@ -186,16 +234,23 @@ def run(cfg: Config, fold: int, test: bool = False) -> dict[str, Any]:
                     mod.eval()
         t0, loss_sum, ce_sum, n_correct, n_epoch = time.perf_counter(), 0.0, 0.0, 0, 0
         opt.zero_grad(set_to_none=True)
-        for step, (x, y) in enumerate(train_dl):
+        for step, batch in enumerate(train_dl):
             if step >= steps_per_epoch:
                 break
+            x, y = batch[0], batch[1]
             x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
             y_hard = y  # original labels, kept for train accuracy / plain CE
             if mixup is not None:
                 x, y = mixup(x, y)
             with torch.autocast(device.type, dtype=amp_dtype, enabled=amp_dtype is not None):
                 logits = model(x)
-                loss = criterion(logits, y) / accum
+                loss = criterion(logits, y)
+                if teacher is not None:  # Hinton et al.: KL(teacher^T || student^T) * T^2, mixed with the CE
+                    tl = teacher[batch[2].to(device)]
+                    kd = F.kl_div(F.log_softmax(logits.float() / kd_temp, 1), F.softmax(tl / kd_temp, 1),
+                                  reduction="batchmean") * kd_temp ** 2
+                    loss = (1 - kd_alpha) * loss + kd_alpha * kd
+                loss = loss / accum
             scaler.scale(loss).backward()
             if (step + 1) % accum == 0 or step + 1 == steps_per_epoch:
                 scaler.unscale_(opt)  # so clipping sees true gradient magnitudes
@@ -205,6 +260,8 @@ def run(cfg: Config, fold: int, test: bool = False) -> dict[str, Any]:
                 scaler.update()
                 opt.zero_grad(set_to_none=True)
                 sched.step()
+                if ema is not None:
+                    ema.update(model, step=epoch * opt_steps + (step + 1) // accum)
             loss_sum += loss.item() * accum
             with torch.no_grad():  # monitoring only: no effect on the update
                 lf = logits.detach().float()
@@ -217,7 +274,7 @@ def run(cfg: Config, fold: int, test: bool = False) -> dict[str, Any]:
             torch.cuda.synchronize()
         train_time += time.perf_counter() - t0
 
-        probs, y_val = predict(model, val_dl, device, amp_dtype)
+        probs, y_val = predict(eval_model, val_dl, device, amp_dtype)
         vm = compute_metrics(y_val, probs.argmax(1), m.classes)
         f1 = vm["macro_f1"]
         val_loss = float(-np.log(np.clip(probs[np.arange(len(y_val)), y_val], 1e-12, None)).mean())
@@ -230,7 +287,7 @@ def run(cfg: Config, fold: int, test: bool = False) -> dict[str, Any]:
               f"val macro-F1 {f1:.4f}", flush=True)
         if f1 > best_f1:
             best_f1, best_epoch, bad = f1, epoch, 0
-            torch.save({"model": model.state_dict(), "config": cfg, "config_hash": h, "fold": fold,
+            torch.save({"model": eval_model.state_dict(), "config": cfg, "config_hash": h, "fold": fold,
                         "classes": m.classes, "preprocess": spec.to_dict(), "manifest_fingerprint": m.fingerprint,
                         "epoch": epoch, "val_macro_f1": f1}, run_dir / "best.pt")
         else:
