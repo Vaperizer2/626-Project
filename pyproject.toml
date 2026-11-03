@@ -41,7 +41,7 @@ packages = ["src/compclass"]
 [tool.uv]
 package = true
 
-# CUDA 12.8 wheels on Linux (GPU PC: RTX 4060 Ti, sm_89). `explicit = true` means
+# CUDA 12.8 wheels on Linux (GPU PC: RTX 4060 Ti, sm_89) and Windows (RTX 4070 laptop, sm_89). `explicit = true` means
 # only the packages listed in [tool.uv.sources] are fetched from this index.
 [[tool.uv.index]]
 name = "pytorch-cu128"
@@ -49,8 +49,8 @@ url = "https://download.pytorch.org/whl/cu128"
 explicit = true
 
 [tool.uv.sources]
-torch = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'" }]
-torchvision = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux'" }]
+torch = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux' or sys_platform == 'win32'" }]
+torchvision = [{ index = "pytorch-cu128", marker = "sys_platform == 'linux' or sys_platform == 'win32'" }]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

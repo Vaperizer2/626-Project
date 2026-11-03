@@ -524,24 +524,37 @@ def main() -> int:
     log(f"test = outer fold {best} (TVD {tvd[best]:.4f}; all {[round(float(t), 4) for t in tvd]}) -> "
         f"{len(test_idx)} test / {len(dev_idx)} dev")
 
-    # legacy split
-    legacy = json.loads(LEGACY_SPLIT.read_text())
+    # legacy split (file-level record of the pre-v2 notebooks' split).  The file is not tracked in Git; when it
+    # is absent (source clone + fresh Kaggle download) fall back to the per-row legacy_split already recorded in
+    # the existing manifest, keyed by image id, so a rebuild still reproduces the committed rows.
     legacy_of_rel, legacy_unmatched = {}, 0
+    legacy_of_id: dict[str, str | None] = {}
     rel_set = set(rels)
-    for sp in ("train", "val", "test"):
-        for e in legacy.get(sp, []):
-            p = e["path"].replace("\\", "/")
-            rel = p.split(LEGACY_ANCHOR, 1)[1] if LEGACY_ANCHOR in p else p
-            if rel in rel_set:
-                legacy_of_rel[rel] = sp
-            else:
-                legacy_unmatched += 1
+    if LEGACY_SPLIT.exists():
+        legacy = json.loads(LEGACY_SPLIT.read_text())
+        for sp in ("train", "val", "test"):
+            for e in legacy.get(sp, []):
+                p = e["path"].replace("\\", "/")
+                rel = p.split(LEGACY_ANCHOR, 1)[1] if LEGACY_ANCHOR in p else p
+                if rel in rel_set:
+                    legacy_of_rel[rel] = sp
+                else:
+                    legacy_unmatched += 1
+    elif (OUT / "manifest.json").exists():
+        prev = json.loads((OUT / "manifest.json").read_text())
+        legacy_of_id = {r["id"]: r.get("legacy_split") for r in prev.get("rows", [])}
+        log(f"WARNING {LEGACY_SPLIT.relative_to(REPO)} missing; carrying legacy_split forward from the existing "
+            f"manifest for {len(legacy_of_id)} ids (legacy leakage statistics will be empty)")
+    else:
+        log(f"WARNING {LEGACY_SPLIT.relative_to(REPO)} missing and no existing manifest; legacy_split will be null")
 
     rows = []
     for i in keep:
         u = units[i]
         sps = sorted({legacy_of_rel[p] for p in u["src_paths"] if p in legacy_of_rel},
                      key=["train", "val", "test"].index)
+        if not legacy_of_rel and legacy_of_id.get(u["id"]):
+            sps = [legacy_of_id[u["id"]]]
         if len(sps) > 1:
             u["flags"].append("legacy_multi_split")
         split, fold = split_of[i]
