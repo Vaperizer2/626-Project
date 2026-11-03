@@ -16,6 +16,12 @@ spec.loader.exec_module(gen)
 DISABLE = "optimization.disable_specified_optimizers"
 
 
+@pytest.fixture(autouse=True)
+def no_onnx(monkeypatch):
+    """The fake graph is not ONNX: its IO comes from the export report, as under a python without onnx."""
+    monkeypatch.setattr(gen, "onnx", None)
+
+
 def export(tmp_path: Path, session_config: dict) -> Path:
     d = tmp_path / "m"
     d.mkdir()
