@@ -19,6 +19,7 @@ t2.ROWS = {
     "speed3_int8_c1": (W, "C1: fc2 least-squares refit per block, 512 pool images (external)"),
     "speed3_int8_q1": (W, "Q1: QAT distillation, LoRA 64 all GEMMs, pool images (external)"),
     "speed3_int8_q2": (W, "Q2: Q1 on the dev images (transductive)"),
+    "speed3_int8_q5": (W, "Q5: full-rank QAT of fc1+fc2, lr 5e-6, pool images (external)"),
 }
 
 if __name__ == "__main__":
