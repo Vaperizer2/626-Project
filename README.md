@@ -150,11 +150,12 @@ records and asserts that they agree.
 ## Where training runs
 
 Since 2026-11-03 the work runs on the laptop (RTX 3060 Laptop, 6 GB). The GPU PC used before (`carlpc2`) is no
-longer available; its sync commands are in Git history. Its speed3 outputs were copied to the laptop, but two inputs
-were lost with it: speed3's fp32 base graphs and the distillation pool images. The base graphs come from
-`tools/prune/build.py` and `tools/tokens/build.py` (speed2's build ran them on the GPU PC); the pool's Caltech-256
-and COCO sources have to be downloaded again before `tools/distill/pool.py`. Training that needs more than 6 GB of
-GPU memory does not fit the laptop; speed3's full-rank QAT run (Q5) peaked at 6.7 GB. The remote subcommands of
+longer available; its sync commands are in Git history. Its speed3 outputs were copied to the laptop, but speed3's
+fp32 base graphs were lost with it, and so were the inputs to rebuild them (the distillation pool images, the
+teacher feature cache and the MLP activation statistics). The pool's Caltech-256 and COCO val2017 sources must be
+downloaded again; the rest of the chain is in `tools/distill/`, `tools/prune/recover.py`, `tools/prune/build.py` and
+`tools/speed2/remote_build.sh`, with GPU PC paths to change. Training that needs more than 6 GB of GPU memory does
+not fit the laptop; speed3's full-rank QAT run (Q5) peaked at 6.7 GB. The remote subcommands of
 `tools/speed3/run.sh` no longer work.
 
 ## Evaluation contract (short)
