@@ -21,14 +21,6 @@ For a fresh checkout, download the private GitHub Release and extract its `expor
 [the runbook](RUNBOOK.md#download-models-into-a-source-checkout). The same release contains a portable Linux
 app with all four model choices; it needs neither Python nor Rust installed.
 
-Maintainers with access to the original GPU PC can also copy the exports over Tailscale:
-
-```bash
-mkdir -p exports/final
-rsync -avP -e "ssh -p 2222" \
-  carl@carlpc2.tail498db1.ts.net:~/Projects/626-Project/exports/final/ exports/final/
-```
-
 You need `model.onnx` together with `model.onnx.data`, which holds the weights. The graph refers to the data file by
 name, so keep both in the same folder. You also need `labels.json` and `preprocess.json`. `head.npz` is only used by
 `--backend torch`.
