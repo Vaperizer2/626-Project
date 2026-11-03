@@ -115,6 +115,11 @@ want="embed|$B/exports|$B/demo_stack|unset"
 got=$(env -i PATH="$PATH" HOME="$T" XDG_DATA_HOME="$T/data" "${OP}_GPU=0" sh "$B/run.sh" embed 2>/dev/null)
 if [ "$got" = "$want" ]; then echo "ok   run.sh starts app.env's subcommand without a display, with the app's variables"; else
     echo "FAIL run.sh: got $got, want $want"; fails=$((fails + 1)); fi
+for a in "embed models" --tab ""; do
+    if out=$(env -i PATH="$PATH" HOME="$T" "${OP}_GPU=0" sh "$B/run.sh" "$a" 2>/dev/null) || [ -n "$out" ]; then
+        echo "FAIL run.sh started the app for '$a' without a display: $out"; fails=$((fails + 1))
+    else echo "ok   run.sh wants a display for '$a'"; fi
+done
 got=$(env -i PATH="$PATH" HOME="$T" "${OP}_GPU=0" "${OP}_MODELS=$T/x" sh "$B/run.sh" models 2>/dev/null)
 case "$got" in "models|$T/x|"*) echo "ok   run.sh keeps a variable the caller set" ;; *)
     echo "FAIL run.sh overrode ${OP}_MODELS: $got"; fails=$((fails + 1)) ;; esac
