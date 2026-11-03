@@ -78,7 +78,7 @@ of the gap.
 ## 2026-10-31 to 2026-11-03 — fast inference for the desktop app (tools/speed*)
 
 Goal: make the deployed SigLIP So400m-384 fused model faster on the laptop's RTX 3060 (6 GB, 80 W cap) and lose
-at most 0.5 pt of 5-fold dev CV accuracy against 0.8268. Every speed and accuracy number comes from the frozen speed harness
+at most 0.5 pt of 5-fold dev CV accuracy against 0.8268. Every number in the table comes from the frozen speed harness
 (`tools/speed`): batch-1 latency as a paired ratio against the fp32 graph, 5-fold dev CV, McNemar against the
 baseline. Model choices used only the dev folds; the sealed test and the web holdout stay spent.
 
@@ -98,9 +98,9 @@ noise. It was not built.
 
 Findings that hold beyond these candidates:
 - TensorRT 10.16.1 miscompiles these graphs after two onnxruntime rewrites (TransposeOptimizer: wrong outputs at
-  batch > 1; MatMulAddFusion: broken token merging with INT8). A manifest's `session_config` turns both off; the
-  token-merging export carries it, and the shipped batch-1 Fast model needs neither.
-- Latency follows wave quantisation on the 30 SMs: cutting tokens pays only across a wave edge (448, 384, 256, 192
-  and 128 tokens here), not between edges.
+  batch > 1; MatMulAddFusion: broken token merging with INT8). A manifest's `session_config` turns both off
+  (docs/TEMPLATE.md); the shipped Fast model hits neither.
+- Latency follows wave quantisation on the 30 SMs: cutting tokens pays mainly when it crosses a wave edge (448, 384,
+  320, 256, 192 and 128 tokens here) and little between edges.
 - Batching gains about 10 %, because the GPU is power-capped.
 - The same token-merging graph builds a fused TensorRT engine about 1 time in 4; `tools/speed4/engprobe.sh` tells.

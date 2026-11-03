@@ -151,9 +151,11 @@ records and asserts that they agree.
 
 Since 2026-11-03 the work runs on the laptop (RTX 3060 Laptop, 6 GB). The GPU PC used before (`carlpc2`) is no
 longer available; its sync commands are in Git history. Its speed3 outputs were copied to the laptop, but two inputs
-were lost with it: speed3's fp32 base graphs and the distillation pool images (regenerate them with `tools/prune`
-and `tools/distill/pool.py`). Training that needs more than 6 GB of GPU memory does not fit the laptop; speed3's
-full-rank QAT run (Q5) peaked at 6.7 GB. The remote subcommands of `tools/speed3/run.sh` no longer work.
+were lost with it: speed3's fp32 base graphs and the distillation pool images. The base graphs come from
+`tools/prune/build.py` and `tools/tokens/build.py` (speed2's build ran them on the GPU PC); the pool's Caltech-256
+and COCO sources have to be downloaded again before `tools/distill/pool.py`. Training that needs more than 6 GB of
+GPU memory does not fit the laptop; speed3's full-rank QAT run (Q5) peaked at 6.7 GB. The remote subcommands of
+`tools/speed3/run.sh` no longer work.
 
 ## Evaluation contract (short)
 
