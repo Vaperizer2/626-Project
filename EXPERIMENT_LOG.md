@@ -104,3 +104,32 @@ Findings that hold beyond these candidates:
   off were 448, 384, 256 and 128 (`tools/speed4`).
 - Batching gains about 10 %, because the GPU is power-capped.
 - The same token-merging graph builds a fused TensorRT engine about 1 time in 4; `tools/speed4/engprobe.sh` tells.
+
+## 2026-11-03 — the demo's hard cases (tools/hardcases)
+
+Question: can the deployed model get the app's five "Hard cases" demo pictures right without losing accuracy? They
+fail as LEDs → diode, a small transformer → inductor coil, DIP switches → ic chip, SMD power inductors → diode, and an
+Arduino board on a breadboard → breadboard. Rule: every choice was made on grouped 5-fold dev CV; the demo stack, the
+web holdout and the sealed test were not used for any choice. The final candidates were run once on the demo stack,
+after the notes were hashed. Dev holds few of these errors (9 in 2,512 images), so the main proxy was the calibrated
+probability on the wrong partner class over the 638 dev images of the five classes (baseline 2.32 %). 41 hypotheses;
+log and notes in `626-artifacts/hardcases/` on the laptop, code in `tools/hardcases/`.
+
+| Change | Dev CV | Δ | McNemar (worse / better), p | Hard-pair errors | Partner mass |
+|---|---:|---:|---|---:|---:|
+| deployed: 384 crop of a 427 short-side resize | 0.8268 | — | — | 9 | 2.32 % |
+| whole picture squashed to 384 × 384, head refit | 0.8428 | +1.59 pt | 45 / 85, 6e-4 | 8 | 1.93 % |
+| short side 384, centre crop (no border cut on the short side) | 0.8424 | +1.55 pt | 27 / 66, 1e-4 | 9 | 2.13 % |
+| squash plus a nearest-neighbour term | 0.8503 | +2.35 pt | 45 / 104, < 1e-4 | 6 | 1.82 % |
+
+The squash gain comes from non-square pictures (61 % of dev, 0.807 → 0.836); square ones do not move, every fold
+improves, and the zero-shot head alone improves without training (0.762 → 0.775). The nearest-neighbour term was one
+of seven changes stacked on squash; corrected for that, its own p is about 0.11. Nothing else helped: the zero-shot
+weight and temperature, subtype prompts (zero-shot alone falls to 0.67–0.73), flip TTA or training, class-balanced
+weights, pair specialists, augmented views, prototypes, or a ConvNeXt-T ensemble. A SigLIP 2 ensemble was not
+significant at twice the latency. After 41 hypotheses the dev numbers are optimistic.
+
+The one look at the demo stack: no hard picture flipped. Three are less confidently wrong; the Arduino picture is now
+accepted as breadboard where the deployed model abstains. Out-of-scope pictures go from 1 of 3 to 3 of 3 abstaining,
+and the one-per-class section stays 20 of 20. Not shipped: switching the deployed preprocessing changes the shipped
+model, its golden file, and the Fast model's recipe.
