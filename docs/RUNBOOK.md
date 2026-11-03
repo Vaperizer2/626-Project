@@ -16,7 +16,8 @@ change is needed to use this one. Check `gh auth status` before publishing futur
 ## Run the portable Linux demo
 
 Requires x86_64 Linux, glibc 2.28+, roughly 4 GB free RAM and at least 4 GB disk for archive plus extraction.
-It includes CPU onnxruntime, four model choices and 28 credited demo photos; no Python/Rust install is needed.
+It includes CPU onnxruntime, four model choices and 28 credited demo photos (the share-2026-10-30
+release; later bundles carry 68); no Python/Rust install is needed.
 Download the archive and its checksum from the release page, or use GitHub CLI after `gh auth login`:
 
 ```bash
@@ -36,7 +37,7 @@ On NixOS replace `./run.sh` with `./run-nixos.sh`; `./run-nixos.sh --doctor` dia
 The first NixOS launch fetches libraries through Nix and caches paths under `~/.cache/component-classifier`.
 Later inference is offline once those dependencies are present. A graphical desktop with suitable GPU drivers is
 needed for the window; `classify` works headlessly. See the bundled `README.txt` for shortcuts and troubleshooting.
-Try the Demo tab, then Benchmark to compare A/B/C/Deployed. These 28 photos are a presentation set, not a new
+Try the Demo tab, then Benchmark to compare A/B/C/Deployed. These photos are a presentation set, not a new
 independent accuracy estimate. Allow several seconds for the initial SigLIP load.
 
 ## Run the Fast model on an NVIDIA GPU

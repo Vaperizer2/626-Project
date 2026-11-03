@@ -73,17 +73,17 @@ What to try (the window)
 ------------------------
 Classify tab   Open (Ctrl+O), drag and drop, or paste (Ctrl+V) a picture, a file path or an image URL.
                It shows the top class, its confidence, the top 3 as bars and all 20 probabilities.
-Demo tab       28 Wikimedia Commons photos the models never saw in training. Click a card, or step with
+Demo tab       68 Wikimedia Commons photos the models never saw in training. Click a card, or step with
                Left/Right and press Enter. "Run all" (Ctrl+R) classifies every photo. Each result is marked
                correct (green tick), wrong (red cross) or unsure (violet question mark).
-Benchmark tab  Runs every available model over the 28 photos and compares them. A switch shows only the
+Benchmark tab  Runs every available model over the 68 photos and compares them. A switch shows only the
                photos where the models disagree.
 
 Model picker (top right): A / B / C / Deployed / Fast, or Ctrl+M to cycle.
 Other keys: Ctrl+1/2/3 tabs, Ctrl+T light/dark, Esc stop a run, Ctrl+Q quit.
 
-Expected results on the 28 demo photos (Benchmark tab or Demo "Run all"):
-  A 11/28    B 17/28    C 21/28    Deployed 21/28 (2 of them "Unsure")
+Expected results on the 68 demo photos (Benchmark tab or Demo "Run all"):
+  A 19/68    B 38/68    C 53/68    Deployed 53/68 (10 photos answered "Unsure")
 If you get these numbers, everything works. Slightly different numbers would mean a problem; please report them.
 
 
@@ -125,7 +125,7 @@ exports/final/             Deployed + C: model_multi.onnx (one graph, both outpu
                            (the 1.7 GB weights), model.json, preprocess.json, labels.json
 exports/fast/              Fast: model.onnx, model.onnx.data, preprocess.json, runtime.json, labels.json
 exports/itri626/           A_scratch_cnn/ and B_convnext_tiny/: model.onnx, preprocess.json, labels.json
-demo_stack/                the 28 demo photos, demo_stack.json, ATTRIBUTION.md (author/licence of each photo)
+demo_stack/                the 68 demo photos, demo_stack.json, ATTRIBUTION.md (author/licence of each photo)
 run.sh                     launcher (sets the paths above; passes arguments through)
 app.env                    the app's name, environment variable prefix, binary and subcommands, read by the launchers
 gpu-env.sh                 used by run.sh and run-nixos.sh: finds the GPU runtime (see GPU)
