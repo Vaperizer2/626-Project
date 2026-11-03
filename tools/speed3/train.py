@@ -1,4 +1,4 @@
-"""Label-free feature distillation of the MLP-pruned student s294 onto the frozen unpruned SigLIP So400m (carlpc2).
+"""Label-free feature distillation of the MLP-pruned student s294 onto the frozen unpruned SigLIP So400m.
 
     train.py <out_dir> --data dev|pool|devout:K [--teacher t294|t384] [--train mlp|fc2|lora:R|lora_all:R]
              [--init STATE.npz] [--steps 1500 --batch 12 --lr 2e-5] [--w-cos 1 --w-mse 1 --w-tok 0]

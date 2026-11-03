@@ -411,8 +411,8 @@ three runs) on the RTX 3060 Laptop with a peak of about 6 GB RAM, and 91 s once 
 window shows "building TensorRT engine, first run only" with a seconds counter, the CLI prints `building the TensorRT
 engine (first run only)`. The engine and timing cache go to `~/.cache/component-classifier/tensorrt/<graph>-<sha256 of
 the graph files>-ort<version>-trt<version>-<gpu>/` (443 MB), so a changed graph, library or GPU never meets a stale
-engine. TensorRT's engines for these graphs are built for batch 1: a batch above 1 returned wrong outputs in the speed
-track, so Fast's manifest keeps `batch.max` 1.
+engine. Fast's graph has a static batch of 1. In the speed track, TensorRT returned wrong outputs at batch above 1 until the
+cause was found (an onnxruntime rewrite; `docs/TEMPLATE.md` has the `session_config` that turns it off).
 
 Measured on legion (RTX 3060 Laptop 6 GB, onnxruntime 1.31.1, TensorRT 10.16.1, driver 615.78), through the app's
 inference service, medians over 5 alternated rounds (`results/demo/gpui_legion_speed.json`, scripts in

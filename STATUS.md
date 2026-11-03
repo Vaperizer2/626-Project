@@ -20,12 +20,15 @@ and [EXPERIMENT_LOG.md](EXPERIMENT_LOG.md) for dated research decisions. Older c
 - IEEE paper, learning notes and offline explorer: `docs/paper/`, `docs/LEARNING_PATH.md`, `docs/explorer/`.
 - GPUI Kit 0.7.3 desktop demo: Classify/Demo/Benchmark, A/B/C/Deployed picker, Bench themes, headless CLI;
   portable x86_64 Linux packaging and NixOS launcher. Export parity evidence is in `results/demo/` and `exports/`.
-- A fast model for the app: the deployed SigLIP at 308 px with INT8 weights runs 9.2 times faster than the deployed
-  model on the RTX 3060 Laptop, with the same 5-fold dev accuracy (0.8268). It is the app's default where TensorRT
-  is installed. Faster variants (token merging, MLP pruning, distillation) cost 0.3 to 0.5 points and are not
-  shipped. The scripts are in `tools/speed*/`, and [EXPERIMENT_LOG.md](EXPERIMENT_LOG.md) has the results.
-- TensorRT 10.16.1 miscompiles these graphs after two onnxruntime rewrites; each model's `runtime.json` turns them
-  off (`optimization.disable_specified_optimizers`).
+- A fast model for the app: the deployed SigLIP at 308 px, quantised to INT8 (weights and activations), runs 9.2
+  times faster than the deployed model on the RTX 3060 Laptop, with the same 5-fold dev accuracy (0.8268). It is the
+  app's default where TensorRT is installed. Faster variants cost 0.1 to 0.5 points. The best, Q5 (MLP pruning plus
+  QAT distillation, 11.2 times faster, −0.08 points), is acceptable but not shipped yet: it was picked from five
+  variants on the same folds. The scripts are in `tools/speed*/`; [EXPERIMENT_LOG.md](EXPERIMENT_LOG.md) has the
+  results.
+- TensorRT 10.16.1 miscompiles these graphs after two onnxruntime rewrites (batch above 1; token merging with INT8).
+  A manifest's `session_config` turns them off; the shipped Fast model is batch 1 without token merging and needs
+  neither. [docs/TEMPLATE.md](docs/TEMPLATE.md) has the setting.
 - The desktop app is also a template for new AI apps: a GUI-free inference crate (`crates/inference`), tabs as
   modules, `scripts/new_app.sh` and [docs/TEMPLATE.md](docs/TEMPLATE.md).
 - Private source repository: https://github.com/Vaperizer2/626-Project.

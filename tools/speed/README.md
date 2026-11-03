@@ -264,7 +264,9 @@ The truncated graphs confirm the latency is the work: removing 1 and 4 of 27 blo
   (embedding cosine to CUDA fp32: median 0.99988, min 0.995). At batches 2, 4 and 8, every row is wrong (cosine
   0.42 to 0.92, even for 8 copies of one image), in fp32 and fp16 alike, while CUDA EP is exact on the same
   graph. `time` catches this and marks `batch8.valid = false`. If your graph must serve batches under TensorRT,
-  check that flag. For batch-1 deployment, a profile of min = opt = max = 1 is legitimate.
+  check that flag. For batch-1 deployment, a profile of min = opt = max = 1 is legitimate. The cause was found
+  later: onnxruntime's TransposeOptimizer rewrite. With `optimization.disable_specified_optimizers` set to
+  `MatMulAddFusion;TransposeOptimizer` in the session config, batch > 1 is correct (`tools/trtbugs/`).
 - **VRAM.** `time` holds your session and the baseline's (about 2 GB at batch 1) together, next to about 1.1 GB
   for the resident `nemo-speech` process, on a 6 GB GPU. The baseline session is freed before batch 8.
 - **Runtime.** eval takes about 5 min for the fp32 baseline (1 min for TensorRT fp16), plus head fitting on the

@@ -1,9 +1,9 @@
 # ITRI626 report models for the desktop app
 
 The three models of the ITRI626 report (`results/itri626/metrics.json`), exported for `apps/gpui-demo`. Nothing was
-retrained. Rebuild on the GPU PC (CPU only, ~20 min):
+retrained. Rebuild from the repo root (CPU only, ~20 min):
 
-    cd ~/Projects/626-Project && export HF_HOME=$HOME/models_cache/hf TORCH_HOME=$HOME/models_cache/torch
+    export HF_HOME=$HOME/models_cache/hf TORCH_HOME=$HOME/models_cache/torch
     uv run --frozen python tools/export_itri626_models.py all      # or: ab | c
 
 | report model | where | input | preprocess (eval) | graph outputs | ONNX test acc (418) | report |
