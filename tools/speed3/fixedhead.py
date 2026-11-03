@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import json
 import sys
-from pathlib import Path
 
 import numpy as np
 
@@ -20,8 +19,6 @@ from common import REPO, dev_rows
 
 sys.path.insert(0, str(REPO / "tools/speed"))
 import evaluate  # noqa: E402
-
-evaluate.DEPLOYED = Path("/home/carl/626-runs/distill/v2meta")
 
 
 def main() -> None:
