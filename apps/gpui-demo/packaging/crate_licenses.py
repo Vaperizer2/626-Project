@@ -21,7 +21,7 @@ while stack:
         kinds = {k["kind"] for k in dep["dep_kinds"]}
         if kinds - {"dev"}:
             stack.append(dep["pkg"])
-seen.discard(root)
+seen = {i for i in seen if pkgs[i].get("source")}  # the workspace's own crates have no source
 rows = sorted((pkgs[i]["name"], pkgs[i]["version"], pkgs[i].get("license") or "(see crate)",
                pkgs[i].get("repository") or "") for i in seen)
 by_lic = {}

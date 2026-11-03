@@ -60,4 +60,18 @@ mod tests {
         let out = std::process::Command::new("sh").arg(&script).output().unwrap();
         assert!(out.status.success(), "{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr));
     }
+
+    /// The launchers start app.env's COMMANDS without a window, so it must name every subcommand.
+    #[test]
+    fn app_env_lists_every_subcommand() {
+        let env = std::fs::read_to_string(std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("packaging/app.env"))
+            .unwrap();
+        let line =
+            env.lines().find_map(|l| l.strip_prefix("COMMANDS=")).expect("a COMMANDS= line in packaging/app.env");
+        let mut listed: Vec<&str> = line.trim_matches('"').split_whitespace().collect();
+        let mut names: Vec<&str> = crate::app::COMMANDS.iter().map(|c| c.name).collect();
+        listed.sort_unstable();
+        names.sort_unstable();
+        assert_eq!(listed, names, "packaging/app.env COMMANDS against app::COMMANDS");
+    }
 }

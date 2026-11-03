@@ -110,7 +110,7 @@ gpu_find() {
         case ":$GPU_LIBPATH:" in *":$gpu_trt:"*) ;; *) GPU_LIBPATH="$GPU_LIBPATH:$gpu_trt" ;; esac
         GPU_STATE="GPU (onnxruntime ${gpu_ort##*.so.}, TensorRT from $gpu_trt)"
     else
-        GPU_STATE="GPU without TensorRT (no libnvinfer.so.10: Fast is not the default, Deployed runs on CUDA; README.txt, GPU)"
+        GPU_STATE="GPU without TensorRT (no libnvinfer.so.10: TensorRT models run on CUDA; README.txt, GPU)"
     fi
     return 0
 }

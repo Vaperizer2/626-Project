@@ -34,10 +34,9 @@ if [ ! -x "$BIN" ]; then
     exit 1
 fi
 
-case "${1:-}" in
-    classify | preprocess | models | bench | -h | --help | -V | --version)
-        exec "$BIN" "$@" ;;
-esac
+if [ -n "${1:-}" ]; then
+    case " $COMMANDS -h --help -V --version " in *" $1 "*) exec "$BIN" "$@" ;; esac
+fi
 
 if [ -z "${WAYLAND_DISPLAY:-}" ] && [ -z "${DISPLAY:-}" ]; then
     cat >&2 <<'MSG'

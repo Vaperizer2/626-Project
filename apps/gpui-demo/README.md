@@ -344,7 +344,7 @@ that bundle, `run.sh` found a GPU runtime in the shared `onnxruntime-gpu/1.31` f
 | UI | `gpui-kit = "=0.7.3"` | GPUI Kit (longbridge, formerly `gpui-component`) is the component library: `TitleBar`, `TabBar`, `Button`/`ButtonGroup`, `Input`, `Tag`, `Spinner`, `Alert`, `Kbd`, `Tooltip`, `Switch`, `Empty`, `StatusBar`, notifications, scrollbars and its theme system (the app ships its own two theme files). It pins and re-exports its own GPUI snapshot (`gpui-pre 0.3.9`), so the app has no direct GPUI dependency. Exact pin because the API changes between pre-1.0 releases. (0.8.0 was published while this port was made; it was not tested.) |
 | inference | `ort = "=2.0.0-rc.14"`, features `load-dynamic`, `api-22` | `load-dynamic` dlopens libonnxruntime at runtime, so nothing is downloaded at build time and the CUDA build is just a different `.so`. `api-22` requires only the onnxruntime 1.22 C API. ort allows one environment per process; all sessions share it. |
 | decode | `image = "0.25.10"` (+ optional `turbojpeg = "=1.5.1"`) | see "Preprocessing parity" |
-| resize | own code (`src/preprocess.rs`) | a port of Pillow's `Resample.c` (bicubic and bilinear); see below |
+| resize | own code (`crates/inference/src/preprocess.rs`) | a port of Pillow's `Resample.c` (bicubic and bilinear); see below |
 | HTTP | `ureq = "3.4"` (rustls) | small and blocking (it runs on the worker thread), no OpenSSL needed |
 | profiling | `hotpath = "0.28"`, optional | see "Profiling" |
 | libc | normal (0.2.191 in `Cargo.lock`) | The old pin to 0.2.189 is no longer needed: it existed only for `xattr 0.2.3`, which GPUI 0.2.2 pulled in and GPUI Kit's GPUI does not. |
@@ -360,7 +360,7 @@ The `Cargo.lock` is committed; build with `--locked`.
 Each model folder's `preprocess.json` gives its own transform. Deployed and C: short side 427 (Pillow bicubic),
 centre-crop 384, ×1/255, (x−0.5)/0.5. B: 256 bicubic, crop 224, ImageNet mean/std. A: 183 **bilinear**, crop 160,
 (x−0.5)/0.5. All are RGB NCHW. Rust's `image` CatmullRom filter is not bit-identical to Pillow's. So
-`src/preprocess.rs` ports Pillow's algorithm directly:
+`crates/inference/src/preprocess.rs` ports Pillow's algorithm directly:
 * Keys cubic with a = −0.5 (support 2) or the triangle filter 1 − |x| (bilinear, support 1), the support widened by
   the downscale factor (antialias), coefficients normalised in double precision and then quantised to 22-bit fixed
   point;

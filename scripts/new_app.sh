@@ -6,12 +6,15 @@ set -euo pipefail
 die() { echo "new_app.sh: $*" >&2; exit 64; }
 [ $# = 4 ] || die 'usage: new_app.sh DEST NAME "Title" PREFIX'
 DEST=$1 NAME=$2 TITLE=$3 PREFIX=$4 APP=apps/$2
-[[ $NAME =~ ^[a-z][a-z0-9-]*$ && $NAME != gpui-demo ]] || die "NAME '$NAME': a-z, 0-9 and -, from a letter"
+[[ $NAME =~ ^[a-z][a-z0-9-]*$ && $NAME != gpui-demo && $NAME != inference ]] ||
+    die "NAME '$NAME': a-z, 0-9 and -, from a letter, and not gpui-demo or inference"
 [[ $PREFIX =~ ^[A-Z][A-Z0-9_]*$ ]] || die "PREFIX '$PREFIX': A-Z, 0-9 and _, from a letter"
 [[ -n $TITLE && $TITLE != *[\"\\\$\`]* ]] || die "Title '$TITLE': no quotes, backslashes, \$ or backticks"
 [ ! -e "$DEST" ] || die "$DEST exists"
 SRC=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
 mkdir -p "$DEST"
+DEST=$(cd "$DEST" && pwd)
+trap '[ $? = 0 ] || { echo "new_app.sh: failed, removing $DEST" >&2; rm -rf "$DEST"; }' EXIT
 git -C "$SRC" archive HEAD Cargo.toml Cargo.lock rustfmt.toml crates/inference apps/gpui-demo docs/TEMPLATE.md |
     tar -x -C "$DEST"
 cd "$DEST"
@@ -35,6 +38,7 @@ APP_NAME=$NAME
 APP_TITLE="$TITLE"
 ENV_PREFIX=$PREFIX
 BIN=$NAME
+COMMANDS="classify bench models"
 EOF
 cat > packaging/README.txt <<EOF
 $TITLE: portable Linux build (x86_64, glibc 2.28 or newer)
@@ -91,5 +95,6 @@ pub fn shared(_: &mut App) -> Shared {
 }
 EOF
 cd ../..
-cargo update --workspace --offline --quiet
+cargo update --workspace --offline --quiet ||
+    echo "new_app.sh: Cargo.lock still names gpui-demo; run 'cargo update --workspace' once online" >&2
 echo "made $DEST ($APP) from $(git -C "$SRC" rev-parse --short HEAD); next steps: $DEST/docs/TEMPLATE.md"
