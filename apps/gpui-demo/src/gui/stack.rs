@@ -108,21 +108,20 @@ fn load_thumbnails(paths: Vec<std::path::PathBuf>) -> fmpsc::UnboundedReceiver<(
         .spawn(move || {
             let t0 = Instant::now();
             let threads = std::thread::available_parallelism().map_or(1, |n| (n.get() / 2).max(1));
-            let decode_all = move || {
-                paths.into_par_iter().enumerate().for_each(|(i, p)| {
-                    let r = prof!("demo::decode_and_thumbnail", decode_one(&p));
-                    let _ = tx.unbounded_send((i, r));
-                })
+            let one = |i: usize, p: &std::path::Path| {
+                let r = prof!("demo::decode_and_thumbnail", decode_one(p));
+                let _ = tx.unbounded_send((i, r));
             };
             match rayon::ThreadPoolBuilder::new()
                 .num_threads(threads)
                 .thread_name(|i| format!("thumbnails-{i}"))
                 .build()
             {
-                Ok(pool) => pool.install(decode_all),
+                Ok(pool) => pool.install(|| paths.par_iter().enumerate().for_each(|(i, p)| one(i, p))),
                 Err(e) => {
-                    log!("thumbnail pool: {e}; decoding on the shared pool");
-                    decode_all()
+                    // no thread to spare: decode here, one picture at a time
+                    log!("thumbnail pool: {e}; decoding on this thread");
+                    paths.iter().enumerate().for_each(|(i, p)| one(i, p));
                 }
             }
             log!("demo stack decoded in {:.0} ms", t0.elapsed().as_secs_f64() * 1000.0);

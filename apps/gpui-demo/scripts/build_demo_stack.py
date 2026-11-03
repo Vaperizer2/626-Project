@@ -16,6 +16,8 @@ holdout pictures not already in the stack, so the Random section is an unselecte
 Writes demo_stack/*.jpg (long side <= 1024 px; holdout files are copied byte-for-byte, they are <= 512 px),
 demo_stack/demo_stack.json and demo_stack/ATTRIBUTION.md. With --bin, every image is classified by the built
 binary (`classify --json --model deployed --ep cpu`) and model_pred / model_conf / model_unsure record what it said.
+Without --bin, a photo keeps the answer recorded for it when its origin and sha256 are unchanged; rerun with --bin
+after a model change.
 The out-of-scope photos are downloaded only when neither --cache nor an earlier build's file has them. The script
 never deletes anything; it overwrites only the files it writes.
 """
@@ -106,8 +108,11 @@ def page_url(url: str) -> str:
 
 
 def changes_of(row: dict) -> str:
-    """What was done to a holdout photo besides downscaling; CC BY-SA asks for changes to be indicated."""
+    """What was done to a holdout photo besides the thumbnail conversion; CC BY-SA asks for changes to be indicated."""
     out = []
+    if m := re.search(r"File:(\d{4})(\d\d)(\d\d)(\d\d)(\d\d)(\d\d)(?:!|%21)", row["source_url"]):
+        y, mo, d, h, mi, s = m.groups()
+        out.append(f"the revision of {y}-{mo}-{d} {h}:{mi}:{s} UTC (see the file history)")
     if "alpha_composited" in row["flags"]:
         out.append("transparent background filled with white")
     if row["orig_format"].upper() != "JPEG":
@@ -193,7 +198,8 @@ def main() -> int:
             "file": name, "section": section, "true_label": None, "title": c["title"].removeprefix("File:").rsplit(".", 1)[0],
             "author": AUTHOR_FIX.get(file, c["author"]), "licence": c["license"],
             "licence_url": LICENCE_URLS.get(c["license"], ""), "source_url": c["page"],
-            "origin": f"results/demo/wikimedia_credits.json:{file}", "note": note, "changes": "",
+            "origin": f"results/demo/wikimedia_credits.json:{file}", "note": note,
+            "changes": f"downscaled to {MAX_SIDE} px on the long side" if max(c["size"]) > MAX_SIDE else "",
         })
 
     if args.bin:
@@ -206,10 +212,13 @@ def main() -> int:
             e["model_pred"] = r["top3"][0][0]
             e["model_conf"] = round(r["top3"][0][1], 4)
             e["model_unsure"] = r["unsure"]
-    else:
+    for e in entries:
+        e["sha256"] = hashlib.sha256((OUT / e["file"]).read_bytes()).hexdigest()[:16]
+    if not args.bin:
         for e in entries:
             old = previous.get(e["origin"], {})
-            e.update({k: old[k] for k in ("model_pred", "model_conf", "model_unsure") if k in old})
+            if old.get("sha256", e["sha256"]) == e["sha256"]:
+                e.update({k: old[k] for k in ("model_pred", "model_conf", "model_unsure") if k in old})
     for e in entries:
         im = Image.open(OUT / e["file"])
         e["width"], e["height"] = im.size
@@ -229,9 +238,9 @@ def main() -> int:
 
     lines = [
         "# Attribution — demo_stack", "",
-        "Photos from Wikimedia Commons, redistributed under their original licences. Holdout photos are the",
-        "640-px Commons thumbnails downscaled to <= 512 px (data/web_holdout_v1); the two out-of-scope photos are",
-        "downscaled to <= 1024 px. Any other change to a photo is in its changes column.", "",
+        "Photos from Wikimedia Commons, redistributed under their original licences. Holdout photos are Commons",
+        "thumbnails 500 px wide, saved as JPEG (quality 95) with the long side at most 512 px (data/web_holdout_v1).",
+        "The two out-of-scope photos are the Commons files. Any other change to a photo is in its changes column.", "",
         "| file | section | true label | title | author | licence | source | changes |",
         "|---|---|---|---|---|---|---|---|",
     ]
