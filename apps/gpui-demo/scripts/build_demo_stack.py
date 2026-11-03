@@ -100,6 +100,21 @@ def slug(s: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", s.lower()).strip("_")
 
 
+def page_url(url: str) -> str:
+    """The Commons file page. Some holdout rows recorded an archived revision's name, File:<14 digits>!Name."""
+    return re.sub(r"File:\d{14}(?:!|%21)", "File:", url)
+
+
+def changes_of(row: dict) -> str:
+    """What was done to a holdout photo besides downscaling; CC BY-SA asks for changes to be indicated."""
+    out = []
+    if "alpha_composited" in row["flags"]:
+        out.append("transparent background filled with white")
+    if row["orig_format"].upper() != "JPEG":
+        out.append(f"converted from {row['orig_format'].upper()} to JPEG")
+    return "; ".join(out)
+
+
 def title_from_url(url: str) -> str:
     name = url.rsplit("File:", 1)[-1]
     name = urllib.request.unquote(name)
@@ -140,6 +155,9 @@ def main() -> int:
     args = ap.parse_args()
     OUT.mkdir(exist_ok=True)
     manifest = json.loads((HOLDOUT / "manifest.json").read_text())
+    # without --bin, each photo keeps the answer recorded for it (matched by origin, not by file name)
+    previous = {e["origin"]: e for e in json.loads((OUT / "demo_stack.json").read_text())["images"]} \
+        if (OUT / "demo_stack.json").is_file() else {}
     rows = {r["id"]: r for r in manifest["rows"]}
     credits = {c["file"]: c for c in json.loads(CREDITS.read_text())["out_of_scope"]}
     entries = []
@@ -155,9 +173,10 @@ def main() -> int:
         name = f"{prefix[section]}{num}_{slug(r['label'])}.jpg"
         save_jpeg((HOLDOUT / r["path"]).read_bytes(), OUT / name)
         entries.append({
-            "file": name, "section": section, "true_label": r["label"], "title": title_from_url(r["source_url"]),
-            "author": r["author"], "licence": r["license"], "licence_url": r["license_url"],
-            "source_url": r["source_url"], "origin": f"web_holdout_v1:{rid}", "note": note,
+            "file": name, "section": section, "true_label": r["label"],
+            "title": title_from_url(page_url(r["source_url"])), "author": r["author"], "licence": r["license"],
+            "licence_url": r["license_url"], "source_url": page_url(r["source_url"]),
+            "origin": f"web_holdout_v1:{rid}", "note": note, "changes": changes_of(r),
         })
     for section, file, note in OUT_OF_SCOPE:
         c = credits[file]
@@ -174,7 +193,7 @@ def main() -> int:
             "file": name, "section": section, "true_label": None, "title": c["title"].removeprefix("File:").rsplit(".", 1)[0],
             "author": AUTHOR_FIX.get(file, c["author"]), "licence": c["license"],
             "licence_url": LICENCE_URLS.get(c["license"], ""), "source_url": c["page"],
-            "origin": f"results/demo/wikimedia_credits.json:{file}", "note": note,
+            "origin": f"results/demo/wikimedia_credits.json:{file}", "note": note, "changes": "",
         })
 
     if args.bin:
@@ -187,6 +206,10 @@ def main() -> int:
             e["model_pred"] = r["top3"][0][0]
             e["model_conf"] = round(r["top3"][0][1], 4)
             e["model_unsure"] = r["unsure"]
+    else:
+        for e in entries:
+            old = previous.get(e["origin"], {})
+            e.update({k: old[k] for k in ("model_pred", "model_conf", "model_unsure") if k in old})
     for e in entries:
         im = Image.open(OUT / e["file"])
         e["width"], e["height"] = im.size
@@ -208,13 +231,14 @@ def main() -> int:
         "# Attribution — demo_stack", "",
         "Photos from Wikimedia Commons, redistributed under their original licences. Holdout photos are the",
         "640-px Commons thumbnails downscaled to <= 512 px (data/web_holdout_v1); the two out-of-scope photos are",
-        "downscaled to <= 1024 px. No other changes were made.", "",
-        "| file | section | true label | title | author | licence | source |", "|---|---|---|---|---|---|---|",
+        "downscaled to <= 1024 px. Any other change to a photo is in its changes column.", "",
+        "| file | section | true label | title | author | licence | source | changes |",
+        "|---|---|---|---|---|---|---|---|",
     ]
     for e in entries:
         lic = f"[{e['licence']}]({e['licence_url']})" if e["licence_url"] else e["licence"]
         lines.append(f"| {e['file']} | {e['section']} | {e['true_label'] or '(not a component)'} | {e['title']} | "
-                     f"{e['author']} | {lic} | [Commons]({e['source_url']}) |")
+                     f"{e['author']} | {lic} | [Commons]({e['source_url']}) | {e['changes']} |")
     (OUT / "ATTRIBUTION.md").write_text("\n".join(lines) + "\n")
     size = sum(p.stat().st_size for p in OUT.iterdir())
     print(f"{len(entries)} images, {size / 1e6:.2f} MB in {OUT}")

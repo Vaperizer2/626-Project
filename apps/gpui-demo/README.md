@@ -179,8 +179,8 @@ uv run --no-config apps/gpui-demo/scripts/build_demo_stack.py --bin target/relea
 
 Sections: **Hand-picked, one per class** (20 clean photos, chosen among the deployed model's confidently correct
 holdout predictions), **Random, two per class** (40 photos the script draws with seed 20261103, two per class from
-the holdout photos not already in the stack; nobody looked at the answers, so this is the section whose score means
-something), **Hard cases** (5 instructive images: LED↔diode, toroidal transformer↔inductor, DIP switch↔IC, SMD
+the holdout photos not already in the stack; nobody looked at the answers, so it is the one unselected section, and its
+score agrees with the whole holdout's), **Hard cases** (5 instructive images: LED↔diode, toroidal transformer↔inductor, DIP switch↔IC, SMD
 inductor↔diode, a cluttered Arduino + breadboard scene) and **Not a component / abstains** (a coin-cell holder on a
 motherboard, a multimeter, a soldering iron). Verified results with the `turbojpeg` build
 (`classify --json --ep cpu --model a,b,c,deployed`, the rows of `results/demo/golden/classify_all.json`):
