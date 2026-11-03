@@ -74,3 +74,30 @@ A one-fold diagnostic (`tools/distill/run_fold_diag.sh 0`, unofficial) adds the 
 fold 0, label-free. Fold-0 accuracy rises from 0.727 to 0.747 (teacher 0.801) and fold-0 cosine from 0.846 to
 0.869. A pool-only control with the same schedule stays at 0.727. In-domain images help but close about a third
 of the gap.
+
+## 2026-11-01 to 2026-11-03 — fast inference for the desktop app (tools/speed*)
+
+Goal: make the deployed SigLIP So400m-384 fused model faster on the laptop's RTX 3060 (6 GB, 80 W cap) and lose
+at most 0.5 pt of 5-fold dev CV accuracy against 0.8268. Every number comes from the frozen speed harness
+(`tools/speed`): batch-1 latency as a paired ratio against the fp32 graph, 5-fold dev CV, McNemar against the
+baseline. Model choices used only the dev folds; the sealed test and the web holdout stay spent.
+
+| Candidate | Batch-1 speed vs deployed | CV accuracy | Δ | Verdict |
+|---|---:|---:|---:|---|
+| 308 px, INT8 SmoothQuant weights (`compose_int8_res308`) | 9.2x (11.9 ms) | 0.8268 | 0.00 pt | shipped as the app's Fast model |
+| 294 px, INT8 | about 10x | 0.8240 | −0.28 pt | not shipped |
+| 308 px, token merging at blocks 13 and 20, INT8 | 10.8x, 11.4x with a fused engine | about 0.824 | about −0.3 pt (4 readings, −0.16 to −0.40) | not shipped |
+| 294 px, MLP pruned to 3840, INT8 (speed2) | 11.3x | 0.8224 | −0.44 pt | acceptable, not shipped |
+| speed2 shape + full-rank QAT distillation, Q5 (speed3) | 11.2x (9.95 ms) | 0.8260 | −0.08 pt (McNemar 60/58, p 0.93) | acceptable, best so far, not yet shipped |
+
+Q5 was picked from five built variants scored on the same dev folds, so its −0.08 pt is optimistic. Against the
+speed2 winner it is +0.36 pt (McNemar 33/42, p 0.36), not beyond noise. LoRA QAT (Q1) and a closed-form fc2 refit
+(C1) land at −0.40 to −0.48 pt; distilling on the dev images themselves is worse (−0.84 pt). Q4 (per-token loss)
+screened at 84 fixed-head flips against Q5's 91, within noise, and was not built.
+
+Findings that hold beyond these candidates:
+- TensorRT 10.16.1 miscompiles these graphs after two onnxruntime rewrites (TransposeOptimizer: wrong outputs at
+  batch > 1; MatMulAddFusion: broken token merging with INT8). Each model's `runtime.json` turns both off.
+- Latency follows wave quantisation on the 30 SMs: token counts of 448, 384, 256 and 128 pay, others do not.
+- Batching gains about 10 %, because the GPU is power-capped.
+- The same token-merging graph builds a fused TensorRT engine about 1 time in 4; `tools/speed4/engprobe.sh` tells.
