@@ -20,7 +20,7 @@ app_env() { eval "printf '%s' \"\${${ENV_PREFIX}_$1-}\""; }
 
 # app_command ARG: ARG is one of app.env's COMMANDS or a help or version flag, which need no window
 app_command() {
-    for c in ${COMMANDS:?app.env has no COMMANDS line, the subcommands that need no window} -h --help -V --version; do
+    for c in ${COMMANDS?app.env has no COMMANDS line, the subcommands that need no window} -h --help -V --version; do
         [ "$c" = "$1" ] && return 0
     done
     return 1
