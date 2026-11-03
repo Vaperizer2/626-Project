@@ -84,7 +84,8 @@ cp "$ORT_LIB" "$OUT/libonnxruntime.so.1.31.0"
 for e in "${ENTRIES[@]}"; do
     read -r src dst <<< "$e"
     dst=$OUT/${dst:-$src}
-    mkdir -p "$(dirname "$dst")" && cp -r --reflink=auto "$REPO/$src" "$dst"
+    # -L: a symlinked weight file is copied, so SHA256SUMS covers it and the bundle has no link to dangle
+    mkdir -p "$(dirname "$dst")" && cp -rLT --reflink=auto "$REPO/$src" "$dst"
 done
 cp "$APP/packaging/run.sh" "$OUT/run.sh" && cp "$APP/packaging/run-nixos.sh" "$OUT/run-nixos.sh" && chmod 755 "$OUT/run.sh" "$OUT/run-nixos.sh" "$OUT/$BIN"
 cp "$APP/packaging/app.env" "$OUT/app.env" && cp "$APP/packaging/gpu-env.sh" "$OUT/gpu-env.sh"

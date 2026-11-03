@@ -61,7 +61,7 @@ exports/mine/labels.json         the class names, a JSON array of strings
 The manifest has schema `model-manifest/1`. `crates/inference/src/manifest.rs` parses it, and `crates/inference/tests/fixtures/` holds four real ones.
 
 - `id`, then `graph { file, external_data[], precision }`. Precision is `fp32`, `fp16` or `int8_qdq`.
-- `files { <name>: { bytes, sha256 } }` lists every file the graph and its heads read, relative to the manifest's folder. The registry refuses a file whose size differs. `models --check` hashes every file and records a stamp in `~/.cache/<name>/verified.json`, and a load then only checks that size and mtime still match the stamp.
+- `files { <name>: { bytes, sha256 } }` lists every file the graph and its heads read, relative to the manifest's folder. The registry marks a graph unavailable when a file's size differs. `models --check` hashes every file and records a stamp in `~/.cache/<name>/verified.json`, and a load then only checks that size and mtime still match the stamp.
 - `input { name, dtype: "f32", layout: "NCHW", size: [h, w], batch { max }, preprocess }`. The one `preprocess` kind is `resize_short_center_crop { resize_short_side, filter, color: "RGB", scale, mean, std }`, with filter `pillow_bicubic` or `pillow_bilinear`.
 - `heads[] { id, title, short, task }`. Head ids are unique across the index. A graph with two outputs can carry two heads.
 - A classify `task` is `{ kind: "classify", readout, labels, calibration, decision }`. The readout is `{ kind: "probs" | "logits", output }`, the output's name in the graph. Calibration is `{ kind: "none" }` or `{ kind: "temperature", t, in_graph }`. The decision is `{ kind: "commit", low_confidence_below }` or `{ kind: "abstain", below }`, and abstaining needs a calibrated head.
@@ -129,7 +129,7 @@ The updates are `Update::Decoded`, then one `Update::Head` per head with a `Head
 `gui/classify.rs` is the full example. `Tab`'s other methods are optional. `TAKES_INPUTS` and `take` receive dropped, opened and pasted pictures, `run` is Ctrl+R and `--autorun`, and `follow_model` runs when the selected model changes.
 State that several tabs share goes in `app::Shared`, which `app::shared` builds once per window.
 
-**A subcommand** is a module with a `cli::Command { name, args, about, run }` and a line in `app::COMMANDS`. `--help` lists the commands in that order. `cli.rs` has what the commands share: the registry, the service with its log lines, the start-up default head, and one request's results.
+**A subcommand** is a module with a `cli::Command { name, args, about, run }`, a line in `app::COMMANDS`, and its name in `COMMANDS` in `packaging/app.env`, which the launchers start without a window. A test fails when the two lists differ. `--help` lists the commands in that order. `cli.rs` has what the commands share: the registry, the service with its log lines, the start-up default head, and one request's results.
 
 **Speed.** New apps measure latency with the command line, not with a GUI tab:
 

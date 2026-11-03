@@ -125,7 +125,9 @@ export "${ENV_PREFIX}_MODELS=${models:-$HERE/exports}" "${ENV_PREFIX}_DEMO_DIR=$
 export XCURSOR_PATH="${XCURSOR_PATH:-$HOME/.icons:$HOME/.local/share/icons:$HOME/.nix-profile/share/icons:/etc/profiles/per-user/${USER:-$(id -un)}/share/icons:/run/current-system/sw/share/icons}"
 
 HEADLESS=0
-case "${ARGS[0]:-}" in classify | preprocess | models | bench | -h | --help | -V | --version) HEADLESS=1 ;; esac
+if [ -n "${ARGS[0]:-}" ]; then
+    case " $COMMANDS -h --help -V --version " in *" ${ARGS[0]} "*) HEADLESS=1 ;; esac
+fi
 
 if [ "$HEADLESS" = 0 ] && [ "$DOCTOR" = 0 ]; then
     if [ "$USE_X11" = 1 ]; then

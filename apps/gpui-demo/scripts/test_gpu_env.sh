@@ -96,7 +96,7 @@ case_ "the shared runtime without XDG_DATA_HOME is under ~/.local/share" \
 
 # Another app's identity: its variables and its folder are the ones read, not this app's.
 ON=$APP_NAME-other OP=${ENV_PREFIX}_OTHER
-printf '%s\n' "APP_NAME=$ON" 'APP_TITLE="Other"' "ENV_PREFIX=$OP" "BIN=$ON" > "$T/other.env"
+printf '%s\n' "APP_NAME=$ON" 'APP_TITLE="Other"' "ENV_PREFIX=$OP" "BIN=$ON" 'COMMANDS="embed models"' > "$T/other.env"
 venv 1.31.1 "$T/data/$ON/gpu" trt
 case_ "another app: ${OP}_GPU_VENV is read, ${ENV_PREFIX}_GPU_VENV is not" "$(ort_in "$T/good venv")" "GPU*" \
     APP_ENV="$T/other.env" "${OP}_GPU_VENV=$T/good venv" "${ENV_PREFIX}_GPU_VENV=$T/old venv"
@@ -111,9 +111,9 @@ cp "$PKG/run.sh" "$PKG/gpu-env.sh" "$B/" && cp "$T/other.env" "$B/app.env"
 printf '%s\n' '#!/bin/sh' "printf '%s|%s|%s|%s\\n' \"\$1\" \"\$${OP}_MODELS\" \"\$${OP}_DEMO_DIR\" \"\${${ENV_PREFIX}_MODELS-unset}\"" \
     > "$B/$ON"
 chmod +x "$B/$ON"
-want="models|$B/exports|$B/demo_stack|unset"
-got=$(env -i PATH="$PATH" HOME="$T" XDG_DATA_HOME="$T/data" "${OP}_GPU=0" sh "$B/run.sh" models 2>/dev/null)
-if [ "$got" = "$want" ]; then echo "ok   run.sh starts BIN with the app's variables"; else
+want="embed|$B/exports|$B/demo_stack|unset"
+got=$(env -i PATH="$PATH" HOME="$T" XDG_DATA_HOME="$T/data" "${OP}_GPU=0" sh "$B/run.sh" embed 2>/dev/null)
+if [ "$got" = "$want" ]; then echo "ok   run.sh starts app.env's subcommand without a display, with the app's variables"; else
     echo "FAIL run.sh: got $got, want $want"; fails=$((fails + 1)); fi
 got=$(env -i PATH="$PATH" HOME="$T" "${OP}_GPU=0" "${OP}_MODELS=$T/x" sh "$B/run.sh" models 2>/dev/null)
 case "$got" in "models|$T/x|"*) echo "ok   run.sh keeps a variable the caller set" ;; *)

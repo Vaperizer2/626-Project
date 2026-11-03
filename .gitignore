@@ -48,5 +48,5 @@ data/web_holdout_v1/images/
 !results/itri626/runs/
 !results/itri626/runs/*.json
 
-# Rust (cargo workspace)
-/target
+# Rust (cargo workspace; also an app's own target/ from before the workspace)
+target/
