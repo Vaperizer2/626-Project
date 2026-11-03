@@ -1,8 +1,9 @@
 # Attribution — demo_stack
 
 Photos from Wikimedia Commons, redistributed under their original licences. Holdout photos are Commons
-thumbnails 500 px wide, saved as JPEG (quality 95) with the long side at most 512 px (data/web_holdout_v1).
-The two out-of-scope photos are the Commons files. Any other change to a photo is in its changes column.
+downloads (a thumbnail up to 640 px wide, or the original when it is smaller), saved as JPEG (quality 95)
+with the long side at most 512 px (data/web_holdout_v1). The out-of-scope photos are Commons files or
+thumbnails. Any other change to a photo is in its changes column.
 
 | file | section | true label | title | author | licence | source | changes |
 |---|---|---|---|---|---|---|---|
@@ -65,7 +66,7 @@ The two out-of-scope photos are the Commons files. Any other change to a photo i
 | r37_transformer.jpg | Random, two per class | transformer | Current-transformer-03 hg | Hannes Grobe | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) | [Commons](https://commons.wikimedia.org/wiki/File:Current-transformer-03_hg.jpg) |  |
 | r38_transformer.jpg | Random, two per class | transformer | 5500 VA Rktr-2 | Emeko at German Wikipedia | Public domain | [Commons](https://commons.wikimedia.org/wiki/File:5500_VA_Rktr-2.png) | converted from PNG to JPEG |
 | r39_transistor.jpg | Random, two per class | transistor | FBH GaN High electron mobility transistor | FBH/P.Immerz | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) | [Commons](https://commons.wikimedia.org/wiki/File:FBH_GaN_High_electron_mobility_transistor.jpg) |  |
-| r40_transistor.jpg | Random, two per class | transistor | Transistorer (cropped) | Daniel Ryde, Skövde | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) | [Commons](https://commons.wikimedia.org/wiki/File:Transistorer_(cropped).jpg) | the revision of 2021-10-27 18:01:23 UTC (see the file history) |
+| r40_transistor.jpg | Random, two per class | transistor | Transistorer (cropped) | Daniel Ryde, Skövde | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) | [Commons](https://commons.wikimedia.org/wiki/File:Transistorer_(cropped).jpg) | the version replaced on 2021-10-27 18:01:23 UTC (see the file history) |
 | hard1_led.jpg | Hard cases | led | 3LEDs | Kszapsza | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) | [Commons](https://commons.wikimedia.org/wiki/File:3LEDs.JPG) |  |
 | hard2_transformer.jpg | Hard cases | transformer | Bifilar wound toroidal transformer | Windell Oskay from Sunnyvale, CA, USA | [CC BY 2.0](https://creativecommons.org/licenses/by/2.0) | [Commons](https://commons.wikimedia.org/wiki/File:Bifilar_wound_toroidal_transformer.jpg) |  |
 | hard3_switch.jpg | Hard cases | switch | Assortment of DIP switches (2) | CyberXRef | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) | [Commons](https://commons.wikimedia.org/wiki/File:Assortment_of_DIP_switches_(2).JPG) |  |
@@ -73,4 +74,4 @@ The two out-of-scope photos are the Commons files. Any other change to a photo i
 | hard5_microcontroller_board.jpg | Hard cases | microcontroller board | !st wire configuration | Agashi5859 | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0) | [Commons](https://commons.wikimedia.org/wiki/File:!st_wire_configuration.JPG) |  |
 | x1_battery_holder.jpg | Not a component / abstains | battery holder | Acer TravelMate P253-M-32344G50Maks - motherboard Q5WV1 LA-7912P - DBV CR2032-0231 | Raimond Spekking | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0) | [Commons](https://commons.wikimedia.org/wiki/File:Acer_TravelMate_P253-M-32344G50Maks_-_motherboard_Q5WV1_LA-7912P_-_DBV_CR2032-0231.jpg) |  |
 | x2_multimeter.jpg | Not a component / abstains | (not a component) | Digital Multimeter Aka | André Karwath aka Aka | [CC BY-SA 2.5](https://creativecommons.org/licenses/by-sa/2.5) | [Commons](https://commons.wikimedia.org/wiki/File:Digital_Multimeter_Aka.jpg) |  |
-| x3_soldering_iron.jpg | Not a component / abstains | (not a component) | Soldering iron (UK Plug) | oomlout (Soldering_iron_and_accessories.jpg); derivative work: Bomazi | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0) | [Commons](https://commons.wikimedia.org/wiki/File:Soldering_iron_(UK_Plug).jpg) | downscaled to 1024 px on the long side |
+| x3_soldering_iron.jpg | Not a component / abstains | (not a component) | Soldering iron (UK Plug) | oomlout (Soldering_iron_and_accessories.jpg); derivative work: Bomazi | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0) | [Commons](https://commons.wikimedia.org/wiki/File:Soldering_iron_(UK_Plug).jpg) | the 1280-px Commons thumbnail; downscaled to 1024 px on the long side |

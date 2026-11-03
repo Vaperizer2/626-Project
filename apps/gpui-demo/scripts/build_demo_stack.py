@@ -112,7 +112,7 @@ def changes_of(row: dict) -> str:
     out = []
     if m := re.search(r"File:(\d{4})(\d\d)(\d\d)(\d\d)(\d\d)(\d\d)(?:!|%21)", row["source_url"]):
         y, mo, d, h, mi, s = m.groups()
-        out.append(f"the revision of {y}-{mo}-{d} {h}:{mi}:{s} UTC (see the file history)")
+        out.append(f"the version replaced on {y}-{mo}-{d} {h}:{mi}:{s} UTC (see the file history)")
     if "alpha_composited" in row["flags"]:
         out.append("transparent background filled with white")
     if row["orig_format"].upper() != "JPEG":
@@ -199,7 +199,9 @@ def main() -> int:
             "author": AUTHOR_FIX.get(file, c["author"]), "licence": c["license"],
             "licence_url": LICENCE_URLS.get(c["license"], ""), "source_url": c["page"],
             "origin": f"results/demo/wikimedia_credits.json:{file}", "note": note,
-            "changes": f"downscaled to {MAX_SIDE} px on the long side" if max(c["size"]) > MAX_SIDE else "",
+            "changes": "; ".join(x for x in (
+                f"the {c['size'][0]}-px Commons thumbnail" if "/thumb/" in c["url"] else "",
+                f"downscaled to {MAX_SIDE} px on the long side" if max(c["size"]) > MAX_SIDE else "") if x),
         })
 
     if args.bin:
@@ -217,8 +219,10 @@ def main() -> int:
     if not args.bin:
         for e in entries:
             old = previous.get(e["origin"], {})
-            if old.get("sha256", e["sha256"]) == e["sha256"]:
+            if old.get("sha256") == e["sha256"]:
                 e.update({k: old[k] for k in ("model_pred", "model_conf", "model_unsure") if k in old})
+            else:
+                print(f"{e['file']}: no recorded answer for this photo; rerun with --bin", file=sys.stderr)
     for e in entries:
         im = Image.open(OUT / e["file"])
         e["width"], e["height"] = im.size
@@ -239,8 +243,9 @@ def main() -> int:
     lines = [
         "# Attribution — demo_stack", "",
         "Photos from Wikimedia Commons, redistributed under their original licences. Holdout photos are Commons",
-        "thumbnails 500 px wide, saved as JPEG (quality 95) with the long side at most 512 px (data/web_holdout_v1).",
-        "The two out-of-scope photos are the Commons files. Any other change to a photo is in its changes column.", "",
+        "downloads (a thumbnail up to 640 px wide, or the original when it is smaller), saved as JPEG (quality 95)",
+        "with the long side at most 512 px (data/web_holdout_v1). The out-of-scope photos are Commons files or",
+        "thumbnails. Any other change to a photo is in its changes column.", "",
         "| file | section | true label | title | author | licence | source | changes |",
         "|---|---|---|---|---|---|---|---|",
     ]
