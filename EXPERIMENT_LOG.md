@@ -45,3 +45,15 @@ The desktop app moved to GPUI Kit 0.7.3 with Classify/Demo/Benchmark, model comp
 Portable glibc-2.28 Linux packaging and a NixOS/Wayland launcher followed. October 30 published the source privately
 at https://github.com/Vaperizer2/626-Project and prepared a model/demo release, runbook and agent handoff.
 This delivery work does not change the recorded research scores or reopen held-out model selection.
+
+## 2026-11-03 to 2026-11-04 — scratch CNN (model A) improvement study
+
+Development-fold study of the from-scratch CNN on an RTX 4070 laptop; full record in
+`docs/SCRATCH_CNN_IMPROVEMENT_LOG.md` and `docs/SCRATCH_CNN_IMPROVEMENT_REPORT.md`, run records in
+`results/runs_win.jsonl`. Selection used development folds only.
+
+| Date | Experiment | CV macro-F1 (mean ± std) | CV accuracy | Notes |
+|---|---|---:|---:|---|
+| 2026-11-03 | Model A, 200-epoch schedule (`b0afa2aa4d60`, `train.epochs=200 train.patience=40`), 5 folds | 0.3903 (+0.035 ± 0.009 vs committed 0.3552, 5/5 folds) | 0.3986 | Resolution, mixup, width, depth, residual blocks, label smoothing, TTA, init, regularisers, EMA, squash: no gain. |
+| 2026-11-03 | Model A + distillation from C (`configs/scratch_cnn_distill.yaml`, `fbe64b2765cb`): cross-fitted per-fold SigLIP So400m probe teacher, alpha 0.9, T 2, 300 ep, 5 folds | 0.4361 (+0.046 ± 0.007 vs 200-ep A, 5/5 folds) | 0.4459 | Separate variant: no pretrained weights or extra images, but soft targets from a pretrained model. 500 epochs: +0.004 ± 0.004, not adopted. |
+| 2026-11-04 | **Sealed test — one look for the two final recipes** (`results/scratch_cnn_improvement/`, fold-0 training, 418 images) | — | — | A 200 ep: test acc 0.3995 / macro-F1 0.3924 (committed course run 0.3541 / 0.3361). A + distillation: 0.4115 / 0.3933. Paired bootstrap distilled − plain: macro-F1 +0.001 [−0.044, +0.045]. Schedule gain carries over; distillation gain not resolvable on the test split. Test split spent for both recipes; Wikimedia holdout not scored. |

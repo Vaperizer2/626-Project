@@ -5,7 +5,7 @@ before, how the research was conducted, what was tried with what result, and whe
 chronological detail is in `docs/SCRATCH_CNN_IMPROVEMENT_LOG.md`; the untouched record of the original model is
 `docs/SCRATCH_CNN_BASELINE.md`; a diagram of the network is `docs/scratch_cnn_pipeline.html`.
 
-Status (2026-11-03, end of day): **result reached on development folds.** Two outcomes, both confirmed on all
+Status (2026-11-04): **development-fold result final; sealed test scored once (section 7).** Two outcomes, both confirmed on all
 five folds with every fold improving:
 
 | Model | Five-fold macro-F1 | Accuracy | vs committed model A (0.3552) |
@@ -17,7 +17,12 @@ five folds with every fold improving:
 The first is the strict from-scratch model. The second keeps the same 1.19 M-parameter network and input but
 trains it against a pretrained model's soft targets, so it is reported as a separate variant. Everything else that
 was tried (resolution, mixup, width, depth, residual blocks, label smoothing, TTA, initialisation, regularisers,
-EMA, squash) made no difference or made it worse. Neither holdout has been scored.
+EMA, squash) made no difference or made it worse.
+
+Sealed test, one look (section 7): the 200-epoch model scores 0.3924 macro-F1 / 0.3995 accuracy and the distilled
+model 0.3933 / 0.4115, against 0.3361 / 0.3541 for the committed course run. The schedule gain carries over to
+the test split; the distillation gain is inside the test split's noise on this look (+0.001 macro-F1,
+95 % interval -0.044 to +0.045). The Wikimedia holdout is not scored.
 
 ## 1. Starting point
 
@@ -27,7 +32,7 @@ channels, max-pool after the first three, global average pool, dropout 0.3, line
 
 | Measure | Committed value |
 |---|---:|
-| Sealed test accuracy / macro-F1 (course run, single look, spent) | 0.3278 / 0.3287 |
+| Sealed test accuracy / macro-F1 (course run, single look) | 0.3541 / 0.3361 |
 | Five-fold dev macro-F1, committed research run (`4e4c6e8f6cf3`) | 0.3345, 0.3758, 0.3484, 0.3598, 0.3574 (mean 0.3552) |
 | Reference pretrained models on the same test split | B ConvNeXt-Tiny 0.86, C SigLIP probe 0.84 accuracy |
 
@@ -97,7 +102,7 @@ Config hash `b0afa2aa4d60`. Five-fold macro-F1 0.4021 / 0.3898 / 0.3866 / 0.3834
 against 0.3552 for the committed recipe: +0.035 ± 0.009 SE, better on 5/5 folds (entry 20). Cost about 430 s
 per fold on the laptop GPU, 435 MB VRAM.
 
-Confirmed on all five development folds; not scored on the sealed test split, which is deliberate (see Method).
+Confirmed on all five development folds. Sealed test, one look (section 7): accuracy 0.3995, macro-F1 0.3924.
 
 ### 4b. Model A + distillation from C
 
@@ -111,6 +116,7 @@ cost unchanged; training about 1.3x the time of 4a on an idle GPU plus a one-off
 
 Caveat that must travel with the number: no pretrained weights and no extra images, but a pretrained model's
 knowledge enters through the targets. In the A/B/C comparison it is a fourth row, not a replacement for A.
+Sealed test, one look (section 7): accuracy 0.4115, macro-F1 0.3933, not distinguishable from 4a on 418 images.
 
 ## 5. What was learned
 
@@ -149,7 +155,7 @@ In order of cost, each screened on folds 0-2 at 200 epochs:
 
 Remaining, all the author's decisions rather than experiments:
 
-- Score the sealed test split once for the course table (both 4a and 4b, and only after this document is final).
+- Done 2026-11-04: the sealed test split scored once for both 4a and 4b (section 7).
 - Decide how "A + distillation" is presented in `docs/itri626_report/` and whether it joins the demo app (it would
   need an export and a manifest; preprocessing is unchanged, so the existing model-A path applies).
 - Optional, not started: self-supervised pre-training on the same training photos, if a variant that uses no
@@ -179,3 +185,30 @@ uv run python tools/eval_tta.py "runs/win/scratch_cnn-b0afa2aa4d60/fold*/best.pt
 | `results/runs_win.jsonl`, `results/tta_win.jsonl` | run records from the laptop |
 | `src/compclass/models/scratch_cnn.py` | model; `residual`/`blocks` options added, defaults unchanged |
 | `tools/eval_tta.py` | test-time augmentation scorer for saved checkpoints |
+
+## 7. Sealed test, the one look (2026-11-04)
+
+Taken on the author's go-ahead after the development-fold decision was final (log entries 23-24). Each final
+recipe was trained once on fold 0 (train 2,010 / val 502, seed 42, the course table's fixed split) and its best
+checkpoint scored once on the 418 sealed test images. Files: `results/scratch_cnn_improvement/`.
+
+| Model | Dev five-fold macro-F1 | Test macro-F1 | Test accuracy |
+|---|---:|---:|---:|
+| A, committed course run (120 epochs) | 0.3552 | 0.3361 | 0.3541 |
+| A, 200 epochs (4a) | 0.3903 | **0.3924** | **0.3995** |
+| A + distillation from C, 300 epochs (4b) | 0.4361 | **0.3933** | **0.4115** |
+| Reference: B ConvNeXt-Tiny / C SigLIP probe (course run) | - | - | 0.86 / 0.84 |
+
+Paired bootstrap on the test images, 4b minus 4a: macro-F1 +0.001 [-0.044, +0.045], accuracy +0.012
+[-0.031, +0.057]. What this means:
+
+- The schedule gain is real on the test split: +5.6 pt macro-F1 over the committed course model, consistent with
+  the five-fold estimate.
+- The distillation gain, +4.6 pt on five folds with every fold improving, is not resolvable on one 418-image look
+  (about 21 images per class, interval +/- 4.5 pt) and one training run (+/- 2-3 pt run-to-run; the plain fold-0
+  rerun validated 2.8 pt below its earlier twin of the same seed). The five-fold numbers remain the better estimate
+  of expected performance, the test numbers are what the course table must report, and the course report should
+  say exactly that rather than claim a test-split gain for distillation.
+- Both recipes still fail on fuse, led and resistor; the distilled one is worst on resistor (0.16).
+
+The test split is now spent for both recipes. The Wikimedia holdout has not been scored and is not planned.
