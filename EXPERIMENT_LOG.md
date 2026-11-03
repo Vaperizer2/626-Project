@@ -115,7 +115,7 @@ ranked on grouped 5-fold dev CV only; no demo, holdout or test picture was score
 written down and the notes hashed, and then the final candidates were run on the demo stack once. Dev holds few of
 these errors (9 in 2,512 images), so the main proxy was the calibrated probability on the wrong partner class over
 the 638 dev images of the five classes (baseline 2.32 %). 41 scored variants of 25 hypotheses; the pick rule was
-fixed after the first twenty were scored. Log and notes in `626-artifacts/hardcases/` on the laptop, code in
+fixed after H0 to H19 were scored, before H20 to H23. Log and notes in `626-artifacts/hardcases/` on the laptop, code in
 `tools/hardcases/`.
 
 | Change | Dev CV | Δ | McNemar (worse / better), p | Hard-pair errors | Partner mass |
@@ -127,15 +127,16 @@ fixed after the first twenty were scored. Log and notes in `626-artifacts/hardca
 
 The squash gain comes from non-square pictures (62 % of dev, 0.807 → 0.836); square ones do not move, every fold
 improves, and the zero-shot head alone improves without training (0.762 → 0.775). The nearest-neighbour term was one
-of seven changes stacked on squash; corrected for that, its own p is about 0.11. Other whole-picture views (letterbox, the mean of crop and squash) did as well as squash,
-not better. Nothing else helped: the zero-shot
+of seven changes stacked on squash; corrected for that, its own p is about 0.11. Other whole-picture views did as well on accuracy, not better: letterbox without a significant drop in
+partner mass, and the mean of crop and squash at two passes per picture. Nothing else helped: the zero-shot
 weight and temperature, subtype prompts (zero-shot alone falls to 0.67–0.73), flip TTA or training, class-balanced
 weights, pair specialists, augmented views, prototypes, or a ConvNeXt-T ensemble. A SigLIP 2 ensemble was not
-significant at twice the latency. After 41 hypotheses the dev numbers are optimistic.
+significant at twice the latency. After 41 scored variants (25 hypotheses) the dev numbers are optimistic.
 
-The one look at the demo stack: no hard picture flipped. Three are less confidently wrong, the small transformer is
-more confidently wrong (0.965 → 0.987), and the Arduino picture is now accepted as breadboard (0.52) where the
-deployed model abstains, because the refit head's abstain threshold is 0.45 instead of 0.50. In the "Not a component
+The one look at the demo stack, with the recommended squash head: no hard picture flipped. Three are less
+confidently wrong, the small transformer is more confidently wrong (0.965 → 0.987), and the Arduino picture is now
+accepted as breadboard at 0.52 (the deployed model abstains at 0.44; 0.52 clears both its 0.50 threshold and the refit
+head's 0.45). In the "Not a component
 / abstains" section both out-of-scope pictures now abstain (1 of 2 before) and the in-scope coin-cell holder is
 answered correctly, so the section scores 3 of 3 instead of 1 of 3. The one-per-class section stays 20 of 20. The
 study recommends shipping squash without the nearest-neighbour term; it is not shipped, because it changes the shipped
