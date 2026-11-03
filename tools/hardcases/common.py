@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 import sys
 from dataclasses import dataclass
 from functools import cache
@@ -318,6 +319,7 @@ def record(hid: str, hypothesis: str, why: str, deploy_cost: str, scores: np.nda
         with open(DECISIONS) as f:
             rows = [r for r in csv.DictReader(f, delimiter="\t") if r["id"] != hid]
     rows.append({k: (f"{v:.4f}" if isinstance(v, float) else v) for k, v in row.items()})
+    rows.sort(key=lambda r: (int(re.match(r"H(\d+)", r["id"])[1]), r["id"]))
     with open(DECISIONS, "w", newline="") as f:
         w = csv.DictWriter(f, COLUMNS, delimiter="\t", extrasaction="ignore")
         w.writeheader()
