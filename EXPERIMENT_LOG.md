@@ -86,7 +86,7 @@ baseline. Model choices used only the dev folds; the sealed test and the web hol
 |---|---:|---:|---:|---|
 | 308 px, INT8 SmoothQuant, weights and activations (`compose_int8_res308`) | 9.2x (11.9 ms) | 0.8268 | 0.00 pt | shipped as the app's Fast model |
 | 294 px, INT8 | about 10x | 0.8240 | −0.28 pt | not shipped |
-| 308 px, token merging at blocks 13 and 20, INT8 | 10.8x, 11.4x with a fused engine | about 0.824 | about −0.3 pt (4 readings, −0.16 to −0.40) | not shipped |
+| 308 px, token merging at blocks 13 and 20, INT8 | 10.8x, 11.4x with a fused engine | about 0.824 | about −0.3 pt (4 readings, −0.16 to −0.40, one of them fp16) | not shipped |
 | 294 px, MLP pruned to 3840, INT8 (speed2) | 11.3x | 0.8224 | −0.44 pt | acceptable, not shipped |
 | speed2 shape + full-rank QAT distillation, Q5 (speed3) | 11.2x (9.95 ms) | 0.8260 | −0.08 pt (McNemar 60/58, p 0.93) | acceptable, best so far, not yet shipped |
 
@@ -100,7 +100,7 @@ Findings that hold beyond these candidates:
 - TensorRT 10.16.1 miscompiles these graphs after two onnxruntime rewrites (TransposeOptimizer: wrong outputs at
   batch > 1; MatMulAddFusion: broken token merging with INT8). A manifest's `session_config` turns both off
   (docs/TEMPLATE.md); the shipped Fast model hits neither.
-- Latency follows wave quantisation on the 30 SMs: cutting tokens pays mainly when it crosses a wave edge (448, 384,
-  320, 256, 192 and 128 tokens here) and little between edges.
+- Latency is not linear in tokens: on the 30 SMs it steps with GEMM tiles and CTA waves. The token counts that paid
+  off were 448, 384, 256 and 128 (`tools/speed4`).
 - Batching gains about 10 %, because the GPU is power-capped.
 - The same token-merging graph builds a fused TensorRT engine about 1 time in 4; `tools/speed4/engprobe.sh` tells.
