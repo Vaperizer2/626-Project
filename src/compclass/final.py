@@ -14,7 +14,7 @@ so the whole model is one network:
           -> zero-shot head:  log_softmax(T_zs * cos(f, text embedding of "a photo of a <class>"...))
           -> fused = probe + w_zs * zero-shot;  logits = fused / temperature;  probs = softmax(logits)
 
-Subcommands (run on the GPU PC from the repo root):
+Subcommands (from the repo root; feature extraction wants a CUDA GPU):
     uv run python -m compclass.final fit                 # OOF check of the exact exported pipeline, calibration,
                                                          # abstain threshold, refit head on all dev rows
     uv run python -m compclass.final export              # ONNX + labels/preprocess/metadata + parity checks

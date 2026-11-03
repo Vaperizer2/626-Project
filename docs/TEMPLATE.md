@@ -78,7 +78,7 @@ hello-ai models --check
 The parser rejects what the app cannot honour, and says which file and field.
 `models` without `--check` lists the heads and which execution providers register on this machine.
 
-Two known onnxruntime problems with TensorRT set rules for TensorRT manifests. TensorRT with batch above 1 returns wrong outputs on these graphs, so keep `batch.max` at 1. A ToMe plus INT8 engine needs `"graph_optimization_level": "ORT_DISABLE_ALL"`.
+TensorRT 10.16.1 returns wrong outputs on these SigLIP graphs after two onnxruntime rewrites: TransposeOptimizer breaks every row at batch above 1, and MatMulAddFusion breaks token merging with INT8. Turn both off in the manifest's `runtime` rather than giving up batching or optimisation: `"session_config": {"optimization.disable_specified_optimizers": "MatMulAddFusion;TransposeOptimizer"}`, with `;` between the names. The app applies a manifest's `session_config` to every session it builds. A batch-1 graph without token merging, such as the classifier's Fast model, needs neither.
 
 `.gitignore` ignores `*.onnx` and `*.onnx.data`. Keep the weights somewhere else as well, and commit the JSON files.
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Drive speed3 from legion: carlpc2 does the torch and INT8 work, legion runs only the frozen harness.
+# Drive speed3 from legion. carlpc2 did the torch and INT8 work and is gone (2026-11-03): sync, bg, log, int8 and fetch
+# no longer work; judge runs the frozen harness here.
 #   run.sh sync                          # code -> carlpc2:$R/repo
 #   run.sh bg <name> <cmd...>            # carlpc2, detached, under the GPU lock: cd repo; <cmd> > logs/<name>.log
 #   run.sh log <name>                    # tail of that log
