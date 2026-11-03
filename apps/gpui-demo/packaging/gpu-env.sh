@@ -12,11 +12,19 @@
 # found: the bundled CPU library is used. GPU_STATE says which, and why, in one line.
 # <ENV_PREFIX>_GPU=0 skips the search; an ORT_DYLIB_PATH you set yourself is kept.
 #
-# In: HERE (bundle folder), ORT_CPU (the bundled CPU library), APP_NAME and ENV_PREFIX (app.env).
-# Out: ORT_DYLIB_PATH, GPU_LIBPATH, GPU_STATE, and app_env for the launchers.
+# In: HERE (bundle folder), ORT_CPU (the bundled CPU library), APP_NAME, ENV_PREFIX and COMMANDS (app.env).
+# Out: ORT_DYLIB_PATH, GPU_LIBPATH, GPU_STATE, and app_env and app_command for the launchers.
 
 # app_env NAME: the value of $<ENV_PREFIX>_NAME, empty when unset
 app_env() { eval "printf '%s' \"\${${ENV_PREFIX}_$1-}\""; }
+
+# app_command ARG: ARG is one of app.env's COMMANDS or a help or version flag, which need no window
+app_command() {
+    for c in ${COMMANDS:?app.env has no COMMANDS line, the subcommands that need no window} -h --help -V --version; do
+        [ "$c" = "$1" ] && return 0
+    done
+    return 1
+}
 
 GPU_LIBPATH=""
 GPU_STATE=""

@@ -20,6 +20,7 @@ The name is the Cargo package, the binary and the folder names (`apps/<name>/`, 
 The prefix starts the environment variables (`HELLOAI_MODELS`, `HELLOAI_GPU`, `HELLOAI_GPU_VENV`). It takes `A-Z`, `0-9` and `_`.
 
 The script copies what `HEAD` holds, so commit template fixes before you run it.
+After a change to `new_app.sh` or to a file it copies, `scripts/check_new_app.sh` makes an app from `HEAD` in a temporary folder and runs its tests.
 It copies the workspace `Cargo.toml` and `Cargo.lock`, `rustfmt.toml`, `crates/inference`, `apps/gpui-demo` as `apps/<name>`, and this file as `docs/TEMPLATE.md`.
 Then it deletes the classifier's files and their module lines, and writes the identity files.
 The new app's layout is the same as here.
@@ -39,7 +40,7 @@ docs/TEMPLATE.md                     this file
 | Where | What |
 |---|---|
 | `apps/<name>/src/app.rs` | `NAME` (cache folder), `TITLE` (window title, `--help`), `ABOUT` (one line in `--help`), `ENV_PREFIX`, `ICON` (title bar), `UNSURE` (the label of an abstaining head in `classify` output), `subtitle` (the title bar's note on the selected head). `BIN` is `env!("CARGO_BIN_NAME")`. It is the Wayland app id and the prefix of every log line. |
-| `apps/<name>/packaging/app.env` | `APP_NAME`, `APP_TITLE`, `ENV_PREFIX`, `BIN`, for the launchers and `package_linux.sh`. |
+| `apps/<name>/packaging/app.env` | `APP_NAME`, `APP_TITLE`, `ENV_PREFIX`, `BIN` and `COMMANDS`, for the launchers and `package_linux.sh`. |
 | `apps/<name>/Cargo.toml` | the package name and the `[[bin]]` name. |
 
 Edit `ABOUT` first. The script sets it to "classify pictures".

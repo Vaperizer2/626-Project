@@ -278,7 +278,7 @@ on `PATH`. Arch's zig 0.17 compiles everything, but its linker rejects the syste
 needs `GLIBC_2.33` and `GLIBC_2.38` symbols that the 2.28 stubs lack (2026-11-01, cargo-zigbuild 0.24).
 
 The bundle's name, binary and environment variables come from `packaging/app.env` (`APP_NAME`, `APP_TITLE`,
-`ENV_PREFIX`, `BIN`), which the script and both launchers source and which ships in the bundle. Keep it in step with
+`ENV_PREFIX`, `BIN`, and `COMMANDS`, the subcommands the launchers start without a window), which the script and both launchers source and which ships in the bundle. Keep it in step with
 `src/app.rs`.
 
 How the bundle stays portable:

@@ -12,7 +12,8 @@ DEST=$1 NAME=$2 TITLE=$3 PREFIX=$4 APP=apps/$2
 [[ -n $TITLE && $TITLE != *[\"\\\$\`]* ]] || die "Title '$TITLE': no quotes, backslashes, \$ or backticks"
 [ ! -e "$DEST" ] || die "$DEST exists"
 SRC=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
-mkdir -p "$DEST"
+mkdir -p "$(dirname "$DEST")"
+mkdir "$DEST"
 DEST=$(cd "$DEST" && pwd)
 trap '[ $? = 0 ] || { echo "new_app.sh: failed, removing $DEST" >&2; rm -rf "$DEST"; }' EXIT
 git -C "$SRC" archive HEAD Cargo.toml Cargo.lock rustfmt.toml crates/inference apps/gpui-demo docs/TEMPLATE.md |

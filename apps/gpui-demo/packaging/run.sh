@@ -34,9 +34,7 @@ if [ ! -x "$BIN" ]; then
     exit 1
 fi
 
-if [ -n "${1:-}" ]; then
-    case " $COMMANDS -h --help -V --version " in *" $1 "*) exec "$BIN" "$@" ;; esac
-fi
+if app_command "${1:-}"; then exec "$BIN" "$@"; fi
 
 if [ -z "${WAYLAND_DISPLAY:-}" ] && [ -z "${DISPLAY:-}" ]; then
     cat >&2 <<'MSG'

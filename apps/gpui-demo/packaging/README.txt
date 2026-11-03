@@ -127,7 +127,7 @@ exports/fast/              Fast: model.onnx, model.onnx.data, preprocess.json, r
 exports/itri626/           A_scratch_cnn/ and B_convnext_tiny/: model.onnx, preprocess.json, labels.json
 demo_stack/                the 28 demo photos, demo_stack.json, ATTRIBUTION.md (author/licence of each photo)
 run.sh                     launcher (sets the paths above; passes arguments through)
-app.env                    the app's name, its environment variable prefix and binary, read by the launchers
+app.env                    the app's name, environment variable prefix, binary and subcommands, read by the launchers
 gpu-env.sh                 used by run.sh and run-nixos.sh: finds the GPU runtime (see GPU)
 LICENSES/                  licences: onnxruntime (MIT), Noto Sans (SIL OFL 1.1, embedded in the binary),
                            GPUI Kit (Apache-2.0), Rust crates, dataset note, photo credits pointer
