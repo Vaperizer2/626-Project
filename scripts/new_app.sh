@@ -14,7 +14,7 @@ DEST=$1 NAME=$2 TITLE=$3 PREFIX=$4 APP=apps/$2
 SRC=$(git -C "$(dirname "$0")" rev-parse --show-toplevel)
 mkdir -p "$(dirname "$DEST")"
 mkdir "$DEST"
-DEST=$(cd "$DEST" && pwd)
+DEST=$(cd -P -- "$DEST" && pwd -P)
 trap '[ $? = 0 ] || { echo "new_app.sh: failed, removing $DEST" >&2; rm -rf "$DEST"; }' EXIT
 git -C "$SRC" archive HEAD Cargo.toml Cargo.lock rustfmt.toml crates/inference apps/gpui-demo docs/TEMPLATE.md |
     tar -x -C "$DEST"

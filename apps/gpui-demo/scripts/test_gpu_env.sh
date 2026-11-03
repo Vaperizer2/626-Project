@@ -116,9 +116,10 @@ got=$(env -i PATH="$PATH" HOME="$T" XDG_DATA_HOME="$T/data" "${OP}_GPU=0" sh "$B
 if [ "$got" = "$want" ]; then echo "ok   run.sh starts app.env's subcommand without a display, with the app's variables"; else
     echo "FAIL run.sh: got $got, want $want"; fails=$((fails + 1)); fi
 for a in "embed models" --tab ""; do
-    if out=$(env -i PATH="$PATH" HOME="$T" "${OP}_GPU=0" sh "$B/run.sh" "$a" 2>/dev/null) || [ -n "$out" ]; then
+    if out=$(env -i PATH="$PATH" HOME="$T" "${OP}_GPU=0" sh "$B/run.sh" "$a" 2>&1); then
         echo "FAIL run.sh started the app for '$a' without a display: $out"; fails=$((fails + 1))
-    else echo "ok   run.sh wants a display for '$a'"; fi
+    else case "$out" in *"no graphical session"*) echo "ok   run.sh wants a display for '$a'" ;; *)
+        echo "FAIL run.sh for '$a': $out"; fails=$((fails + 1)) ;; esac; fi
 done
 got=$(env -i PATH="$PATH" HOME="$T" "${OP}_GPU=0" "${OP}_MODELS=$T/x" sh "$B/run.sh" models 2>/dev/null)
 case "$got" in "models|$T/x|"*) echo "ok   run.sh keeps a variable the caller set" ;; *)

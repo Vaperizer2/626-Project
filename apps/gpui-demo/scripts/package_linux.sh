@@ -42,6 +42,7 @@ say() { printf '\n== %s\n' "$*"; }
 die() { echo "package_linux.sh: $*" >&2; exit 1; }
 case $APP_NAME in "" | *[!a-z0-9-]*) die "APP_NAME='$APP_NAME' in packaging/app.env: use a-z, 0-9 and -" ;; esac
 case $ENV_PREFIX in "" | [0-9]* | *[!A-Z0-9_]*) die "ENV_PREFIX='$ENV_PREFIX' in packaging/app.env: use A-Z, 0-9 and _" ;; esac
+[ -n "${COMMANDS+set}" ] || die "packaging/app.env has no COMMANDS line (the names in app::COMMANDS; empty when there are none)"
 
 mkdir -p "$DIST"
 BUILT=$CARGO_TARGET_DIR/$TRIPLE/release/$BIN
