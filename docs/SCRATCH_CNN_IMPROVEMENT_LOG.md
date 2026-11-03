@@ -452,3 +452,41 @@ Conventions:
   from-scratch model A remains the 200-epoch plain recipe at 0.3903.
 - Not done, on purpose: the sealed test split and the Wikimedia holdout have not been scored. Scoring the test
   split once, for the final course table, is the author's call.
+
+### 23. Distilled variant, more signal per run: 500-epoch schedule and width 48; folds 0-2
+
+- Both start from `configs/scratch_cnn_distill.yaml` (entry 22). 23a `train.epochs=500 train.patience=100`:
+  the distilled student was still rising at 300 epochs (fold 4 best at 292). 23b `model.kwargs.width=48`: with
+  hard labels wider nets learned nothing extra (entry 8) because the data ran out; soft targets carry more, so
+  capacity may matter now. Screened on folds 0-2 against the adopted recipe's folds 0-2 (0.4250 / 0.4284 /
+  0.4341, mean 0.4292).
+- Run before the sealed test is scored, so that the dev-fold decision is final first.
+- 23a result (`07be7ec77876`, 500 epochs, patience 100):
+
+  | Recipe | Fold 0 | Fold 1 | Fold 2 | Mean | Mean acc | vs 300 ep | Best epochs | Train s/fold |
+  |---|---:|---:|---:|---:|---:|---:|---|---:|
+  | KD 300 ep (`fbe64b2765cb`, adopted) | 0.4250 | 0.4284 | 0.4341 | 0.4292 | 0.4390 | - | 244, 160, 244 | 551-827 |
+  | KD 500 ep (`07be7ec77876`) | 0.4311 | 0.4450 | 0.4415 | 0.4392 | 0.4503 | +0.010 +/- 0.003 SE, 3/3 | 444, 368, 203 | 898-1288 |
+
+  Every fold better, and the paired spread is tight, but the mean gain of +1.0 pt sits at the edge of what three
+  folds can resolve. Folds 0 and 1 peak late (444, 368), fold 2 peaks at 203 and early-stops at 304, so the longer
+  cosine helps on two folds of three. Cost is 1.6x the training time of the 300-epoch recipe.
+- 23b (width 48) did not run: the queue was stopped by the agent harness during fold 0 because the laptop was
+  critically low on memory while the session was idle. Nothing from it is recorded; it can be re-queued.
+- 23a confirmation on folds 3-4 (same hash `07be7ec77876`):
+
+  | Recipe | Fold 0 | Fold 1 | Fold 2 | Fold 3 | Fold 4 | Mean | Mean acc | vs KD 300 ep | Best epochs |
+  |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
+  | KD 300 ep (`fbe64b2765cb`, adopted) | 0.4250 | 0.4284 | 0.4341 | 0.4417 | 0.4514 | 0.4361 | 0.4459 | - | 244, 160, 244, 229, 240 |
+  | KD 500 ep (`07be7ec77876`) | 0.4311 | 0.4450 | 0.4415 | 0.4319 | 0.4504 | 0.4400 | 0.4486 | +0.004 +/- 0.004 SE, 3/5 | 444, 368, 203, 353, 265 |
+
+  Folds 3 and 4 went the other way (-1.0 and -0.1 pt), so the five-fold gain is +0.4 pt with a standard error of
+  the same size: inside noise. Both are +0.050 +/- 0.006 and +0.046 +/- 0.007 over the plain reference, i.e. the
+  same result at 1.3x the training time (689-1288 s/fold vs 551-941 s/fold, both ranges inflated by other laptop
+  use).
+- Verdict: **not adopted.** The folds 0-2 screen was a 3/3 result of the size entry 4 warned about (224 px:
+  +4.4 pt on fold 0, nothing on five). The distilled student's schedule is saturated at 300 epochs just as the
+  plain one's was at 200 (entry 7).
+  `configs/scratch_cnn_distill.yaml` stays at 300 epochs / patience 60 and entry 22 remains the final recipe. The
+  width-48 screen (23b) is still an open, unrun option; given that the schedule lever is now flat on both students,
+  the expected gain is small and it is not queued.

@@ -81,6 +81,7 @@ All macro-F1, validation, best epoch. "Reference" is the 200-epoch plain recipe 
 | 20 | confirmation | 200-epoch reference on folds 3-4 | 0-4 | five-fold 0.3903, +0.035 ± 0.009 vs committed, 5/5 | adoption confirmed |
 | 21 | confirmation | KD in-sample teacher, alpha 0.9 / T 2, 300 ep, folds 3-4 added | 0-4 | five-fold 0.4325, +0.042 ± 0.010 vs reference, 5/5 | confirmed |
 | 22 | **final** | KD cross-fitted teacher, alpha 0.9 / T 2, 300 ep (`configs/scratch_cnn_distill.yaml`) | 0-4 | **five-fold 0.4361, +0.046 ± 0.007 vs reference, 5/5**; 18/20 classes better | **adopted as "A + distillation"** |
+| 23 | screen + confirmation | KD, 500 ep / patience 100 (`07be7ec77876`); width 48 | 0-4 | 500 ep: folds 0-2 +0.010 (3/3) but five-fold 0.4400 vs 0.4361, +0.004 ± 0.004, 3/5; width 48 not run | not adopted; 300 ep stays final |
 | 18d | distillation | cross-fitted teacher (honest train-row logits), alpha 0.9 / T 2, 200 ep | 0-2 | +0.032 ± 0.014 vs ref (3/3); +0.004 ± 0.004 vs in-sample teacher | at least as good; 300-ep five-fold run queued |
 | 19 | input | whole picture squashed to 160x160 (`aug.squash`), alone and with distillation | 0-2 | -0.030 ± 0.008 alone, -0.037 ± 0.005 with KD; worse on 3/3 both | dropped; SigLIP's +1.6 pt does not transfer to 160 px |
 
