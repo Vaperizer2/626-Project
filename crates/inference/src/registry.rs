@@ -47,7 +47,12 @@ impl fmt::Display for IndexError {
             IndexError::NotFound { searched } => {
                 write!(f, "no exports/{INDEX_FILE} found (looked in ")?;
                 let shown: Vec<String> = searched.iter().take(4).map(|p| p.display().to_string()).collect();
-                write!(f, "{}{}); pass --models <exports folder>", shown.join(", "), if searched.len() > 4 { ", ..." } else { "" })
+                write!(
+                    f,
+                    "{}{}); pass --models <exports folder>",
+                    shown.join(", "),
+                    if searched.len() > 4 { ", ..." } else { "" }
+                )
             }
             IndexError::Manifest(e) => write!(f, "{e}"),
             IndexError::DuplicateHead { head, first, second } => {
@@ -221,7 +226,11 @@ impl Registry {
 
     /// The first default that names a head, else the first head.
     pub fn first_default(&self) -> Option<HeadId> {
-        self.default.iter().find(|d| self.head(d).is_some()).cloned().or_else(|| self.heads().next().map(|h| h.id().clone()))
+        self.default
+            .iter()
+            .find(|d| self.head(d).is_some())
+            .cloned()
+            .or_else(|| self.heads().next().map(|h| h.id().clone()))
     }
 
     /// The last listed default, when a head provides it: the fallback, which needs only its files. When that id
@@ -302,8 +311,11 @@ mod tests {
         for f in ["model.json", "labels.json"] {
             std::fs::copy(src.join(f), dir.join(f)).unwrap();
         }
-        std::fs::write(tmp.join(INDEX_FILE), r#"{"schema":"model-index/1","default":["a","x"],"manifests":["A/model.json","gone/model.json"]}"#)
-            .unwrap();
+        std::fs::write(
+            tmp.join(INDEX_FILE),
+            r#"{"schema":"model-index/1","default":["a","x"],"manifests":["A/model.json","gone/model.json"]}"#,
+        )
+        .unwrap();
         let r = Registry::load(&tmp.join(INDEX_FILE)).unwrap();
         assert_eq!(r.problems().len(), 2, "a manifest that does not parse and an unknown default: {:?}", r.problems());
         let a = r.head(&r.find("a").unwrap()).unwrap();
@@ -327,7 +339,8 @@ mod tests {
     fn duplicate_head_ids_are_an_error() {
         let mut other = model_a();
         other.id = GraphId::new("other");
-        let e = Registry::from_graphs(PathBuf::from("i"), vec![graph(model_a()), graph(other)], vec![], vec![]).unwrap_err();
+        let e = Registry::from_graphs(PathBuf::from("i"), vec![graph(model_a()), graph(other)], vec![], vec![])
+            .unwrap_err();
         assert!(matches!(e, IndexError::DuplicateHead { .. }));
     }
 
@@ -335,7 +348,8 @@ mod tests {
     fn a_second_manifest_with_the_same_graph_id_is_a_problem() {
         let mut second = model_a();
         second.heads[0].id = HeadId::new("a2");
-        let r = Registry::from_graphs(PathBuf::from("i"), vec![graph(model_a()), graph(second)], vec![], vec![]).unwrap();
+        let r =
+            Registry::from_graphs(PathBuf::from("i"), vec![graph(model_a()), graph(second)], vec![], vec![]).unwrap();
         assert_eq!(r.ids(), [HeadId::new("a")], "the service keys graphs by id, so only the first one is served");
         assert!(matches!(r.problems(), [p] if p.contains("A_scratch_cnn")), "{:?}", r.problems());
     }

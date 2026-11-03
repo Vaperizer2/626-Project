@@ -10,15 +10,15 @@ use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result, anyhow, bail};
-use ort::ep::ExecutionProviderDispatch;
-use sha2::Digest as _;
 use ort::ep::ArbitrarilyConfigurableExecutionProvider as _;
+use ort::ep::ExecutionProviderDispatch;
 use ort::session::{RunOptions, Session, builder::GraphOptimizationLevel, builder::SessionBuilder};
 use ort::value::TensorRef;
+use sha2::Digest as _;
 
-use crate::service::{Graph, LoadStage, Loaded, Loader, RunFailure};
 use crate::manifest::{Ep, EpKind, Manifest, OptLevel};
 use crate::registry::{Registry, search_bases};
+use crate::service::{Graph, LoadStage, Loaded, Loader, RunFailure};
 
 /// How the app runs its models.
 #[derive(Debug, Clone, Default)]
@@ -99,7 +99,9 @@ fn preferences(eps: Option<&[EpKind]>, m: &Manifest) -> Vec<Ep> {
         None => m.runtime.providers.clone(),
         Some(kinds) => kinds
             .iter()
-            .map(|&kind| m.runtime.providers.iter().find(|e| e.kind == kind).cloned().unwrap_or(Ep { kind, options: vec![] }))
+            .map(|&kind| {
+                m.runtime.providers.iter().find(|e| e.kind == kind).cloned().unwrap_or(Ep { kind, options: vec![] })
+            })
             .collect(),
     }
 }
@@ -188,7 +190,14 @@ impl Runtime {
         let real = ort_lib.canonicalize().unwrap_or_else(|_| ort_lib.clone());
         let name = real.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
         let version = name.split_once(".so.").map_or(name.as_str(), |(_, v)| v).to_string();
-        Ok(Self { env, ort_lib, version, threads: opts.threads, eps: opts.eps.clone(), cache_dir: opts.cache_dir.clone() })
+        Ok(Self {
+            env,
+            ort_lib,
+            version,
+            threads: opts.threads,
+            eps: opts.eps.clone(),
+            cache_dir: opts.cache_dir.clone(),
+        })
     }
 
     /// The providers to try for `m`, in order: the manifest's list, or `Settings::eps` with the manifest's options
@@ -312,9 +321,10 @@ impl Runtime {
     /// An engine for `m` is already built (the next session loads it instead of building one).
     fn engine_cached(&self, ep: &Ep, m: &Manifest) -> bool {
         ep.flag("trt_engine_cache_enable")
-            && self.engine_cache(m).and_then(|d| std::fs::read_dir(d).ok()).is_some_and(|mut it| {
-                it.any(|e| e.is_ok_and(|e| e.path().extension().is_some_and(|x| x == "engine")))
-            })
+            && self
+                .engine_cache(m)
+                .and_then(|d| std::fs::read_dir(d).ok())
+                .is_some_and(|mut it| it.any(|e| e.is_ok_and(|e| e.path().extension().is_some_and(|x| x == "engine"))))
     }
 }
 
@@ -544,7 +554,11 @@ impl OrtLoader {
 }
 
 impl Loader for OrtLoader {
-    fn load(&self, m: &Arc<Manifest>, stage: &dyn Fn(LoadStage)) -> std::result::Result<(Box<dyn Graph>, Loaded), String> {
+    fn load(
+        &self,
+        m: &Arc<Manifest>,
+        stage: &dyn Fn(LoadStage),
+    ) -> std::result::Result<(Box<dyn Graph>, Loaded), String> {
         let t0 = Instant::now();
         let rt = self.runtime()?;
         let verified = crate::integrity::Stamps::load(self.opts.cache_dir.as_deref()).all_verified(m);
@@ -591,7 +605,10 @@ mod tests {
         assert_eq!(trt_options(&ep, None), vec![o("trt_fp16_enable", "1")], "no switch, no relative path");
         let with = trt_options(&ep, Some(std::path::Path::new("/c/fast")));
         assert!(with.contains(&o("trt_engine_cache_enable", "1")) && with.contains(&o("trt_timing_cache_enable", "1")));
-        assert!(with.contains(&o("trt_engine_cache_path", "/c/fast")) && with.contains(&o("trt_timing_cache_path", "/c/fast")));
+        assert!(
+            with.contains(&o("trt_engine_cache_path", "/c/fast"))
+                && with.contains(&o("trt_timing_cache_path", "/c/fast"))
+        );
         assert!(!with.contains(&o("trt_engine_cache_path", "trt_cache")), "the app's dir replaces the manifest's");
     }
 
@@ -639,7 +656,8 @@ mod tests {
         let mut value = [0u8; 64];
         let mut len = value.len();
         // SAFETY: a live session options pointer, a NUL-terminated key, and `len` bytes of output buffer
-        let status = unsafe { (ort::api().GetSessionConfigEntry)(b.ptr(), key.as_ptr(), value.as_mut_ptr().cast(), &mut len) };
+        let status =
+            unsafe { (ort::api().GetSessionConfigEntry)(b.ptr(), key.as_ptr(), value.as_mut_ptr().cast(), &mut len) };
         assert!(status.0.is_null(), "the entry is set");
         assert_eq!(&value[..len], b"MatMulAddFusion;TransposeOptimizer\0");
     }

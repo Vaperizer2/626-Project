@@ -51,9 +51,9 @@ impl Stamps {
     /// Is `f` the file `models --check` hashed (same size and mtime, and the hash it found is the manifest's)?
     pub(crate) fn verified(&self, f: &FileEntry) -> bool {
         let Some((bytes, mtime_ns)) = now_stamp(&f.path) else { return false };
-        self.map.get(&key(&f.path)).is_some_and(|s| {
-            s.bytes == bytes && s.mtime_ns == mtime_ns && s.sha256 == f.sha256.to_string()
-        })
+        self.map
+            .get(&key(&f.path))
+            .is_some_and(|s| s.bytes == bytes && s.mtime_ns == mtime_ns && s.sha256 == f.sha256.to_string())
     }
 
     /// Every file of `m` is verified.

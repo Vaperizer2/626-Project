@@ -78,7 +78,9 @@ fn run(a: &Args) -> Result<u8> {
     for round in 0..a.rounds {
         for src in &sources {
             if let Some((wall, t)) = one(src, round == 0, &mut answers) {
-                for (v, x) in stages.iter_mut().zip([t.decode_ms, t.preprocess_ms, t.queue_ms, t.run_ms, t.post_ms, wall]) {
+                for (v, x) in
+                    stages.iter_mut().zip([t.decode_ms, t.preprocess_ms, t.queue_ms, t.run_ms, t.post_ms, wall])
+                {
                     v.push(x);
                 }
             }

@@ -91,7 +91,10 @@ pub enum ServiceEvent {
     Graph(GraphId, GraphState),
     /// the head to start with: the first default whose preferred provider registers (the last default needs only
     /// its files), else the first available head; None when no head can run here. Sent once, always.
-    Default { head: Option<HeadId>, passed_over: Vec<(HeadId, String)> },
+    Default {
+        head: Option<HeadId>,
+        passed_over: Vec<(HeadId, String)>,
+    },
 }
 
 // ---------------------------------------------------------------------------------------------- requests
@@ -160,7 +163,6 @@ impl Timing {
     pub fn ms(&self) -> f64 {
         self.preprocess_ms + self.run_ms + self.post_ms
     }
-
 }
 
 /// One head's answer on one image. Tabs match on the variants they can show.
@@ -171,14 +173,23 @@ pub enum HeadOutput {
 
 pub enum Update {
     /// the image is decoded; `display` is the BGRA copy asked for (long side <= the requested size)
-    Decoded { size: (u32, u32), display: Option<RgbaImage> },
-    Head { head: HeadId, result: Result<HeadOutput, RunError>, timing: Timing },
+    Decoded {
+        size: (u32, u32),
+        display: Option<RgbaImage>,
+    },
+    Head {
+        head: HeadId,
+        result: Result<HeadOutput, RunError>,
+        timing: Timing,
+    },
     Done(Finish),
 }
 
 #[derive(Debug, Clone)]
 pub enum Finish {
-    Complete { wall_ms: f64 },
+    Complete {
+        wall_ms: f64,
+    },
     /// the image could not be read or decoded
     Failed(RunError),
     Cancelled,
@@ -528,7 +539,6 @@ impl Lane {
         }
         RequestHandle { updates, ticket: Ticket(cancelled) }
     }
-
 }
 
 impl Core {
@@ -597,13 +607,13 @@ impl Core {
             ImageInput::Bytes(b) => prof!("job::decode_bytes", preprocess::decode(&b))
                 .map(Arc::new)
                 .map_err(|e| RunError::Decode(format!("{e:#}"))),
-            ImageInput::Source(s) => prof!("job::read", s.read())
-                .map_err(|e| RunError::Read(format!("{e:#}")))
-                .and_then(|b| {
+            ImageInput::Source(s) => {
+                prof!("job::read", s.read()).map_err(|e| RunError::Read(format!("{e:#}"))).and_then(|b| {
                     prof!("job::decode", preprocess::decode(&b))
                         .map(Arc::new)
                         .map_err(|e| RunError::Decode(format!("{e:#}")))
-                }),
+                })
+            }
         };
         let rgb = match rgb {
             Ok(rgb) => rgb,
@@ -671,7 +681,8 @@ impl Core {
                 enqueued: Instant::now(),
                 _slot: slot.clone(),
             };
-            let queued = self.actor(m).and_then(|q| q.push(req.priority, Msg::Job(job)).map_err(|_| STOPPED.to_string()));
+            let queued =
+                self.actor(m).and_then(|q| q.push(req.priority, Msg::Job(job)).map_err(|_| STOPPED.to_string()));
             if let Err(e) = queued {
                 for &i in ix {
                     req.send(Update::Head {
@@ -687,7 +698,12 @@ impl Core {
 }
 
 /// One graph's thread: owns the loaded graph, serves its queue.
-fn actor(m: Arc<Manifest>, queue: Arc<Queue<Msg>>, loader: Arc<dyn Loader>, events: fmpsc::UnboundedSender<ServiceEvent>) {
+fn actor(
+    m: Arc<Manifest>,
+    queue: Arc<Queue<Msg>>,
+    loader: Arc<dyn Loader>,
+    events: fmpsc::UnboundedSender<ServiceEvent>,
+) {
     let emit = |st: GraphState| {
         let _ = events.unbounded_send(ServiceEvent::Graph(m.id.clone(), st));
     };
@@ -729,7 +745,11 @@ fn actor(m: Arc<Manifest>, queue: Arc<Queue<Msg>>, loader: Arc<dyn Loader>, even
                     first.req.send(Update::Head {
                         head: m.heads[i].id.clone(),
                         result: Err(RunError::Load(e.clone())),
-                        timing: Timing { decode_ms: first.decode_ms, preprocess_ms: first.preprocess_ms, ..Default::default() },
+                        timing: Timing {
+                            decode_ms: first.decode_ms,
+                            preprocess_ms: first.preprocess_ms,
+                            ..Default::default()
+                        },
                     });
                 }
                 first.req.graph_done();

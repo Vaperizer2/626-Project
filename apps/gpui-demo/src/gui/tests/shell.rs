@@ -39,7 +39,11 @@ async fn window_renders_every_tab(cx: &mut TestAppContext) {
         cx.update_window(handle, |_, window, cx| {
             view.update(cx, |v, cx| v.set_tab(ix, window, cx));
             window.render_frame(cx);
-            assert!(view.read(cx).tabs[ix].focus.is_focused(window), "the {} tab renders with the keyboard", spec.title);
+            assert!(
+                view.read(cx).tabs[ix].focus.is_focused(window),
+                "the {} tab renders with the keyboard",
+                spec.title
+            );
             assert!(window.try_find("status-hints").is_some(), "the status bar renders under the {} tab", spec.title);
         })
         .unwrap();
@@ -160,10 +164,13 @@ async fn switching_tab_answers_its_input_with_the_model_picked_elsewhere(cx: &mu
     let (handle, view) = open(cx, registry(&[("x", 1), ("y", 1), ("z", 1)], &["y", "x"]), SHELL_TABS);
     let [x, y, z] = ["x", "y", "z"].map(HeadId::new);
     let (classify_ix, probe_ix) = (ix::<ClassifyTab>(SHELL_TABS), ix::<ProbeTab>(SHELL_TABS));
-    let followed = |cx: &mut TestAppContext| cx.update(|cx| probe(view.read(cx), cx).followed.last().cloned().flatten());
+    let followed =
+        |cx: &mut TestAppContext| cx.update(|cx| probe(view.read(cx), cx).followed.last().cloned().flatten());
     wait(cx, &view, "the default head", &|v, cx| run_model(v, cx).as_ref() == Some(&y));
     let shown = picture("switching-tab");
-    on(cx, handle, &view, classify_ix, &|v, w, cx| v.send_inputs(vec![ImageInput::Source(Source::File(shown.clone()))], w, cx));
+    on(cx, handle, &view, classify_ix, &|v, w, cx| {
+        v.send_inputs(vec![ImageInput::Source(Source::File(shown.clone()))], w, cx)
+    });
     wait(cx, &view, "y's answer for the picture", &|v, cx| classify(v, cx).answered(&y));
     on(cx, handle, &view, probe_ix, &|_, _, _| {});
     assert_eq!(followed(cx).as_ref(), Some(&y), "the tab follows the model when it opens");
@@ -190,7 +197,8 @@ async fn pictures_given_at_start_wait_for_the_default_model(cx: &mut TestAppCont
     let (_handle, view) = open_sized(cx, reg, loader, SHELL_TABS, window, pictures, GuiOptions::default());
     let y = HeadId::new("y");
     wait(cx, &view, "y's answer for every picture", &|v, cx| classify(v, cx).answered_entries(&y) == 3);
-    let fallback_runs = ran.lock().unwrap().iter().filter(|s| matches!(s, Seen::Started { graph, .. } if graph == "x")).count();
+    let fallback_runs =
+        ran.lock().unwrap().iter().filter(|s| matches!(s, Seen::Started { graph, .. } if graph == "x")).count();
     assert_eq!(fallback_runs, 0, "the fallback model never ran");
 }
 
@@ -198,7 +206,8 @@ async fn pictures_given_at_start_wait_for_the_default_model(cx: &mut TestAppCont
 async fn controls_stay_inside_the_smallest_window(cx: &mut TestAppContext) {
     let small = size(px(1024.), px(640.));
     let reg = registry(&[("x", 1), ("y", 1)], &["x", "y"]);
-    let (handle, view) = open_sized(cx, reg, FakeLoader::default(), app::TABS, small, Vec::new(), GuiOptions::default());
+    let (handle, view) =
+        open_sized(cx, reg, FakeLoader::default(), app::TABS, small, Vec::new(), GuiOptions::default());
     wait(cx, &view, "the default head", &|v, cx| run_model(v, cx).is_some());
     for (ix, spec) in app::TABS.iter().enumerate() {
         cx.update_window(handle, |_, window, cx| {
@@ -231,7 +240,9 @@ async fn the_fallback_notice_goes_once_the_user_picks_a_model(cx: &mut TestAppCo
 #[gpui_kit::test]
 async fn missing_index_is_reported(cx: &mut TestAppContext) {
     let (handle, view) = open(cx, Arc::new(Registry::empty("no exports/models.json found".into())), SHELL_TABS);
-    cx.update(|cx| assert!(view.read(cx).models.read(cx).registry_error().is_some(), "a missing index must be reported"));
+    cx.update(|cx| {
+        assert!(view.read(cx).models.read(cx).registry_error().is_some(), "a missing index must be reported")
+    });
     cx.update_window(handle, |_, window, cx| {
         window.render_frame(cx);
         assert!(window.try_find("open").is_some(), "the window still renders without models");

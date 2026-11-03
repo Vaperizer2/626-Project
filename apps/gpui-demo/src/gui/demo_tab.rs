@@ -20,15 +20,15 @@ use gpui_kit::{
 };
 
 use super::models::{Models, on_retry};
-use super::widgets::Lucide;
 use super::results::HeadResult;
 use super::stack::{Item, Stack, tab_header, verdict_colors, verdict_icon, verdict_tag};
+use super::widgets::Lucide;
 use super::{Activate, Cancel, Hint, RunAll, StepNext, StepPrev, Tab, theme, widgets};
 use crate::app;
 use crate::demo::Verdict;
+use inference::manifest::HeadId;
 use inference::prof;
 use inference::service::{Lane, Policy, Priority, RequestHandle, Ticket, Update};
-use inference::manifest::HeadId;
 
 /// Cards are at least this wide; the grid fits as many columns as the window allows and widens them evenly.
 const CARD_MIN_W: f32 = 176.;
@@ -193,7 +193,6 @@ impl DemoTab {
         matches!(items.get(self.selected).and_then(|it| it.results.get(head)), Some(HeadResult::Done(..)))
     }
 
-
     pub fn classify_selected(&mut self, cx: &mut Context<Self>) {
         let stack = self.stack.read(cx);
         if stack.stack().is_none() {
@@ -208,7 +207,6 @@ impl DemoTab {
             self.single.insert(i, ticket);
         }
     }
-
 
     /// Request `token` for image `i` finished; when it belongs to the running "Run all", follow it in the grid.
     fn progress(&mut self, token: u64, i: usize, cx: &mut Context<Self>) {
@@ -310,7 +308,9 @@ impl DemoTab {
         });
         tab_header(
             "Demo stack",
-            format!("{n} Wikimedia Commons photos never used for training or model selection · click a card or press Enter"),
+            format!(
+                "{n} Wikimedia Commons photos never used for training or model selection · click a card or press Enter"
+            ),
             h_flex().gap_4().items_center().children(summary).children(progress).child(if running.is_some() {
                 Button::new("demo-run")
                     .danger()
@@ -536,7 +536,9 @@ impl DemoTab {
                 .child(Spinner::new().color(t.primary))
                 .child(div().text_lg().child(format!("Classifying with {short}…")))
                 .into_any_element(),
-            (Some(HeadResult::Failed(e)), Some(m)) => widgets::failure_alert("demo-error", e, &models.title(m)).into_any_element(),
+            (Some(HeadResult::Failed(e)), Some(m)) => {
+                widgets::failure_alert("demo-error", e, &models.title(m)).into_any_element()
+            }
             _ => v_flex()
                 .gap_2()
                 .items_start()

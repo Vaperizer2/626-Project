@@ -1,5 +1,5 @@
-use crate::testing::*;
 use super::*;
+use crate::testing::*;
 use futures::channel::mpsc::TryRecvError;
 
 const WAIT: Duration = Duration::from_secs(5);
@@ -99,8 +99,11 @@ fn queued_bulk_jobs_form_one_batch() {
     for h in &mut hs {
         assert!(matches!(finish(h).1, Finish::Complete { .. }));
     }
-    let mut runs: Vec<Vec<u8>> =
-        fake.seen().into_iter().filter_map(|s| if let Seen::Ran { rows, .. } = s { Some(rows) } else { None }).collect();
+    let mut runs: Vec<Vec<u8>> = fake
+        .seen()
+        .into_iter()
+        .filter_map(|s| if let Seen::Ran { rows, .. } = s { Some(rows) } else { None })
+        .collect();
     assert_eq!(runs.len(), 1, "one run for all eight: {runs:?}");
     runs[0].sort();
     assert_eq!(runs[0], (0..8).map(|v| v * 30).collect::<Vec<u8>>(), "two io workers may reorder, none is lost");
@@ -109,7 +112,11 @@ fn queued_bulk_jobs_form_one_batch() {
 #[test]
 fn a_run_stops_only_when_its_whole_batch_is_dead() {
     let gate = Arc::new(Gate::default());
-    let fake = FakeLoader { run: Duration::from_millis(150), gates: [("z".to_string(), gate.clone())].into(), ..Default::default() };
+    let fake = FakeLoader {
+        run: Duration::from_millis(150),
+        gates: [("z".to_string(), gate.clone())].into(),
+        ..Default::default()
+    };
     let (inf, _ev) = Inference::spawn(registry(&[("z", 8)], &["z"]), fake.clone());
     let lane = inf.lane(Priority::Bulk, Policy::Keep);
     let started = |k: usize| fake.seen().iter().filter(|s| matches!(s, Seen::Started { n: 2, .. })).count() >= k;
@@ -125,7 +132,10 @@ fn a_run_stops_only_when_its_whole_batch_is_dead() {
     // two io workers may hand b to the graph before a, so the rows come in either order
     let seen = fake.seen();
     let ran_both = |rows: &[u8]| rows.len() == 2 && rows.contains(&1) && rows.contains(&2);
-    assert!(seen.iter().any(|s| matches!(s, Seen::Ran { rows, .. } if ran_both(rows))), "the run was not stopped: {seen:?}");
+    assert!(
+        seen.iter().any(|s| matches!(s, Seen::Ran { rows, .. } if ran_both(rows))),
+        "the run was not stopped: {seen:?}"
+    );
     let a_done = loop {
         match a_updates.try_recv() {
             Ok(Update::Done(f)) => break f,

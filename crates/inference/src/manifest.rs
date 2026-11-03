@@ -205,7 +205,10 @@ impl Readout {
 pub enum Calibration {
     None,
     /// `in_graph`: the readout already includes it; otherwise the app divides logits by `t`
-    Temperature { t: f32, in_graph: bool },
+    Temperature {
+        t: f32,
+        in_graph: bool,
+    },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -558,9 +561,9 @@ fn from_wire(w: WireManifest, path: &Path, dir: &Path) -> Result<Manifest, Strin
                     Some(l) => l.clone(),
                     None => {
                         let p = listed(&labels)?;
-                        let names: Vec<String> = serde_json::from_str(&std::fs::read_to_string(&p).map_err(|e| {
-                            format!("{}: {e}", p.display())
-                        })?)
+                        let names: Vec<String> = serde_json::from_str(
+                            &std::fs::read_to_string(&p).map_err(|e| format!("{}: {e}", p.display()))?,
+                        )
                         .map_err(|e| format!("{}: {e}", p.display()))?;
                         let l = Arc::new(Labels::new(names).ok_or_else(|| format!("{} is empty", p.display()))?);
                         labels_cache.insert(labels, l.clone());
@@ -587,7 +590,9 @@ fn from_wire(w: WireManifest, path: &Path, dir: &Path) -> Result<Manifest, Strin
                 let decision = match decision {
                     WireDecision::Abstain { below } => Decision::Abstain { below: prob(below, "abstain below")? },
                     WireDecision::Commit { low_confidence_below } => Decision::Commit {
-                        low_confidence_below: low_confidence_below.map(|p| prob(p, "low_confidence_below")).transpose()?,
+                        low_confidence_below: low_confidence_below
+                            .map(|p| prob(p, "low_confidence_below"))
+                            .transpose()?,
                     },
                 };
                 if matches!(decision, Decision::Abstain { .. }) && calibration == Calibration::None {
@@ -695,7 +700,10 @@ mod tests {
     fn parses_and_types_a_manifest() {
         let m = parse_text(MANIFEST).unwrap();
         assert_eq!(m.input.size, (6, 4), "size is [h, w] on the wire, (w, h) inside");
-        assert!(matches!(m.input.pre, Preprocess::ResizeShortCenterCrop { crop: (6, 4), filter: Filter::PillowBilinear, .. }));
+        assert!(matches!(
+            m.input.pre,
+            Preprocess::ResizeShortCenterCrop { crop: (6, 4), filter: Filter::PillowBilinear, .. }
+        ));
         let Task::Classify(t) = &m.heads[0].task;
         assert_eq!(t.labels.len(), 2);
         assert_eq!(t.decision, Decision::Commit { low_confidence_below: Prob::new(0.5) });
@@ -709,7 +717,11 @@ mod tests {
     #[test]
     fn rejects_what_the_app_cannot_honour() {
         let bad = [
-            (r#""decision": {"kind": "commit", "low_confidence_below": 0.5}"#, r#""decision": {"kind": "abstain", "below": 0.5}"#, "abstaining needs calibrated"),
+            (
+                r#""decision": {"kind": "commit", "low_confidence_below": 0.5}"#,
+                r#""decision": {"kind": "abstain", "below": 0.5}"#,
+                "abstaining needs calibrated",
+            ),
             (r#""resize_short_side": 7"#, r#""resize_short_side": 5"#, "smaller than the crop"),
             (r#""low_confidence_below": 0.5"#, r#""low_confidence_below": 1.5"#, "not in (0, 1)"),
             (r#""labels": "labels.json""#, r#""labels": "other.json""#, "not listed in files"),
@@ -732,7 +744,10 @@ mod tests {
             MANIFEST.replace(providers, &format!(r#""runtime": {{"session_config": {{"optimization.disable_specified_optimizers": "{v}"}}, "providers""#))
         };
         let m = parse_text(&with("MatMulAddFusion;TransposeOptimizer")).unwrap();
-        let want = [("optimization.disable_specified_optimizers".to_string(), "MatMulAddFusion;TransposeOptimizer".to_string())];
+        let want = [(
+            "optimization.disable_specified_optimizers".to_string(),
+            "MatMulAddFusion;TransposeOptimizer".to_string(),
+        )];
         assert_eq!(m.runtime.session_config, want);
         assert!(parse_text(MANIFEST).unwrap().runtime.session_config.is_empty());
         // onnxruntime reads "A,B" as one unknown optimizer name and disables nothing

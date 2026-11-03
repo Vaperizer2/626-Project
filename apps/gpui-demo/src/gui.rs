@@ -37,10 +37,7 @@ use inference::runtime::{OrtLoader, Settings};
 use inference::service::{Inference, ServiceEvent};
 use shell::Shell;
 
-actions!(
-    app,
-    [Open, Paste, FocusUrl, ToggleTheme, Quit, NextModel, StepPrev, StepNext, Activate, RunAll, Cancel]
-);
+actions!(app, [Open, Paste, FocusUrl, ToggleTheme, Quit, NextModel, StepPrev, StepNext, Activate, RunAll, Cancel]);
 
 /// Ctrl+1 to Ctrl+9: show the tab at this index.
 #[derive(Clone, PartialEq, Action)]

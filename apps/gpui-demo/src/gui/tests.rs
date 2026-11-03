@@ -99,8 +99,11 @@ pub fn index_without_graphs(tag: &str) -> PathBuf {
     for f in ["model.json", "labels.json"] {
         std::fs::copy(src.join(f), tmp.join("A").join(f)).unwrap();
     }
-    std::fs::write(tmp.join("models.json"), r#"{"schema":"model-index/1","default":["a"],"manifests":["A/model.json"]}"#)
-        .unwrap();
+    std::fs::write(
+        tmp.join("models.json"),
+        r#"{"schema":"model-index/1","default":["a"],"manifests":["A/model.json"]}"#,
+    )
+    .unwrap();
     tmp
 }
 
@@ -109,7 +112,11 @@ pub fn registry_in(dir: &Path) -> Arc<Registry> {
     Arc::new(Registry::open(&Settings { models: Some(dir.to_path_buf()), ..Default::default() }).unwrap())
 }
 
-pub fn open(cx: &mut TestAppContext, registry: Arc<Registry>, tabs: &'static [TabSpec]) -> (AnyWindowHandle, Entity<Shell>) {
+pub fn open(
+    cx: &mut TestAppContext,
+    registry: Arc<Registry>,
+    tabs: &'static [TabSpec],
+) -> (AnyWindowHandle, Entity<Shell>) {
     open_with(cx, registry, FakeLoader::default(), tabs)
 }
 
