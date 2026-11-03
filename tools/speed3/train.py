@@ -33,9 +33,9 @@ import torch.nn.functional as F
 from torch import nn
 from torch.utils.checkpoint import checkpoint
 
-from common import GRAPHS, block_state, graph_size, load_block_state, loader, source, trunk
+from common import GRAPHS, HEAD, block_state, graph_size, load_block_state, loader, source, trunk
 
-HEAD, T_ZS = Path("/home/carl/626-runs/distill/v2meta/head.npz"), 50.0  # byte-identical copy of exports/final/head.npz
+T_ZS = 50.0
 
 
 class LoRA(nn.Module):

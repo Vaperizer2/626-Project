@@ -18,9 +18,8 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from common import loader
+from common import CALIB, loader
 
-CALIB = Path("/home/carl/626-runs/quant/art/calib")
 ALPHA, TOPK, P_FC2 = 0.5, 1024, 99.999
 
 
