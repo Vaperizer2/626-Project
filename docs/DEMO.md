@@ -242,7 +242,7 @@ uv run python -m pytest -q tests/test_demo.py
 > **Built:** the GPUI desktop app now exists at [`apps/gpui-demo/`](../apps/gpui-demo/README.md)
 > (`cd apps/gpui-demo && cargo run --release --locked`). It implements exactly the contract below; its headless
 > `classify` mode matches the Python pipeline on 64/64 dev images (`results/demo/gpui_parity.json`). The window is
-> built with GPUI Kit and has Classify, Demo (a curated, credited stack of web-holdout photos) and Benchmark tabs. It
+> built with GPUI Kit and has Classify, Demo (a credited stack of web-holdout photos) and Benchmark tabs. It
 > can switch between the deployed model, the report's models A, B and C, and Fast (`--features turbojpeg`
 > recommended). The app reads each export through its `model.json` manifest (files and checksums, input and
 > preprocessing, heads, execution providers), so the contract below is what `exports/final/model.json` encodes.

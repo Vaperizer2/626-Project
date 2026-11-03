@@ -2,9 +2,9 @@
 
     python3 apps/gpui-demo/scripts/golden.py results/demo/golden/classify_all.json NEW.json [--heads a,b] [--tol 1e-6]
 
-The baseline was made at 07e569c with onnxruntime 1.31.1 on the CPU EP, from apps/gpui-demo:
-    gpui-demo classify --model all --json demo_stack/*.jpg   (classify_all.json, 112 rows)
-    gpui-demo classify --json demo_stack/*.jpg               (classify_default.json, 28 rows of model.onnx)
+The baseline was made with the turbojpeg build at aefc494 with onnxruntime 1.31.0 on the CPU EP, from apps/gpui-demo:
+    gpui-demo classify --ep cpu --model a,b,c,deployed --json demo_stack/*.jpg   (classify_all.json, 272 rows)
+    gpui-demo classify --ep cpu --model deployed --json demo_stack/*.jpg         (classify_default.json, 68 rows)
 Make the candidate with the same heads and `--ep cpu`. For classify_default.json that is `--model deployed`: the
 default head now depends on the machine (Fast where TensorRT registers), and a default run's rows are Fast's there.
     gpui-demo classify --ep cpu --model deployed --json demo_stack/*.jpg > NEW.json

@@ -6,10 +6,10 @@ A native desktop demo of the project's models (20 electronic-component classes),
 * **Classify**: open, drop or paste a picture (file, URL, or clipboard image). It shows the picture with the top-3
   classes as probability bars and all 20 probabilities. The deployed model shows an **Unsure** state when its top
   calibrated probability is below `abstain_threshold` (0.50).
-* **Demo**: a curated stack of 28 Wikimedia Commons photos that were never used for training or model selection
-  (`demo_stack/`). Click a card, or step with the arrow keys and press Enter. Each result is marked correct or wrong
-  against the true label, and the photo's author, licence and source are shown. **Run all** classifies the stack in
-  order and keeps a running "21/28 correct" count.
+* **Demo**: a stack of 68 Wikimedia Commons photos that were never used for training or model selection
+  (`demo_stack/`), three per class plus hard and out-of-scope cases. Click a card, or step with the arrow keys and
+  press Enter. Each result is marked correct or wrong against the true label, and the photo's author, licence and
+  source are shown. **Run all** classifies the stack in order and keeps a running "53/68 correct" count.
 * **Benchmark**: runs every available model over the stack, live and cancellable. It then compares accuracy,
   mean confidence and ms per image, and shows a per-image matrix (✓ bluish green = correct, ✕ vermillion = wrong,
   ? violet = unsure; colour-blind safe, and always with an icon). A switch shows only the images where the models
@@ -163,9 +163,9 @@ abstain threshold was set for them. A, B and C output plain softmax probabilitie
 panel adds a "low confidence" note. In the Demo and Benchmark tabs, an out-of-scope photo therefore counts as correct
 only when a calibrated model abstains.
 
-## Demo stack (`demo_stack/`, 1.8 MB)
+## Demo stack (`demo_stack/`, 4.0 MB)
 
-28 photos, none of which was used for training or model selection. 26 come from the independent Wikimedia Commons web
+68 photos, none of which was used for training or model selection. 66 come from the independent Wikimedia Commons web
 holdout `data/web_holdout_v1` (evaluated once). The 2 out-of-scope photos are the credited demo images in
 `results/demo/wikimedia_credits.json`. `demo_stack/demo_stack.json` stores file, section, true label (`null` = not
 a component), title, author, licence, licence URL, source URL, a note, and the deployed model's prediction and
@@ -177,19 +177,26 @@ re-verified with
 uv run --no-config apps/gpui-demo/scripts/build_demo_stack.py --bin target/release/gpui-demo
 ```
 
-Sections: **One per class** (20 clean photos the deployed model gets right), **Hard cases** (5 instructive images:
-LED↔diode, toroidal transformer↔inductor, DIP switch↔IC, SMD inductor↔diode, a cluttered Arduino + breadboard scene)
-and **Not a component / abstains** (a coin-cell holder on a motherboard, a multimeter, a soldering iron). Verified
-results with the `turbojpeg` build (`classify --json --model all`):
+Sections: **Hand-picked, one per class** (20 clean photos, chosen among the deployed model's confidently correct
+holdout predictions), **Random, two per class** (40 photos the script draws with seed 20261103, two per class from
+the holdout photos not already in the stack; nobody looked at the answers, so this is the section whose score means
+something), **Hard cases** (5 instructive images: LED↔diode, toroidal transformer↔inductor, DIP switch↔IC, SMD
+inductor↔diode, a cluttered Arduino + breadboard scene) and **Not a component / abstains** (a coin-cell holder on a
+motherboard, a multimeter, a soldering iron). Verified results with the `turbojpeg` build
+(`classify --json --ep cpu --model a,b,c,deployed`, the rows of `results/demo/golden/classify_all.json`):
 
-| model | One per class (20) | Hard cases (5) | Not a component / abstains (3) | total (28) |
-|---|---|---|---|---|
-| A · Custom CNN | 11 | 0 | 0 | 11 |
-| B · ConvNeXt-T | 16 | 1 | 0 | 17 |
-| C · SigLIP + linear | 20 | 1 | 0 | 21 |
-| Deployed | 20 | 0 | 1 | 21 |
+| model | Hand-picked, one per class (20) | Random, two per class (40) | Hard cases (5) | Not a component / abstains (3) | total (68) |
+|---|---|---|---|---|---|
+| A · Custom CNN | 11 | 8 | 0 | 0 | 19 |
+| B · ConvNeXt-T | 16 | 21 | 1 | 0 | 38 |
+| C · SigLIP + linear | 20 | 32 | 1 | 0 | 53 |
+| Deployed | 20 | 32 | 0 | 1 | 53 |
 
-Fast is left out of this table on purpose: 26 of these photos come from the web holdout, which is spent, so no new
+An in-scope photo the deployed model abstains on counts as not correct. By that rule the deployed model is right on
+309 of the 407 holdout photos (75.9 %, from `results/final/final_test_web_holdout_v1_preds.npz`), so its 32/40 on
+the random sample is in line with the whole holdout (a 40-photo sample has a standard error of about 6 points).
+
+Fast is left out of this table on purpose: 66 of these photos come from the web holdout, which is spent, so no new
 model is scored on it. The Benchmark tab still runs Fast over the stack.
 
 The soldering iron is a deliberate borderline case. After downscaling to 1024 px the deployed model says "jumper wire"
@@ -206,7 +213,7 @@ out-of-distribution detector.
 | parity, 64 dev images vs PyTorch `row_probs.npz` (`scripts/parity.py`, turbojpeg build) | argmax 64/64, UNSURE 64/64, input tensors bit-identical, max \|Δp\| 0.0029: unchanged from 2026-10-18 |
 | A and B input tensors vs Pillow (`compclass.demo.preprocess`), every 10th test image | 42/42 bit-identical each (A uses the new bilinear resize) |
 | A and B on all 418 test images (`classify --model a,b`) | 148/418 and 266/418, exactly the exported ONNX accuracy; argmax agreement with the report's PyTorch predictions 417/418 and 418/418 |
-| Deployed from `model_multi.onnx` vs `model.onnx` on the demo stack | same top-1 on 28/28, \|Δp\| ≤ 5·10⁻⁵ (JSON rounding) |
+| Deployed from `model_multi.onnx` vs `model.onnx` on the demo stack (28 photos then) | same top-1 on 28/28, \|Δp\| ≤ 5·10⁻⁵ (JSON rounding) |
 | GUI window | rendered in a virtual X server (Xvfb + Mesa software GL); every tab was screenshotted in light and dark themes, with Run all and the benchmark run to completion. Not tested: a real Wayland/X11 desktop, the GPU renderer, drag and drop, the file dialog and the clipboard. |
 
 ## Profiling
@@ -239,8 +246,8 @@ numbers come from hotpath and pidstat):
 | what | number |
 |---|---|
 | UI thread: building a frame's element tree (1,149 frames during a benchmark run) | mean 0.44 ms, p95 0.84 ms |
-| demo stack: decode once + 360 px thumbnail + display texture, 28 images in parallel | 11 ms each, 37 ms wall |
-| benchmark, 28 images × 4 models (3 graph runs per image: A, B, shared SigLIP) | 2.06 s per image, 57–62 s total |
+| demo stack (28 photos then): decode once + 360 px thumbnail + display texture, 28 images in parallel | 11 ms each, 37 ms wall |
+| benchmark, the 28-photo stack × 4 models (3 graph runs per image: A, B, shared SigLIP) | 2.06 s per image, 57–62 s total |
 | inference per image (preprocess + run): A / B / SigLIP (C + Deployed together) | ≈ 3–5 ms / 100–126 ms / 1.84–1.99 s |
 | memory with all four models loaded (SigLIP once) | 2.4 GB RSS |
 | idle after a run (only a 250 ms tick that stops when nothing is busy) | < 1 % CPU |
@@ -289,7 +296,7 @@ How the bundle stays portable:
   `target/release/` is untouched.
 * **JPEG**: feature `turbojpeg-vendored` builds the libjpeg-turbo 3.1 source bundled in `turbojpeg-sys` with
   CMake/NASM and links it statically. The decoder is the same as the system-library `turbojpeg` build:
-  on the 28 demo images × 4 models the probabilities are identical (max |Δp| = 0), and `scripts/parity.py` gives the
+  on the 28 demo images of that time × 4 models the probabilities are identical (max |Δp| = 0), and `scripts/parity.py` gives the
   same result as before: 64/64 input tensors bit-identical to Pillow, argmax 64/64.
 * **Runtime dependencies** (`readelf -d`): libc, libm, libdl, libpthread, ld-linux, libxcb, libxkbcommon,
   libxkbcommon-x11. Loaded with dlopen when present: libwayland-client/-egl (Wayland), libvulkan or libEGL
@@ -505,7 +512,7 @@ scripts/golden.py      compares classify --json output with results/demo/golden/
 scripts/parity.py      parity vs the Python/PyTorch reference on dev images
 scripts/build_demo_stack.py   rebuilds and re-verifies demo_stack/
 docs/VISUAL_DIRECTION.md   reference-app study, design synthesis and token table for the look
-demo_stack/            the 28 demo photos + demo_stack.json + ATTRIBUTION.md
+demo_stack/            the 68 demo photos + demo_stack.json + ATTRIBUTION.md
 ```
 
 The parts marked "classifier only", with `demo_stack/`, the golden and parity scripts and the dataset note, are what
