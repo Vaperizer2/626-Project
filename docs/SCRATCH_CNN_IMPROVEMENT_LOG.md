@@ -450,8 +450,8 @@ Conventions:
   training fold. But its targets come from a model pretrained on web-scale image-text data, so in the course
   comparison it is a third thing between A and C, to be labelled "A + distillation from C". The strict
   from-scratch model A remains the 200-epoch plain recipe at 0.3903.
-- Not done, on purpose: the sealed test split and the Wikimedia holdout have not been scored. Scoring the test
-  split once, for the final course table, is the author's call.
+- The sealed test split was scored once afterwards, on the author's go-ahead (entry 24). The Wikimedia holdout
+  is not scored.
 
 ### 23. Distilled variant, more signal per run: 500-epoch schedule and width 48; folds 0-2
 
@@ -490,3 +490,41 @@ Conventions:
   `configs/scratch_cnn_distill.yaml` stays at 300 epochs / patience 60 and entry 22 remains the final recipe. The
   width-48 screen (23b) is still an open, unrun option; given that the schedule lever is now flat on both students,
   the expected gain is small and it is not queued.
+
+### 24. Sealed test, the one look (2026-11-04, author's go-ahead)
+
+- Both final recipes trained once more on fold 0 (train 2,010 / val 502, seed 42: the same fixed split as the
+  course table in `results/itri626/metrics.json`) and the best checkpoint scored once on the 418 sealed test
+  images via `--test`:
+  `uv run python -m compclass.train --config configs/scratch_cnn.yaml --fold 0 --test --set train.epochs=200
+  train.patience=40 ...` and `... --config configs/scratch_cnn_distill.yaml --fold 0 --test ...`. Outputs copied
+  to `results/scratch_cnn_improvement/` (`test_*.json`, `test_preds_*.npz`, `summary.json`); `runs/win/` is
+  git-ignored.
+
+  | Model (fold-0 training) | Val macro-F1 | Val acc | **Test macro-F1** | **Test acc** | Best epoch |
+  |---|---:|---:|---:|---:|---:|
+  | A, committed course run (120 ep, `4e4c6e8f6cf3`) | 0.3287 | 0.3386 | 0.3361 | 0.3541 | 105 |
+  | A, 200 ep (`b0afa2aa4d60`) | 0.3737 | 0.3785 | **0.3924** | **0.3995** | 183 |
+  | A + distillation, 300 ep (`fbe64b2765cb`) | 0.4234 | 0.4303 | **0.3933** | **0.4115** | 243 |
+
+- Paired bootstrap over the 418 test images (2,000 resamples), distilled minus plain: macro-F1 +0.001
+  [-0.044, +0.045], accuracy +0.012 [-0.031, +0.057]. The two models agree on 47.8 % of test images; 44 images
+  are right only for the distilled model, 39 only for the plain one. Distilled is better on 9 of 20 test classes.
+- Reading. The schedule change carries over to the test split: +5.6 pt macro-F1 and +4.5 pt accuracy over the
+  committed course model, in line with the +3.5 pt five-fold estimate. The distillation gain does not show on this
+  look: +0.1 pt macro-F1, +1.2 pt accuracy, both well inside the interval. Three things limit what one look can
+  say. (i) 418 images are about 21 per class, so a macro-F1 has a standard error near 2.5 pt and a paired
+  difference an interval of +/- 4.5 pt, wider than the +4.6 pt five-fold gain. (ii) A single training run moves
+  by 2-3 pt: this plain fold-0 rerun validated at 0.3737 where the earlier run of the same hash and seed gave
+  0.4021 (fp16 AMP / cuDNN nondeterminism; the distilled rerun, 0.4234 vs 0.4250, happened to land close). The
+  plain run that was scored is therefore a weak draw on validation and a strong one on test, the distilled run
+  the reverse. (iii) The five-fold estimate rests on 2,512 images and five trainings, the test look on 418 and
+  one. The five-fold numbers remain the better estimate of expected performance; the test numbers are what the
+  course table reports, and on them the two recipes are indistinguishable.
+- Consequence for the write-up: the course report may claim the schedule gain on the test split. For
+  distillation it must say "+4.6 pt on five development folds, not resolvable on the 418-image test split", not
+  more. Per class on test, plain is best on potentiometer (0.62), microcontroller board (0.68), switch (0.64),
+  battery holder (0.58); distilled on breadboard (0.57), heat sink (0.56), crystal oscillator (0.40),
+  transformer (0.32); both fail on fuse (0.17-0.18), led (0.22-0.27) and resistor (0.16-0.29).
+- The sealed test split is now spent for both recipes. No further scoring; any later change to either recipe is
+  a development-fold result only.
