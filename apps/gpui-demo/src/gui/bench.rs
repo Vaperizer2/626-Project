@@ -25,11 +25,13 @@ use super::stack::{Stack, tab_header, verdict_colors, verdict_icon};
 use super::widgets::Lucide;
 use super::{Cancel, Hint, RunAll, Tab, theme, widgets};
 use crate::app;
-use inference::classification::Classification;
 use crate::demo::Verdict;
-use inference::service::{Finish, HeadOutput, ImageInput, Lane, Policy, Priority, RequestHandle, RunError, Ticket, Timing, Update};
+use inference::classification::Classification;
 use inference::manifest::HeadId;
 use inference::prof;
+use inference::service::{
+    Finish, HeadOutput, ImageInput, Lane, Policy, Priority, RequestHandle, RunError, Ticket, Timing, Update,
+};
 
 /// One benchmark run: every image was submitted at once; dropping the run cancels what has not run yet.
 struct BenchRun {
@@ -203,7 +205,8 @@ impl Tab for BenchTab {
                 cx.notify();
             });
         }
-        self.run = Some(BenchRun { id, total: n, finished: HashSet::new(), started: Instant::now(), _tickets: tickets });
+        self.run =
+            Some(BenchRun { id, total: n, finished: HashSet::new(), started: Instant::now(), _tickets: tickets });
         cx.notify();
     }
 }
@@ -212,7 +215,6 @@ impl BenchTab {
     pub fn running(&self) -> bool {
         self.run.is_some()
     }
-
 
     pub fn cancel(&mut self, cx: &mut Context<Self>) {
         if let Some(run) = self.run.take() {
@@ -241,13 +243,8 @@ impl BenchTab {
     /// "one pass with X" when other benchmarked heads read the same graph as `k`.
     fn shared_pass(&self, k: &HeadId, cx: &App) -> Option<String> {
         let m = self.models.read(cx);
-        let others: Vec<String> = m
-            .registry()
-            .siblings(k)
-            .iter()
-            .filter(|s| *s != k && self.heads.contains(s))
-            .map(|s| m.short(s))
-            .collect();
+        let others: Vec<String> =
+            m.registry().siblings(k).iter().filter(|s| *s != k && self.heads.contains(s)).map(|s| m.short(s)).collect();
         (!others.is_empty()).then(|| format!("one pass with {}", others.join(" and ")))
     }
 
@@ -321,10 +318,7 @@ impl BenchTab {
                             .items_center()
                             .text_sm()
                             .text_color(t.muted_foreground)
-                            .child(
-                                Icon::new(if self.cancelled { Lucide::CircleStop } else { Lucide::Timer })
-                                    .small(),
-                            )
+                            .child(Icon::new(if self.cancelled { Lucide::CircleStop } else { Lucide::Timer }).small())
                             .child(format!(
                                 "{} in {:.0} s",
                                 if self.cancelled { "stopped" } else { "finished" },
@@ -409,7 +403,15 @@ impl BenchTab {
                     .justify_between()
                     .items_start()
                     .gap_2()
-                    .child(div().flex_1().min_w_0().text_sm().font_weight(FontWeight::SEMIBOLD).truncate().child(self.models.read(cx).short(k)))
+                    .child(
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .text_sm()
+                            .font_weight(FontWeight::SEMIBOLD)
+                            .truncate()
+                            .child(self.models.read(cx).short(k)),
+                    )
                     .when(leading, |d| {
                         d.child(
                             h_flex()
@@ -463,7 +465,9 @@ impl BenchTab {
                         Lucide::Timer,
                         if s.judged > 0 { format!("{:.0} ms / image", s.mean_ms) } else { "– ms / image".into() },
                     ))
-                    .when_some(self.shared_pass(k, cx), |d, note| d.child(widgets::icon_line(Icon::new(Lucide::Layers).xsmall(), note).w_full()))
+                    .when_some(self.shared_pass(k, cx), |d, note| {
+                        d.child(widgets::icon_line(Icon::new(Lucide::Layers).xsmall(), note).w_full())
+                    })
                     .when(s.unsure > 0, |d| d.child(meta(Lucide::CircleQuestionMark, format!("{} unsure", s.unsure))))
                     .when(s.errors > 0, |d| d.child(meta(Lucide::CircleAlert, format!("{} errors", s.errors)))),
             )

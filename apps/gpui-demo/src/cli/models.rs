@@ -97,9 +97,16 @@ mod tests {
     fn models_check_fails_when_the_index_lists_a_manifest_it_cannot_read() {
         let dir = std::env::temp_dir().join(format!("{}-check-{}", crate::app::BIN, std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
-        std::fs::write(dir.join(registry::INDEX_FILE), r#"{"schema":"model-index/1","default":[],"manifests":["gone/model.json"]}"#)
-            .unwrap();
-        let args = Args { check: true, opts: Settings { models: Some(dir.clone()), ..Default::default() }, ..Default::default() };
+        std::fs::write(
+            dir.join(registry::INDEX_FILE),
+            r#"{"schema":"model-index/1","default":[],"manifests":["gone/model.json"]}"#,
+        )
+        .unwrap();
+        let args = Args {
+            check: true,
+            opts: Settings { models: Some(dir.clone()), ..Default::default() },
+            ..Default::default()
+        };
         assert_eq!(run(&args).unwrap(), 1, "a manifest that cannot be read is a failed check");
         let _ = std::fs::remove_dir_all(&dir); // test scratch dir under the OS temp dir only
     }

@@ -7,8 +7,7 @@ use std::time::Duration;
 
 use gpui_kit::test::TestWindowExt as _;
 use gpui_kit::{
-    AnyWindowHandle, Bounds, Entity, Pixels, Point, Size, TestAppContext, WindowBounds, WindowOptions,
-    px, size,
+    AnyWindowHandle, Bounds, Entity, Pixels, Point, Size, TestAppContext, WindowBounds, WindowOptions, px, size,
 };
 
 use super::*;
@@ -100,8 +99,11 @@ fn stats_and_disagreement() {
 #[gpui_kit::test]
 async fn autorun_benchmarks_every_model_on_every_picture(cx: &mut TestAppContext) {
     let gui = GuiOptions { tab: ix::<BenchTab>(TABS), autorun: true, ..Default::default() };
-    let (handle, view) = open_bench(cx, registry(&[("x", 1), ("y", 4)], &["y", "x"]), FakeLoader::default(), window(), gui);
-    wait(cx, &view, "the --autorun benchmark to finish", &|v, cx| !bench(v, cx).results.is_empty() && !bench(v, cx).running());
+    let (handle, view) =
+        open_bench(cx, registry(&[("x", 1), ("y", 4)], &["y", "x"]), FakeLoader::default(), window(), gui);
+    wait(cx, &view, "the --autorun benchmark to finish", &|v, cx| {
+        !bench(v, cx).results.is_empty() && !bench(v, cx).running()
+    });
     cx.update(|cx| {
         let v = view.read(cx);
         let (bench, stack) = (bench(v, cx), stack(v, cx));
@@ -109,7 +111,11 @@ async fn autorun_benchmarks_every_model_on_every_picture(cx: &mut TestAppContext
         assert_eq!(bench.results.len(), 2 * n, "every image × every head");
         assert!(bench.results.values().all(|r| r.is_ok()));
         for h in ["x", "y"] {
-            assert_eq!(stats(stack.stack().unwrap(), &bench.results, &HeadId::new(h)).judged, n, "{h} judged every image");
+            assert_eq!(
+                stats(stack.stack().unwrap(), &bench.results, &HeadId::new(h)).judged,
+                n,
+                "{h} judged every image"
+            );
         }
     });
     cx.update_window(handle, |_, window, cx| {
@@ -139,12 +145,16 @@ async fn escape_stops_the_benchmark_only_on_its_tab(cx: &mut TestAppContext) {
 async fn the_best_model_is_named_when_the_benchmark_ends(cx: &mut TestAppContext) {
     // x answers every image before slow y has answered many, so mid-run x has the most correct
     let loader = FakeLoader { run: Duration::from_millis(30), ..Default::default() };
-    let (handle, view) = open_bench(cx, registry(&[("x", 8), ("y", 1)], &["x"]), loader, window(), GuiOptions::default());
+    let (handle, view) =
+        open_bench(cx, registry(&[("x", 8), ("y", 1)], &["x"]), loader, window(), GuiOptions::default());
     let badges = |cx: &mut TestAppContext| {
         cx.update_window(handle, |_, window, cx| {
             view.update(cx, |v, cx| v.set_tab(ix::<BenchTab>(TABS), window, cx));
             window.render_frame(cx);
-            ["x", "y"].iter().filter(|k| window.try_find(SharedString::from(format!("bench-best-{k}"))).is_some()).count()
+            ["x", "y"]
+                .iter()
+                .filter(|k| window.try_find(SharedString::from(format!("bench-best-{k}"))).is_some())
+                .count()
         })
         .unwrap()
     };
@@ -160,7 +170,8 @@ async fn the_best_model_is_named_when_the_benchmark_ends(cx: &mut TestAppContext
 async fn the_header_stays_inside_the_smallest_window_while_it_runs(cx: &mut TestAppContext) {
     let loader = FakeLoader { run: Duration::from_millis(40), ..Default::default() };
     let small = size(px(1024.), px(640.));
-    let (handle, view) = open_bench(cx, registry(&[("x", 1), ("y", 1)], &["x", "y"]), loader, small, GuiOptions::default());
+    let (handle, view) =
+        open_bench(cx, registry(&[("x", 1), ("y", 1)], &["x", "y"]), loader, small, GuiOptions::default());
     wait(cx, &view, "the default head", &|v, cx| run_model(v, cx).is_some());
     cx.update_window(handle, |_, window, cx| {
         view.update(cx, |v, cx| {
@@ -185,7 +196,8 @@ async fn the_header_stays_inside_the_smallest_window_while_it_runs(cx: &mut Test
 #[ignore]
 async fn real_benchmark_matches_the_golden_rows(cx: &mut TestAppContext) {
     let exports = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../exports");
-    let opts = Settings { models: Some(exports), eps: Some(vec![inference::manifest::EpKind::Cpu]), ..Default::default() };
+    let opts =
+        Settings { models: Some(exports), eps: Some(vec![inference::manifest::EpKind::Cpu]), ..Default::default() };
     let reg = Arc::new(Registry::open(&opts).unwrap());
     let service = Inference::spawn(reg.clone(), OrtLoader::new(&opts, &reg));
     cx.executor().allow_parking();
@@ -217,8 +229,10 @@ async fn real_benchmark_matches_the_golden_rows(cx: &mut TestAppContext) {
     cx.update(|cx| view.update(cx, |v, cx| start(v, cx)));
     wait(cx, 600, &|v, cx| !bench(v, cx).running());
     let golden: Vec<serde_json::Value> = serde_json::from_str(
-        &std::fs::read_to_string(Path::new(env!("CARGO_MANIFEST_DIR")).join("../../results/demo/golden/classify_all.json"))
-            .unwrap(),
+        &std::fs::read_to_string(
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("../../results/demo/golden/classify_all.json"),
+        )
+        .unwrap(),
     )
     .unwrap();
     cx.update(|cx| {

@@ -219,7 +219,8 @@ struct Service {
 impl Service {
     /// The head to use without `--model`; an error saying why when no head can run here.
     fn default_head(&self) -> Result<HeadId> {
-        let (head, passed_over) = self.default.recv().context("the inference service stopped before picking a model")?;
+        let (head, passed_over) =
+            self.default.recv().context("the inference service stopped before picking a model")?;
         let Some(head) = head else {
             let why: Vec<String> = passed_over.iter().map(|(h, why)| format!("{h}: {why}")).collect();
             let why = if why.is_empty() { String::new() } else { format!(" ({})", why.join("; ")) };
@@ -248,14 +249,16 @@ fn service(a: &Args, reg: &Arc<Registry>) -> Service {
                     continue;
                 }
             };
-            let heads: Vec<String> = reg.graph(&g).map_or(vec![], |g| g.manifest.heads.iter().map(|h| h.id.to_string()).collect());
+            let heads: Vec<String> =
+                reg.graph(&g).map_or(vec![], |g| g.manifest.heads.iter().map(|h| h.id.to_string()).collect());
             match state {
                 GraphState::Loading { stage: LoadStage::BuildingEngine, .. } => {
                     log!("{g} ({}): building the TensorRT engine (first run only)", heads.join(", "))
                 }
                 GraphState::Ready(l) => {
                     seen.lock().expect("loaded lock").push((g.clone(), l.clone()));
-                    let checked = if l.verified { "checksums verified" } else { "checksums not verified: models --check" };
+                    let checked =
+                        if l.verified { "checksums verified" } else { "checksums not verified: models --check" };
                     log!(
                         "{g} ({}) ready in {:.0} ms on {} ({}; {checked})",
                         heads.join(", "),

@@ -202,8 +202,7 @@ impl ClassifyTab {
         self.next_id += 1;
         let id = e.id;
         let display = e.image.is_none().then_some(DISPLAY_MAX_SIDE);
-        let RequestHandle { updates, ticket } =
-            self.lane.submit(e.input.clone(), std::slice::from_ref(model), display);
+        let RequestHandle { updates, ticket } = self.lane.submit(e.input.clone(), std::slice::from_ref(model), display);
         e.tickets.push(ticket);
         e.results.start(model.clone(), token);
         let model = model.clone();
@@ -430,7 +429,9 @@ impl ClassifyTab {
             Some(HeadResult::Failed(RunError::Read(_) | RunError::Decode(_)))
         );
         let body = match entry.and_then(|e| e.image.clone()) {
-            Some(im) => div().size_full().p_6().child(img(im).size_full().object_fit(ObjectFit::Contain)).into_any_element(),
+            Some(im) => {
+                div().size_full().p_6().child(img(im).size_full().object_fit(ObjectFit::Contain)).into_any_element()
+            }
             None if unreadable => div()
                 .size_full()
                 .p_8()
@@ -439,9 +440,11 @@ impl ClassifyTab {
                         EmptyHeader::new()
                             .media(EmptyMedia::new().child(Icon::new(Lucide::ImageOff).large().text_color(t.danger)))
                             .title(EmptyTitle::new().child("This picture could not be read"))
-                            .description(EmptyDescription::new().child(
-                                "Check the path or URL, or try another picture. The details are on the right.",
-                            )),
+                            .description(
+                                EmptyDescription::new().child(
+                                    "Check the path or URL, or try another picture. The details are on the right.",
+                                ),
+                            ),
                     ),
                 )
                 .into_any_element(),
@@ -469,15 +472,15 @@ impl ClassifyTab {
                                 .media(EmptyMedia::new().child(Icon::new(Lucide::ImagePlus).large()))
                                 .title(EmptyTitle::new().child("Drop pictures here"))
                                 .description(
-                                    EmptyDescription::new().child("Or open files, or paste a picture, a URL or a path."),
+                                    EmptyDescription::new()
+                                        .child("Or open files, or paste a picture, a URL or a path."),
                                 ),
                         )
-                        .child(
-                            h_flex()
-                                .gap_4()
-                                .child(widgets::hint(&["ctrl-o"], "Open", cx))
-                                .child(widgets::hint(&["ctrl-v"], "Paste", cx)),
-                        ),
+                        .child(h_flex().gap_4().child(widgets::hint(&["ctrl-o"], "Open", cx)).child(widgets::hint(
+                            &["ctrl-v"],
+                            "Paste",
+                            cx,
+                        ))),
                 )
                 .into_any_element(),
         };
@@ -510,7 +513,8 @@ impl ClassifyTab {
                 && let ModelState::Failed(msg) = models.state(m)
             {
                 panel = panel.child(
-                    Alert::error("model-failed", SharedString::from(msg)).title(format!("{} failed to load", models.title(m))),
+                    Alert::error("model-failed", SharedString::from(msg))
+                        .title(format!("{} failed to load", models.title(m))),
                 );
             }
             return panel.child(
@@ -552,7 +556,10 @@ impl ClassifyTab {
             Some(HeadResult::Done(c, timing, wall)) => {
                 let block = widgets::prediction_block(c, timing, &models.title(m), None, cx);
                 panel.child(block).children(wall.map(|ms| {
-                    div().text_xs().text_color(t.muted_foreground).child(format!("Total incl. read and decode: {ms:.0} ms"))
+                    div()
+                        .text_xs()
+                        .text_color(t.muted_foreground)
+                        .child(format!("Total incl. read and decode: {ms:.0} ms"))
                 }))
             }
         }

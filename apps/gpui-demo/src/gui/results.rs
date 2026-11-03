@@ -4,8 +4,8 @@
 use std::collections::HashMap;
 
 use inference::classification::Classification;
-use inference::service::{Finish, HeadOutput, RunError, Timing, Update};
 use inference::manifest::HeadId;
+use inference::service::{Finish, HeadOutput, RunError, Timing, Update};
 
 pub enum HeadResult {
     /// submitted; the token tells this request's late "cancelled" apart from a newer request's

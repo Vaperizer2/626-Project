@@ -68,8 +68,13 @@ pub fn manifest_with_heads(id: &str, max_batch: u16, heads: &[&str]) -> Arc<Mani
 pub fn registry(graphs: &[(&str, u16)], default: &[&str]) -> Arc<Registry> {
     let graphs = graphs.iter().map(|&(id, max)| GraphEntry { manifest: manifest(id, max), availability: Ok(()) });
     Arc::new(
-        Registry::from_graphs(PathBuf::from("/fake/models.json"), graphs.collect(), default.iter().map(|d| HeadId::new(d)).collect(), vec![])
-            .unwrap(),
+        Registry::from_graphs(
+            PathBuf::from("/fake/models.json"),
+            graphs.collect(),
+            default.iter().map(|d| HeadId::new(d)).collect(),
+            vec![],
+        )
+        .unwrap(),
     )
 }
 
@@ -77,8 +82,13 @@ pub fn registry(graphs: &[(&str, u16)], default: &[&str]) -> Arc<Registry> {
 pub fn shared_registry(graph: &str, heads: &[&str], default: &[&str]) -> Arc<Registry> {
     let graphs = vec![GraphEntry { manifest: manifest_with_heads(graph, 1, heads), availability: Ok(()) }];
     Arc::new(
-        Registry::from_graphs(PathBuf::from("/fake/models.json"), graphs, default.iter().map(|d| HeadId::new(d)).collect(), vec![])
-            .unwrap(),
+        Registry::from_graphs(
+            PathBuf::from("/fake/models.json"),
+            graphs,
+            default.iter().map(|d| HeadId::new(d)).collect(),
+            vec![],
+        )
+        .unwrap(),
     )
 }
 
@@ -89,11 +99,21 @@ pub fn image(v: u8) -> ImageInput {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Seen {
-    Loaded { graph: String },
-    Started { graph: String, n: usize },
+    Loaded {
+        graph: String,
+    },
+    Started {
+        graph: String,
+        n: usize,
+    },
     /// first input value of each row
-    Ran { graph: String, rows: Vec<u8> },
-    Stopped { graph: String },
+    Ran {
+        graph: String,
+        rows: Vec<u8>,
+    },
+    Stopped {
+        graph: String,
+    },
 }
 
 #[derive(Default)]
@@ -159,7 +179,8 @@ impl Loader for FakeLoader {
         if self.broken.lock().unwrap().contains(m.id.as_str()) {
             return Err(format!("{}: Protobuf parsing failed", m.graph.display()));
         }
-        let graph = FakeGraph { id: m.id.to_string(), run: self.run, seen: self.seen.clone(), drops: self.drops.clone() };
+        let graph =
+            FakeGraph { id: m.id.to_string(), run: self.run, seen: self.seen.clone(), drops: self.drops.clone() };
         let placement = Placement { registered: vec![EpKind::Cpu], skipped: vec![] };
         Ok((Box::new(graph), Loaded { ms: 1.0, placement, runtime: "fake".into(), verified: true }))
     }

@@ -2,8 +2,7 @@
 //! state chips, keyboard hints, section captions. Colours come from the Kit theme or `theme::roles` only.
 
 use gpui_kit::component::{
-    ActiveTheme as _, Icon, IconName, Sizable as _, alert::Alert, h_flex, kbd::Kbd, spinner::Spinner, tag::Tag,
-    v_flex,
+    ActiveTheme as _, Icon, IconName, Sizable as _, alert::Alert, h_flex, kbd::Kbd, spinner::Spinner, tag::Tag, v_flex,
 };
 use gpui_kit::{
     AnyElement, App, Div, ElementId, FontWeight, Hsla, IntoElement, Keystroke, ParentElement, Pixels, SharedString,
@@ -54,8 +53,8 @@ impl gpui_kit::AssetSource for AppAssets {
     }
 }
 
-use super::theme::{self, Roles};
 use super::models::ModelState;
+use super::theme::{self, Roles};
 use inference::classification::{Answer, Classification};
 use inference::service::{LoadStage, RunError, Timing};
 
@@ -184,7 +183,9 @@ pub fn prediction_block(
         Answer::Class { idx, p, low_confidence } => v_flex()
             .gap_1()
             .child(caption("Prediction", cx))
-            .child(div().text_3xl().font_weight(FontWeight::BOLD).text_color(r.fg).child(c.labels.name(idx).to_string()))
+            .child(
+                div().text_3xl().font_weight(FontWeight::BOLD).text_color(r.fg).child(c.labels.name(idx).to_string()),
+            )
             .child(
                 h_flex()
                     .gap_2()
@@ -222,10 +223,9 @@ pub fn prediction_block(
         .child(headline)
         .children(note)
         .child(
-            v_flex()
-                .gap_3()
-                .child(caption("Top 3", cx))
-                .children(ranked.iter().take(3).map(|&(i, p)| prob_row(c.labels.name(i), p, strong == Some(i), true, cx))),
+            v_flex().gap_3().child(caption("Top 3", cx)).children(
+                ranked.iter().take(3).map(|&(i, p)| prob_row(c.labels.name(i), p, strong == Some(i), true, cx)),
+            ),
         )
         .child(
             v_flex()
@@ -237,7 +237,11 @@ pub fn prediction_block(
                 .children(rest),
         )
         .child({
-            let shared = if timing.shared_by > 1 { format!(" · one pass for {} heads", timing.shared_by) } else { String::new() };
+            let shared = if timing.shared_by > 1 {
+                format!(" · one pass for {} heads", timing.shared_by)
+            } else {
+                String::new()
+            };
             icon_line(
                 Icon::new(Lucide::Timer).xsmall(),
                 format!("{title} · preprocess + inference {:.0} ms{shared}", timing.ms()),
@@ -303,10 +307,9 @@ pub fn model_state_chip(state: &ModelState, cx: &App) -> AnyElement {
             .bg(r.accent_soft)
             .child(Spinner::new().xsmall().color(r.accent))
             .child(div().text_xs().text_color(r.fg).child(match stage {
-                LoadStage::BuildingEngine => format!(
-                    "building TensorRT engine, first run only · {:.0} s",
-                    since.elapsed().as_secs_f64()
-                ),
+                LoadStage::BuildingEngine => {
+                    format!("building TensorRT engine, first run only · {:.0} s", since.elapsed().as_secs_f64())
+                }
                 LoadStage::Verifying | LoadStage::Loading => format!("loading… {:.0} s", since.elapsed().as_secs_f64()),
             }))
             .into_any_element(),
