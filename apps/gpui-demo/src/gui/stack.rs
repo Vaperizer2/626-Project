@@ -108,17 +108,23 @@ fn load_thumbnails(paths: Vec<std::path::PathBuf>) -> fmpsc::UnboundedReceiver<(
         .spawn(move || {
             let t0 = Instant::now();
             let threads = std::thread::available_parallelism().map_or(1, |n| (n.get() / 2).max(1));
-            let pool = rayon::ThreadPoolBuilder::new()
-                .num_threads(threads)
-                .thread_name(|i| format!("thumbnails-{i}"))
-                .build()
-                .expect("thumbnail thread pool");
-            pool.install(|| {
+            let decode_all = move || {
                 paths.into_par_iter().enumerate().for_each(|(i, p)| {
                     let r = prof!("demo::decode_and_thumbnail", decode_one(&p));
                     let _ = tx.unbounded_send((i, r));
                 })
-            });
+            };
+            match rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .thread_name(|i| format!("thumbnails-{i}"))
+                .build()
+            {
+                Ok(pool) => pool.install(decode_all),
+                Err(e) => {
+                    log!("thumbnail pool: {e}; decoding on the shared pool");
+                    decode_all()
+                }
+            }
             log!("demo stack decoded in {:.0} ms", t0.elapsed().as_secs_f64() * 1000.0);
         })
         .expect("spawn thumbnail thread");
