@@ -99,15 +99,25 @@ struct Decoded {
 }
 
 /// Decode every demo image in parallel, once; results arrive in completion order as (index, result).
+/// The decodes run on a pool of their own, half the cores: on rayon's global pool the inference service's
+/// preprocessing would queue behind every picture of the stack.
 fn load_thumbnails(paths: Vec<std::path::PathBuf>) -> fmpsc::UnboundedReceiver<(usize, Result<Decoded, String>)> {
     let (tx, rx) = fmpsc::unbounded();
     std::thread::Builder::new()
         .name("thumbnails".into())
         .spawn(move || {
             let t0 = Instant::now();
-            paths.into_par_iter().enumerate().for_each(|(i, p)| {
-                let r = prof!("demo::decode_and_thumbnail", decode_one(&p));
-                let _ = tx.unbounded_send((i, r));
+            let threads = std::thread::available_parallelism().map_or(1, |n| (n.get() / 2).max(1));
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .thread_name(|i| format!("thumbnails-{i}"))
+                .build()
+                .expect("thumbnail thread pool");
+            pool.install(|| {
+                paths.into_par_iter().enumerate().for_each(|(i, p)| {
+                    let r = prof!("demo::decode_and_thumbnail", decode_one(&p));
+                    let _ = tx.unbounded_send((i, r));
+                })
             });
             log!("demo stack decoded in {:.0} ms", t0.elapsed().as_secs_f64() * 1000.0);
         })
