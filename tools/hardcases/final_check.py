@@ -1,9 +1,9 @@
 """The one look at the demo stack, after the final candidate was picked on dev CV alone.
 
     python tools/hardcases/final_check.py fit H17       # final heads on ALL dev rows (no demo pictures read)
-    python tools/hardcases/final_check.py once H17      # baseline vs candidate on apps/gpui-demo/demo_stack
+    python tools/hardcases/final_check.py once H17 H11  # baseline vs candidates on apps/gpui-demo/demo_stack
 
-``once`` refuses to run twice for the same candidate (a marker file records the look). Embeddings of the demo
+``once`` refuses to run a second time (a marker file records the look and NOTES.md's hash at that moment). Embeddings of the demo
 pictures come from extract_views.py --manifest (same trunk, ORT CUDA EP, batch 1), run beforehand.
 """
 
@@ -91,51 +91,49 @@ def predict(head: dict, F: np.ndarray, n_classes: int) -> np.ndarray:
     return np.exp(log_softmax(s / float(head["temperature"])))
 
 
-def once(hid: str) -> None:
-    marker = ONCE / f"LOOKED_{hid}"
+def once(*hids: str) -> None:
+    """Baseline (the deployed head.npz on center-crop embeddings) and the given candidates on every demo-stack
+    picture, once. NOTES.md's hash at look time is recorded, so the pre-look recommendation can be checked."""
+    import hashlib
+
+    marker = ONCE / "LOOKED"
     if marker.exists():
-        raise SystemExit(f"{marker} exists: the demo stack was already looked at for {hid}")
+        raise SystemExit(f"{marker} exists: the demo stack was already looked at ({marker.read_text().strip()})")
+    notes_sha = hashlib.sha256((ART / "NOTES.md").read_bytes()).hexdigest()
+    marker.write_text(f"candidates {' '.join(hids)}; NOTES.md sha256 {notes_sha}\n")
     meta = json.loads((DEMO / "demo_stack.json").read_text())
-    files = json.loads((ONCE / "emb" / "ids.json").read_text())
+    files = [Path(f).name for f in json.loads((ONCE / "emb" / "ids.json").read_text())]
     classes = dev().classes
-    base_head = dict(np.load(DEPLOYED / "head.npz"))
-    cand_head = dict(np.load(ONCE / f"head_{hid}.npz"))
-    pb = predict(base_head, np.load(ONCE / "emb" / "center.npy"), len(classes))
-    pc = predict(cand_head, np.load(ONCE / "emb" / f"{CANDIDATES[hid]['test']}.npy"), len(classes))
-    by_file = {Path(f).name: i for i, f in enumerate(files)}
-
-    def show(p: np.ndarray, head: dict, i: int) -> dict:
-        j = int(p[i].argmax())
-        return {"pred": classes[j], "conf": round(float(p[i, j]), 4),
-                "unsure": float(p[i, j]) < float(head["abstain_threshold"])}
-
-    def correct(r: dict, truth: str | None) -> bool:
-        return (r["pred"] == truth and not r["unsure"]) if truth else r["unsure"]
-
+    heads = {"baseline": dict(np.load(DEPLOYED / "head.npz"))} | {
+        h: dict(np.load(ONCE / f"head_{h}.npz")) for h in hids}
+    views = {"baseline": "center"} | {h: CANDIDATES[h]["test"] for h in hids}
+    probs = {k: predict(heads[k], np.load(ONCE / "emb" / f"{views[k]}.npy"), len(classes)) for k in heads}
+    by_file = {f: i for i, f in enumerate(files)}
     rows = []
     for im in meta["images"]:
         i, truth = by_file[im["file"]], im["true_label"]
-        b, c = show(pb, base_head, i), show(pc, cand_head, i)
-        rows.append({"file": im["file"], "section": im["section"], "truth": truth,
-                     "recorded": {"pred": im["model_pred"], "conf": im["model_conf"], "unsure": im["model_unsure"]},
-                     "baseline": b, "candidate": c, "baseline_ok": correct(b, truth),
-                     "candidate_ok": correct(c, truth),
-                     "baseline_true_prob": round(float(pb[i, classes.index(truth)]), 4) if truth else None,
-                     "candidate_true_prob": round(float(pc[i, classes.index(truth)]), 4) if truth else None})
-    marker.write_text("looked\n")
-    out = ONCE / f"demo_once_{hid}.json"
-    out.write_text(json.dumps(rows, indent=1))
+        row = {"file": im["file"], "section": im["section"], "truth": truth,
+               "recorded": {"pred": im["model_pred"], "conf": im["model_conf"], "unsure": im["model_unsure"]}}
+        for k, p in probs.items():
+            j = int(p[i].argmax())
+            r = {"pred": classes[j], "conf": round(float(p[i, j]), 4),
+                 "unsure": float(p[i, j]) < float(heads[k]["abstain_threshold"]),
+                 "true_prob": round(float(p[i, classes.index(truth)]), 4) if truth else None}
+            r["ok"] = (r["pred"] == truth and not r["unsure"]) if truth else r["unsure"]
+            row[k] = r
+        rows.append(row)
+    out = ONCE / "demo_once.json"
+    out.write_text(json.dumps({"notes_sha256": notes_sha, "candidates": list(hids), "rows": rows}, indent=1))
     for r in rows:
-        print(f"{r['file']:32s} {r['truth']!s:22s} recorded {r['recorded']['pred']:>21s} "
-              f"base {r['baseline']['pred']:>21s} {r['baseline']['conf']:.3f}{' U' if r['baseline']['unsure'] else '  '} "
-              f"cand {r['candidate']['pred']:>21s} {r['candidate']['conf']:.3f}{' U' if r['candidate']['unsure'] else '  '}")
+        cells = " | ".join(f"{k} {r[k]['pred']:>21s} {r[k]['conf']:.3f}{' U' if r[k]['unsure'] else '  '}"
+                           for k in probs)
+        print(f"{r['file']:32s} {r['truth']!s:21s} | recorded {r['recorded']['pred']:>21s} | {cells}")
     agree = sum(r["baseline"]["pred"] == r["recorded"]["pred"] for r in rows)
     print(f"baseline pipeline agrees with the app's recorded prediction on {agree}/{len(rows)}")
     for sec in meta["sections"]:
         rs = [r for r in rows if r["section"] == sec]
-        print(f"{sec}: baseline {sum(r['baseline_ok'] for r in rs)}/{len(rs)}, "
-              f"candidate {sum(r['candidate_ok'] for r in rs)}/{len(rs)}")
+        print(f"{sec}: " + ", ".join(f"{k} {sum(r[k]['ok'] for r in rs)}/{len(rs)}" for k in probs))
 
 
 if __name__ == "__main__":
-    {"fit": fit, "once": once}[sys.argv[1]](sys.argv[2])
+    {"fit": fit, "once": once}[sys.argv[1]](*sys.argv[2:])

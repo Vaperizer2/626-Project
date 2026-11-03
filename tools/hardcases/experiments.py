@@ -350,22 +350,68 @@ def H16():
              parent="H11")
 
 
-def knn_nested(hid: str, what: str, F: np.ndarray, lp: np.ndarray, inner_lp: np.ndarray, parent: str,
-               cost: str) -> None:
+def blend_nested(hid: str, what: str, why: str, F: np.ndarray, lp: np.ndarray, inner_lp: np.ndarray, parent: str,
+                 cost: str, head) -> None:
+    """Blend an extra head ``head(F, train_mask, query_mask)`` (log-probs, NaN off-query) into the fused scores,
+    weight by inner CV, with the head refitted on each inner training split."""
     d = dev()
     zs = W_ZS * zs_logp(F, deployed_W())
     outer = np.zeros((len(d.y), d.n_classes))
     for k in range(5):
-        outer[d.fold == k] = knn_logp(F, d.fold != k, d.fold == k)[d.fold == k]
-    inner_knn = np.full((5, len(d.y), d.n_classes), np.nan)
+        outer[d.fold == k] = head(F, d.fold != k, d.fold == k)[d.fold == k]
+    inner_h = np.full((5, len(d.y), d.n_classes), np.nan)
     for k in range(5):
         for j in range(5):
             if j != k:
-                inner_knn[k][d.fold == j] = knn_logp(F, (d.fold != k) & (d.fold != j), d.fold == j)[d.fold == j]
+                inner_h[k][d.fold == j] = head(F, (d.fold != k) & (d.fold != j), d.fold == j)[d.fold == j]
     grid = [0.0, 0.1, 0.25, 0.5, 1.0]
-    scores, chosen = nested(lambda g: lp + zs + g * outer, lambda k, g: inner_lp[k] + zs + g * inner_knn[k], grid)
-    record(hid, what, "instance memory on the better view", cost, scores, note=f"weight chosen per fold: {chosen}",
-           parent=parent)
+    scores, chosen = nested(lambda g: lp + zs + g * outer, lambda k, g: inner_lp[k] + zs + g * inner_h[k], grid)
+    record(hid, what, why, cost, scores, note=f"weight chosen per fold: {chosen}", parent=parent)
+
+
+def knn_nested(hid: str, what: str, F: np.ndarray, lp: np.ndarray, inner_lp: np.ndarray, parent: str,
+               cost: str) -> None:
+    blend_nested(hid, what, "instance memory on the better view", F, lp, inner_lp, parent, cost, knn_logp)
+
+
+def proto_logp(F: np.ndarray, train: np.ndarray, query: np.ndarray, per_class: int = 1, t: float = T_ZS) -> np.ndarray:
+    """Image-prototype head: cosine to each class's mean training embedding (per_class 1) or to k-means
+    sub-prototypes of the class (max over them), at the zero-shot head's temperature."""
+    from sklearn.cluster import KMeans
+
+    d = dev()
+    Fn = F / np.linalg.norm(F, axis=1, keepdims=True)
+    sims = []
+    for c in range(d.n_classes):
+        X = Fn[train & (d.y == c)]
+        P = (X.mean(0, keepdims=True) if per_class == 1 else
+             KMeans(per_class, n_init=4, random_state=0).fit(X).cluster_centers_)
+        P = P / np.linalg.norm(P, axis=1, keepdims=True)
+        sims.append((Fn[query] @ P.T).max(1))
+    out = np.full((len(d.y), d.n_classes), np.nan)
+    out[query] = log_softmax(t * np.stack(sims, 1))
+    return out
+
+
+@hypothesis
+def H22():
+    """Squash + class-mean image prototypes blended in (an image-side zero-shot head: 20 x 1152, free)."""
+    F = embeddings("squash")
+    lp, Cs = probe_oof(F, "squash")
+    blend_nested("H22", "squash + class-mean prototype head, weight by inner CV", "kNN's gain at zero-shot cost",
+                 F, lp, inner_probe_oof(F, "squash", Cs), "H11", "free (20 x 1152 matrix in the graph)", proto_logp)
+
+
+@hypothesis
+def H23():
+    """Squash + four k-means sub-prototypes per class (max): image-learned subtypes such as long-legged vs SMD
+    LEDs, at 80 x 1152 in the graph."""
+    F = embeddings("squash")
+    lp, Cs = probe_oof(F, "squash")
+    blend_nested("H23", "squash + 4 k-means sub-prototypes per class (max), weight by inner CV",
+                 "image-learned subtypes", F, lp, inner_probe_oof(F, "squash", Cs), "H11",
+                 "free (80 x 1152 matrix + max in the graph)",
+                 lambda F, tr, q: proto_logp(F, tr, q, per_class=4))
 
 
 @hypothesis
