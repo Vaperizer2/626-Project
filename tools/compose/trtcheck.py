@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -20,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "quant"))
 
 from common import gpu_lock  # noqa: E402
 
-WORK = Path("/home/vaper/Work/Prototypes/626-artifacts/compose/work/trtcheck")
+WORK = Path(os.environ.get("TRTCHECK_WORK", "/home/vaper/Work/Prototypes/626-artifacts/compose/work/trtcheck"))
 
 
 def embed(model: Path, providers: list, X: np.ndarray, level: str = "ORT_ENABLE_ALL") -> np.ndarray:

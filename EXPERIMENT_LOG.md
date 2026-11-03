@@ -45,3 +45,32 @@ The desktop app moved to GPUI Kit 0.7.3 with Classify/Demo/Benchmark, model comp
 Portable glibc-2.28 Linux packaging and a NixOS/Wayland launcher followed. October 30 published the source privately
 at https://github.com/Vaperizer2/626-Project and prepared a model/demo release, runbook and agent handoff.
 This delivery work does not change the recorded research scores or reopen held-out model selection.
+
+## 2026-10-31 — distilled students for single-image speed (branch `wip/distill`)
+
+Hypothesis: a student 5-20x cheaper than the frozen So400m-384 trunk, trained to reproduce its pooled embedding,
+keeps the deployed head and zero-shot fusion and lands within 0.5 pt of its development-CV accuracy. It does not on
+the data available. Students were distilled only on 59,466 unlabeled images disjoint from every `data/v2` and
+`data/web_holdout_v1` image (`tools/distill/pool.py`: 25,193 component photos from 11 Kaggle datasets, 34,273
+Caltech-256 and COCO val2017 images). A pool image was dropped when its CLIP-B/32 cosine to any v2 or holdout image
+reached 0.85 over flips and rotations, or its pHash came within 10 bits. Loss: standardised-feature MSE + cosine +
+KL on the zero-shot text head. KL on the deployed probe head was left out because that head was fitted on all
+development labels.
+
+Numbers from the speed harness (`tools/speed`, legion RTX 3060 Laptop, batch 1, against `baseline_fp32`:
+CV accuracy 0.8268 ± 0.0151, about 110 ms):
+
+| Candidate | Params | Input | CV accuracy | Δ vs baseline | McNemar (B wrong / B right) | Batch-1 ms | Speedup |
+|---|---:|---:|---:|---:|---|---:|---:|
+| SigLIP2 B/16, CUDA fp32 | 93.8 M | 256 | 0.7397 ± 0.0188 | −8.72 pt | 269 / 50, p < 1e-4 | 11.28 | 10.5x |
+| SigLIP2 B/16, TensorRT fp16 | 93.8 M | 256 | 0.7397 ± 0.0187 | −8.72 pt | 269 / 50, p < 1e-4 | 2.28 | 48x |
+| MobileCLIP2-S0, CUDA fp32 | 12.0 M | 256 | 0.6433 ± 0.0326 | −18.35 pt | 520 / 59, p < 1e-4 | 4.27 | 26x |
+| MobileCLIP2-S0, TensorRT fp16 | 12.0 M | 256 | 0.6425 ± 0.0321 | −18.43 pt | 521 / 58, p < 1e-4 | 7.26 | 16x |
+
+All four are REJECT. The B/16 student reaches 0.926 cosine to the teacher on held-out pool images but 0.844 on
+development images (0.859 in-scope). Fidelity is worst on classes the pool covers thinly (switch 0.79, fuse 0.81)
+and best on capacitor and breadboard (0.88). It scores below SigLIP2 B/16's own linear probe (0.760, Phase 1).
+A one-fold diagnostic (`tools/distill/run_fold_diag.sh 0`, unofficial) adds the 2,010 development images outside
+fold 0, label-free. Fold-0 accuracy rises from 0.727 to 0.747 (teacher 0.801) and fold-0 cosine from 0.846 to
+0.869. A pool-only control with the same schedule stays at 0.727. In-domain images help but close about a third
+of the gap.
