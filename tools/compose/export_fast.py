@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -38,7 +39,7 @@ sys.path.insert(0, str(REPO / "tools/speed"))
 from evaluate import dataset, dev_rows  # noqa: E402
 from harness import DEPLOYED, INPUT, OUTPUT, ep_assignment, gpu_lock, latest, load_candidate  # noqa: E402
 
-WORK = Path("/home/vaper/Work/Prototypes/626-artifacts/compose/work")
+WORK = Path(os.environ.get("EXPORT_WORK", "/home/vaper/Work/Prototypes/626-artifacts/compose/work"))
 TOL = {"runtime": {"max_abs_prob": 0.05, "argmax_agree": 0.99}, "exact": {"max_abs_prob": 1e-5, "argmax_agree": 1.0}}
 HEAD_KEYS = ("mu", "sd", "coef", "intercept", "W", "t_zs", "w_zs", "temperature")
 
@@ -91,6 +92,7 @@ def runtime_for_app(c) -> dict:
     """The candidate's provider and options; cache paths stay relative (the app resolves them, see report)."""
     return {"provider": c.runtime["provider"], "options": c.runtime["options"],
             "graph_optimization_level": c.runtime.get("graph_optimization_level", "ORT_ENABLE_ALL"),
+            "session_config": c.runtime.get("session_config", {}),
             "provider_order": [c.runtime["provider"], "CUDAExecutionProvider", "CPUExecutionProvider"],
             "static_batch": c.fixed_batch}
 
