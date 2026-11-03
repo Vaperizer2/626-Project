@@ -147,23 +147,11 @@ and `results/phase1/cleaning_ablation_siglip_so400m.csv` were aggregated by anal
 repository. `scripts/make_report_figures.py` re-derives `benchmark.csv` and the schedule ablation from the per-fold
 records and asserts that they agree.
 
-## Syncing the laptop checkout to the GPU PC
+## Where training runs
 
-The GPU PC (`carlpc2`) keeps its copy at `~/Projects/626-Project`. Push code with rsync over Tailscale SSH (port
-2222). The virtualenv and raw data are excluded, because each machine builds its own `.venv` with `uv sync` and only
-`data/v2` is needed for training:
-
-```bash
-rsync -avz --delete -e "ssh -p 2222" \
-  --exclude .venv/ --exclude .git/ --exclude data/raw/ --exclude runs/ --exclude runs_v2/ --exclude results/cache/ \
-  --exclude '__pycache__/' --exclude '*.onnx' --exclude '*.onnx.data' \
-  ~/Work/Prototypes/626-Project/ carl@carlpc2.tail498db1.ts.net:~/Projects/626-Project/
-ssh -p 2222 carl@carlpc2.tail498db1.ts.net 'cd ~/Projects/626-Project && uv sync --python 3.12'
-```
-
-`--delete` makes the PC mirror the laptop. `runs/`, `runs_v2/` and `results/cache/` are excluded, so trained
-checkpoints on the PC are never deleted. To bring results back, reverse the direction for the specific `results/…`
-file you need.
+Since 2026-11-03 everything runs on the laptop (RTX 3060 Laptop, 6 GB). The GPU PC used before (`carlpc2`) is no
+longer available; its sync commands are in Git history. Its last outputs (speed3) were copied to the laptop before
+it went offline.
 
 ## Evaluation contract (short)
 

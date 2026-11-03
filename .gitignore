@@ -43,6 +43,10 @@ results/cache/
 .DS_Store
 *.swp
 data/web_holdout_v1/images/
+# Regenerable: contact sheets from tools/build_dataset_v2.py (the CSVs beside them are tracked) and the head stamp
+# from src/compclass/final.py.
+data/v2/review/*.jpg
+exports/final/*.head_sha256
 
 # Small report inputs; generic runs/ above excludes training outputs elsewhere.
 !results/itri626/runs/
