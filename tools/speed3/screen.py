@@ -1,4 +1,4 @@
-"""Unofficial accuracy screen on carlpc2: dev embeddings of a torch trunk, fidelity to the teachers, and the harness
+"""Unofficial accuracy screen: dev embeddings of a torch trunk, fidelity to the teachers, and the harness
 head recipe on them.
 
     screen.py <name> <graph: t384|t294|s294|DIR> [--state STATE.npz] [--fp32]
@@ -25,8 +25,6 @@ import sys
 
 sys.path.insert(0, str(REPO / "tools/speed"))
 import evaluate  # noqa: E402
-
-evaluate.DEPLOYED = Path("/home/carl/626-runs/distill/v2meta")  # byte-identical copy of exports/final/head.npz
 
 
 @torch.no_grad()

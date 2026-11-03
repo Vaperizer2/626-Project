@@ -23,19 +23,21 @@ import torch
 from PIL import Image
 from torch import nn
 
-R = Path(os.environ.get("SPEED3_R", "/home/carl/626-runs/speed3"))
+MAIN, ART = Path("/home/vaper/Work/Prototypes/626-Project"), Path("/home/vaper/Work/Prototypes/626-artifacts")
+R = Path(os.environ.get("SPEED3_R", ART / "speed3"))
 REPO = Path(__file__).resolve().parents[2]
 sys.path[:0] = [str(REPO / "src"), str(REPO / "tools/prune")]
 import so400m  # noqa: E402
 from views import is_pool_val, load_pool, render_view, to_tensor  # noqa: E402
 
-MANIFEST = Path(os.environ.get("SPEED3_MANIFEST", "/home/carl/Projects/626-Project/data/v2/manifest.json"))
-POOL = Path("/home/carl/626-runs/distill/pool")
-TEXT = Path("/home/carl/626-runs/distill/v2meta/text_weights.npy")
+MANIFEST = Path(os.environ.get("SPEED3_MANIFEST", MAIN / "data/v2/manifest.json"))
+POOL = ART / "distill/pool"
+HEAD = MAIN / "exports/final/head.npz"
+CALIB = ART / "quant/calib"
 FINGERPRINT = "431315e87d2612cb"
 MEAN = STD = (0.5, 0.5, 0.5)
 GRAPHS = {
-    "t384": Path("/home/carl/626-runs/harness/candidates/baseline_fp32"),
+    "t384": ART / "harness/candidates/baseline_fp32",
     "t294": R / "base/t294",
     "s294": R / "base/s294_mlp3840",
 }
