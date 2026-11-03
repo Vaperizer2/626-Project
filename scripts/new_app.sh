@@ -22,7 +22,9 @@ printf '%s\n' /target/ /dist/ '*.onnx' '*.onnx.data' > .gitignore
 cd "$APP"
 rm -r demo_stack README.md scripts/{golden,parity,build_demo_stack}.py packaging/licenses/DATASET.txt src/demo.rs \
     src/cli/preprocess.rs src/gui/demo_tab.rs src/gui/demo_tab src/gui/bench.rs src/gui/bench src/gui/stack.rs
-sed -i -e '/^mod demo;$/d' -e '/^pub mod \(bench\|demo_tab\|stack\|preprocess\);$/d' src/main.rs src/gui.rs src/cli.rs
+sed -i '/^mod demo;$/d' src/main.rs
+sed -i '/^pub mod \(bench\|demo_tab\|stack\);$/d' src/gui.rs
+sed -i '/^pub mod preprocess;$/d' src/cli.rs
 sed -i -e "s/^name = \"gpui-demo\"$/name = \"$NAME\"/" -e '/^rayon = /d' Cargo.toml
 # packaging/bundle.txt keeps its header and ships the whole exports/ folder
 sed -i -n '/^[^#]/q;p' packaging/bundle.txt && echo exports >> packaging/bundle.txt
