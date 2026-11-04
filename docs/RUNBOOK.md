@@ -131,8 +131,8 @@ slightly from Pillow's and the golden comparison does not match. The portable bu
 
 A clean build takes about 2.5 to 3 minutes on legion (the owner's laptop), nearly all of it GPUI Kit. The laptop is
 short of RAM, so the owner runs release builds and full test suites on a Boat.dev CPU sandbox (`boat` CLI).
-`cargo test -p inference` builds the crate without GPUI in under a minute. Options, keys and the profiling setup are in
-[the app README](../apps/gpui-demo/README.md). A new desktop AI app starts from this one with `scripts/new_app.sh`;
+`cargo test -p inference` builds the crate without GPUI in under a minute. Options, keys and the profiling setup are
+in [the app README](../apps/gpui-demo/README.md). A new desktop AI app starts from this one with `scripts/new_app.sh`;
 [TEMPLATE.md](TEMPLATE.md) has the procedure.
 
 ## Reproduce results and documents

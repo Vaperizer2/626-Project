@@ -11,8 +11,8 @@ The commands below are the ones the 2026-10-31 run used on carlpc2, with its `/t
 steps take `/tmp/626-gpu-bench.lock` instead, the lock the speed harness and the TensorRT probes take, so training
 never overlaps a benchmark. They also follow the laptop's rule for heavy steps: wait until at least 4 GB is
 available (`free -g`), take `flock /tmp/626-heavy.lock`, and run inside
-`systemd-run --user --scope -p MemoryMax=6G -p MemorySwapMax=2G`. Heavy CPU-only work can run on a
-Boat.dev CPU sandbox (`boat` CLI).
+`systemd-run --user --scope -p MemoryMax=6G -p MemorySwapMax=2G`. Heavy CPU-only work can run on a Boat.dev CPU sandbox
+(`boat` CLI).
 
 1. Build the disjoint pool. Every subdirectory of `--component` and `--generic` is one source.
 
