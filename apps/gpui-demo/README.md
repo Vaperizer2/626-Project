@@ -16,12 +16,12 @@ A native desktop demo of the project's models (20 electronic-component classes),
   disagree.
 
 A model picker switches between the report's models (**A · Custom CNN**, **B · ConvNeXt-T**, **C · SigLIP + linear**),
-the **Deployed** fused SigLIP model and **Fast**, the deployed model at 308 px with INT8 weights for TensorRT (same
-cross-validated accuracy, 14 ms per picture instead of 113 ms on the RTX 3060 Laptop). Models are data: each export
-folder has a `model.json` manifest and `exports/models.json` lists them, so a new model needs no Rust change. Models
-load on first use. The 1.7 GB SigLIP weights are loaded once and shared by C and Deployed. The same binary also has
-headless `classify`, `bench` and `models` modes. It implements the ONNX contract in `docs/DEMO.md` §8 and mirrors the
-Python reference `src/compclass/demo.py`.
+the **Deployed** fused SigLIP model and **Fast**, the deployed model at 308 px, INT8 in weights and activations, for
+TensorRT (same cross-validated accuracy, 14 ms per picture instead of 113 ms on the RTX 3060 Laptop). Models are data:
+each export folder has a `model.json` manifest and `exports/models.json` lists them, so a new model needs no Rust
+change. Models load on first use. The 1.7 GB SigLIP weights are loaded once and shared by C and Deployed. The same
+binary also has headless `classify`, `bench` and `models` modes. It implements the ONNX contract in `docs/DEMO.md` §8
+and mirrors the Python reference `src/compclass/demo.py`.
 
 The models, the inference service and onnxruntime live in the GPUI-free crate `crates/inference`; this folder is the
 window, the command line and the classifier's own parts. The app is also the template for new desktop AI apps:
@@ -30,7 +30,8 @@ window, the command line and the classifier's own parts. The app is also the tem
 ## Download and run
 
 For colleagues, use the [private release](https://github.com/Vaperizer2/626-Project/releases/tag/share-2026-10-30)
-and follow the [runbook](../../docs/RUNBOOK.md). It includes all models, the CPU runtime and the demo photos.
+and follow the [runbook](../../docs/RUNBOOK.md). It includes models A, B, C and Deployed, the CPU runtime and the
+28 demo photos of that time. Fast and the 68-picture stack came later: build a bundle from `main` for them.
 On ordinary x86_64 Linux run `./run.sh --tab demo`; on NixOS run `./run-nixos.sh --tab demo`.
 The first NixOS launch needs network access to fetch runtime libraries. Windows/macOS users can use the Python
 ONNX demo from source; this release's desktop binary is Linux-only.
@@ -48,7 +49,7 @@ rustup default stable                   # needs Rust >= 1.92; tested with 1.99.1
 
 # 2. download the models first (see ../../docs/RUNBOOK.md), then build and run, from the repo root: the Cargo
 #    workspace (crates/inference and this app) builds into <repo>/target/
-cargo build --release --locked -p gpui-demo --features turbojpeg   # Arch has libjpeg-turbo: bit-identical JPEG decoding to Pillow
+cargo build --release --locked -p gpui-demo --features turbojpeg   # libjpeg-turbo >= 3.0: bit-identical JPEG decoding to Pillow
 target/release/gpui-demo                              # Classify tab
 target/release/gpui-demo --tab demo                   # start on the Demo tab (for presenting)
 target/release/gpui-demo --tab benchmark --autorun    # start the benchmark straight away
@@ -357,7 +358,7 @@ that bundle, `run.sh` found a GPU runtime in the shared `onnxruntime-gpu/1.31` f
 | libc | normal (0.2.191 in `Cargo.lock`) | The old pin to 0.2.189 is no longer needed: it existed only for `xattr 0.2.3`, which GPUI 0.2.2 pulled in and GPUI Kit's GPUI does not. |
 
 | look | own GPUI Kit themes "Bench Light" / "Bench Dark" (`src/gui/themes/bench.json`, loaded by `src/gui/theme.rs`) | Built for a projector: chrome / canvas / card layering, one blue accent for "the answer", colour-blind-safe verdicts with icons, large numerals. The rationale, the reference apps studied and the token table are in [`docs/VISUAL_DIRECTION.md`](docs/VISUAL_DIRECTION.md). Views use theme roles only (no hex in views). The default follows the system theme: light reads better on a projector in a lit room; use `--dark` in a dim one. |
-| fonts | system fonts, nothing bundled | The UI prefers Noto Sans (or DejaVu Sans, Liberation Sans, Ubuntu) because GPUI's Linux text system draws only the regular instance of a *variable* system font (GNOME's Adwaita Sans), which would make all bold text regular. Numbers in columns use the system monospace font. |
+| fonts | Noto Sans Regular + Bold embedded (`assets/fonts/`), system fonts as fallback | The UI prefers Noto Sans (or DejaVu Sans, Liberation Sans, Ubuntu) because GPUI's Linux text system draws only the regular instance of a *variable* system font (GNOME's Adwaita Sans), which would make all bold text regular. `theme::register_bundled_fonts` registers the embedded faces at start-up. Numbers in columns use the system monospace font. |
 | icons | Lucide via `gpui_kit::assets` | The Kit's `Assets` bundles only its ~100 component icons; the extra Lucide icons the app uses are embedded with `icon_assets!` (`widgets::ExtraIcons`, ~20 KB). A unit test fails if an icon used in the source is not bundled (it would render blank). |
 
 The `Cargo.lock` is committed; build with `--locked`.
@@ -378,9 +379,11 @@ On Pillow-decoded pixels the Rust tensor is **bit-identical** to `compclass.demo
 
 The remaining difference is the JPEG **decoder**. The default build uses the `image` crate's pure-Rust decoder
 (zune-jpeg), which differs from Pillow's libjpeg-turbo by a few grey levels on some pixels. Build with
-`--features turbojpeg` (requires the system `libturbojpeg`: `pkg-config --modversion libturbojpeg`; Arch package
-`libjpeg-turbo`) to decode JPEG pixels with libjpeg-turbo, as Pillow does. The model input is then bit-identical to
-the Python pipeline. `gpui-demo --version` prints which decoder a binary uses.
+`--features turbojpeg` to decode JPEG pixels with libjpeg-turbo, as Pillow does. The model input is then
+bit-identical to the Python pipeline. `gpui-demo --version` prints which decoder a binary uses. The feature needs the
+system `libturbojpeg` 3.0 or newer (`pkg-config --modversion libturbojpeg`; Arch package `libjpeg-turbo`). Ubuntu
+24.04 ships 2.1.5, which `turbojpeg-sys` rejects. There, use `--features turbojpeg-vendored`, the bundle's decoder,
+which builds libjpeg-turbo 3.1 from source with CMake and NASM.
 
 Measured parity on 64 dev images is in `results/demo/gpui_parity.json`; reproduce it with
 

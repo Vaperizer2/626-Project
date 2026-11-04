@@ -3,7 +3,8 @@
 **Share / run:** [private GitHub repository](https://github.com/Vaperizer2/626-Project) ·
 [download models and Linux demo](https://github.com/Vaperizer2/626-Project/releases/tag/share-2026-10-30) ·
 [runbook](docs/RUNBOOK.md) · [current status](STATUS.md) · [agent handoff](AGENTS.md).
-The release includes all four model choices; cloning the source alone does not download the ONNX weights.
+That release has four of the app's five models (A, B, C and Deployed; Fast came later). Cloning the source alone
+does not download the ONNX weights.
 Colleagues need repository access (Settings → Collaborators); send the release link after they accept the invitation.
 
 One importable package (`src/compclass`) trains, probes and evaluates every model family the project compares,
@@ -81,7 +82,8 @@ uv run python scripts/make_report_figures.py
 ```
 
 `exports/final/model.onnx` and `model.onnx.data` are release assets inside the Linux bundle, not Git objects.
-Follow [the runbook](docs/RUNBOOK.md) to download all models into the source checkout or run the bundled demo.
+Follow [the runbook](docs/RUNBOOK.md) to download models A, B, C and Deployed into the source checkout or run the
+bundled demo. Fast's ONNX files are not in a release yet (see the runbook).
 The shared SigLIP weights alone are 1,714,593,792 bytes (1.60 GiB). Exporting again requires the training inputs/caches;
 use the release for inference without rebuilding the dataset.
 
@@ -91,13 +93,21 @@ use the release for inference without rebuilding the dataset.
 src/compclass/        package: data (manifest, folds, transforms), models/registry.py (one builder per family),
                       train, features (frozen probe), zeroshot, classical, evaluate, export, final, demo
 configs/              base.yaml (every knob, commented) + one YAML per family / ablation
-tools/                build_dataset_v2.py (dataset v2 + leakage report), build_web_holdout.py
-scripts/              make_report_figures.py (report figures/tables), gpu_witness.py (hardware check)
+tools/                build_dataset_v2.py (dataset v2 + leakage report), build_web_holdout.py, export_splits.py,
+                      export_itri626_models.py, gen_manifests.py (the app's model.json files); speed/ (the frozen
+                      speed harness), speed2/ to speed4/, compose/, quant/, prune/, tokens/, trtbugs/, distill/
+                      (the speed work; Fast comes from compose/ and quant/), hardcases/ (the hard-case study)
+scripts/              make_report_figures.py (report figures/tables), gpu_witness.py (hardware check),
+                      itri626_experiments.py (models A, B, C), new_app.sh (a new app from the template)
+notebooks/            ITRI626_three_models.ipynb (executed A/B/C comparison), ITRI626_training.ipynb (training)
+crates/inference/     Rust: the models without a UI (manifests, inference service, onnxruntime)
+apps/gpui-demo/       Rust: the GPUI desktop app over crates/inference (README.md there)
 data/v2/              manifest.json, leakage_report.json, review/*.csv (duplicate, conflict and OOD audit records)
 results/              phase1/ (probes, zero-shot, HOG, label audit, cleaning), phase1b/ (TTA probes),
                       phase2/ (fine-tunes: runs_fixed.jsonl main, raw_oldschedule/ ablation, per-fold preds),
                       benchmark.csv, leakage_simulation.csv, schedule_ablation_folds012.csv, final/ (sealed test)
-exports/final/        head.npz, labels.json, preprocess.json, fit_report.json, export_report.json
+exports/              models.json (the app's model index); final/ (head.npz, labels.json, preprocess.json,
+                      model.json, fit_report.json, export_report.json), fast/, itri626/ (A and B)
 docs/report/          REPORT.md + figures/ + tables/ (CSV and booktabs .tex)
 docs/models/, docs/concepts/, docs/LEARNING_PATH.md   per-family explainers, concept notes, reading order
 docs/DEMO.md          OpenCV demo guide
@@ -149,7 +159,8 @@ records and asserts that they agree.
 
 ## Where training runs
 
-Since 2026-11-03 the work runs on the laptop (RTX 3060 Laptop, 6 GB). The GPU PC used before (`carlpc2`) is no
+Since 2026-11-03 GPU work runs on the laptop (RTX 3060 Laptop, 6 GB), the only GPU. Heavy CPU work, such as Rust
+release builds and test suites, runs on Boat.dev CPU sandboxes (`boat` CLI). The GPU PC used before (`carlpc2`) is no
 longer available; its sync commands are in Git history. Its speed3 outputs were copied to the laptop, but speed3's
 fp32 base graphs were lost with it, and so were the inputs to rebuild them (the distillation pool images, the
 teacher feature cache and the MLP activation statistics). The pool's Caltech-256 and COCO val2017 sources must be

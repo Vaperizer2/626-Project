@@ -19,7 +19,7 @@ says nothing about accuracy (see [Accuracy to expect](#accuracy-to-expect)).*
 
 For a fresh checkout, download the private GitHub Release and extract its `exports/` folder as described in
 [the runbook](RUNBOOK.md#download-models-into-a-source-checkout). The same release contains a portable Linux
-app with all four model choices; it needs neither Python nor Rust installed.
+app with all four model choices of that time (Fast came later); it needs neither Python nor Rust installed.
 
 You need `model.onnx` together with `model.onnx.data`, which holds the weights. The graph refers to the data file by
 name, so keep both in the same folder. You also need `labels.json` and `preprocess.json`. `head.npz` is only used by
@@ -111,11 +111,11 @@ to depend on its core count.
 ### The desktop app on the laptop GPU (RTX 3060 Laptop, 2026-11-01)
 
 The GPUI app (`apps/gpui-demo`) runs Deployed on CUDA and **Fast** on TensorRT. Fast is the deployed recipe on the
-speed track's `compose_int8_res308` backbone: 308 px input and INT8 weights (SmoothQuant), with the fused head and
-the temperature in the graph (`exports/fast/`). On the development folds its cross-validated accuracy is 0.8268, the
-same as Deployed's (`exports/fast/fit_report.json`; the sealed test is spent, so there is no test number). Numbers
-through the app's inference service, onnxruntime 1.31.1, TensorRT 10.16.1, `gpui-demo bench` and `classify`
-(medians over 5 alternated rounds; `results/demo/gpui_legion_speed.json`):
+speed track's `compose_int8_res308` backbone: 308 px input and INT8 weights and activations (SmoothQuant), with the
+fused head and the temperature in the graph (`exports/fast/`). On the development folds its cross-validated accuracy
+is 0.8268, the same as Deployed's (`exports/fast/fit_report.json`; the sealed test is spent, so there is no test
+number). Numbers through the app's inference service, onnxruntime 1.31.1, TensorRT 10.16.1, `gpui-demo bench` and
+`classify` (medians over 5 alternated rounds; `results/demo/gpui_legion_speed.json`):
 
 | app on legion | ms / image, end to end | of which the model run | pictures / s, streamed | model ready at start-up |
 |---|---|---|---|---|
@@ -146,7 +146,7 @@ uv run --no-project --python 3.12 --with numpy --with pillow --with opencv-pytho
 The startup line should say `[CUDAExecutionProvider]`. If it says `CPUExecutionProvider`, CUDA could not be loaded
 and the demo fell back to CPU. Swap in `opencv-python` to get a window as well.
 
-To make it the project default (changes `pyproject.toml`/`uv.lock`, and the PC environment on its next sync):
+To make it the project default (changes `pyproject.toml`/`uv.lock`, and every project environment on its next sync):
 `uv remove onnxruntime && uv add "onnxruntime-gpu[cuda,cudnn]"`. Revert with `uv remove onnxruntime-gpu && uv add
 onnxruntime`. This in-project combination with torch's CUDA 12.8 wheels is **untested**. The throwaway-environment
 command above is the tested route.
@@ -240,9 +240,9 @@ uv run python -m pytest -q tests/test_demo.py
 ## 8. Deploying elsewhere (e.g. a Rust GPUI app via the `ort` crate)
 
 > **Built:** the GPUI desktop app now exists at [`apps/gpui-demo/`](../apps/gpui-demo/README.md)
-> (`cd apps/gpui-demo && cargo run --release --locked`). It implements exactly the contract below; its headless
-> `classify` mode matches the Python pipeline on 64/64 dev images (`results/demo/gpui_parity.json`). The window is
-> built with GPUI Kit and has Classify, Demo (a credited stack of web-holdout photos) and Benchmark tabs. It
+> (`cargo run --release --locked -p gpui-demo` from the repo root). It implements exactly the contract below; its
+> headless `classify` mode matches the Python pipeline on 64/64 dev images (`results/demo/gpui_parity.json`). The
+> window is built with GPUI Kit and has Classify, Demo (a credited stack of web-holdout photos) and Benchmark tabs. It
 > can switch between the deployed model, the report's models A, B and C, and Fast (`--features turbojpeg`
 > recommended). The app reads each export through its `model.json` manifest (files and checksums, input and
 > preprocessing, heads, execution providers), so the contract below is what `exports/final/model.json` encodes.
