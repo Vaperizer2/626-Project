@@ -450,8 +450,8 @@ Conventions:
   training fold. But its targets come from a model pretrained on web-scale image-text data, so in the course
   comparison it is a third thing between A and C, to be labelled "A + distillation from C". The strict
   from-scratch model A remains the 200-epoch plain recipe at 0.3903.
-- The sealed test split was scored once afterwards, on the author's go-ahead (entry 24). The Wikimedia holdout
-  is not scored.
+- The sealed test split (entry 24) and the Wikimedia holdout (entry 25) were each scored once afterwards, on the
+  author's go-ahead.
 
 ### 23. Distilled variant, more signal per run: 500-epoch schedule and width 48; folds 0-2
 
@@ -526,5 +526,43 @@ Conventions:
   more. Per class on test, plain is best on potentiometer (0.62), microcontroller board (0.68), switch (0.64),
   battery holder (0.58); distilled on breadboard (0.57), heat sink (0.56), crystal oscillator (0.40),
   transformer (0.32); both fail on fuse (0.17-0.18), led (0.22-0.27) and resistor (0.16-0.29).
-- The sealed test split is now spent for both recipes. No further scoring; any later change to either recipe is
-  a development-fold result only.
+- The sealed test split is now spent for both recipes. Any later change to either recipe is a development-fold
+  result only.
+
+### 25. Wikimedia holdout, the one look (2026-11-04, author's go-ahead)
+
+- The 407 photos of `data/web_holdout_v1` (20 classes, Wikimedia Commons, collected 2026-10-18, never used for
+  training or selection; the deployed SigLIP model's recorded out-of-source result is accuracy 0.8206 / macro-F1
+  0.8159) were restored to this laptop from the developer's archive
+  `data/raw/626-non-kaggle-images-2026-11-04/` (all 407 files present under the manifest's names, same fingerprint
+  `5458af44e043b3aa`, JPEG, long side <= 512, aspect ratios equal to the recorded originals). The same two frozen
+  fold-0 checkpoints as entry 24 were scored once with the new `tools/eval_holdout_cnn.py` (`--confirm`), eval
+  preprocessing unchanged. Outputs in `results/scratch_cnn_improvement/web_holdout_*`.
+
+  | Model (fold-0 training) | Test macro-F1 | Test acc | **Holdout macro-F1** | **Holdout acc** | Holdout macro-F1 95 % CI |
+  |---|---:|---:|---:|---:|---|
+  | A, 200 ep (`b0afa2aa4d60`) | 0.3924 | 0.3995 | **0.2570** | **0.2826** | 0.216-0.293 |
+  | A + distillation, 300 ep (`fbe64b2765cb`) | 0.3933 | 0.4115 | **0.2976** | **0.3170** | 0.252-0.334 |
+  | Deployed SigLIP probe + zero-shot (recorded 2026-10-18) | 0.8373 (acc) | | 0.8159 | 0.8206 | |
+
+- Paired bootstrap (2,000 resamples), distilled minus plain: macro-F1 +0.040 [+0.003, +0.079], accuracy +0.035
+  [-0.005, +0.074]. Agreement 40.5 %; 42 photos right only for the distilled model, 28 only for the plain one;
+  distilled better on 14 of 20 classes.
+- Reading. (i) Source shift is where the from-scratch network really loses: -13.5 pt macro-F1 for the plain model
+  and -9.6 pt for the distilled one from test to holdout, against -2.1 pt for the deployed pretrained model
+  (0.8373 to 0.8206 accuracy). A network that learned its features from one web scrape does not carry them to
+  photos taken elsewhere; the pretrained features do. (ii) The distillation gain that the 418-image test split
+  could not resolve (entry 24, +0.001) reappears out of source at +4.0 pt, the same size as the five-fold
+  development estimate (+4.6 pt), and this time the interval excludes zero. Soft targets from the pretrained
+  teacher transfer better than hard labels, which is the expected mechanism. (iii) Per class the plain model
+  collapses on diode (0.39 to 0.00), power supply module (0.39 to 0.05), relay, switch, battery holder and
+  potentiometer (all 0.58-0.64 to 0.20-0.33), while breadboard (0.80), microcontroller board (0.55) and jumper wire
+  (0.49) survive: the classes with a fixed, large-scale appearance. The distilled model keeps microcontroller
+  board (0.71), breadboard (0.73), heat sink (0.49), ic chip (0.47) and resistor (0.44) but still fails diode
+  (0.06), fuse (0.05) and transformer (0.07). Top confusions are diode -> switch (7, both models), switch ->
+  potentiometer (7, plain), inductor coil -> heat sink (7, distilled), relay -> power supply module (5-6).
+- For the course report: the honest three-line summary of model A is now "0.39 on the Kaggle test split, 0.26 on
+  photos from another source, 0.82 for the pretrained model on the same photos". Distillation closes a little of
+  the gap on both (0.30 out of source) and is the only recipe change that did. The holdout is spent for both
+  recipes; models B and C of the course comparison have not been scored on it (their checkpoints are not on this
+  machine; the ONNX graphs are in the GitHub release bundle).

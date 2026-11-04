@@ -5,7 +5,8 @@ before, how the research was conducted, what was tried with what result, and whe
 chronological detail is in `docs/SCRATCH_CNN_IMPROVEMENT_LOG.md`; the untouched record of the original model is
 `docs/SCRATCH_CNN_BASELINE.md`; a diagram of the network is `docs/scratch_cnn_pipeline.html`.
 
-Status (2026-11-04): **development-fold result final; sealed test scored once (section 7).** Two outcomes, both confirmed on all
+Status (2026-11-04): **development-fold result final; sealed test and Wikimedia holdout each scored once
+(sections 7 and 8).** Two outcomes, both confirmed on all
 five folds with every fold improving:
 
 | Model | Five-fold macro-F1 | Accuracy | vs committed model A (0.3552) |
@@ -22,7 +23,9 @@ EMA, squash) made no difference or made it worse.
 Sealed test, one look (section 7): the 200-epoch model scores 0.3924 macro-F1 / 0.3995 accuracy and the distilled
 model 0.3933 / 0.4115, against 0.3361 / 0.3541 for the committed course run. The schedule gain carries over to
 the test split; the distillation gain is inside the test split's noise on this look (+0.001 macro-F1,
-95 % interval -0.044 to +0.045). The Wikimedia holdout is not scored.
+95 % interval -0.044 to +0.045). On the 407-photo Wikimedia holdout (section 8) both drop hard, to 0.2570 and
+0.2976 macro-F1 against 0.8159 for the deployed pretrained model, and there the distillation gain is +0.040
+[+0.003, +0.079]: soft targets from the pretrained teacher transfer out of source better than hard labels.
 
 ## 1. Starting point
 
@@ -103,6 +106,7 @@ against 0.3552 for the committed recipe: +0.035 ± 0.009 SE, better on 5/5 folds
 per fold on the laptop GPU, 435 MB VRAM.
 
 Confirmed on all five development folds. Sealed test, one look (section 7): accuracy 0.3995, macro-F1 0.3924.
+Wikimedia holdout, one look (section 8): accuracy 0.2826, macro-F1 0.2570.
 
 ### 4b. Model A + distillation from C
 
@@ -117,6 +121,7 @@ cost unchanged; training about 1.3x the time of 4a on an idle GPU plus a one-off
 Caveat that must travel with the number: no pretrained weights and no extra images, but a pretrained model's
 knowledge enters through the targets. In the A/B/C comparison it is a fourth row, not a replacement for A.
 Sealed test, one look (section 7): accuracy 0.4115, macro-F1 0.3933, not distinguishable from 4a on 418 images.
+Wikimedia holdout, one look (section 8): accuracy 0.3170, macro-F1 0.2976, +4.0 pt macro-F1 over 4a.
 
 ## 5. What was learned
 
@@ -211,4 +216,38 @@ Paired bootstrap on the test images, 4b minus 4a: macro-F1 +0.001 [-0.044, +0.04
   say exactly that rather than claim a test-split gain for distillation.
 - Both recipes still fail on fuse, led and resistor; the distilled one is worst on resistor (0.16).
 
-The test split is now spent for both recipes. The Wikimedia holdout has not been scored and is not planned.
+The test split is now spent for both recipes.
+
+## 8. Wikimedia holdout, the one look (2026-11-04)
+
+The 407 Wikimedia Commons photos of `data/web_holdout_v1` are the project's only out-of-source test: a different
+site, different photographers, backgrounds and lighting from the Kaggle scrape that supplies every training and
+test image. They were scored once on 2026-10-18 with the deployed SigLIP model and never used for training or
+selection. The developer's archive restored the files to this laptop (names, count and fingerprint match the
+recorded manifest). The same two frozen fold-0 checkpoints as section 7 were scored once each with
+`tools/eval_holdout_cnn.py` (log entry 25; files in `results/scratch_cnn_improvement/web_holdout_*`).
+
+| Model | Test macro-F1 (418 Kaggle) | Holdout macro-F1 (407 Wikimedia) | Holdout accuracy | Drop |
+|---|---:|---:|---:|---:|
+| A, 200 epochs (4a) | 0.3924 | **0.2570** [0.216, 0.293] | 0.2826 | -13.5 pt |
+| A + distillation from C, 300 epochs (4b) | 0.3933 | **0.2976** [0.252, 0.334] | 0.3170 | -9.6 pt |
+| Deployed SigLIP probe + zero-shot head (recorded) | 0.8373 acc | 0.8159 | 0.8206 | -1.7 pt acc |
+
+Paired bootstrap, 4b minus 4a: macro-F1 +0.040 [+0.003, +0.079], accuracy +0.035 [-0.005, +0.074]; 4b better on
+14 of 20 classes. What this means:
+
+- **Source shift is the from-scratch network's real weakness.** It loses a third of its score when the photos come
+  from somewhere else; the pretrained model loses almost nothing. Features learned from one web scrape describe
+  that scrape. Classes with a fixed, large-scale look (breadboard 0.80, microcontroller board 0.55-0.71, jumper
+  wire) survive; small parts photographed in varied ways (diode 0.00-0.06, power supply module, relay, fuse,
+  transformer) do not.
+- **Distillation's gain reappears out of source.** The 418-image test split could not resolve it (section 7); the
+  holdout shows +4.0 pt with an interval that excludes zero, the same size as the five-fold estimate. Soft targets
+  from the pretrained teacher carry more transferable signal than hard labels, which is the mechanism one would
+  expect, and it is the only recipe change in this study that helped anywhere.
+- **For the course report** the from-scratch story is now complete in three numbers: 0.39 on the Kaggle test
+  split, 0.26 on photos from another source, 0.82 for the pretrained model on the same photos. Models B and C
+  have not been scored on the holdout (their checkpoints are not on this machine; a full column would need the
+  ONNX graphs from the release bundle and would spend their one look).
+
+Both holdouts are now spent for both recipes. Nothing in either recipe will change in response to these numbers.
