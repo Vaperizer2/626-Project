@@ -97,9 +97,9 @@ export + onnxruntime parity, all four zero-shot models, the linear probe and the
   resolve plain PyPI torch.
 * DINOv2 runs at 224 px (position embeddings interpolated from 518) to keep training affordable on 8 GB.
 * `--features turbojpeg` (the app README's recommended build, and the binary that `apps/gpui-demo/scripts/golden.py`
-  checks) links the system libjpeg-turbo, and `turbojpeg-sys` 1.2.0 asks pkg-config for version 3.0 or newer. Ubuntu 24.04 ships
-  2.1.5, so the build fails there. Install libjpeg-turbo 3.x, or build `--features turbojpeg-vendored` (needs cmake
-  and nasm). The portable bundle uses `turbojpeg-vendored` and is not affected.
+  checks) links the system libjpeg-turbo, and `turbojpeg-sys` 1.2.0 asks pkg-config for version 3.0 or newer. Ubuntu
+  24.04 ships 2.1.5, so the build fails there. Install libjpeg-turbo 3.x, or build `--features turbojpeg-vendored`
+  (needs cmake and nasm). The portable bundle uses `turbojpeg-vendored` and is not affected.
 * `[profile.dev.package."*"]` in the root `Cargo.toml` leaves out workspace members, so `inference` has its own
   `opt-level = 2` line. Without it the GUI tests decode the 68-picture demo stack too slowly and time out.
 * Layer-wise LR decay applies to timm models only (they expose `group_matcher`); for ConvNeXt the fine-grained

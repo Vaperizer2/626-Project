@@ -42,9 +42,9 @@ independent accuracy estimate. Allow several seconds for the initial SigLIP load
 
 ## Run the Fast model on an NVIDIA GPU
 
-Fast is the deployed model at 308 px, INT8 in weights and activations, for TensorRT. It has the same cross-validated accuracy on the
-development folds (0.8268) at 14 ms per picture instead of 113 ms for Deployed on CUDA (RTX 3060 Laptop, in the app).
-The share-2026-10-30 release predates Fast and the GPU launcher: use a bundle built from `main`
+Fast is the deployed model at 308 px, INT8 in weights and activations, for TensorRT. It has the same cross-validated
+accuracy on the development folds (0.8268) at 14 ms per picture instead of 113 ms for Deployed on CUDA (RTX 3060
+Laptop, in the app). The share-2026-10-30 release predates Fast and the GPU launcher: use a bundle built from `main`
 (`apps/gpui-demo/scripts/package_linux.sh`, see below for Fast's model files) or a source build. It needs the GPU
 runtime, which the bundle does not ship (about 7 GB, no root):
 
@@ -158,7 +158,8 @@ Record changed research conclusions in `EXPERIMENT_LOG.md`; update `STATUS.md` w
 
 ONNX files and `dist/` remain ignored by Git. This project distributes inference binaries as Release assets rather
 than Git LFS pointers. The share-2026-10-30 archive (1.74 GB) is below GitHub's 2 GiB per-asset limit. LFS is also
-possible, but adds client setup and storage/bandwidth accounting. See [GitHub large-file guidance](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github)
+possible, but adds client setup and storage/bandwidth accounting. See
+[GitHub large-file guidance](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github)
 and [LFS limits](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-git-large-file-storage).
 
 For a changed app/model, follow the packaging prerequisites in the app README, then run from the repo root:

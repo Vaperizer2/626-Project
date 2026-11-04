@@ -17,11 +17,11 @@ A native desktop demo of the project's models (20 electronic-component classes),
 
 A model picker switches between the report's models (**A · Custom CNN**, **B · ConvNeXt-T**, **C · SigLIP + linear**),
 the **Deployed** fused SigLIP model and **Fast**, the deployed model at 308 px, INT8 in weights and activations, for
-TensorRT (same cross-validated accuracy, 14 ms per picture instead of 113 ms on the RTX 3060 Laptop). Models are data: each export
-folder has a `model.json` manifest and `exports/models.json` lists them, so a new model needs no Rust change. Models
-load on first use. The 1.7 GB SigLIP weights are loaded once and shared by C and Deployed. The same binary also has
-headless `classify`, `bench` and `models` modes. It implements the ONNX contract in `docs/DEMO.md` §8 and mirrors the
-Python reference `src/compclass/demo.py`.
+TensorRT (same cross-validated accuracy, 14 ms per picture instead of 113 ms on the RTX 3060 Laptop). Models are data:
+each export folder has a `model.json` manifest and `exports/models.json` lists them, so a new model needs no Rust
+change. Models load on first use. The 1.7 GB SigLIP weights are loaded once and shared by C and Deployed. The same
+binary also has headless `classify`, `bench` and `models` modes. It implements the ONNX contract in `docs/DEMO.md` §8
+and mirrors the Python reference `src/compclass/demo.py`.
 
 The models, the inference service and onnxruntime live in the GPUI-free crate `crates/inference`; this folder is the
 window, the command line and the classifier's own parts. The app is also the template for new desktop AI apps:

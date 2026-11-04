@@ -11,15 +11,16 @@ on an NVIDIA GPU when you add the GPU runtime (see GPU below). Five models are i
   C  SigLIP ViT + linear head               (384 px input, shares the 1.7 GB SigLIP weights)
   Deployed  fused SigLIP model, calibrated; it answers "Unsure" when its top probability is below 50%
   Fast      the Deployed model at 308 px, INT8 in weights and activations, for NVIDIA TensorRT: same
-            cross-validated accuracy, under 20 ms per picture instead of about 115 ms on an RTX 3060 Laptop (440 MB; needs the GPU runtime)
+            cross-validated accuracy, under 20 ms per picture instead of about 115 ms on an RTX 3060 Laptop
+            (440 MB; needs the GPU runtime)
 
 
 Requirements
 ------------
 * Linux on x86_64 (64-bit Intel/AMD) with glibc 2.28 or newer: Ubuntu 20.04+, Debian 10+, Fedora 29+,
   RHEL/Rocky/Alma 8+, openSUSE Leap 15.3+, Arch/Manjaro/CachyOS or similar. (Check: ldd --version)
-* About 4 GB of free RAM (the SigLIP models use about 2.5 GB). The extracted folder takes 2.4 GB (2.2 GiB) of disk; keep
-  room for the archive as well while you extract it.
+* About 4 GB of free RAM (the SigLIP models use about 2.5 GB). The extracted folder takes 2.4 GB (2.2 GiB) of
+  disk; keep room for the archive as well while you extract it.
 * For the window: a Wayland or X11 desktop session with working Vulkan or OpenGL drivers (any normal desktop
   install has them). The command-line "classify" mode needs no display at all.
 * System libraries every desktop already has: glibc, libstdc++ and libgcc_s (for onnxruntime), libxcb,
