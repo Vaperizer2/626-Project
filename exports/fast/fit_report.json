@@ -116,11 +116,11 @@
  "n_dev": 2512,
  "trunk_candidate": "compose_int8_res308",
  "trunk_candidate_sha": "b35fccd5c772a3992ab9a9988e75da633850422199c7d549c1d0016bc4406364",
- "trunk_built_from": "/home/carl/626-runs/compose/work/compose_int8_res308/smooth05 (INT8 QDQ on 112/112 GEMMs, act max, mlp.fc2 p99.999, exclude ; tools/quant/qdq.py @ b2ed4f1)",
+ "trunk_built_from": "/home/carl/626-runs/compose/work/compose_int8_res308/smooth05 (INT8 QDQ on 112/112 GEMMs, act max, mlp.fc2 p99.999, exclude ; tools/quant/qdq.py @ 1b57c0a)",
  "embeddings": "/home/vaper/Work/Prototypes/626-artifacts/harness/work/compose_int8_res308/b35fccd5c772/embeddings.npy",
  "harness_eval": {
   "time_utc": "2026-10-31T19:18:39+00:00",
-  "git_sha": "ae1289d729c3f099ca5653c6abe1f4f6197b58c6",
+  "git_sha": "01c721d153aa31a3afc3df26de387b2d7c73495b",
   "cv_acc_mean": 0.8268244403528175,
   "cv_acc_sd": 0.014109435121251308,
   "oof_acc": 0.8268312101910829,
@@ -128,7 +128,7 @@
   "abstain_threshold": 0.5
  },
  "text_embeddings": "/home/vaper/Work/Prototypes/626-Project/exports/final/head.npz",
- "exporter": "tools/compose/export_fast.py @ 48c7814",
+ "exporter": "tools/compose/export_fast.py @ 8b8fac8",
  "parity": {
   "images": "dev rows 0:2505:8 (314)",
   "tolerance": {

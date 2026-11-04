@@ -2,7 +2,7 @@
 
     python3 apps/gpui-demo/scripts/golden.py results/demo/golden/classify_all.json NEW.json [--heads a,b] [--tol 1e-6]
 
-The baseline was made with the turbojpeg build at aefc494 with onnxruntime 1.31.0 on the CPU EP, from apps/gpui-demo:
+The baseline was made with the turbojpeg build at 48ed12b with onnxruntime 1.31.0 on the CPU EP, from apps/gpui-demo:
     gpui-demo classify --ep cpu --model a,b,c,deployed --json demo_stack/*.jpg   (classify_all.json, 272 rows)
     gpui-demo classify --ep cpu --model deployed --json demo_stack/*.jpg         (classify_default.json, 68 rows)
 Make the candidate with the same heads and `--ep cpu`. For classify_default.json that is `--model deployed`: the

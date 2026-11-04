@@ -1,4 +1,4 @@
-"""Pool views and the distillation loss, copied verbatim from wip/distill `tools/distill/common.py` (cda6955).
+"""Pool views and the distillation loss, copied verbatim from wip/distill `tools/distill/common.py` (35987ce).
 
 The teacher cache (`teacher_v8g2`) was rendered with exactly these ops, so a view rendered here at 384 px is the
 input whose So400m embedding the cache holds. Do not edit; re-copy if the distill track changes its views.
