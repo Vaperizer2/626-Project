@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Component Classifier: launcher for NixOS (and any system without an FHS /lib64), e.g. niri / sway / Hyprland.
+# Launcher for NixOS (and any system without an FHS /lib64), e.g. niri / sway / Hyprland.
 #
 # Why this exists: the bundled binary is a normal "generic Linux" executable. On NixOS
 #   * there is no /lib64/ld-linux-x86-64.so.2 and no /usr/lib, so it cannot start at all (unless nix-ld is set up);
@@ -10,8 +10,8 @@
 #
 # Usage (from anywhere; the folder can live anywhere):
 #   ./run-nixos.sh                       open the window (Wayland)
-#   ./run-nixos.sh --tab demo --dark     any app option is passed through (see ./run-nixos.sh --help)
-#   ./run-nixos.sh classify demo_stack/01_battery_holder.jpg   headless check, no display needed
+#   ./run-nixos.sh --tab classify --dark any app option is passed through (see ./run-nixos.sh --help)
+#   ./run-nixos.sh classify picture.jpg  headless check, no display needed
 #   ./run-nixos.sh --x11 ...             use X11 instead (needs a running X server, e.g. xwayland-satellite on niri)
 #   ./run-nixos.sh --doctor              print what was found and exit
 # Environment overrides:
@@ -21,8 +21,9 @@
 set -euo pipefail
 
 HERE=$(CDPATH='' cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
-BIN="$HERE/gpui-demo"
-CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/component-classifier"
+. "$HERE/app.env"
+BIN="$HERE/$BIN"
+CACHE="${XDG_CACHE_HOME:-$HOME/.cache}/$APP_NAME"
 mkdir -p "$CACHE"
 
 say() { printf 'run-nixos.sh: %s\n' "$*" >&2; }
@@ -56,17 +57,22 @@ ATTRS=(glibc stdenv.cc.cc.lib wayland libxkbcommon libxcb libglvnd vulkan-loader
 
 nix_cmd() { nix --extra-experimental-features 'nix-command flakes' "$@"; }
 
+# The first printed store path that has a lib/ directory.
+with_lib() { local q f=""; while read -r q; do [ -z "$f" ] && [ -d "$q/lib" ] && f=$q; done; [ -n "$f" ] && printf '%s\n' "$f"; }
+
 resolve_one() { # $1 = attribute; prints the store path of its library output
     local attr="$1" alt="" p=""
     [ "$attr" = libxcb ] && alt="xorg.libxcb"
     for a in "$attr" $alt; do
+        # the library output: nix build of a bare attribute realises only its default outputs (glibc: bin)
+        case "$a" in *.lib) ;; *) a="$a.out" ;; esac
         if [ -n "${NIXPKGS:-}" ]; then
-            p=$(nix_cmd build --no-link --print-out-paths "${NIXPKGS}#${a}" 2>/dev/null | head -n1) && [ -n "$p" ] && break
+            p=$(nix_cmd build --no-link --print-out-paths "${NIXPKGS}#${a}" 2>/dev/null | with_lib) && [ -n "$p" ] && break
         else
             if nix-instantiate --find-file nixpkgs >/dev/null 2>&1; then
-                p=$(nix-build '<nixpkgs>' -A "$a" --no-out-link 2>/dev/null | head -n1) && [ -n "$p" ] && break
+                p=$(nix-build '<nixpkgs>' -A "$a" --no-out-link 2>/dev/null | with_lib) && [ -n "$p" ] && break
             fi
-            p=$(nix_cmd build --no-link --print-out-paths "nixpkgs#${a}" 2>/dev/null | head -n1) && [ -n "$p" ] && break
+            p=$(nix_cmd build --no-link --print-out-paths "nixpkgs#${a}" 2>/dev/null | with_lib) && [ -n "$p" ] && break
         fi
         p=""
     done
@@ -106,14 +112,20 @@ fi
 LIBPATH="$LIBPATH:$HERE"
 
 # ---------------------------------------------------------------- environment for the app
-export ORT_DYLIB_PATH="${ORT_DYLIB_PATH:-$HERE/libonnxruntime.so.1.31.0}"
-export COMPCLASS_MODEL_DIR="${COMPCLASS_MODEL_DIR:-$HERE/exports/final}"
-export COMPCLASS_DEMO_DIR="${COMPCLASS_DEMO_DIR:-$HERE/demo_stack}"
+# onnxruntime: an installed onnxruntime-gpu (pip CUDA/cuDNN/TensorRT libraries beside it) when there is one, else the
+# bundled CPU library; the NVIDIA driver's libcuda comes from /run/opengl-driver/lib above.
+ORT_CPU="$HERE/libonnxruntime.so.1.31.0"
+. "$HERE/gpu-env.sh"
+[ -z "$GPU_LIBPATH" ] || LIBPATH="$GPU_LIBPATH:$LIBPATH"
+say "onnxruntime on $GPU_STATE"
+models=$(app_env MODELS)
+demo_dir=$(app_env DEMO_DIR)
+export "${ENV_PREFIX}_MODELS=${models:-$HERE/exports}" "${ENV_PREFIX}_DEMO_DIR=${demo_dir:-$HERE/demo_stack}"
 # Cursor themes on NixOS live in the profiles, not /usr/share/icons.
 export XCURSOR_PATH="${XCURSOR_PATH:-$HOME/.icons:$HOME/.local/share/icons:$HOME/.nix-profile/share/icons:/etc/profiles/per-user/${USER:-$(id -un)}/share/icons:/run/current-system/sw/share/icons}"
 
 HEADLESS=0
-case "${ARGS[0]:-}" in classify | preprocess | models | -h | --help | -V | --version) HEADLESS=1 ;; esac
+if app_command "${ARGS[0]:-}"; then HEADLESS=1; fi
 
 if [ "$HEADLESS" = 0 ] && [ "$DOCTOR" = 0 ]; then
     if [ "$USE_X11" = 1 ]; then
@@ -130,7 +142,7 @@ if [ "$HEADLESS" = 0 ] && [ "$DOCTOR" = 0 ]; then
                 [ -S "$s" ] && { sock="$s"; break; }
             done
             [ -n "$sock" ] || die "no Wayland session found (WAYLAND_DISPLAY empty, no socket in $rt).
-  Start this from a terminal inside niri, or test headless: $0 classify demo_stack/01_battery_holder.jpg"
+  Start this from a terminal inside niri, or test headless: $0 classify picture.jpg"
             WAYLAND_DISPLAY="${sock##*/}"
             export XDG_RUNTIME_DIR="$rt" WAYLAND_DISPLAY
         fi
@@ -144,7 +156,9 @@ if [ "$DOCTOR" = 1 ]; then
     echo "loader        $LOADER"
     echo "library path  $LIBPATH" | tr ':' '\n' | sed '2,$s/^/              /'
     echo "WAYLAND       ${WAYLAND_DISPLAY:-<unset>}   DISPLAY ${DISPLAY:-<unset>}   XDG_RUNTIME_DIR ${XDG_RUNTIME_DIR:-<unset>}"
-    for l in libwayland-client.so.0 libxkbcommon.so.0 libxcb.so.1 libEGL.so.1 libvulkan.so.1 libstdc++.so.6; do
+    echo "onnxruntime   $ORT_DYLIB_PATH ($GPU_STATE)"
+    for l in libwayland-client.so.0 libxkbcommon.so.0 libxcb.so.1 libEGL.so.1 libvulkan.so.1 libstdc++.so.6 \
+        libcudart.so.13 libcudnn.so.9 libnvinfer.so.10 libcuda.so.1; do
         f=""; IFS=: read -ra D <<< "$LIBPATH"; for d in "${D[@]}"; do [ -e "$d/$l" ] && { f="$d/$l"; break; }; done
         printf '  %-24s %s\n' "$l" "${f:-NOT FOUND}"
     done

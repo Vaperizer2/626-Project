@@ -14,7 +14,7 @@ so the whole model is one network:
           -> zero-shot head:  log_softmax(T_zs * cos(f, text embedding of "a photo of a <class>"...))
           -> fused = probe + w_zs * zero-shot;  logits = fused / temperature;  probs = softmax(logits)
 
-Subcommands (run on the GPU PC from the repo root):
+Subcommands (from the repo root; feature extraction wants a CUDA GPU):
     uv run python -m compclass.final fit                 # OOF check of the exact exported pipeline, calibration,
                                                          # abstain threshold, refit head on all dev rows
     uv run python -m compclass.final export              # ONNX + labels/preprocess/metadata + parity checks
@@ -99,12 +99,10 @@ def ece(probs: np.ndarray, y: np.ndarray, bins: int = 15) -> float:
     return float(e)
 
 
-def cmd_fit(manifest: str) -> dict:
-    m = load_manifest(manifest)
-    dev = get_dev(m)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    F = extract_features(KEY, dev, m)
-    W = text_weights(m.classes, device)
+def fit_head(F: np.ndarray, m, dev: list, W: np.ndarray) -> tuple[dict, dict]:
+    """The deployed head on dev features ``F`` (one row per ``dev`` row) and text embeddings ``W``: out-of-fold scores
+    of the exact exported pipeline, temperature and abstain threshold fitted on them, then the probe refitted on all
+    dev rows. Returns (head arrays for head.npz, fit report)."""
     y = np.array([m.class_to_idx[r["label"]] for r in dev])
     pos = {r["id"]: i for i, r in enumerate(dev)}
     oof = np.zeros((len(dev), len(m.classes)), np.float32)
@@ -128,8 +126,6 @@ def cmd_fit(manifest: str) -> dict:
     search = fit_probe(F, y, np.array([r["cluster"] for r in dev]))  # final head on ALL dev rows
     head = head_from_search(search, W)
     head["temperature"], head["abstain_threshold"] = np.float32(temp), np.float32(thr)
-    OUT.mkdir(parents=True, exist_ok=True)
-    np.savez(OUT / "head.npz", **head)
     met = compute_metrics(y, pred, m.classes)
     report = {"oof_accuracy": met["accuracy"], "oof_macro_f1": met["macro_f1"],
               "oof_inscope_accuracy": float((pred[~ood] == y[~ood]).mean()),
@@ -137,6 +133,16 @@ def cmd_fit(manifest: str) -> dict:
               "ece_before": ece(np.exp(log_softmax(oof)), y), "ece_after": ece(probs, y),
               "abstain_threshold": thr, "abstain_table": table, "final_C": head["C"],
               "t_zs": T_ZS, "w_zs": W_ZS, "manifest": m.fingerprint, "n_dev": len(dev)}
+    return head, report
+
+
+def cmd_fit(manifest: str) -> dict:
+    m = load_manifest(manifest)
+    dev = get_dev(m)
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    head, report = fit_head(extract_features(KEY, dev, m), m, dev, text_weights(m.classes, device))
+    OUT.mkdir(parents=True, exist_ok=True)
+    np.savez(OUT / "head.npz", **head)
     (OUT / "fit_report.json").write_text(json.dumps(report, indent=1))
     print(json.dumps({k: v for k, v in report.items() if k != "abstain_table"}, indent=1))
     return report

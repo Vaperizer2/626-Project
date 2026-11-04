@@ -1,8 +1,8 @@
 {
  "$schema": "https://github.com/longbridge/gpui-kit/raw/refs/heads/main/.theme-schema.json",
  "name": "Bench",
- "author": "626-Project gpui-demo",
- "url": "apps/gpui-demo/docs/VISUAL_DIRECTION.md",
+ "author": "626-Project",
+ "url": "docs/VISUAL_DIRECTION.md",
  "themes": [
   {
    "name": "Bench Light",

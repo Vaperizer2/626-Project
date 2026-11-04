@@ -15,10 +15,17 @@ A native desktop demo of the project's models (20 electronic-component classes),
   ? violet = unsure; colour-blind safe, and always with an icon). A switch shows only the images where the models
   disagree.
 
-A model picker switches between the report's models (**A · Custom CNN**, **B · ConvNeXt-T**, **C · SigLIP + linear**)
-and the **Deployed** fused SigLIP model. Models load on first use. The 1.7 GB SigLIP weights are loaded once and shared
-by C and Deployed. The same binary also has a headless `classify` mode. It implements the ONNX contract in
-`docs/DEMO.md` §8 and mirrors the Python reference `src/compclass/demo.py`.
+A model picker switches between the report's models (**A · Custom CNN**, **B · ConvNeXt-T**, **C · SigLIP + linear**),
+the **Deployed** fused SigLIP model and **Fast**, the deployed model at 308 px with INT8 weights for TensorRT (same
+cross-validated accuracy, 14 ms per picture instead of 113 ms on the RTX 3060 Laptop). Models are data: each export
+folder has a `model.json` manifest and `exports/models.json` lists them, so a new model needs no Rust change. Models
+load on first use. The 1.7 GB SigLIP weights are loaded once and shared by C and Deployed. The same binary also has
+headless `classify`, `bench` and `models` modes. It implements the ONNX contract in `docs/DEMO.md` §8 and mirrors the
+Python reference `src/compclass/demo.py`.
+
+The models, the inference service and onnxruntime live in the GPUI-free crate `crates/inference`; this folder is the
+window, the command line and the classifier's own parts. The app is also the template for new desktop AI apps:
+`scripts/new_app.sh` copies it without the classifier's parts, as [docs/TEMPLATE.md](../../docs/TEMPLATE.md) describes.
 
 ## Download and run
 
@@ -39,23 +46,39 @@ rustup default stable                   # needs Rust >= 1.92; tested with 1.99.1
 #      uv venv ~/.local/share/compclass-ort && uv pip install --python ~/.local/share/compclass-ort onnxruntime
 #      export ORT_DYLIB_PATH=$(ls ~/.local/share/compclass-ort/lib/python3.*/site-packages/onnxruntime/capi/libonnxruntime.so.1.*)
 
-# 2. download the models first (see ../../docs/RUNBOOK.md), then build and run
-cd apps/gpui-demo
-cargo build --release --locked --features turbojpeg   # Arch has libjpeg-turbo: bit-identical JPEG decoding to Pillow
-./target/release/gpui-demo                            # Classify tab
-./target/release/gpui-demo --tab demo                 # start on the Demo tab (for presenting)
-./target/release/gpui-demo --tab benchmark --autorun  # start the benchmark straight away
-./target/release/gpui-demo ~/Pictures/arduino.jpg "https://upload.wikimedia.org/...jpg"   # pre-load pictures
+# 2. download the models first (see ../../docs/RUNBOOK.md), then build and run, from the repo root: the Cargo
+#    workspace (crates/inference and this app) builds into <repo>/target/
+cargo build --release --locked -p gpui-demo --features turbojpeg   # Arch has libjpeg-turbo: bit-identical JPEG decoding to Pillow
+target/release/gpui-demo                              # Classify tab
+target/release/gpui-demo --tab demo                   # start on the Demo tab (for presenting)
+target/release/gpui-demo --tab benchmark --autorun    # start the benchmark straight away
+target/release/gpui-demo ~/Pictures/arduino.jpg "https://upload.wikimedia.org/...jpg"   # pre-load pictures
 
 # headless (no window), e.g. for scripts/tests
-./target/release/gpui-demo classify photo.jpg                       # deployed model, one text line per image
-./target/release/gpui-demo classify --json a.jpg b.png https://...  # JSON with all 20 probabilities
-./target/release/gpui-demo classify --json --model all demo_stack/*.jpg   # every model (a, b, c, deployed)
-./target/release/gpui-demo models                                   # what the model registry found
+target/release/gpui-demo classify photo.jpg                       # the default model, one text line per image
+target/release/gpui-demo classify --json a.jpg b.png https://...  # JSON with all 20 probabilities
+target/release/gpui-demo classify --json --model all apps/gpui-demo/demo_stack/*.jpg   # every model (a, b, c, deployed, fast)
+target/release/gpui-demo models                                   # the registry and which providers register
+target/release/gpui-demo models --check                           # also sha256 every file and load every graph
+target/release/gpui-demo bench --model fast apps/gpui-demo/demo_stack/*.jpg   # latency by stage and streamed FPS (JSON)
 ```
 
+**Output change since the registry (2026-10-31).** Each `classify` text line now has the model's head id as its second
+column (`source, model, label, p, top3, ms`), and each JSON row has `model` and `low_confidence` fields (error rows
+too, with `timing: null`). Scripts that split the old
+five-column lines or keyed rows by source alone need updating. Without `--model` the head is the machine's default
+(Fast where TensorRT registers, else Deployed), so pass `--model deployed` when output must match across machines.
+`--model-dir` and `--demo-dir` are gone (2026-11-01) and are now unknown options (exit 64). Pass `--models` with the
+index or its folder, and set `COMPCLASS_DEMO_DIR` for the demo stack.
+
+The default model is the first entry of `exports/models.json`'s `default` list whose preferred execution provider
+registers here: Fast when TensorRT loads, else Deployed. `--ep` does not change that choice: with `--ep cuda` or
+`--ep cpu` Fast would not run on TensorRT, so Deployed is the default (`--model fast --ep cpu` still runs Fast on the
+CPU). The window and the CLI say which one was passed over and why. For the GPU see "GPU: CUDA and TensorRT" below.
+
 `cargo build --release --locked` (without `turbojpeg`) also works; it uses the pure-Rust JPEG decoder (see
-"Preprocessing parity"). The first build takes about 5 minutes (GPUI is large); later builds take seconds. The deployed
+"Preprocessing parity"). A clean build takes about 2.5 to 3 minutes on legion (GPUI Kit is about 500 of its 520
+crates); later builds take seconds. The deployed
 export folder must contain `model.onnx` **and** `model.onnx.data` (1,714,593,792 bytes ≈ 1.7 GB of external weights),
 `preprocess.json` and `labels.json`.
 
@@ -63,17 +86,22 @@ export folder must contain `model.onnx` **and** `model.onnx.data` (1,714,593,792
 
 | option | meaning |
 |---|---|
-| `--model-dir DIR` | deployed export folder. Default: `$COMPCLASS_MODEL_DIR`, else the first `exports/final/` with a `model.onnx` found walking up from the current directory, then from the executable's directory. The other models are looked up relative to it (`../itri626/`). |
-| `--model KEYS` | `classify` (and `preprocess`): use registry models instead of `model.onnx`: `a`, `b`, `c`, `deployed`, comma-separated, or `all`. JSON rows then carry a `model` field. Without `--model`, `classify` behaves exactly as before. |
-| `--demo-dir DIR` | folder with `demo_stack.json`. Default: `$COMPCLASS_DEMO_DIR`, else the first `demo_stack/` (or `apps/gpui-demo/demo_stack/`) found walking up from the current directory, then from the executable. |
+| `--models PATH` | the model index `exports/models.json` or its folder. Default: `$COMPCLASS_MODELS`, else the first `exports/models.json` found walking up from the current directory, then from the executable's directory. |
+| `--model HEADS` | `classify`, `bench` and `preprocess`: these models (`a`, `b`, `c`, `deployed`, `fast`, comma-separated, or `all`; `bench` and `preprocess` take one). Default: the first default whose preferred provider registers (see above). JSON rows carry a `model` field. |
 | `--tab TAB` | window: start on `classify` (default), `demo` or `benchmark`. |
 | `--autorun` | window: start **Run all** (Demo tab) or the benchmark (Benchmark tab) immediately. |
 | `--dark`, `--light` | window: initial theme (default: follow the system; Ctrl+T toggles). |
 | `--ort-lib PATH` | `libonnxruntime.so` to load. Default: `$ORT_DYLIB_PATH`, else `<repo>/.venv/lib/python3.*/site-packages/onnxruntime/capi/libonnxruntime.so*`, else a copy next to the executable, else the system loader path. |
 | `--threads N` | onnxruntime intra-op threads (default: onnxruntime's choice, one per physical core). |
-| `--cuda` | request the CUDA execution provider (needs a `--features cuda` build, see below). |
-| `--json` | `classify`: print a JSON array (`source, [model,] label, top3, unsure, ms, probs, error`). |
-| `preprocess IMG OUT.f32 [--model KEY]` | write the exact `[1,3,S,S]` float32 model input (little-endian), for parity tests. |
+| `--ep LIST` | execution providers for every model, in order: `tensorrt`, `cuda`, `cpu`, comma-separated. Default: each manifest's `runtime.providers` (`cuda,cpu`; `tensorrt,cuda,cpu` for Fast). `--ep cpu` gives bit-reproducible output. |
+| `--json` | `classify`: print a JSON array (`source, model, label, top3, unsure, low_confidence, ms, probs, error, timing`). `unsure` is an abstaining head's UNSURE; `low_confidence` marks an answer from a head that always answers (A, B, C) below its bound. An error row has the same keys, with `label` and `timing` null. |
+| `bench [--rounds N] [--warmup N] IMG…` | one model through the inference service: per-image latency by stage (read+decode, preprocess, queue, run, readout, end to end), then rounds × images submitted at once for streamed FPS. JSON on stdout. |
+| `models [--check]` | every model, whether it is available, and per graph which providers register and why the others do not. `--check` also verifies every file's sha256 and loads each graph. The heads print first; the provider and check lines follow once every graph is done. |
+| `preprocess IMG OUT.f32 [--model HEAD]` | write the exact `[1,3,H,W]` float32 model input (little-endian), for parity tests. |
+
+The Demo and Benchmark tabs read the demo stack from `$COMPCLASS_DEMO_DIR`, else the first `demo_stack/` (or
+`apps/gpui-demo/demo_stack/`) with a `demo_stack.json` found walking up from the current directory, then from the
+executable. `run.sh` sets the variable to the bundle's `demo_stack/`.
 
 ### Using the window
 
@@ -92,17 +120,20 @@ export folder must contain `model.onnx` **and** `model.onnx.data` (1,714,593,792
 | Esc | stop Run all / the benchmark after the current image |
 | Ctrl+Q | quit |
 
-The status bar shows the keys of the current tab (as Kit `Kbd` chips), the deployed backbone, the onnxruntime library,
-the execution provider and the JPEG decoder.
+The status bar shows the selected model and the execution providers it actually runs on (for example
+"Fast on TensorRT + CUDA + CPU", or "Deployed on CPU (CUDA unavailable)"), the onnxruntime version, the JPEG decoder
+and the keys of the current tab (as Kit `Kbd` chips). Hover a model in the picker for its load time, providers and why
+a provider was skipped.
 
 * **Drag and drop** image files anywhere on the window (the border highlights); they open in the Classify tab.
 * **URL fetch**: HTTP(S) GET with a descriptive User-Agent, 20 s timeout, 20 MB cap. Proxies come from the
   environment as with curl (`https_proxy`/`http_proxy`, then `all_proxy`; `no_proxy` is honoured). Wikimedia throttles
   bursts (HTTP 429); wait a minute.
 * **Recent** list (left, last 40): each entry remembers which model classified it.
-* **Model loading** never blocks the window: the inference thread loads a model on first use (the deployed model is
-  pre-loaded at start-up). The model chip next to the picker shows "loading… n s", then the load time. Pictures
-  added meanwhile are queued.
+* **Model loading** never blocks the window: each graph has its own worker thread that loads it on first use (the
+  default model is pre-loaded at start-up), so a slow load blocks only that model. The model chip next to the picker
+  shows "loading… n s", or "building TensorRT engine, first run only · n s" while TensorRT compiles Fast's engine,
+  then the load time. Pictures added meanwhile are queued.
 * Supported formats: JPEG, PNG, WebP, GIF (first frame), BMP, TIFF. EXIF orientation is applied, and transparency is
   flattened onto white. AVIF is not supported.
 
@@ -113,19 +144,24 @@ the execution provider and the JPEG decoder.
 | `a` | A · Custom CNN (scratch) | `exports/itri626/A_scratch_cnn/{model.onnx, preprocess.json, labels.json}` | 160 px, **bilinear** | 148/418 |
 | `b` | B · ConvNeXt-T (fine-tuned) | `exports/itri626/B_convnext_tiny/…` (112 MB) | 224 px, ImageNet mean/std | 266/418 |
 | `c` | C · SigLIP ViT + linear head | output `probs_c` of `exports/final/model_multi.onnx` | 384 px | 343/418 (ONNX) |
-| `deployed` | Deployed (fused SigLIP) | output `probs` of `model_multi.onnx` (else `model.onnx`) | 384 px | 350/418 |
+| `deployed` | Deployed (fused SigLIP) | output `probs` of `exports/final/model_multi.onnx` | 384 px | 350/418 |
+| `fast` | Fast (fused SigLIP, 308 px INT8) | `exports/fast/{model.onnx, model.onnx.data}` (440 MB), INT8 QDQ GEMMs, head in the graph | 308 px | not measured: the sealed test is spent. Dev-fold CV 0.8268, the same as Deployed's |
 
-`model_multi.onnx` is the deployed graph plus the model-C head on the same pooled feature. It reads the unchanged
-`model.onnx.data`, described in `exports/final/model_multi.json`. One forward pass gives both C and Deployed. Without
-it, Deployed uses `model.onnx`, and C is unavailable unless `exports/itri626/C_siglip_linear/head.json` (a folded linear
-head on a named graph output) exists. Missing files make a model show as unavailable (greyed out, with the reason in
-the tooltip and in `gpui-demo models`); the app never crashes on a missing model.
+Each folder's `model.json` (written by `tools/gen_manifests.py`) names the graph and its files with sizes and sha256,
+the input (name, size, preprocessing), one entry per head (output, labels, calibration, decision rule) and the
+execution providers in order of preference. `model_multi.onnx` is the deployed graph plus the model-C head on the
+same pooled feature, so one forward pass gives both C and Deployed; it reads the unchanged `model.onnx.data`. Fast
+comes from the speed track's `compose_int8_res308` export (`exports/fast/fit_report.json`). Its ONNX files are not in
+the share-2026-10-30 release yet: copy them into `exports/fast/` from the export (see the runbook). Missing files make
+a model show as unavailable (greyed out, with the reason in the tooltip and in `gpui-demo models`); the app never
+crashes on a missing model. A model whose files were never checksummed here, or changed size or modification time
+since, shows "checksums not verified"; `gpui-demo models --check` hashes them and records the result.
 
-**Unsure only for the deployed model.** Only the deployed model's probabilities are temperature-calibrated, and the
-0.5 abstain threshold was set for it. A, B and C output plain softmax probabilities, and at 0.5 A would abstain on
+**Unsure only for calibrated models.** Deployed and Fast output temperature-calibrated probabilities, and the 0.5
+abstain threshold was set for them. A, B and C output plain softmax probabilities, and at 0.5 A would abstain on
 73 % and B on 35 % of the test images. So A, B and C always commit to their top-1. When it is below 50 %, the result
 panel adds a "low confidence" note. In the Demo and Benchmark tabs, an out-of-scope photo therefore counts as correct
-only when the deployed model abstains.
+only when a calibrated model abstains.
 
 ## Demo stack (`demo_stack/`, 1.8 MB)
 
@@ -138,7 +174,7 @@ each photo (hover a card for the source URL, click the licence or "Wikimedia Com
 re-verified with
 
 ```bash
-uv run --no-config apps/gpui-demo/scripts/build_demo_stack.py --bin apps/gpui-demo/target/release/gpui-demo
+uv run --no-config apps/gpui-demo/scripts/build_demo_stack.py --bin target/release/gpui-demo
 ```
 
 Sections: **One per class** (20 clean photos the deployed model gets right), **Hard cases** (5 instructive images:
@@ -152,6 +188,9 @@ results with the `turbojpeg` build (`classify --json --model all`):
 | B · ConvNeXt-T | 16 | 1 | 0 | 17 |
 | C · SigLIP + linear | 20 | 1 | 0 | 21 |
 | Deployed | 20 | 0 | 1 | 21 |
+
+Fast is left out of this table on purpose: 26 of these photos come from the web holdout, which is spent, so no new
+model is scored on it. The Benchmark tab still runs Fast over the stack.
 
 The soldering iron is a deliberate borderline case. After downscaling to 1024 px the deployed model says "jumper wire"
 at 50.6 %, just above the threshold, so it is not flagged. This shows that a confidence threshold is not a complete
@@ -176,21 +215,22 @@ Build with the optional `hotpath` feature ([hotpath](https://hotpath.rs)). Witho
 and every instrumented block (`prof!` in the source) compiles to plain code.
 
 ```bash
-cargo build --release --features turbojpeg,hotpath           # add hotpath-alloc for per-block allocation counts
-./target/release/gpui-demo classify --model all demo_stack/*.jpg > /dev/null   # report printed on exit
-HOTPATH_SHUTDOWN_MS=90000 HOTPATH_OUTPUT_PATH=gui.txt ./target/release/gpui-demo --tab benchmark --autorun
+cargo build --release -p gpui-demo --features turbojpeg,hotpath   # add hotpath-alloc for per-block allocation counts
+target/release/gpui-demo classify --model all apps/gpui-demo/demo_stack/*.jpg > /dev/null   # report printed on exit
+HOTPATH_SHUTDOWN_MS=90000 HOTPATH_OUTPUT_PATH=gui.txt target/release/gpui-demo --tab benchmark --autorun
 ```
 
-Instrumented blocks: `cli::read/decode`, `job::read/decode/display_texture/predict` (GUI worker),
-`preprocess::to_tensor`, `onnx::run`, `models::load_engine`, `demo::decode_and_thumbnail` and
-`gui::build_tab_elements` (element-tree construction for each frame, on the UI thread). The system tools work on the
-headless path (perf needs access to hardware counters, `perf_event_paranoid` ≤ 1 or root):
+Instrumented blocks: `job::read`, `job::decode`, `job::decode_bytes`, `job::display_copy` (inference service io
+threads), `preprocess::to_tensor`, `graph::load`, `graph::run` (a graph's worker) and `demo::decode_and_thumbnail`.
+The table below predates the inference service (2026-10-20). For latency through the service use `gpui-demo bench`.
+The system tools work on the headless path (perf needs access to hardware counters, `perf_event_paranoid` ≤ 1 or
+root):
 
 ```bash
-perf stat -d ./target/release/gpui-demo classify demo_stack/*.jpg > /dev/null
-perf record --call-graph dwarf -o perf.data ./target/release/gpui-demo classify --model all demo_stack/0*.jpg > /dev/null
+perf stat -d target/release/gpui-demo classify apps/gpui-demo/demo_stack/*.jpg > /dev/null
+perf record --call-graph dwarf -o perf.data target/release/gpui-demo classify --model all apps/gpui-demo/demo_stack/0*.jpg > /dev/null
 perf report -i perf.data --no-children | head -60
-./target/release/gpui-demo --tab benchmark --autorun & pidstat -r -u -t -p $! 5     # CPU / RSS per thread
+target/release/gpui-demo --tab benchmark --autorun & pidstat -r -u -t -p $! 5     # CPU / RSS per thread
 ```
 
 Measured in the sandbox (8 CPUs visible; `perf` could not run there because no PMU events were available, so these
@@ -219,18 +259,27 @@ Classify tab can still interleave its own jobs.
 with glibc 2.28 or newer (Ubuntu 20.04+, Debian 10+, Fedora 29+, RHEL 8+, Arch):
 
 ```
-dist/component-classifier-linux-x86_64/       1.8 GB: binary, onnxruntime, models A/B/C/Deployed, demo_stack,
-                                              run.sh, run-nixos.sh, README.txt (for the recipient), LICENSES/, SHA256SUMS
+dist/component-classifier-linux-x86_64/       2.2 GB: binary, CPU onnxruntime, models A/B/C/Deployed/Fast, demo_stack,
+                                              run.sh, run-nixos.sh, app.env, gpu-env.sh, README.txt (for the
+                                              recipient), LICENSES/, SHA256SUMS
 dist/component-classifier-linux-x86_64.tar.gz (+ .sha256; split into 1900 MiB .part-* files if it is larger)
 ```
 
 ```bash
-# one-time build tools: cargo-zigbuild and a zig it supports (0.14 from PyPI), plus cmake + nasm
+# one-time build tools: cargo-zigbuild, zig 0.14 from PyPI, cmake + nasm
 cargo install cargo-zigbuild --locked
 uv venv ~/.local/share/zig-venv && uv pip install --python ~/.local/share/zig-venv ziglang==0.14.1
-export CARGO_ZIGBUILD_PYTHON_PATH=~/.local/share/zig-venv/bin/python
-apps/gpui-demo/scripts/package_linux.sh            # GLIBC=2.31, PART_MIB=1000, --skip-build, --no-archive
+export CARGO_ZIGBUILD_ZIG_PATH=$(ls -d ~/.local/share/zig-venv/lib/python3.*/site-packages/ziglang)/zig
+ORT_LIB=<CPU libonnxruntime.so.1.31.0> apps/gpui-demo/scripts/package_linux.sh   # GLIBC=2.31, PART_MIB=1000, --skip-build, --no-archive
 ```
+
+Use zig 0.14 even when a newer zig is installed. `CARGO_ZIGBUILD_ZIG_PATH` makes cargo-zigbuild take it over a `zig`
+on `PATH`. Arch's zig 0.17 compiles everything, but its linker rejects the system `/usr/lib/libxkbcommon.so`, which
+needs `GLIBC_2.33` and `GLIBC_2.38` symbols that the 2.28 stubs lack (2026-11-01, cargo-zigbuild 0.24).
+
+The bundle's name, binary and environment variables come from `packaging/app.env` (`APP_NAME`, `APP_TITLE`,
+`ENV_PREFIX`, `BIN`, and `COMMANDS`, the subcommands the launchers start without a window), which the script and both launchers source and which ships in the bundle. Keep it in step with
+`src/app.rs`.
 
 How the bundle stays portable:
 
@@ -250,20 +299,43 @@ How the bundle stays portable:
   text system at start-up (`theme::register_bundled_fonts`), so the type hierarchy is the same on machines
   whose UI font is a variable font or that lack Noto Sans.
 * **Paths**: the app already finds `exports/`, `demo_stack/` and `libonnxruntime` relative to its executable;
-  `run.sh` additionally sets `ORT_DYLIB_PATH`, `COMPCLASS_MODEL_DIR` and `COMPCLASS_DEMO_DIR` to the bundle
+  `run.sh` additionally sets `ORT_DYLIB_PATH`, `<ENV_PREFIX>_MODELS` and `<ENV_PREFIX>_DEMO_DIR` to the bundle
   (caller-set values win), passes all arguments through, and explains a missing display.
-* **Models**: only the files the app reads: `exports/final/{model.onnx, model.onnx.data, model_multi.onnx,
-  model_multi.json, preprocess.json, labels.json}`. `model.onnx` (2 MB) is required for model-folder detection
-  and the CLI default; the 1.7 GB `model.onnx.data` is shared. A and B are `exports/itri626/{A_scratch_cnn,
-  B_convnext_tiny}/{model.onnx, preprocess.json, labels.json}`.
+* **GPU runtime**: not bundled (about 7 GB). Both launchers source `gpu-env.sh`, which looks for an onnxruntime-gpu
+  install in this order: `$COMPCLASS_GPU_VENV`; `${XDG_DATA_HOME:-~/.local/share}/onnxruntime-gpu/1.31`, one
+  install per machine shared by every app built from this template; the app's older
+  `~/.local/share/component-classifier/gpu`; an active virtualenv; then the bundle folder. It puts the runtime's CUDA,
+  cuDNN and TensorRT library folders on the loader path and prints one line saying which runtime it chose and why.
+  Without one, or with `COMPCLASS_GPU=0`, the bundled CPU library is used. `scripts/test_gpu_env.sh` (run by
+  `cargo test`) checks that order against fake venvs, and the variable names against a second `app.env`.
+* **Models and data**: what `packaging/bundle.txt` lists, one path from the repo root per line, with its place in
+  the bundle when that differs. Here that is `exports/models.json` and per model folder `model.json`, the files it
+  names and `preprocess.json`: `exports/final/{model_multi.onnx, model.onnx.data, labels.json, ...}` (the 1.7 GB
+  `model.onnx.data` is shared), `exports/fast/{model.onnx, model.onnx.data, runtime.json, ...}` and
+  `exports/itri626/{A_scratch_cnn, B_convnext_tiny}/{model.onnx, preprocess.json, labels.json}`, plus `demo_stack/`
+  and the dataset note in `LICENSES/`. A new model in `exports/models.json` needs its lines there too.
 * **Licences** (`LICENSES/`): onnxruntime (MIT + ThirdPartyNotices), Noto Sans (OFL), libjpeg-turbo (IJG/BSD),
   Lucide icons (ISC), Apache-2.0 / MIT texts, a dataset and photo-credit note, and `THIRD-PARTY-CRATES.txt`
   (616 crates with SPDX licence, generated from `cargo metadata` by `packaging/crate_licenses.py`).
 
-Tested from a clean extraction under `env -i HOME=… PATH=/usr/bin:/bin`, started from an unrelated directory:
-`run.sh classify --model a|b|c|deployed` on three demo images, `run.sh classify --json --model all` on all 28
-(A 11, B 17, C 21, Deployed 21 of 28), the missing-display message, and the window under Xvfb (Demo tab, Run all).
+Tested (2026-10-30) from a clean extraction under `env -i HOME=… PATH=/usr/bin:/bin`, started from an unrelated
+directory: `run.sh classify --model a|b|c|deployed` on three demo images, `run.sh classify --json --model all` on all
+28 (A 11, B 17, C 21, Deployed 21 of 28), the missing-display message, and the window under Xvfb (Demo tab, Run all).
 Not tested: a real second machine or distribution, a GPU renderer, Wayland.
+
+The GPU launcher logic (2026-11-01) was tested on a folder with the bundle's layout (the release binary, the bundle's
+CPU onnxruntime, symlinked exports and launchers), not on a `package_linux.sh` build. From `env -i` shells, `run.sh`
+chose the CPU library with no GPU runtime or with `COMPCLASS_GPU=0` (Deployed on CPU), CUDA without TensorRT for a
+venv without `tensorrt-cu13-libs` (Deployed on CUDA, Fast passed over with its reason), and TensorRT for a full venv
+found through `COMPCLASS_GPU_VENV`, `~/.local/share/component-classifier/gpu` or `VIRTUAL_ENV` (Fast on TensorRT).
+`run-nixos.sh` was run on Arch with Nix: `--doctor` and `models` work, and with the GPU venv but no
+`/run/opengl-driver` the app fell back to the CPU naming the missing `libcuda.so.1`. Not tested: a real NixOS
+machine with the NVIDIA driver.
+
+`package_linux.sh --no-archive` itself was run on legion on 2026-11-01 (zig 0.14.1): GLIBC ceiling 2.28, the
+`DT_NEEDED` list unchanged, and the same files as before `app.env` existed, plus `app.env`. From `env -i` shells in
+that bundle, `run.sh` found a GPU runtime in the shared `onnxruntime-gpu/1.31` folder (Fast: TensorRT registers),
+`COMPCLASS_GPU=0` gave the CPU, and `classify` answered "battery holder" with Deployed on CPU and on CUDA.
 
 ## Design choices and pinned versions
 
@@ -272,7 +344,7 @@ Not tested: a real second machine or distribution, a GPU renderer, Wayland.
 | UI | `gpui-kit = "=0.7.3"` | GPUI Kit (longbridge, formerly `gpui-component`) is the component library: `TitleBar`, `TabBar`, `Button`/`ButtonGroup`, `Input`, `Tag`, `Spinner`, `Alert`, `Kbd`, `Tooltip`, `Switch`, `Empty`, `StatusBar`, notifications, scrollbars and its theme system (the app ships its own two theme files). It pins and re-exports its own GPUI snapshot (`gpui-pre 0.3.9`), so the app has no direct GPUI dependency. Exact pin because the API changes between pre-1.0 releases. (0.8.0 was published while this port was made; it was not tested.) |
 | inference | `ort = "=2.0.0-rc.14"`, features `load-dynamic`, `api-22` | `load-dynamic` dlopens libonnxruntime at runtime, so nothing is downloaded at build time and the CUDA build is just a different `.so`. `api-22` requires only the onnxruntime 1.22 C API. ort allows one environment per process; all sessions share it. |
 | decode | `image = "0.25.10"` (+ optional `turbojpeg = "=1.5.1"`) | see "Preprocessing parity" |
-| resize | own code (`src/preprocess.rs`) | a port of Pillow's `Resample.c` (bicubic and bilinear); see below |
+| resize | own code (`crates/inference/src/preprocess.rs`) | a port of Pillow's `Resample.c` (bicubic and bilinear); see below |
 | HTTP | `ureq = "3.4"` (rustls) | small and blocking (it runs on the worker thread), no OpenSSL needed |
 | profiling | `hotpath = "0.28"`, optional | see "Profiling" |
 | libc | normal (0.2.191 in `Cargo.lock`) | The old pin to 0.2.189 is no longer needed: it existed only for `xattr 0.2.3`, which GPUI 0.2.2 pulled in and GPUI Kit's GPUI does not. |
@@ -288,7 +360,7 @@ The `Cargo.lock` is committed; build with `--locked`.
 Each model folder's `preprocess.json` gives its own transform. Deployed and C: short side 427 (Pillow bicubic),
 centre-crop 384, ×1/255, (x−0.5)/0.5. B: 256 bicubic, crop 224, ImageNet mean/std. A: 183 **bilinear**, crop 160,
 (x−0.5)/0.5. All are RGB NCHW. Rust's `image` CatmullRom filter is not bit-identical to Pillow's. So
-`src/preprocess.rs` ports Pillow's algorithm directly:
+`crates/inference/src/preprocess.rs` ports Pillow's algorithm directly:
 * Keys cubic with a = −0.5 (support 2) or the triangle filter 1 − |x| (bilinear, support 1), the support widened by
   the downscale factor (antialias), coefficients normalised in double precision and then quantised to 22-bit fixed
   point;
@@ -309,19 +381,60 @@ Measured parity on 64 dev images is in `results/demo/gpui_parity.json`; reproduc
 python apps/gpui-demo/scripts/parity.py --bin target/release/gpui-demo [--ort-lib ...]   # needs numpy + Pillow
 ```
 
-### CUDA (optional)
+### GPU: CUDA and TensorRT
+
+Every build can use the GPU: whether CUDA or TensorRT runs is decided by the libonnxruntime that is loaded, and each
+model's manifest lists the providers to try (`--ep` overrides). What you need is the GPU build of onnxruntime with its
+CUDA 13 and cuDNN 9 libraries, plus TensorRT 10 for Fast, all from pip (about 7 GB):
 
 ```bash
-cargo build --release --features cuda
-# a CUDA build of onnxruntime: e.g. in a uv venv `uv pip install onnxruntime-gpu` (+ the nvidia-* CUDA 12/cuDNN 9
-# wheels, which torch already installs), then make the CUDA/cuDNN libraries findable and point at that library:
-export LD_LIBRARY_PATH=$(python -c "import nvidia, os; print(':'.join(os.path.join(p, d, 'lib') for p in nvidia.__path__ for d in os.listdir(p)))")
-./target/release/gpui-demo --cuda --ort-lib .venv/lib/python3.12/site-packages/onnxruntime/capi/libonnxruntime.so.1.xx
+uv venv ~/.local/share/onnxruntime-gpu/1.31 --python 3.12
+uv pip install --python ~/.local/share/onnxruntime-gpu/1.31/bin/python \
+    'onnxruntime-gpu[cuda,cudnn]==1.31.1' 'tensorrt-cu13-libs==10.16.1.11'
 ```
 
-If the CUDA provider cannot be registered, onnxruntime logs a warning and runs on the CPU. The header reads
-"CUDA (requested) + CPU" whenever `--cuda` was given. Check `nvidia-smi` while classifying to see whether the
-GPU is in use. This path was not tested (no GPU access on the build machine).
+That folder does not depend on the app, so one install serves every app made from this template. The bundle's
+`run.sh` finds it by itself (`packaging/gpu-env.sh`: `$COMPCLASS_GPU_VENV`, that folder, the older
+`~/.local/share/component-classifier/gpu`, an active virtualenv) and prints which runtime it chose. From a source
+build, point at it yourself:
+
+```bash
+SP=$(ls -d ~/.local/share/onnxruntime-gpu/1.31/lib/python3.*/site-packages)
+export ORT_DYLIB_PATH=$(ls $SP/onnxruntime/capi/libonnxruntime.so.1.*)
+export LD_LIBRARY_PATH=$SP/onnxruntime/capi:$SP/nvidia/cu13/lib:$SP/nvidia/cudnn/lib:$SP/tensorrt_libs
+target/release/gpui-demo models          # which providers register for each graph, and why the others do not
+target/release/gpui-demo --tab demo      # starts on Fast when TensorRT registers
+```
+
+The first load of Fast builds a TensorRT engine for this GPU, onnxruntime and TensorRT version: 46 s (45 to 48 s over
+three runs) on the RTX 3060 Laptop with a peak of about 6 GB RAM, and 91 s once in the window while RAM was short. The
+window shows "building TensorRT engine, first run only" with a seconds counter, the CLI prints `building the TensorRT
+engine (first run only)`. The engine and timing cache go to `~/.cache/component-classifier/tensorrt/<graph>-<sha256 of
+the graph files>-ort<version>-trt<version>-<gpu>/` (443 MB), so a changed graph, library or GPU never meets a stale
+engine. Fast's graph has a static batch of 1. In the speed track, TensorRT returned wrong outputs at batch above 1 until the
+cause was found (an onnxruntime rewrite; `docs/TEMPLATE.md` has the `session_config` that turns it off).
+
+Measured on legion (RTX 3060 Laptop 6 GB, onnxruntime 1.31.1, TensorRT 10.16.1, driver 615.78), through the app's
+inference service, medians over 5 alternated rounds (`results/demo/gpui_legion_speed.json`, scripts in
+`626-artifacts/app-core/measure/`):
+
+| | Fast, TensorRT | Deployed, CUDA | Fast, CUDA only |
+|---|---|---|---|
+| model ready at start-up (cached engine) | 1.0 to 1.5 s | 1.1 s | 0.5 s |
+| first start, engine build | 46 s | | |
+| per picture, run | 12.1 ms | 110.2 ms | 91.6 ms¹ |
+| per picture, end to end (read, decode, preprocess, run) | 14.4 ms | 113.0 ms | 94.8 ms¹ |
+| streamed (pictures submitted at once) | 78 / s | 9.0 / s | 10.8 / s¹ |
+
+¹ measured before the watcher fix (ef94d84), which took 2.0 ms (Deployed) to 3.3 ms (Fast) off every run.
+
+The previous app binary (07e569c, one serial loop) took 112.6 ms per picture for Deployed on CUDA. Fast's run stage
+matches the graph timed alone (the harness's 11.9 ms; 12.7 ms in Python with IO binding the same day). Reading,
+decoding and preprocessing on the CPU add about 2 ms per picture end to end. Fast's batch is 1 (see above), so
+streaming is bound by the engine: 78 / s is 12.8 ms per picture, with decoding and preprocessing overlapped.
+
+When a provider cannot be used (no driver, no GPU runtime, a missing library), the graph falls back to the next one
+in its list and the reason is shown: in the model picker's tooltip, in `gpui-demo models` and on the CLI's stderr.
 
 ## Troubleshooting
 
@@ -349,35 +462,54 @@ GPU is in use. This path was not tested (no GPU access on the build machine).
 
 * **"A · CNN … not exported" / buttons greyed out**: the model files are missing. `gpui-demo models` lists what the
   registry found and why the rest is unavailable (see "Models" above).
-* **Demo tab says "Demo stack not found"**: start the app from inside the repository, or pass
-  `--demo-dir apps/gpui-demo/demo_stack` (or set `COMPCLASS_DEMO_DIR`).
+* **Demo tab says "Demo stack not found"**: start the app from inside the repository, or set
+  `COMPCLASS_DEMO_DIR=apps/gpui-demo/demo_stack`.
 
 ## Layout
 
+The workspace root holds `Cargo.toml` (members `crates/inference` and `apps/gpui-demo`, and the profiles),
+`Cargo.lock` and `target/`. `crates/inference` is the models without a UI: manifests and registry, the inference
+service, onnxruntime with execution-provider fallback and the TensorRT engine cache, weight integrity, image decoding
+and preprocessing, fetching. Its crate doc (`cargo doc -p inference --open`) is the interface. This folder:
+
 ```
-src/main.rs            CLI (window / classify [--model] / preprocess / models), help text, prof! macro
-src/gui.rs             window shell: Kit TitleBar, TabBar + model picker, StatusBar, actions and key bindings
-src/gui/classify.rs    Classify tab: toolbar (Button, Input), recent list, picture, result panel
-src/gui/demo_tab.rs    Demo tab: sectioned thumbnail grid, detail pane with verdict + attribution, Run all
-src/gui/bench.rs       Benchmark tab: live run over all models, summary cards, per-image matrix, disagreement filter
-src/gui/widgets.rs     bars, prediction block, verdict pills, model-state chip, Kbd hints, extra Lucide icon assets
+src/main.rs            the window, or one subcommand of app::COMMANDS; the log! macro
+src/app.rs             the identity (NAME, TITLE, ABOUT, ENV_PREFIX, ICON, UNSURE, subtitle), TABS, COMMANDS, Shared
+src/cli.rs             options, --help, and what the subcommands share (index, service, default head, results)
+src/cli/classify.rs    classify: text or JSON rows, one per image and head
+src/cli/bench.rs       bench: one head's latency by stage, then streamed FPS (JSON)
+src/cli/models.rs      models [--check]: prints inference::check::models
+src/cli/preprocess.rs  preprocess: the exact model input tensor, for parity tests (classifier only)
+src/demo.rs            demo_stack.json: parsing, locating, the verdict (classifier only)
+src/gui.rs             the window: actions, key bindings, opening the window over the service
+src/gui/shell.rs       Shell (title bar, tab row with the model picker, status bar, alerts) and the Tab protocol
+src/gui/models.rs      Models: the service, each graph's load state and the selected head, shared by every tab
+src/gui/classify.rs    Classify tab: open, drop, paste or fetch pictures; recent list, picture, result panel
+src/gui/demo_tab.rs    Demo tab: sectioned thumbnail grid, detail pane with verdict + attribution, Run all (classifier only)
+src/gui/bench.rs       Benchmark tab: every model over the demo stack, stats, matrix, disagreement filter (classifier only)
+src/gui/stack.rs       the decoded demo stack, its thumbnails, the verdict's looks, the tab header (classifier only)
+src/gui/results.rs     one input's answers per head
+src/gui/widgets.rs     bars, prediction block, tags, model-state chip, Kbd hints, extra Lucide icon assets
+src/gui/images.rs      display textures from the service's BGRA copies
 src/gui/theme.rs       loads the Bench Light / Bench Dark themes; app roles (canvas/chrome/surface, verdict colours)
 src/gui/themes/        bench.json: the two GPUI Kit theme files (see docs/VISUAL_DIRECTION.md)
-src/gui/worker.rs      inference thread (model registry, jobs) and thumbnail decoding thread
-src/gui/tests.rs       headless GUI smoke test (GPUI Kit test platform)
+src/gui/tests.rs       the headless window tests' harness (GPUI Kit test platform) and ProbeTab
+src/gui/tests/shell.rs the shell's tests, over ProbeTab and app::TABS
+src/gui/*/tests.rs     each tab's tests (classify, demo_tab, bench)
 assets/fonts/          Noto Sans Regular + Bold (embedded) and OFL.txt
-packaging/             run.sh, README.txt and licence inputs for the portable bundle; crate_licenses.py
+packaging/             app.env (the bundle's identity), bundle.txt (what the bundle carries), run.sh, run-nixos.sh,
+                       gpu-env.sh, README.txt (for the recipient) and licence inputs
 scripts/package_linux.sh   builds dist/component-classifier-linux-x86_64[.tar.gz] (see "Packaging")
-docs/VISUAL_DIRECTION.md   reference-app study, design synthesis and token table for the look
-src/models.rs          model registry: A/B/C/Deployed discovery, model_multi.json, lazy shared sessions, predict
-src/model.rs           model dir + libonnxruntime discovery, Runtime (one ort environment), Classifier, Engine
-src/demo.rs            demo_stack.json parsing, locating, correct/wrong judgement
-src/preprocess.rs      decode (EXIF, alpha-on-white, gray), Pillow-exact bicubic/bilinear, crop, normalise
-src/contract.rs        preprocess.json / labels.json, top-3 + UNSURE rule
-src/fetch.rs           path / file:// / URL sources, HTTP with UA, timeout, size cap
-demo_stack/            the 28 demo photos + demo_stack.json + ATTRIBUTION.md
+scripts/test_gpu_env.sh    gpu-env.sh and run.sh against fake GPU runtimes (run by cargo test)
+scripts/golden.py      compares classify --json output with results/demo/golden/ (row by row)
 scripts/parity.py      parity vs the Python/PyTorch reference on dev images
 scripts/build_demo_stack.py   rebuilds and re-verifies demo_stack/
+docs/VISUAL_DIRECTION.md   reference-app study, design synthesis and token table for the look
+demo_stack/            the 28 demo photos + demo_stack.json + ATTRIBUTION.md
 ```
 
-`cargo test --release` needs neither the model files nor a display.
+The parts marked "classifier only", with `demo_stack/`, the golden and parity scripts and the dataset note, are what
+`scripts/new_app.sh` leaves out of a new app.
+
+`cargo test --release` needs neither the model files nor a display. The golden comparison needs
+`-p gpui-demo --features turbojpeg`, because the golden rows were made with libjpeg-turbo.

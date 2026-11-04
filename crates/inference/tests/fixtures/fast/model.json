@@ -1,0 +1,108 @@
+{
+ "schema": "model-manifest/1",
+ "id": "fast",
+ "graph": {
+  "file": "model.onnx",
+  "external_data": [
+   "model.onnx.data"
+  ],
+  "precision": "int8_qdq"
+ },
+ "files": {
+  "labels.json": {
+   "bytes": 307,
+   "sha256": "bb7bd956f6d7cd0645b381ee858006ef33bd16ede6107b926d9eb8a65eb2011e"
+  },
+  "model.onnx": {
+   "bytes": 2197372,
+   "sha256": "8ba2c1279b20607cabb4701288c99024b07b4af2cca2e0d9c34fd82aa38be26f"
+  },
+  "model.onnx.data": {
+   "bytes": 438272064,
+   "sha256": "8e39675c20a99c713d49c4007acf1c021ae5e983e7f72070a78878151892cb2f"
+  }
+ },
+ "input": {
+  "name": "input",
+  "dtype": "f32",
+  "layout": "NCHW",
+  "size": [
+   308,
+   308
+  ],
+  "batch": {
+   "max": 1
+  },
+  "preprocess": {
+   "kind": "resize_short_center_crop",
+   "resize_short_side": 342,
+   "filter": "pillow_bicubic",
+   "color": "RGB",
+   "scale": 0.00392156862745098,
+   "mean": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "std": [
+    0.5,
+    0.5,
+    0.5
+   ]
+  }
+ },
+ "heads": [
+  {
+   "id": "fast",
+   "title": "Fast (fused SigLIP, 308 px INT8)",
+   "short": "Fast",
+   "task": {
+    "kind": "classify",
+    "readout": {
+     "kind": "probs",
+     "output": "probs"
+    },
+    "labels": "labels.json",
+    "calibration": {
+     "kind": "temperature",
+     "t": 0.8661743402481079,
+     "in_graph": true
+    },
+    "decision": {
+     "kind": "abstain",
+     "below": 0.5
+    }
+   }
+  }
+ ],
+ "runtime": {
+  "graph_optimization_level": "ORT_ENABLE_ALL",
+  "providers": [
+   {
+    "ep": "tensorrt",
+    "options": {
+     "trt_fp16_enable": true,
+     "trt_engine_cache_enable": true,
+     "trt_timing_cache_enable": true,
+     "trt_max_workspace_size": 2147483648,
+     "trt_int8_enable": true
+    }
+   },
+   {
+    "ep": "cuda"
+   },
+   {
+    "ep": "cpu"
+   }
+  ]
+ },
+ "provenance": {
+  "model": "siglip_so400m_384",
+  "trunk": "compose_int8_res308",
+  "manifest_fingerprint": "431315e87d2612cb",
+  "details": [
+   "fit_report.json",
+   "runtime.json"
+  ]
+ }
+}

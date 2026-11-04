@@ -1,0 +1,180 @@
+{
+ "oof_accuracy": 0.8268312101910829,
+ "oof_macro_f1": 0.8262182840340255,
+ "oof_inscope_accuracy": 0.8567477876106194,
+ "oof_probe_only_accuracy": 0.8212579617834395,
+ "temperature": 0.8661743304558613,
+ "ece_before": 0.06489248877497993,
+ "ece_after": 0.036589387566990164,
+ "abstain_threshold": 0.5,
+ "abstain_table": [
+  {
+   "threshold": 0.0,
+   "coverage": 1.0,
+   "accepted_acc": 0.8268312101910829
+  },
+  {
+   "threshold": 0.05,
+   "coverage": 1.0,
+   "accepted_acc": 0.8268312101910829
+  },
+  {
+   "threshold": 0.1,
+   "coverage": 1.0,
+   "accepted_acc": 0.8268312101910829
+  },
+  {
+   "threshold": 0.15,
+   "coverage": 0.9952229299363057,
+   "accepted_acc": 0.8308
+  },
+  {
+   "threshold": 0.2,
+   "coverage": 0.9864649681528662,
+   "accepted_acc": 0.8373688458434221
+  },
+  {
+   "threshold": 0.25,
+   "coverage": 0.9685509554140127,
+   "accepted_acc": 0.8483353884093712
+  },
+  {
+   "threshold": 0.3,
+   "coverage": 0.946656050955414,
+   "accepted_acc": 0.8612279226240538
+  },
+  {
+   "threshold": 0.35,
+   "coverage": 0.9156050955414012,
+   "accepted_acc": 0.8756521739130435
+  },
+  {
+   "threshold": 0.4,
+   "coverage": 0.8857484076433121,
+   "accepted_acc": 0.8889887640449439
+  },
+  {
+   "threshold": 0.45,
+   "coverage": 0.8610668789808917,
+   "accepted_acc": 0.8987517337031901
+  },
+  {
+   "threshold": 0.5,
+   "coverage": 0.8339968152866242,
+   "accepted_acc": 0.9102625298329355
+  },
+  {
+   "threshold": 0.55,
+   "coverage": 0.8105095541401274,
+   "accepted_acc": 0.9169941060903732
+  },
+  {
+   "threshold": 0.6,
+   "coverage": 0.7854299363057324,
+   "accepted_acc": 0.9254941713127217
+  },
+  {
+   "threshold": 0.65,
+   "coverage": 0.7619426751592356,
+   "accepted_acc": 0.9331243469174504
+  },
+  {
+   "threshold": 0.7,
+   "coverage": 0.7404458598726115,
+   "accepted_acc": 0.9381720430107527
+  },
+  {
+   "threshold": 0.75,
+   "coverage": 0.7113853503184714,
+   "accepted_acc": 0.9440402909904868
+  },
+  {
+   "threshold": 0.8,
+   "coverage": 0.6715764331210191,
+   "accepted_acc": 0.948429164196799
+  },
+  {
+   "threshold": 0.85,
+   "coverage": 0.6313694267515924,
+   "accepted_acc": 0.9564943253467844
+  },
+  {
+   "threshold": 0.9,
+   "coverage": 0.5772292993630573,
+   "accepted_acc": 0.9662068965517241
+  },
+  {
+   "threshold": 0.95,
+   "coverage": 0.48009554140127386,
+   "accepted_acc": 0.9693200663349917
+  }
+ ],
+ "final_C": 0.003,
+ "t_zs": 50.0,
+ "w_zs": 0.25,
+ "manifest": "431315e87d2612cb",
+ "n_dev": 2512,
+ "trunk_candidate": "compose_int8_res308",
+ "trunk_candidate_sha": "b35fccd5c772a3992ab9a9988e75da633850422199c7d549c1d0016bc4406364",
+ "trunk_built_from": "/home/carl/626-runs/compose/work/compose_int8_res308/smooth05 (INT8 QDQ on 112/112 GEMMs, act max, mlp.fc2 p99.999, exclude ; tools/quant/qdq.py @ b2ed4f1)",
+ "embeddings": "/home/vaper/Work/Prototypes/626-artifacts/harness/work/compose_int8_res308/b35fccd5c772/embeddings.npy",
+ "harness_eval": {
+  "time_utc": "2026-10-31T19:18:39+00:00",
+  "git_sha": "ae1289d729c3f099ca5653c6abe1f4f6197b58c6",
+  "cv_acc_mean": 0.8268244403528175,
+  "cv_acc_sd": 0.014109435121251308,
+  "oof_acc": 0.8268312101910829,
+  "temperature": 0.8661743304558613,
+  "abstain_threshold": 0.5
+ },
+ "text_embeddings": "/home/vaper/Work/Prototypes/626-Project/exports/final/head.npz",
+ "exporter": "tools/compose/export_fast.py @ 48c7814",
+ "parity": {
+  "images": "dev rows 0:2505:8 (314)",
+  "tolerance": {
+   "runtime": {
+    "max_abs_prob": 0.05,
+    "argmax_agree": 0.99
+   },
+   "exact": {
+    "max_abs_prob": 1e-05,
+    "argmax_agree": 1.0
+   }
+  },
+  "ep_assignment": {
+   "TensorrtExecutionProvider": {
+    "nodes": 1804,
+    "subgraphs": 1
+   }
+  },
+  "runtime": {
+   "n": 314,
+   "max_abs_prob": 0.001169443130493164,
+   "mean_abs_prob": 2.559059430495836e-05,
+   "max_abs_top1_prob": 0.001169443130493164,
+   "argmax_agree": 1.0
+  },
+  "runtime_vs_harness_embeddings": {
+   "n": 314,
+   "max_abs_prob": 0.001169443130493164,
+   "mean_abs_prob": 2.559059430495836e-05,
+   "max_abs_top1_prob": 0.001169443130493164,
+   "argmax_agree": 1.0
+  },
+  "runtime_finite": true,
+  "runtime_probs_sum_max_err": 0.0006623268127441406,
+  "exact": {
+   "n": 32,
+   "max_abs_prob": 3.5762786865234375e-07,
+   "mean_abs_prob": 6.6680341248570585e-09,
+   "max_abs_top1_prob": 3.5762786865234375e-07,
+   "argmax_agree": 1.0
+  },
+  "nodes_off_stated_provider": 0,
+  "checks": {
+   "runtime": true,
+   "exact": true,
+   "no_cpu_nodes": true
+  }
+ }
+}

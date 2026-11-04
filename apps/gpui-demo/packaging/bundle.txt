@@ -1,0 +1,28 @@
+# What scripts/package_linux.sh copies into the bundle besides the binary, onnxruntime, the launchers, README.txt and
+# the licences. One entry per line: a path from the repo root, then its place in the bundle when that differs.
+# A folder is copied whole. Packaging stops when an entry is missing.
+exports/models.json
+# Deployed + C: model_multi.onnx is one graph with both outputs over the 1.7 GB model.onnx.data
+exports/final/model.onnx.data
+exports/final/model_multi.onnx
+exports/final/model.json
+exports/final/preprocess.json
+exports/final/labels.json
+exports/itri626/A_scratch_cnn/model.onnx
+exports/itri626/A_scratch_cnn/model.json
+exports/itri626/A_scratch_cnn/preprocess.json
+exports/itri626/A_scratch_cnn/labels.json
+exports/itri626/B_convnext_tiny/model.onnx
+exports/itri626/B_convnext_tiny/model.json
+exports/itri626/B_convnext_tiny/preprocess.json
+exports/itri626/B_convnext_tiny/labels.json
+# Fast (440 MB): TensorRT builds its engine on the user's GPU on first use; without TensorRT the app starts on
+# Deployed and Fast still runs on CUDA
+exports/fast/model.onnx
+exports/fast/model.onnx.data
+exports/fast/model.json
+exports/fast/preprocess.json
+exports/fast/runtime.json
+exports/fast/labels.json
+apps/gpui-demo/demo_stack demo_stack
+apps/gpui-demo/packaging/licenses/DATASET.txt LICENSES/DATASET.txt

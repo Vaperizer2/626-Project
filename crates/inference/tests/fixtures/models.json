@@ -1,0 +1,13 @@
+{
+ "schema": "model-index/1",
+ "default": [
+  "fast",
+  "deployed"
+ ],
+ "manifests": [
+  "itri626/A_scratch_cnn/model.json",
+  "itri626/B_convnext_tiny/model.json",
+  "final/model.json",
+  "fast/model.json"
+ ]
+}
