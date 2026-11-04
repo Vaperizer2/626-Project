@@ -113,7 +113,7 @@
 \end{tabular}\par}
 \vspace{0.8cm}
 {\small Lecturer: Prof.\ Absalom Ezugwu \quad\textperiodcentered\quad Facilitator: Mr.\ Bernard Swanepoel
- \quad\textperiodcentered\quad 20 October 2026\par}
+ \quad\textperiodcentered\quad 20 October 2026, revised 4 November 2026\par}
 \vfill
 \begin{minipage}{0.9\textwidth}
 \small
@@ -711,7 +711,8 @@ SigLIP encoder, so the flagged/unflagged comparison in \cref{sec:errors} may fav
 copies, so some train--test similarity may remain.
 \item \textbf{Unequal pretraining and budgets.} C's backbone was trained on far more data than B's, so the comparison
 measures model and pretraining together. The budgets of A and B were fixed by earlier cross-validation, not tuned
-exhaustively; longer training would help A, but not enough to close a gap of \diffCA points.
+exhaustively. A was then trained to convergence, and the study of \cref{sec:improveA} found no further recipe gain,
+so the gap of \diffCA points to C is not a budget artefact.
 \item \textbf{Cost.} C has \paramsMC million parameters and needs about \cpuMsC\,ms per image on a CPU, which rules it
 out for microcontrollers or real-time video without a GPU.
 \end{enumerate}
