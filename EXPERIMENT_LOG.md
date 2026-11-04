@@ -181,11 +181,11 @@ Paired against the SigLIP probe fold by fold. Backbones registered in `src/compc
 
 | Backbone (probe) | CV macro-F1 (mean ± SD) | CV acc. | Δ vs SigLIP probe (paired ± SE) | folds better | feature pass (s) |
 |---|---:|---:|---:|---:|---:|
-| MetaCLIP 2 ViT-bigG/14@378 (1.84 B, fp16) | 0.8496 ± 0.0081 | 0.8515 | +0.0256 ± 0.0033 | 5/5 | 0 |
+| MetaCLIP 2 ViT-bigG/14@378 (1.84 B, fp16) | 0.8496 ± 0.0081 | 0.8515 | +0.0256 ± 0.0033 | 5/5 | ~5,000 (first pass 16:06–17:29; probe re-fitted from the cache) |
 | PE-Core L/14@336 | 0.8298 ± 0.0131 | 0.8308 | +0.0058 ± 0.0039 | 4/5 | 625 |
 | SigLIP 2 So400m/16@512 | 0.8258 ± 0.0061 | 0.8268 | +0.0018 ± 0.0040 | 2/5 | 663 |
 | DFN-5B ViT-H/14@224 | 0.8247 ± 0.0151 | 0.8264 | +0.0007 ± 0.0024 | 2/5 | 734 |
-| SigLIP So400m/14@384 (model C, re-run here) | 0.8240 ± 0.0116 | 0.8256 | +0.0000 ± 0.0000 | 0/5 | 0 |
+| SigLIP So400m/14@384 (model C, re-run here) | 0.8240 ± 0.0116 | 0.8256 | +0.0000 ± 0.0000 | 0/5 | cached (teacher build) |
 | AIMv2 H/14@336 | 0.7978 ± 0.0086 | 0.7990 | -0.0262 ± 0.0024 | 0/5 | 839 |
 | EVA-02 L/14 CLIP@336 | 0.7974 ± 0.0153 | 0.7994 | -0.0266 ± 0.0049 | 0/5 | 391 |
 | AIMv2 L/14@336 | 0.7847 ± 0.0215 | 0.7858 | -0.0393 ± 0.0064 | 0/5 | 419 |
