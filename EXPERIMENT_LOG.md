@@ -199,5 +199,45 @@ autoregressive (AIMv2) features trail by 3-17 pt, as DINOv2 did in October. (3) 
 83 min for 2,930 images on the 4070 (about 1.7 s/image, with the 8 GB card spilling into shared memory), against
 about 1 s/image for So400m on a CPU; its fp16 weights are 3.7 GB. PE-Core G/14@448 (1.88 B) was queued but not run:
 the sweep was stopped by the agent harness for low system memory after the bigG pass.
-Not yet done: zero-shot text head and temperature for the bigG probe (open_clip tag availability to check), and any
-one-look evaluation; both are the author's call.
+Follow-up (2026-11-04 evening): PE-Core G/14@448 was started a second time at the author's request and stopped by
+the author after 5.5 h, still inside its feature pass (one batch of 8 took about 62 s with 0.8 GB paged to system
+memory); no result, no cache. Cheap combinations of cached features were checked on CPU: MetaCLIP + PE-Core L
+concatenated +0.26 ± 0.35 pt vs MetaCLIP alone, MetaCLIP + SigLIP +0.30 ± 0.28, all three +0.08 ± 0.33, averaged
+out-of-fold probabilities −0.3 to +0.2; nothing beyond noise. The author then dropped MetaCLIP 2 bigG (size) and
+SigLIP 2 (no gain) and chose to develop PE-Core L.
+
+## 2026-11-05 — PE-Core L/14@336: zero-shot head and fusion, the deployed recipe on a new backbone
+
+Question: given the deployed model's recipe (probe + the backbone's own zero-shot text head, `compclass.final`), does
+PE-Core L match or beat SigLIP So400m like for like? Zero-shot: `compclass.zeroshot --model pe_core_l14_336`
+(open_clip `PE-Core-L-14-336`/`meta`, six templates, `results/oof/zeroshot_pe_core_l14_336.npz`). Fusion checked
+out-of-fold on the dev folds with the cached timm features: probe = `fit_probe` per fold; zero-shot cosine from the
+same features passed through PE-Core's own 1024×1024 projection head (taken from the timm checkpoint; SigLIP has no
+projection, so this step did not exist before) against the text weights; fused = log p_probe + w · log softmax(T · cos).
+The timm-feature + projection pipeline agrees with open_clip's own image tower on 95.1 % of top-1 zero-shot decisions
+and the same accuracy (0.7910 vs 0.7914), so one forward pass serves both heads, as in the deployed graph. SigLIP was
+re-run through the identical code as the control. Sealed test and web holdout untouched.
+
+| Model (grouped 5-fold dev CV, out-of-fold) | macro-F1 | acc. | paired Δ (± SE), folds better |
+|---|---:|---:|---|
+| SigLIP probe (model C) | 0.8240 | 0.8256 | reference |
+| SigLIP zero-shot alone | 0.7623 | 0.7615 | |
+| SigLIP fused, deployed constants T 50, w 0.25 (= the deployed model) | 0.8255 | 0.8268 | +0.15 ± 0.19 vs its probe, 4/5 |
+| PE-Core L probe | 0.8298 | 0.8308 | +0.43 ± 0.47 vs SigLIP fused, 4/5 |
+| PE-Core L zero-shot alone | 0.7898 | 0.7910 | +2.8 pt over SigLIP zero-shot |
+| **PE-Core L fused, deployed constants T 50, w 0.25** | **0.8351** | **0.8368** | **+0.96 ± 0.23 vs SigLIP fused, 5/5**; +0.53 ± 0.37 vs its probe, 4/5 |
+| PE-Core L fused, T 50, w 0.5 (best of a 12-point grid, optimistic) | 0.8370 | 0.8388 | +1.15 ± 0.18 vs SigLIP fused, 5/5 |
+
+Per-fold macro-F1, SigLIP fused: 0.800 0.834 0.824 0.834 0.836; PE-Core L fused (T 50, w 0.25): 0.812 0.849 0.835
+0.841 0.838. The grid (T ∈ {25, 50, 100} × w ∈ {0.1, 0.25, 0.5, 1}) is flat between +0.3 and +0.7 pt for PE-Core and
+between −0.1 and +0.3 pt for SigLIP; w = 1 at T = 100 hurts both.
+
+Findings: (1) With the pre-registered constants, the PE-Core L fused model beats the deployed SigLIP fused model by
++1.0 ± 0.2 pt on every fold, the first like-for-like improvement over the deployed model that clears noise
+(MetaCLIP 2 bigG was larger but was dropped for size). (2) The gain comes from both parts: a slightly better probe
+(+0.6) and a clearly better zero-shot head (0.790 vs 0.762), which fuses with more benefit (+0.5 vs +0.15).
+(3) PE-Core L is 316 M parameters, 1.2 GB fp32, at 336 px (576 tokens vs 729): about 0.6× the deployed compute.
+(4) Open_clip's PE-Core logit scale is 100, not SigLIP's; T = 50 still works, T = 100 with w ≥ 0.5 does not.
+Next (author's call): calibration + abstain threshold via a key-generalised `compclass.final fit`, ONNX export with the
+projection baked in, speed vs Deployed, then whether it earns one sealed-test look.
+

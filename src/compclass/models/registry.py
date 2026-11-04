@@ -253,9 +253,9 @@ def _dinov3(num_classes: int, pretrained: bool, name: str = "vit_large_patch16_d
 
 
 @_register("pe_core_g14_448", "Perception Encoder (contrastive image-text)", "vit_pe_core_gigantic_patch14_448.fb",
-           name="vit_pe_core_gigantic_patch14_448.fb")
+           zeroshot=("PE-Core-bigG-14-448", "meta"), name="vit_pe_core_gigantic_patch14_448.fb")
 @_register("pe_core_l14_336", "Perception Encoder (contrastive image-text)", "vit_pe_core_large_patch14_336.fb",
-           name="vit_pe_core_large_patch14_336.fb")
+           zeroshot=("PE-Core-L-14-336", "meta"), name="vit_pe_core_large_patch14_336.fb")
 def _pe_core(num_classes: int, pretrained: bool, name: str = "vit_pe_core_large_patch14_336.fb", **kw):
     """Perception Encoder Core (Bolya et al., 2025): CLIP-style image-text training with a robust recipe.
 

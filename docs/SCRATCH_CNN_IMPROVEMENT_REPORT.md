@@ -37,7 +37,7 @@ channels, max-pool after the first three, global average pool, dropout 0.3, line
 |---|---:|
 | Sealed test accuracy / macro-F1 (course run, single look) | 0.3541 / 0.3361 |
 | Five-fold dev macro-F1, committed research run (`4e4c6e8f6cf3`) | 0.3345, 0.3758, 0.3484, 0.3598, 0.3574 (mean 0.3552) |
-| Reference pretrained models on the same test split | B ConvNeXt-Tiny 0.86, C SigLIP probe 0.84 accuracy |
+| Reference pretrained models on the same test split (`results/itri626/metrics.json`) | B ConvNeXt-Tiny 0.636, C SigLIP probe 0.823 accuracy |
 
 The gap to the pretrained models is the point of model A in the course comparison; the aim here is to make the
 from-scratch baseline as strong as the data allows without changing what it is (a CNN trained from scratch).
@@ -204,7 +204,7 @@ checkpoint scored once on the 418 sealed test images. Files: `results/scratch_cn
 | A, committed course run (120 epochs) | 0.3552 | 0.3361 | 0.3541 |
 | A, 200 epochs (4a) | 0.3903 | **0.3924** | **0.3995** |
 | A + distillation from C, 300 epochs (4b) | 0.4361 | **0.3933** | **0.4115** |
-| Reference: B ConvNeXt-Tiny / C SigLIP probe (course run) | - | - | 0.86 / 0.84 |
+| Reference: B ConvNeXt-Tiny / C SigLIP probe (course run, `results/itri626/metrics.json`) | - | 0.628 / 0.817 | 0.636 / 0.823 |
 
 Paired bootstrap on the test images, 4b minus 4a: macro-F1 +0.001 [-0.044, +0.045], accuracy +0.012
 [-0.031, +0.057]. What this means:
