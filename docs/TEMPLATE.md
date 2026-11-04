@@ -45,7 +45,7 @@ docs/TEMPLATE.md                     this file
 
 Edit `ABOUT` first. The script sets it to "classify pictures".
 
-**The first build.** A clean build compiles GPUI Kit, about 500 crates, which takes 2.5 to 3 minutes on legion. Give each app its own target dir, and do not point `CARGO_TARGET_DIR` at another app's `target/`. Both apps have `crates/inference` at the same relative path, cargo names a path crate's artifacts by that path, and in a shared target dir one app can link or test the other app's copy without rebuilding.
+**The first build.** A clean build compiles GPUI Kit, about 500 crates, which takes 2.5 to 3 minutes on legion. On this project, run release builds and full test suites on a Boat.dev CPU sandbox (`boat` CLI) when you can, because the laptop is short of RAM. Give each app its own target dir, and do not point `CARGO_TARGET_DIR` at another app's `target/`. Both apps have `crates/inference` at the same relative path, cargo names a path crate's artifacts by that path, and in a shared target dir one app can link or test the other app's copy without rebuilding.
 
 ## 2. Add a model
 
@@ -150,9 +150,10 @@ cargo test
 
 `cargo test` runs the crate's tests on its own fixtures and on a fake backend (`inference::testing`), the window tests headless, and `scripts/test_gpu_env.sh`.
 None of them need a model in `exports/` or a GPU.
-`test_gpu_env.sh` checks the GPU launcher with fake runtimes. Without an NVIDIA driver it prints `skip: no NVIDIA driver` and passes, so run it by hand (`sh apps/<name>/scripts/test_gpu_env.sh`) on a machine with one, and look for 17 `ok` lines.
+`test_gpu_env.sh` checks the GPU launcher with fake runtimes. Without an NVIDIA driver it prints `skip: no NVIDIA driver` and passes, so run it by hand (`sh apps/<name>/scripts/test_gpu_env.sh`) on a machine with one, and look for 20 `ok` lines.
 
 The binary decodes JPEGs with the pure-Rust zune-jpeg unless you build with `--features turbojpeg` (the system libjpeg-turbo) or `turbojpeg-vendored` (built in, for the bundle). Only libjpeg-turbo matches Pillow's pixels exactly. Use it when you compare the app's outputs with a Python pipeline.
+`turbojpeg` needs libjpeg-turbo 3.0 or newer (`pkg-config --modversion libturbojpeg`). Ubuntu 24.04 ships 2.1.5, so use `turbojpeg-vendored` there. It builds libjpeg-turbo 3.1 from source and needs cmake and nasm.
 
 **The bundle.** `apps/<name>/scripts/package_linux.sh` builds `dist/<name>-linux-x86_64/` and a `.tar.gz`.
 It needs cargo-zigbuild, zig 0.14 (zig 0.17 fails the final link), cmake, nasm and a CPU `libonnxruntime.so` 1.31:

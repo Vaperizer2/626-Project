@@ -2,8 +2,13 @@
 
 These scripts distil the deployed SigLIP So400m-384 trunk into smaller students and export them as speed-harness
 candidates. Results and the reasoning behind them are in `EXPERIMENT_LOG.md` (2026-10-31).
-Train on carlpc2 only, from a copy of this checkout at `/home/carl/626-runs/distill/repo` with `uv sync --locked`
-and `imagehash` installed. The paths below are the ones the 2026-10-31 run used.
+The 2026-10-31 run trained on carlpc2 (RTX 4060 Ti 8 GB), from a copy of this checkout at
+`/home/carl/626-runs/distill/repo` with `uv sync --locked` and `imagehash` installed. carlpc2 is gone, and the pool
+and the teacher cache were lost with it (README, "Where training runs"). A rerun now starts at step 1 on the laptop
+(RTX 3060 Laptop, 6 GB), the only GPU. Change the `/home/carl/...` paths in `run_carlpc2.sh` and
+`run_fold_diag.sh` first. The B/16 student used 5.7 GB at batch 48 on carlpc2, so expect to lower `--batch` on 6 GB.
+On the laptop, GPU steps take `/tmp/626-gpu-bench.lock` instead of `/tmp/626-gpu.lock`. Heavy CPU-only work can run
+on a Boat.dev CPU sandbox (`boat` CLI). The commands below are the ones the 2026-10-31 run used.
 
 1. Build the disjoint pool. Every subdirectory of `--component` and `--generic` is one source.
 
@@ -32,14 +37,14 @@ and `imagehash` installed. The paths below are the ones the 2026-10-31 run used.
    The screen prints the teacher's out-of-fold accuracy (0.8264) next to each student's. If the teacher line
    differs, the screen no longer matches the deployed recipe.
 
-4. Export a candidate, copy it to legion, and run the harness there:
+4. Export a candidate and run the speed harness on it on legion:
 
    ```bash
    .venv/bin/python tools/distill/export.py export --run RUN --dest CANDIDATE --pool POOL \
      --labels exports/final/labels.json --commit "$(git rev-parse --short HEAD)"
    ```
 
-   Then run `eval`, `time` and `compare` as `tools/speed/README.md` on branch `wip/harness` describes. To build a
+   Then run `eval`, `time` and `compare` as [`tools/speed/README.md`](../speed/README.md) describes. To build a
    TensorRT fp16 variant, run that harness's `variants.py runtime`.
 
 To test whether unlabeled development images close the gap for one fold, run `tools/distill/run_fold_diag.sh K`.

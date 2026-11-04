@@ -146,7 +146,7 @@ uv run --no-project --python 3.12 --with numpy --with pillow --with opencv-pytho
 The startup line should say `[CUDAExecutionProvider]`. If it says `CPUExecutionProvider`, CUDA could not be loaded
 and the demo fell back to CPU. Swap in `opencv-python` to get a window as well.
 
-To make it the project default (changes `pyproject.toml`/`uv.lock`, and the PC environment on its next sync):
+To make it the project default (changes `pyproject.toml`/`uv.lock`, and every project environment on its next sync):
 `uv remove onnxruntime && uv add "onnxruntime-gpu[cuda,cudnn]"`. Revert with `uv remove onnxruntime-gpu && uv add
 onnxruntime`. This in-project combination with torch's CUDA 12.8 wheels is **untested**. The throwaway-environment
 command above is the tested route.
@@ -240,9 +240,9 @@ uv run python -m pytest -q tests/test_demo.py
 ## 8. Deploying elsewhere (e.g. a Rust GPUI app via the `ort` crate)
 
 > **Built:** the GPUI desktop app now exists at [`apps/gpui-demo/`](../apps/gpui-demo/README.md)
-> (`cd apps/gpui-demo && cargo run --release --locked`). It implements exactly the contract below; its headless
-> `classify` mode matches the Python pipeline on 64/64 dev images (`results/demo/gpui_parity.json`). The window is
-> built with GPUI Kit and has Classify, Demo (a credited stack of web-holdout photos) and Benchmark tabs. It
+> (`cargo run --release --locked -p gpui-demo` from the repo root). It implements exactly the contract below; its
+> headless `classify` mode matches the Python pipeline on 64/64 dev images (`results/demo/gpui_parity.json`). The
+> window is built with GPUI Kit and has Classify, Demo (a credited stack of web-holdout photos) and Benchmark tabs. It
 > can switch between the deployed model, the report's models A, B and C, and Fast (`--features turbojpeg`
 > recommended). The app reads each export through its `model.json` manifest (files and checksums, input and
 > preprocessing, heads, execution providers), so the contract below is what `exports/final/model.json` encodes.

@@ -1,6 +1,6 @@
 # Runbook
 
-Updated 2026-11-01. Source: https://github.com/Vaperizer2/626-Project (private).
+Updated 2026-11-04. Source: https://github.com/Vaperizer2/626-Project (private).
 Release: https://github.com/Vaperizer2/626-Project/releases/tag/share-2026-10-30.
 
 ## Give a colleague access
@@ -44,7 +44,7 @@ independent accuracy estimate. Allow several seconds for the initial SigLIP load
 
 Fast is the deployed model at 308 px with INT8 weights for TensorRT: the same cross-validated accuracy on the
 development folds (0.8268) at 14 ms per picture instead of 113 ms for Deployed on CUDA (RTX 3060 Laptop, in the app).
-The share-2026-10-30 release predates Fast and the GPU launcher: use a bundle built from this branch
+The share-2026-10-30 release predates Fast and the GPU launcher: use a bundle built from `main`
 (`apps/gpui-demo/scripts/package_linux.sh`, see below for Fast's model files) or a source build. It needs the GPU
 runtime, which the bundle does not ship (about 7 GB, no root):
 
@@ -123,8 +123,15 @@ cargo test --locked                                                 # needs no O
 target/release/gpui-demo models                                     # finds exports/models.json by walking up
 ```
 
-A clean build takes about 2.5 to 3 minutes on legion, nearly all of it GPUI Kit. `cargo test -p inference` builds
-the crate without GPUI in under a minute. Options, keys and the profiling setup are in
+`--features turbojpeg` needs the system libjpeg-turbo 3.0 or newer (`pkg-config --modversion libturbojpeg`).
+Ubuntu 24.04 ships 2.1.5, so there build with `--features turbojpeg-vendored` instead (it compiles libjpeg-turbo
+3.1 from source and needs cmake and nasm). Without either feature the build works, but its JPEG pixels differ
+slightly from Pillow's and the golden comparison does not match. The portable bundle always uses
+`turbojpeg-vendored`, so its users need no libjpeg-turbo.
+
+A clean build takes about 2.5 to 3 minutes on legion, nearly all of it GPUI Kit. The laptop is short of RAM, so run
+release builds and full test suites on a Boat.dev CPU sandbox (`boat` CLI) when you can. `cargo test -p inference`
+builds the crate without GPUI in under a minute. Options, keys and the profiling setup are in
 [the app README](../apps/gpui-demo/README.md). A new desktop AI app starts from this one with `scripts/new_app.sh`;
 [TEMPLATE.md](TEMPLATE.md) has the procedure.
 
@@ -150,8 +157,8 @@ Record changed research conclusions in `EXPERIMENT_LOG.md`; update `STATUS.md` w
 ## Maintain the release
 
 ONNX files and `dist/` remain ignored by Git. This project distributes inference binaries as Release assets rather
-than Git LFS pointers. The bundle is below GitHub's per-asset limit; LFS is also possible, but adds client setup and
-storage/bandwidth accounting. See [GitHub large-file guidance](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github)
+than Git LFS pointers. The share-2026-10-30 archive (1.74 GB) is below GitHub's 2 GiB per-asset limit. LFS is also
+possible, but adds client setup and storage/bandwidth accounting. See [GitHub large-file guidance](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github)
 and [LFS limits](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-git-large-file-storage).
 
 For a changed app/model, follow the packaging prerequisites in the app README, then run from the repo root:
@@ -164,5 +171,7 @@ The script builds a glibc-2.28-compatible binary and bundles onnxruntime, both l
 what `apps/gpui-demo/packaging/bundle.txt` lists (the models, the demo stack and the dataset note). Add a new model's
 files to that list. Verify the archive/checksums, extract to a temporary directory and run a headless prediction with all
 models. Test the window on a supported desktop before claiming GUI validation. Publish under a new dated tag,
-attach the `.tar.gz` and `.tar.gz.sha256`, and update the links above and in README. Preserve prior releases so
+attach the `.tar.gz` and `.tar.gz.sha256`, and update the links above and in README. A bundle with Fast can be
+larger than 1900 MiB; the script then also writes `.tar.gz.part-*` files, and the bundled `README.txt` explains how
+to join them. Preserve prior releases so
 colleagues can reproduce their downloads. Publish source changes and the matching release together.

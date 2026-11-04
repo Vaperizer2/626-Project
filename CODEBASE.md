@@ -28,9 +28,15 @@ crates/inference/    image models without a UI: manifests and registry, inferenc
 apps/gpui-demo/      Rust GPUI Kit 0.7.3 desktop app: Classify, Demo and Benchmark tabs over models
                      A/B/C/Deployed/Fast, headless classify/bench/models, portable Linux/NixOS launchers
 scripts/new_app.sh   a new desktop AI app from apps/gpui-demo without the classifier's parts (docs/TEMPLATE.md)
+exports/models.json  the app's model index; each export folder has a model.json (tools/gen_manifests.py writes them)
+notebooks/           ITRI626_three_models.ipynb (executed A/B/C comparison), ITRI626_training.ipynb (one section per
+                     model: A, B, C, Deployed, Fast)
+tools/               dataset builders, export scripts, tools/speed/ (the frozen speed harness) and the speed tracks
+                     behind Fast (speed2-4, compose, quant, prune, tokens, trtbugs, distill), tools/hardcases/
 configs/             base.yaml (every knob, commented) + one file per family
 tests/test_smoke.py  CPU smoke tests on a synthetic 3-class manifest (~10 s)
-scripts/gpu_witness.py  per-model download/build/fp16 train-step benchmark + end-to-end CLI witness on the GPU PC
+scripts/gpu_witness.py  per-model download/build/fp16 train-step benchmark + end-to-end CLI witness (last run on
+                     the GPU PC, which is gone: results/gpu_witness_carlpc2.json)
 legacy/              pre-v2 notebooks and docs (numbers invalid: duplicate leakage)
 ```
 
@@ -90,5 +96,11 @@ export + onnxruntime parity, all four zero-shot models, the linear probe and the
 * The lockfile pins CUDA 12.8 wheels on Linux (torch 2.11.0+cu128 — the newest on that index); other platforms
   resolve plain PyPI torch.
 * DINOv2 runs at 224 px (position embeddings interpolated from 518) to keep training affordable on 8 GB.
+* `--features turbojpeg` (dev builds, and the binary that `apps/gpui-demo/scripts/golden.py` checks) links the
+  system libjpeg-turbo, and `turbojpeg-sys` 1.2.0 asks pkg-config for version 3.0 or newer. Ubuntu 24.04 ships
+  2.1.5, so the build fails there. Install libjpeg-turbo 3.x, or build `--features turbojpeg-vendored` (needs cmake
+  and nasm). The portable bundle uses `turbojpeg-vendored` and is not affected.
+* `[profile.dev.package."*"]` in the root `Cargo.toml` leaves out workspace members, so `inference` has its own
+  `opt-level = 2` line. Without it the GUI tests decode the 68-picture demo stack too slowly and time out.
 * Layer-wise LR decay applies to timm models only (they expose `group_matcher`); for ConvNeXt the fine-grained
   grouping has ~20 layers, so 0.8 already gives the stem a ~70x smaller LR than the head.

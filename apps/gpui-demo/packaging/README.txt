@@ -18,7 +18,8 @@ Requirements
 ------------
 * Linux on x86_64 (64-bit Intel/AMD) with glibc 2.28 or newer: Ubuntu 20.04+, Debian 10+, Fedora 29+,
   RHEL/Rocky/Alma 8+, openSUSE Leap 15.3+, Arch/Manjaro/CachyOS or similar. (Check: ldd --version)
-* About 4 GB of free RAM (the SigLIP models use about 2.5 GB) and 2 GB of disk.
+* About 4 GB of free RAM (the SigLIP models use about 2.5 GB). The extracted folder takes 2.2 GB of disk; keep
+  room for the archive as well while you extract it.
 * For the window: a Wayland or X11 desktop session with working Vulkan or OpenGL drivers (any normal desktop
   install has them). The command-line "classify" mode needs no display at all.
 * System libraries every desktop already has: glibc, libstdc++ and libgcc_s (for onnxruntime), libxcb,
@@ -123,8 +124,8 @@ libonnxruntime.so.1.31.0   ONNX Runtime 1.31.0 (CPU), loaded by the app at start
 exports/models.json        the model index; each model folder has a model.json (files, checksums, preprocessing)
 exports/final/             Deployed + C: model_multi.onnx (one graph, both outputs), model.onnx.data
                            (the 1.7 GB weights), model.json, preprocess.json, labels.json
-exports/fast/              Fast: model.onnx, model.onnx.data, preprocess.json, runtime.json, labels.json
-exports/itri626/           A_scratch_cnn/ and B_convnext_tiny/: model.onnx, preprocess.json, labels.json
+exports/fast/              Fast: model.onnx, model.onnx.data, model.json, preprocess.json, runtime.json, labels.json
+exports/itri626/           A_scratch_cnn/ and B_convnext_tiny/: model.onnx, model.json, preprocess.json, labels.json
 demo_stack/                the 68 demo photos, demo_stack.json, ATTRIBUTION.md (author/licence of each photo)
 run.sh                     launcher (sets the paths above; passes arguments through)
 app.env                    the app's name, environment variable prefix, binary and subcommands, read by the launchers
