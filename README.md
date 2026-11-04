@@ -179,7 +179,7 @@ Module ITRI626 *Deep learning for image classification* (Prof. Absalom Ezugwu). 
 
 | | Model | Family | Transfer learning | Test acc. | Test macro-F1 |
 |---|---|---|---|---:|---:|
-| A | custom VGG-style CNN (1.19 M params) | plain CNN | none (random init) | 0.354 | 0.336 |
+| A | custom VGG-style CNN (1.19 M params), 200-epoch schedule | plain CNN | none (random init) | 0.400 | 0.392 |
 | B | ConvNeXt-Tiny, fully fine-tuned | modernised CNN | ImageNet-22k → 1k weights, fine-tuned | 0.636 | 0.628 |
 | C | SigLIP So400m/14 @ 384 px, frozen + `nn.Linear(1152, 20)` | Vision Transformer | frozen features, linear head trained | 0.823 | 0.817 |
 

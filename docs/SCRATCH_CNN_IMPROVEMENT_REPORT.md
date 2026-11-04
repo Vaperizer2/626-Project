@@ -161,8 +161,10 @@ In order of cost, each screened on folds 0-2 at 200 epochs:
 Remaining, all the author's decisions rather than experiments:
 
 - Done 2026-11-04: the sealed test split scored once for both 4a and 4b (section 7).
-- Decide how "A + distillation" is presented in `docs/itri626_report/` and whether it joins the demo app (it would
-  need an export and a manifest; preprocessing is unchanged, so the existing model-A path applies).
+- Done 2026-11-04: the course report's model A is now the 200-epoch run (imported, not retrained, with
+  `tools/itri626_import_run.py`), and the study, the distilled variant, the test look and the holdout look are a
+  new subsection and table of `docs/itri626_report/main.tex` and section 8 of the notebook. Whether the distilled
+  model joins the demo app is still open (it would need an export and a manifest; preprocessing is unchanged).
 - Optional, not started: self-supervised pre-training on the same training photos, if a variant that uses no
   pretrained model at all is wanted. Expected gain is smaller than distillation's and the cost is higher.
 
