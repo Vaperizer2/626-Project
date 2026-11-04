@@ -40,7 +40,7 @@ and [EXPERIMENT_LOG.md](EXPERIMENT_LOG.md) for dated research decisions. Older c
   [EXPERIMENT_LOG.md](EXPERIMENT_LOG.md) has the numbers.
 - Private source repository: https://github.com/Vaperizer2/626-Project. `main` holds PRs #1 to #6 (2026-11-04).
   Sharing release: https://github.com/Vaperizer2/626-Project/releases/tag/share-2026-11-04, built from `main`
-  `b97b857` with all five models and the 68-picture stack. The older share-2026-10-30 stays available.
+  `2f8483b` with all five models and the 68-picture stack. The older share-2026-10-30 stays available.
 
 ## Remaining limitations / optional work
 

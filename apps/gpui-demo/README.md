@@ -436,9 +436,9 @@ inference service, medians over 5 alternated rounds (`results/demo/gpui_legion_s
 | per picture, end to end (read, decode, preprocess, run) | 14.4 ms | 113.0 ms | 94.8 ms¹ |
 | streamed (pictures submitted at once) | 78 / s | 9.0 / s | 10.8 / s¹ |
 
-¹ measured before the watcher fix (ef94d84), which took 2.0 ms (Deployed) to 3.3 ms (Fast) off every run.
+¹ measured before the watcher fix (21908b7), which took 2.0 ms (Deployed) to 3.3 ms (Fast) off every run.
 
-The previous app binary (07e569c, one serial loop) took 112.6 ms per picture for Deployed on CUDA. Fast's run stage
+The previous app binary (ae6e7db, one serial loop) took 112.6 ms per picture for Deployed on CUDA. Fast's run stage
 matches the graph timed alone (the harness's 11.9 ms; 12.7 ms in Python with IO binding the same day). Reading,
 decoding and preprocessing on the CPU add about 2 ms per picture end to end. Fast's batch is 1 (see above), so
 streaming is bound by the engine: 78 / s is 12.8 ms per picture, with decoding and preprocessing overlapped.
