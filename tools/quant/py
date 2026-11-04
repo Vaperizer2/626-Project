@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Runs a quant-track script in its venv (harness requirements + TensorRT 10.16.1 Python bindings).
+set -euo pipefail
+VENV=${QUANT_VENV:-/home/vaper/Work/Prototypes/626-artifacts/quant/venv}
+export LD_LIBRARY_PATH="$VENV/lib/python3.12/site-packages/tensorrt_libs${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+exec "$VENV/bin/python" "$@"

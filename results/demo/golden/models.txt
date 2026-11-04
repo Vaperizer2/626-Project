@@ -1,0 +1,4 @@
+a         A · Custom CNN (scratch)       available  ../../exports/itri626/A_scratch_cnn/model.onnx [output probs]
+b         B · ConvNeXt-T (fine-tuned)    available  ../../exports/itri626/B_convnext_tiny/model.onnx [output probs]
+c         C · SigLIP ViT + linear head   available  ../../exports/final/model_multi.onnx [output probs_c]
+deployed  Deployed (fused SigLIP)        available  ../../exports/final/model_multi.onnx [output probs]

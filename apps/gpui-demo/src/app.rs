@@ -1,0 +1,49 @@
+//! The app's identity, its tabs and its subcommands. An app made from this one changes this file, its package name
+//! and `packaging/`.
+
+use gpui_kit::{App, AppContext as _, Entity};
+
+use crate::cli::{self, Command};
+use crate::gui::bench::BenchTab;
+use crate::gui::classify::ClassifyTab;
+use crate::gui::demo_tab::DemoTab;
+use crate::gui::stack::Stack;
+use crate::gui::{Lucide, TabSpec};
+use inference::manifest::Task;
+use inference::registry::Head;
+
+/// The per-user cache is `$XDG_CACHE_HOME/<NAME>` (or `~/.cache/<NAME>`).
+pub const NAME: &str = "component-classifier";
+pub const TITLE: &str = "Component Classifier";
+/// What the app does, after its title in `--help`.
+pub const ABOUT: &str = "classify electronic components in pictures";
+/// Environment variables are `<ENV_PREFIX>_MODELS` and, for the demo stack, `<ENV_PREFIX>_DEMO_DIR`.
+pub const ENV_PREFIX: &str = "COMPCLASS";
+/// The binary's name: the Wayland app id, and what `--help` and the log lines call the app.
+pub const BIN: &str = env!("CARGO_BIN_NAME");
+/// The title bar's icon.
+pub const ICON: Lucide = Lucide::Microchip;
+/// The `label` of an abstaining head in `classify` output (the Python demo's spelling).
+pub const UNSURE: &str = "UNSURE";
+
+/// The window's tabs, in order; Ctrl+1 to Ctrl+9 show them. A tab is a module with a `gui::Tab` impl and a line here.
+pub const TABS: &[TabSpec] = &[TabSpec::of::<ClassifyTab>(), TabSpec::of::<DemoTab>(), TabSpec::of::<BenchTab>()];
+
+/// The subcommands, in `--help`'s order. A subcommand is a module with a `cli::Command` and a line here.
+pub const COMMANDS: &[Command] =
+    &[cli::classify::COMMAND, cli::preprocess::COMMAND, cli::bench::COMMAND, cli::models::COMMAND];
+
+/// The title bar's note on the selected head, after the app's title.
+pub fn subtitle(head: &Head) -> Option<String> {
+    let Task::Classify(c) = &head.spec.task;
+    Some(format!("{} electronic-component classes", c.labels.len()))
+}
+
+/// What the tabs share besides the models: the demo stack, for the Demo and Benchmark tabs.
+pub struct Shared {
+    pub stack: Entity<Stack>,
+}
+
+pub fn shared(cx: &mut App) -> Shared {
+    Shared { stack: cx.new(Stack::new) }
+}

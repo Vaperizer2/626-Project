@@ -90,12 +90,12 @@ tones and low contrast. So:
    deutan, protan and tritan vision: 36 light, 29 dark). All verdict colours are ≥ 4.5 : 1 against
    their card.
 4. **Large numerals for the numbers the room should read**: the predicted class (30 px bold),
-   its confidence (24 px in the accent), score lines such as `21/28` (30 px). Numbers that sit in
+   its confidence (24 px in the accent), score lines such as `53/68` (30 px). Numbers that sit in
    columns (percentages, counts, timings) use the monospace family so the digits align.
 5. **Soft, low-saturation fills; strong colour only in small marks.** Benchmark cells were solid
    red/green tiles. Now they are neutral cards with a 4 px verdict edge, a verdict icon and a thin
    confidence bar, like GitComet's dense lists and Cat's "pill + muted metrics" status line. A
-   28 × 4 matrix of mostly-wrong A-model cells no longer floods the screen red.
+   68 × 5 matrix of mostly-wrong A-model cells no longer floods the screen red.
 6. **Pills for status, à la GitComet and Cat**: verdict tags, the model-state chip, "best".
 7. **Calm empty states, à la GitComet**: one icon, one short title, one line of help, the
    shortcuts. Errors get their own empty state rather than a spinner that never stops.

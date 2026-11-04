@@ -501,6 +501,38 @@ def fingerprint(rows: list[dict]) -> str:  # identical definition to data/v2
     return hashlib.sha256("\n".join(lines).encode("utf-8")).hexdigest()[:16]
 
 
+ARCHIVED_REVISION = re.compile(r"File:(\d{4})(\d\d)(\d\d)(\d\d)(\d\d)(\d\d)(?:!|%21)")
+
+
+def changes_of(row: dict) -> str:
+    """What was done to a photo besides the resize and JPEG re-encode; CC BY-SA asks for changes to be indicated."""
+    out = []
+    if m := ARCHIVED_REVISION.search(row["source_url"]):
+        y, mo, d, h, mi, s = m.groups()
+        out.append(f"the version replaced on {y}-{mo}-{d} {h}:{mi}:{s} UTC (see the file history)")
+    if "alpha_composited" in row["flags"]:
+        out.append("transparent background filled with white")
+    if row["orig_format"].upper() != "JPEG":
+        out.append(f"converted from {row['orig_format'].upper()} to JPEG")
+    return "; ".join(out)
+
+
+def attribution_md(rows: list[dict]) -> str:
+    md = [f"# Attribution — {VERSION}", "",
+          "All images come from Wikimedia Commons and are redistributed under their original licences "
+          "(public domain or Creative Commons). Each image is a Commons thumbnail, or the original file when it is "
+          f"smaller, downscaled so its longest side is at most {MAX_SIDE} px and saved as JPEG "
+          f"(quality {JPEG_QUALITY}). Any other change to an image is in its changes column.", "",
+          "| id | class | author | licence | source | changes |", "|---|---|---|---|---|---|"]
+    for r in rows:
+        lic = f"[{r['license']}]({r['license_url']})" if r["license_url"] else r["license"]
+        author = r["author"].replace("|", "/") or "unknown"
+        page = ARCHIVED_REVISION.sub("File:", r["source_url"])
+        title = urllib.parse.unquote(page.rsplit("/", 1)[-1]).replace("|", "/")
+        md.append(f"| {r['id']} | {r['label']} | {author} | {lic} | [{title}]({page}) | {changes_of(r)} |")
+    return "\n".join(md) + "\n"
+
+
 def cmd_build(cache: Path, threads: int) -> None:
     meta = json.loads((cache / "candidates.json").read_text())
     classes = json.loads((V2 / "manifest.json").read_text())["classes"]
@@ -663,17 +695,7 @@ def cmd_build(cache: Path, threads: int) -> None:
     w.writeheader()
     w.writerows(drops)
     atomic_write_text(OUT / "dropped.csv", buf.getvalue())
-    md = [f"# Attribution — {VERSION}", "",
-          "All images come from Wikimedia Commons and are redistributed under their original licences "
-          "(public domain or Creative Commons). Images were downscaled (longest side <= 512 px) and re-encoded "
-          "as JPEG; no other changes were made. Author / licence / source for every image:", "",
-          "| id | class | author | licence | source |", "|---|---|---|---|---|"]
-    for r in rows:
-        lic = f"[{r['license']}]({r['license_url']})" if r["license_url"] else r["license"]
-        author = r["author"].replace("|", "/") or "unknown"
-        title = urllib.parse.unquote(r["source_url"].rsplit("/", 1)[-1]).replace("|", "/")
-        md.append(f"| {r['id']} | {r['label']} | {author} | {lic} | [{title}]({r['source_url']}) |")
-    atomic_write_text(OUT / "ATTRIBUTION.md", "\n".join(md) + "\n")
+    atomic_write_text(OUT / "ATTRIBUTION.md", attribution_md(rows))
     tiles, breaks = [], []
     jmap = {it["id"]: it["jpg"] for it in kept_items}
     for cls in classes:

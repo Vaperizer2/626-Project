@@ -1,19 +1,29 @@
 #!/bin/sh
-# Component Classifier: launcher for the portable Linux bundle.
+# Launcher for the portable Linux bundle; the app's name and variables come from app.env.
 # Everything (binary, onnxruntime, models, demo pictures) is found relative to this script, so the folder can
 # live anywhere and be started from any directory. All arguments are passed through to the app:
 #   ./run.sh                          open the window
-#   ./run.sh --tab demo --dark        start on the Demo tab, dark theme
+#   ./run.sh --tab classify --dark    start on the Classify tab, dark theme
 #   ./run.sh classify picture.jpg     headless: print the prediction (no display needed)
 #   ./run.sh --help                   all options
 set -eu
 HERE=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
-BIN="$HERE/gpui-demo"
+. "$HERE/app.env"
+BIN="$HERE/$BIN"
+
+# onnxruntime: an installed onnxruntime-gpu (CUDA, and TensorRT for the fast model) when there is one, else the
+# bundled CPU library. gpu-env.sh says which in one line.
+ORT_CPU="$HERE/libonnxruntime.so.1.31.0"
+. "$HERE/gpu-env.sh"
 
 # Explicit paths (an environment variable already set by the caller wins).
-export ORT_DYLIB_PATH="${ORT_DYLIB_PATH:-$HERE/libonnxruntime.so.1.31.0}"
-export COMPCLASS_MODEL_DIR="${COMPCLASS_MODEL_DIR:-$HERE/exports/final}"
-export COMPCLASS_DEMO_DIR="${COMPCLASS_DEMO_DIR:-$HERE/demo_stack}"
+models=$(app_env MODELS)
+demo_dir=$(app_env DEMO_DIR)
+export "${ENV_PREFIX}_MODELS=${models:-$HERE/exports}" "${ENV_PREFIX}_DEMO_DIR=${demo_dir:-$HERE/demo_stack}"
+if [ -n "$GPU_LIBPATH" ]; then
+    export LD_LIBRARY_PATH="$GPU_LIBPATH${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+fi
+echo "run.sh: onnxruntime on $GPU_STATE" >&2
 
 if [ "$(uname -m)" != "x86_64" ]; then
     echo "run.sh: this bundle is built for x86_64 Linux; this machine is $(uname -m)." >&2
@@ -24,17 +34,14 @@ if [ ! -x "$BIN" ]; then
     exit 1
 fi
 
-case "${1:-}" in
-    classify | preprocess | models | -h | --help | -V | --version)
-        exec "$BIN" "$@" ;;
-esac
+if app_command "${1:-}"; then exec "$BIN" "$@"; fi
 
 if [ -z "${WAYLAND_DISPLAY:-}" ] && [ -z "${DISPLAY:-}" ]; then
     cat >&2 <<'MSG'
 run.sh: no graphical session found (neither WAYLAND_DISPLAY nor DISPLAY is set).
   * Start it from a terminal inside your desktop session (not over plain SSH).
   * Over SSH without a display you can still test the models:
-        ./run.sh classify demo_stack/01_battery_holder.jpg
+        ./run.sh classify picture.jpg
 MSG
     exit 1
 fi

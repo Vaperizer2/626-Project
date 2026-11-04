@@ -11,7 +11,7 @@ Outputs (results/):
   phase1/fusion_ablation.csv            probe + zero-shot fusion grid (zero-shot scores from open_clip preprocessing)
   leakage_simulation.csv                legacy-style split vs grouped CV, from frozen-feature probes
 Requires the cached dev features written by `compclass.features` (results/cache/features/<model>-<fp>-<ids>.npy,
-present on the GPU PC) for the cleaning and leakage tables; the other tables only need files tracked in git.
+not in git) for the cleaning and leakage tables; the other tables only need files tracked in git.
 """
 from __future__ import annotations
 

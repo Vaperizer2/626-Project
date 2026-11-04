@@ -1,0 +1,44 @@
+[package]
+name = "inference"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.92"
+description = "Image models without a UI: manifests and registry, a batching inference service, onnxruntime with execution-provider fallback and a TensorRT engine cache, weight integrity"
+license = "MIT"
+publish = false
+
+[features]
+default = []
+# Decode JPEG pixels with the system libjpeg-turbo (pkg-config libturbojpeg), the same decoder Pillow bundles,
+# making the model input bit-identical to the Python pipeline. Without it the pure-Rust decoder differs by a few
+# grey levels on some pixels (argmax parity is unaffected).
+turbojpeg = ["dep:turbojpeg"]
+# Same decoder, but libjpeg-turbo is built from the source vendored in turbojpeg-sys (CMake + NASM at build
+# time) and linked statically: no libturbojpeg.so at runtime. Used for the portable Linux bundle.
+turbojpeg-vendored = ["turbojpeg", "turbojpeg/cmake", "turbojpeg/require-simd"]
+# Profiling with hotpath (https://hotpath.rs): `prof!` blocks are measured. Off by default: without the feature
+# the crate is not even in the build and every `prof!` block compiles to plain code.
+hotpath = ["dep:hotpath", "hotpath/hotpath"]
+# The fake loader and fixtures of `testing`, for the tests of crates that depend on this one.
+test-support = []
+
+[dependencies]
+# onnxruntime bindings; load-dynamic = dlopen libonnxruntime.so at runtime (no build-time download);
+# api-22 = require only the ORT 1.22 C API so any onnxruntime >= 1.22 works. `cuda` and `tensorrt` only compile the
+# provider bindings: whether a provider registers is decided at runtime by the libonnxruntime that is loaded.
+ort = { version = "=2.0.0-rc.14", default-features = false, features = ["std", "load-dynamic", "api-22", "cuda", "tensorrt"] }
+image = { version = "0.25.10", default-features = false, features = ["jpeg", "png", "webp", "gif", "bmp", "tiff", "rayon"] }
+rayon = "1"
+futures = "0.3"
+ureq = { version = "3.4", default-features = false, features = ["rustls", "gzip", "socks-proxy"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# checksums for `models --check` (already in the tree through GPUI)
+sha2 = "0.10"
+anyhow = "1"
+turbojpeg = { version = "=1.5.1", default-features = false, features = ["pkg-config"], optional = true }
+hotpath = { version = "0.28", optional = true }
+
+[dev-dependencies]
+# the crate doc's example runs on `testing`
+inference = { path = ".", features = ["test-support"] }

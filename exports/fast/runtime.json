@@ -1,0 +1,19 @@
+{
+ "provider": "TensorrtExecutionProvider",
+ "options": {
+  "trt_fp16_enable": true,
+  "trt_engine_cache_enable": true,
+  "trt_engine_cache_path": "trt_cache",
+  "trt_timing_cache_enable": true,
+  "trt_timing_cache_path": "trt_cache",
+  "trt_max_workspace_size": 2147483648,
+  "trt_int8_enable": true
+ },
+ "graph_optimization_level": "ORT_ENABLE_ALL",
+ "provider_order": [
+  "TensorrtExecutionProvider",
+  "CUDAExecutionProvider",
+  "CPUExecutionProvider"
+ ],
+ "static_batch": 1
+}

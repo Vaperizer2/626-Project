@@ -1,0 +1,31 @@
+{
+ "input_size": 308,
+ "mean": [
+  0.5,
+  0.5,
+  0.5
+ ],
+ "std": [
+  0.5,
+  0.5,
+  0.5
+ ],
+ "interpolation": "bicubic",
+ "crop_pct": 0.9,
+ "resize_short_side": 342,
+ "color_order": "RGB",
+ "layout": "NCHW",
+ "scale": 0.00392156862745098,
+ "outputs": [
+  "logits",
+  "probs"
+ ],
+ "abstain_threshold": 0.5,
+ "temperature": 0.8661743402481079,
+ "model": "siglip_so400m_384",
+ "t_zs": 50.0,
+ "w_zs": 0.25,
+ "manifest_fingerprint": "431315e87d2612cb",
+ "trunk": "compose_int8_res308",
+ "built_from": "/home/carl/626-runs/compose/work/compose_int8_res308/smooth05 (INT8 QDQ on 112/112 GEMMs, act max, mlp.fc2 p99.999, exclude ; tools/quant/qdq.py @ b2ed4f1); head refitted by tools/compose/export_fast.py"
+}
