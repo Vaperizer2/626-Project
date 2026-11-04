@@ -141,3 +141,18 @@ breadboard at 0.52 (the deployed model abstains at 0.44; 0.52 clears both its 0.
 in-scope coin-cell holder is answered correctly, so the section scores 3 of 3 instead of 1 of 3. The one-per-class
 section stays 20 of 20. The study recommends shipping squash without the nearest-neighbour term; it is not shipped,
 because it changes the shipped model, its golden file and the Fast model's recipe, which is the owner's call.
+
+## 2026-11-03 to 2026-11-04 — decisions and delivery
+
+On 2026-11-03 the owner kept the current Fast model (`compose_int8_res308`) as the app's Fast. Q5 is not shipped. The
+squash preprocessing from the hard-case study is not shipped either; whether to ship it is still open.
+
+The demo stack grew from 28 to 68 pictures. The new Random section holds 40 holdout photos, two per class, drawn with
+seed 20261103 from the holdout photos not already in the stack, with nobody looking at the answers first. Deployed
+gets 32 of them right, in line with its 309 of 407 (75.9 %) on the whole holdout. The stack is a presentation set:
+no model was chosen or tuned on it. `notebooks/ITRI626_training.ipynb` adds the training code, one section per model
+(A, B, C, Deployed, Fast).
+
+On 2026-11-04 `main` took PR #1 (merge `d4d5113`), PR #3 (`4bebc2d`), PR #4 (`d089596`) and PR #2 (`5d16657`). The GPU
+PC `carlpc2` is gone. GPU work runs on the laptop, and heavy CPU work on Boat.dev CPU sandboxes. None of this changes
+a recorded research score.
