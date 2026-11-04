@@ -245,7 +245,7 @@
    }
   },
   "baseline-deployed-cuda-stack": {
-   "binary": "07e569c serial classify loop",
+   "binary": "ae6e7db serial classify loop",
    "per_image_ms": {
     "median": 112.6,
     "min": 111.95,
@@ -611,7 +611,7 @@
   }
  },
  "watcher_fix_ab": {
-  "what": "bench of one image, 25 rounds, a = 340624c, b = the watcher fix, alternated, 5 rounds, one GPU lock hold",
+  "what": "bench of one image, 25 rounds, a = 35e92b3, b = the watcher fix, alternated, 5 rounds, one GPU lock hold",
   "deployed-a": {
    "run_ms": {
     "median": 112.238,

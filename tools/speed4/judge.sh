@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Frozen-harness steps for speed4 candidates, from this checkout's tools/speed (byte-identical to ae1289d).
+# Frozen-harness steps for speed4 candidates, from this checkout's tools/speed (byte-identical to 01c721d).
 #   judge.sh time <candidate_dir>...     # batch-1 latency vs the fp32 baseline: label-free, run on every build
 #   judge.sh eval <candidate_dir>...     # dev-fold CV: the selection budget, finalists only
 #   judge.sh compare <candidate_dir>...  # vs the deployed fp32 baseline (acceptance) and the reference candidates

@@ -49,6 +49,6 @@ fp32. On 16 test images the minimum cosine similarity between the two is 0.99997
 ## Sharing the models
 
 All ONNX graphs and their external weights are distributed in the
-[private GitHub Release](https://github.com/Vaperizer2/626-Project/releases/tag/share-2026-10-30).
+[private GitHub Release](https://github.com/Vaperizer2/626-Project/releases/tag/share-2026-11-04).
 Follow [the runbook](../../docs/RUNBOOK.md) to extract `exports/` into a clone. Keep the two SigLIP graphs beside
 `model.onnx.data`. JSON metadata and export/parity reports remain tracked in Git; ONNX files remain ignored.
