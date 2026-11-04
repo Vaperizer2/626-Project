@@ -9,7 +9,8 @@ validation split only; the test split is scored once per model for the final com
 
 Three main models (three families; two use pretrained weights):
 
-  A  custom CNN baseline     scratch_cnn, configs/scratch_cnn.yaml, random init
+  A  custom CNN baseline     scratch_cnn, configs/scratch_cnn.yaml + train.epochs=200 train.patience=40, random init
+                             (schedule from the 2026-11 improvement study, docs/SCRATCH_CNN_IMPROVEMENT_REPORT.md)
   B  ConvNeXt-T fine-tuned   configs/convnext_tiny.yaml + train.epochs=20 train.patience=6 (main-benchmark recipe),
                              ImageNet-22k -> 1k weights (timm convnext_tiny.fb_in22k_ft_in1k)
   C  SigLIP So400m/14@384    frozen image tower (timm vit_so400m_patch14_siglip_384.webli) + nn.Linear(1152, 20)
@@ -61,7 +62,7 @@ SMOKE: list[str] = []  # --smoke: tiny CPU dry run of the plumbing (numbers mean
 
 MODELS = {
     "A_scratch_cnn": {"label": "Custom CNN (scratch)", "family": "Plain VGG-style CNN (no pretraining)",
-                      "config": "configs/scratch_cnn.yaml", "sets": []},
+                      "config": "configs/scratch_cnn.yaml", "sets": ["train.epochs=200", "train.patience=40"]},
     "B_convnext_tiny": {"label": "ConvNeXt-T (fine-tuned)", "family": "ConvNeXt (modernised CNN)",
                         "config": "configs/convnext_tiny.yaml", "sets": ["train.epochs=20", "train.patience=6"]},
     "C_siglip_so400m_linear": {"label": "SigLIP So400m ViT (frozen + linear)",

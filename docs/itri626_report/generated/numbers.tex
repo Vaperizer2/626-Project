@@ -58,10 +58,10 @@
 \newcommand{\oodVal}{139\xspace} % data/v2/splits/val.csv sum(ood_suspect)
 \newcommand{\oodTest}{112\xspace} % data/v2/splits/test.csv sum(ood_suspect)
 \newcommand{\nTestClean}{306\xspace} % test rows - ood_suspect
-\newcommand{\bestA}{106\xspace} % results/itri626/runs/A_scratch_cnn.json best_epoch + 1 (0-based in file)
-\newcommand{\epochsA}{120\xspace} % results/itri626/runs/A_scratch_cnn.json epochs_run
-\newcommand{\maxEpochsA}{120\xspace} % results/itri626/runs/A_scratch_cnn.json max epochs
-\newcommand{\timeA}{146.9\xspace} % results/itri626/runs/A_scratch_cnn.json train_time_s
+\newcommand{\bestA}{184\xspace} % results/itri626/runs/A_scratch_cnn.json best_epoch + 1 (0-based in file)
+\newcommand{\epochsA}{200\xspace} % results/itri626/runs/A_scratch_cnn.json epochs_run
+\newcommand{\maxEpochsA}{200\xspace} % results/itri626/runs/A_scratch_cnn.json max epochs
+\newcommand{\timeA}{390.3\xspace} % results/itri626/runs/A_scratch_cnn.json train_time_s
 \newcommand{\bestB}{19\xspace} % results/itri626/runs/B_convnext_tiny.json best_epoch + 1 (0-based in file)
 \newcommand{\epochsB}{20\xspace} % results/itri626/runs/B_convnext_tiny.json epochs_run
 \newcommand{\maxEpochsB}{20\xspace} % results/itri626/runs/B_convnext_tiny.json max epochs
@@ -70,7 +70,7 @@
 \newcommand{\epochsC}{34\xspace} % results/itri626/runs/C_siglip_so400m_linear.json epochs_run
 \newcommand{\maxEpochsC}{200\xspace} % results/itri626/runs/C_siglip_so400m_linear.json max epochs
 \newcommand{\timeC}{1.7\xspace} % results/itri626/runs/C_siglip_so400m_linear.json train_time_s
-\newcommand{\vramA}{430\xspace} % metrics.json A peak_vram_mb
+\newcommand{\vramA}{435\xspace} % metrics.json A peak_vram_mb
 \newcommand{\vramB}{2,312\xspace} % metrics.json B peak_vram_mb
 \newcommand{\paramsHead}{23,060\xspace} % runs/C trainable_params
 \newcommand{\paramsA}{1,187,636\xspace} % hyperparameters.csv A total_params
@@ -79,23 +79,23 @@
 \newcommand{\nTies}{3\xspace} % metrics.json head_weight_decay_grid: count at max val_macro_f1
 \newcommand{\gpuName}{NVIDIA GeForce RTX 4060 Ti\xspace} % results/itri626/environment.json gpu.name
 \newcommand{\gpuMem}{7.7\xspace} % results/itri626/environment.json gpu.memory_gib
-\newcommand{\accA}{0.354\xspace} % metrics.json models.A_scratch_cnn.test.accuracy
-\newcommand{\foneA}{0.336\xspace} % metrics.json models.A_scratch_cnn.test.macro_f1
-\newcommand{\mpA}{0.339\xspace} % metrics.json models.A_scratch_cnn.test.macro_precision
-\newcommand{\mrA}{0.343\xspace} % metrics.json models.A_scratch_cnn.test.macro_recall
-\newcommand{\balA}{0.343\xspace} % metrics.json models.A_scratch_cnn.test.balanced_accuracy
-\newcommand{\wfoneA}{0.347\xspace} % metrics.json models.A_scratch_cnn.test.weighted_f1
-\newcommand{\loglossA}{2.334\xspace} % metrics.json models.A_scratch_cnn.test.log_loss
-\newcommand{\nCorrectA}{148\xspace} % preds/A_scratch_cnn_test.npz argmax==y
-\newcommand{\nWrongA}{270\xspace} % preds/A_scratch_cnn_test.npz argmax!=y
-\newcommand{\accLoA}{0.306\xspace} % bootstrap (2000, rng 0) 2.5 pct
-\newcommand{\accHiA}{0.400\xspace} % bootstrap 97.5 pct
-\newcommand{\foneLoA}{0.288\xspace} % bootstrap macro-F1 2.5 pct
-\newcommand{\foneHiA}{0.372\xspace} % bootstrap macro-F1 97.5 pct
-\newcommand{\valAccA}{0.339\xspace} % metrics.json models.A_scratch_cnn.val_at_best_epoch.accuracy
-\newcommand{\valFoneA}{0.329\xspace} % metrics.json models.A_scratch_cnn.val_at_best_epoch.macro_f1
-\newcommand{\confOkA}{0.59\xspace} % preds/A_scratch_cnn_test.npz mean max-prob on correct
-\newcommand{\confBadA}{0.31\xspace} % preds/A_scratch_cnn_test.npz mean max-prob on wrong
+\newcommand{\accA}{0.400\xspace} % metrics.json models.A_scratch_cnn.test.accuracy
+\newcommand{\foneA}{0.392\xspace} % metrics.json models.A_scratch_cnn.test.macro_f1
+\newcommand{\mpA}{0.399\xspace} % metrics.json models.A_scratch_cnn.test.macro_precision
+\newcommand{\mrA}{0.391\xspace} % metrics.json models.A_scratch_cnn.test.macro_recall
+\newcommand{\balA}{0.391\xspace} % metrics.json models.A_scratch_cnn.test.balanced_accuracy
+\newcommand{\wfoneA}{0.400\xspace} % metrics.json models.A_scratch_cnn.test.weighted_f1
+\newcommand{\loglossA}{2.361\xspace} % metrics.json models.A_scratch_cnn.test.log_loss
+\newcommand{\nCorrectA}{167\xspace} % preds/A_scratch_cnn_test.npz argmax==y
+\newcommand{\nWrongA}{251\xspace} % preds/A_scratch_cnn_test.npz argmax!=y
+\newcommand{\accLoA}{0.354\xspace} % bootstrap (2000, rng 0) 2.5 pct
+\newcommand{\accHiA}{0.445\xspace} % bootstrap 97.5 pct
+\newcommand{\foneLoA}{0.342\xspace} % bootstrap macro-F1 2.5 pct
+\newcommand{\foneHiA}{0.432\xspace} % bootstrap macro-F1 97.5 pct
+\newcommand{\valAccA}{0.378\xspace} % metrics.json models.A_scratch_cnn.val_at_best_epoch.accuracy
+\newcommand{\valFoneA}{0.374\xspace} % metrics.json models.A_scratch_cnn.val_at_best_epoch.macro_f1
+\newcommand{\confOkA}{0.67\xspace} % preds/A_scratch_cnn_test.npz mean max-prob on correct
+\newcommand{\confBadA}{0.39\xspace} % preds/A_scratch_cnn_test.npz mean max-prob on wrong
 \newcommand{\accB}{0.636\xspace} % metrics.json models.B_convnext_tiny.test.accuracy
 \newcommand{\foneB}{0.628\xspace} % metrics.json models.B_convnext_tiny.test.macro_f1
 \newcommand{\mpB}{0.642\xspace} % metrics.json models.B_convnext_tiny.test.macro_precision
@@ -135,68 +135,68 @@
 \newcommand{\accRB}{0.837\xspace} % metrics.json references.R2_deployed_fused.test.accuracy
 \newcommand{\foneRB}{0.834\xspace} % metrics.json references.R2_deployed_fused.test.macro_f1
 \newcommand{\gapRAC}{4\xspace} % R1 correct - C correct (test images)
-\newcommand{\diffBA}{28.2\xspace} % acc difference BA (points)
-\newcommand{\diffLoBA}{23.2\xspace} % paired bootstrap 2.5 pct BA (points)
-\newcommand{\diffHiBA}{33.5\xspace} % paired bootstrap 97.5 pct BA (points)
-\newcommand{\onlyFirstBA}{137\xspace} % McNemar discordant BA: first right only
-\newcommand{\onlySecondBA}{19\xspace} % McNemar discordant BA: second right only
-\newcommand{\pvalBA}{$3.1\times10^{-23}$\xspace} % exact binomial McNemar BA
+\newcommand{\diffBA}{23.7\xspace} % acc difference BA (points)
+\newcommand{\diffLoBA}{18.9\xspace} % paired bootstrap 2.5 pct BA (points)
+\newcommand{\diffHiBA}{28.9\xspace} % paired bootstrap 97.5 pct BA (points)
+\newcommand{\onlyFirstBA}{119\xspace} % McNemar discordant BA: first right only
+\newcommand{\onlySecondBA}{20\xspace} % McNemar discordant BA: second right only
+\newcommand{\pvalBA}{$2.4\times10^{-18}$\xspace} % exact binomial McNemar BA
 \newcommand{\diffCB}{18.7\xspace} % acc difference CB (points)
 \newcommand{\diffLoCB}{14.1\xspace} % paired bootstrap 2.5 pct CB (points)
 \newcommand{\diffHiCB}{23.2\xspace} % paired bootstrap 97.5 pct CB (points)
 \newcommand{\onlyFirstCB}{92\xspace} % McNemar discordant CB: first right only
 \newcommand{\onlySecondCB}{14\xspace} % McNemar discordant CB: second right only
 \newcommand{\pvalCB}{$3.1\times10^{-15}$\xspace} % exact binomial McNemar CB
-\newcommand{\diffCA}{46.9\xspace} % acc difference CA (points)
-\newcommand{\diffLoCA}{41.9\xspace} % paired bootstrap 2.5 pct CA (points)
-\newcommand{\diffHiCA}{51.9\xspace} % paired bootstrap 97.5 pct CA (points)
-\newcommand{\onlyFirstCA}{202\xspace} % McNemar discordant CA: first right only
-\newcommand{\onlySecondCA}{6\xspace} % McNemar discordant CA: second right only
-\newcommand{\pvalCA}{$5.2\times10^{-52}$\xspace} % exact binomial McNemar CA
-\newcommand{\allRight}{125\xspace} % preds: all three correct
-\newcommand{\allWrong}{58\xspace} % preds: all three wrong
+\newcommand{\diffCA}{42.3\xspace} % acc difference CA (points)
+\newcommand{\diffLoCA}{37.3\xspace} % paired bootstrap 2.5 pct CA (points)
+\newcommand{\diffHiCA}{47.4\xspace} % paired bootstrap 97.5 pct CA (points)
+\newcommand{\onlyFirstCA}{184\xspace} % McNemar discordant CA: first right only
+\newcommand{\onlySecondCA}{7\xspace} % McNemar discordant CA: second right only
+\newcommand{\pvalCA}{$1.1\times10^{-45}$\xspace} % exact binomial McNemar CA
+\newcommand{\allRight}{143\xspace} % preds: all three correct
+\newcommand{\allWrong}{57\xspace} % preds: all three wrong
 \newcommand{\onlyC}{75\xspace} % preds: only C correct
-\newcommand{\bcNotA}{127\xspace} % preds: B and C correct, A wrong
-\newcommand{\cWrongOther}{16\xspace} % preds: C wrong but A or B right
+\newcommand{\bcNotA}{109\xspace} % preds: B and C correct, A wrong
+\newcommand{\cWrongOther}{17\xspace} % preds: C wrong but A or B right
 \newcommand{\worstA}{fuse\xspace} % per_class.csv A_scratch_cnn argmin f1
-\newcommand{\worstFoneA}{0.11\xspace} % per_class.csv A_scratch_cnn min f1
+\newcommand{\worstFoneA}{0.18\xspace} % per_class.csv A_scratch_cnn min f1
 \newcommand{\bestClsA}{microcontroller board\xspace} % per_class.csv A_scratch_cnn argmax f1
-\newcommand{\bestFoneA}{0.60\xspace} % per_class.csv A_scratch_cnn max f1
-\newcommand{\rhoA}{+0.72\xspace} % Spearman(train images per class, test F1) A_scratch_cnn
-\newcommand{\rhopA}{0.00\xspace} % Spearman p A_scratch_cnn
-\newcommand{\recResA}{0.32\xspace} % metrics.json A_scratch_cnn per_class.resistor.recall
+\newcommand{\bestFoneA}{0.68\xspace} % per_class.csv A_scratch_cnn max f1
+\newcommand{\rhoA}{+0.51\xspace} % Spearman(train images per class, test F1) A_scratch_cnn
+\newcommand{\rhopA}{0.02\xspace} % Spearman p A_scratch_cnn
+\newcommand{\recResA}{0.27\xspace} % metrics.json A_scratch_cnn per_class.resistor.recall
 \newcommand{\precResA}{0.30\xspace} % metrics.json A_scratch_cnn per_class.resistor.precision
-\newcommand{\foneResA}{0.31\xspace} % metrics.json A_scratch_cnn per_class.resistor.f1
-\newcommand{\recFuseA}{0.10\xspace} % metrics.json A_scratch_cnn per_class.fuse.recall
-\newcommand{\precFuseA}{0.12\xspace} % metrics.json A_scratch_cnn per_class.fuse.precision
-\newcommand{\foneFuseA}{0.11\xspace} % metrics.json A_scratch_cnn per_class.fuse.f1
+\newcommand{\foneResA}{0.29\xspace} % metrics.json A_scratch_cnn per_class.resistor.f1
+\newcommand{\recFuseA}{0.20\xspace} % metrics.json A_scratch_cnn per_class.fuse.recall
+\newcommand{\precFuseA}{0.16\xspace} % metrics.json A_scratch_cnn per_class.fuse.precision
+\newcommand{\foneFuseA}{0.18\xspace} % metrics.json A_scratch_cnn per_class.fuse.f1
 \newcommand{\recSwitchA}{0.68\xspace} % metrics.json A_scratch_cnn per_class.switch.recall
-\newcommand{\precSwitchA}{0.53\xspace} % metrics.json A_scratch_cnn per_class.switch.precision
-\newcommand{\foneSwitchA}{0.60\xspace} % metrics.json A_scratch_cnn per_class.switch.f1
-\newcommand{\recLedA}{0.28\xspace} % metrics.json A_scratch_cnn per_class.led.recall
-\newcommand{\precLedA}{0.23\xspace} % metrics.json A_scratch_cnn per_class.led.precision
-\newcommand{\foneLedA}{0.25\xspace} % metrics.json A_scratch_cnn per_class.led.f1
-\newcommand{\recTrfA}{0.17\xspace} % metrics.json A_scratch_cnn per_class.transformer.recall
-\newcommand{\precTrfA}{0.20\xspace} % metrics.json A_scratch_cnn per_class.transformer.precision
-\newcommand{\foneTrfA}{0.18\xspace} % metrics.json A_scratch_cnn per_class.transformer.f1
-\newcommand{\recCapA}{0.12\xspace} % metrics.json A_scratch_cnn per_class.capacitor.recall
-\newcommand{\precCapA}{0.12\xspace} % metrics.json A_scratch_cnn per_class.capacitor.precision
-\newcommand{\foneCapA}{0.12\xspace} % metrics.json A_scratch_cnn per_class.capacitor.f1
-\newcommand{\recIcA}{0.50\xspace} % metrics.json A_scratch_cnn per_class.ic chip.recall
-\newcommand{\precIcA}{0.46\xspace} % metrics.json A_scratch_cnn per_class.ic chip.precision
-\newcommand{\foneIcA}{0.48\xspace} % metrics.json A_scratch_cnn per_class.ic chip.f1
-\newcommand{\recDiodeA}{0.14\xspace} % metrics.json A_scratch_cnn per_class.diode.recall
-\newcommand{\precDiodeA}{0.25\xspace} % metrics.json A_scratch_cnn per_class.diode.precision
-\newcommand{\foneDiodeA}{0.18\xspace} % metrics.json A_scratch_cnn per_class.diode.f1
-\newcommand{\recPsmA}{0.23\xspace} % metrics.json A_scratch_cnn per_class.power supply module.recall
-\newcommand{\precPsmA}{0.23\xspace} % metrics.json A_scratch_cnn per_class.power supply module.precision
-\newcommand{\fonePsmA}{0.23\xspace} % metrics.json A_scratch_cnn per_class.power supply module.f1
-\newcommand{\recPotA}{0.43\xspace} % metrics.json A_scratch_cnn per_class.potentiometer.recall
-\newcommand{\precPotA}{0.32\xspace} % metrics.json A_scratch_cnn per_class.potentiometer.precision
-\newcommand{\fonePotA}{0.37\xspace} % metrics.json A_scratch_cnn per_class.potentiometer.f1
-\newcommand{\recXtalA}{0.33\xspace} % metrics.json A_scratch_cnn per_class.crystal oscillator.recall
-\newcommand{\precXtalA}{0.29\xspace} % metrics.json A_scratch_cnn per_class.crystal oscillator.precision
-\newcommand{\foneXtalA}{0.31\xspace} % metrics.json A_scratch_cnn per_class.crystal oscillator.f1
+\newcommand{\precSwitchA}{0.61\xspace} % metrics.json A_scratch_cnn per_class.switch.precision
+\newcommand{\foneSwitchA}{0.64\xspace} % metrics.json A_scratch_cnn per_class.switch.f1
+\newcommand{\recLedA}{0.22\xspace} % metrics.json A_scratch_cnn per_class.led.recall
+\newcommand{\precLedA}{0.21\xspace} % metrics.json A_scratch_cnn per_class.led.precision
+\newcommand{\foneLedA}{0.22\xspace} % metrics.json A_scratch_cnn per_class.led.f1
+\newcommand{\recTrfA}{0.22\xspace} % metrics.json A_scratch_cnn per_class.transformer.recall
+\newcommand{\precTrfA}{0.25\xspace} % metrics.json A_scratch_cnn per_class.transformer.precision
+\newcommand{\foneTrfA}{0.24\xspace} % metrics.json A_scratch_cnn per_class.transformer.f1
+\newcommand{\recCapA}{0.29\xspace} % metrics.json A_scratch_cnn per_class.capacitor.recall
+\newcommand{\precCapA}{0.33\xspace} % metrics.json A_scratch_cnn per_class.capacitor.precision
+\newcommand{\foneCapA}{0.31\xspace} % metrics.json A_scratch_cnn per_class.capacitor.f1
+\newcommand{\recIcA}{0.41\xspace} % metrics.json A_scratch_cnn per_class.ic chip.recall
+\newcommand{\precIcA}{0.47\xspace} % metrics.json A_scratch_cnn per_class.ic chip.precision
+\newcommand{\foneIcA}{0.44\xspace} % metrics.json A_scratch_cnn per_class.ic chip.f1
+\newcommand{\recDiodeA}{0.38\xspace} % metrics.json A_scratch_cnn per_class.diode.recall
+\newcommand{\precDiodeA}{0.40\xspace} % metrics.json A_scratch_cnn per_class.diode.precision
+\newcommand{\foneDiodeA}{0.39\xspace} % metrics.json A_scratch_cnn per_class.diode.f1
+\newcommand{\recPsmA}{0.36\xspace} % metrics.json A_scratch_cnn per_class.power supply module.recall
+\newcommand{\precPsmA}{0.42\xspace} % metrics.json A_scratch_cnn per_class.power supply module.precision
+\newcommand{\fonePsmA}{0.39\xspace} % metrics.json A_scratch_cnn per_class.power supply module.f1
+\newcommand{\recPotA}{0.57\xspace} % metrics.json A_scratch_cnn per_class.potentiometer.recall
+\newcommand{\precPotA}{0.67\xspace} % metrics.json A_scratch_cnn per_class.potentiometer.precision
+\newcommand{\fonePotA}{0.62\xspace} % metrics.json A_scratch_cnn per_class.potentiometer.f1
+\newcommand{\recXtalA}{0.24\xspace} % metrics.json A_scratch_cnn per_class.crystal oscillator.recall
+\newcommand{\precXtalA}{0.24\xspace} % metrics.json A_scratch_cnn per_class.crystal oscillator.precision
+\newcommand{\foneXtalA}{0.24\xspace} % metrics.json A_scratch_cnn per_class.crystal oscillator.f1
 \newcommand{\worstB}{fuse\xspace} % per_class.csv B_convnext_tiny argmin f1
 \newcommand{\worstFoneB}{0.34\xspace} % per_class.csv B_convnext_tiny min f1
 \newcommand{\bestClsB}{jumper wire\xspace} % per_class.csv B_convnext_tiny argmax f1
@@ -275,23 +275,23 @@
 \newcommand{\recXtalC}{0.90\xspace} % metrics.json C_siglip_so400m_linear per_class.crystal oscillator.recall
 \newcommand{\precXtalC}{0.76\xspace} % metrics.json C_siglip_so400m_linear per_class.crystal oscillator.precision
 \newcommand{\foneXtalC}{0.83\xspace} % metrics.json C_siglip_so400m_linear per_class.crystal oscillator.f1
-\newcommand{\confusedSum}{resistor $\rightarrow$ crystal oscillator (8); breadboard $\rightarrow$ power supply module (6); crystal oscillator $\rightarrow$ potentiometer (6); heat sink $\rightarrow$ crystal oscillator (6)\xspace} % metrics.json confusion matrices of A+B+C summed, top 4 off-diagonal
+\newcommand{\confusedSum}{resistor $\rightarrow$ crystal oscillator (8); jumper wire $\rightarrow$ connector (7); transistor $\rightarrow$ diode (7); crystal oscillator $\rightarrow$ relay (6)\xspace} % metrics.json confusion matrices of A+B+C summed, top 4 off-diagonal
 \newcommand{\cmResIndA}{1\xspace} % metrics.json A_scratch_cnn confusion[resistor][inductor coil]
 \newcommand{\cmResIndB}{0\xspace} % metrics.json B_convnext_tiny confusion[resistor][inductor coil]
 \newcommand{\cmResIndC}{4\xspace} % metrics.json C_siglip_so400m_linear confusion[resistor][inductor coil]
-\newcommand{\cmJumpConA}{0\xspace} % metrics.json A_scratch_cnn confusion[jumper wire][connector]
+\newcommand{\cmJumpConA}{2\xspace} % metrics.json A_scratch_cnn confusion[jumper wire][connector]
 \newcommand{\cmJumpConB}{2\xspace} % metrics.json B_convnext_tiny confusion[jumper wire][connector]
 \newcommand{\cmJumpConC}{3\xspace} % metrics.json C_siglip_so400m_linear confusion[jumper wire][connector]
 \newcommand{\cmResXtalA}{2\xspace} % metrics.json A_scratch_cnn confusion[resistor][crystal oscillator]
 \newcommand{\cmResXtalB}{5\xspace} % metrics.json B_convnext_tiny confusion[resistor][crystal oscillator]
 \newcommand{\cmResXtalC}{1\xspace} % metrics.json C_siglip_so400m_linear confusion[resistor][crystal oscillator]
-\newcommand{\cmIcMcuA}{1\xspace} % metrics.json A_scratch_cnn confusion[ic chip][microcontroller board]
+\newcommand{\cmIcMcuA}{0\xspace} % metrics.json A_scratch_cnn confusion[ic chip][microcontroller board]
 \newcommand{\cmIcMcuB}{4\xspace} % metrics.json B_convnext_tiny confusion[ic chip][microcontroller board]
 \newcommand{\cmIcMcuC}{0\xspace} % metrics.json C_siglip_so400m_linear confusion[ic chip][microcontroller board]
-\newcommand{\cmFuseConA}{5\xspace} % metrics.json A_scratch_cnn confusion[fuse][connector]
+\newcommand{\cmFuseConA}{2\xspace} % metrics.json A_scratch_cnn confusion[fuse][connector]
 \newcommand{\cmFuseConB}{0\xspace} % metrics.json B_convnext_tiny confusion[fuse][connector]
 \newcommand{\cmFuseConC}{0\xspace} % metrics.json C_siglip_so400m_linear confusion[fuse][connector]
-\newcommand{\cmFuseSwA}{4\xspace} % metrics.json A_scratch_cnn confusion[fuse][switch]
+\newcommand{\cmFuseSwA}{2\xspace} % metrics.json A_scratch_cnn confusion[fuse][switch]
 \newcommand{\cmFuseSwB}{1\xspace} % metrics.json B_convnext_tiny confusion[fuse][switch]
 \newcommand{\cmFuseSwC}{0\xspace} % metrics.json C_siglip_so400m_linear confusion[fuse][switch]
 \newcommand{\cmDiodeLedA}{1\xspace} % metrics.json A_scratch_cnn confusion[diode][led]
@@ -309,39 +309,39 @@
 \newcommand{\cmTrfRelayA}{2\xspace} % metrics.json A_scratch_cnn confusion[transformer][relay]
 \newcommand{\cmTrfRelayB}{3\xspace} % metrics.json B_convnext_tiny confusion[transformer][relay]
 \newcommand{\cmTrfRelayC}{0\xspace} % metrics.json C_siglip_so400m_linear confusion[transformer][relay]
-\newcommand{\cmRelayTrfA}{4\xspace} % metrics.json A_scratch_cnn confusion[relay][transformer]
+\newcommand{\cmRelayTrfA}{3\xspace} % metrics.json A_scratch_cnn confusion[relay][transformer]
 \newcommand{\cmRelayTrfB}{1\xspace} % metrics.json B_convnext_tiny confusion[relay][transformer]
 \newcommand{\cmRelayTrfC}{0\xspace} % metrics.json C_siglip_so400m_linear confusion[relay][transformer]
-\newcommand{\cmLedSwA}{1\xspace} % metrics.json A_scratch_cnn confusion[led][switch]
+\newcommand{\cmLedSwA}{0\xspace} % metrics.json A_scratch_cnn confusion[led][switch]
 \newcommand{\cmLedSwB}{3\xspace} % metrics.json B_convnext_tiny confusion[led][switch]
 \newcommand{\cmLedSwC}{0\xspace} % metrics.json C_siglip_so400m_linear confusion[led][switch]
-\newcommand{\cmResDiodeA}{0\xspace} % metrics.json A_scratch_cnn confusion[resistor][diode]
+\newcommand{\cmResDiodeA}{1\xspace} % metrics.json A_scratch_cnn confusion[resistor][diode]
 \newcommand{\cmResDiodeB}{3\xspace} % metrics.json B_convnext_tiny confusion[resistor][diode]
 \newcommand{\cmResDiodeC}{1\xspace} % metrics.json C_siglip_so400m_linear confusion[resistor][diode]
-\newcommand{\cmCapDiodeA}{1\xspace} % metrics.json A_scratch_cnn confusion[capacitor][diode]
+\newcommand{\cmCapDiodeA}{2\xspace} % metrics.json A_scratch_cnn confusion[capacitor][diode]
 \newcommand{\cmCapDiodeB}{3\xspace} % metrics.json B_convnext_tiny confusion[capacitor][diode]
 \newcommand{\cmCapDiodeC}{0\xspace} % metrics.json C_siglip_so400m_linear confusion[capacitor][diode]
 \newcommand{\cmResCapA}{0\xspace} % metrics.json A_scratch_cnn confusion[resistor][capacitor]
 \newcommand{\cmResCapB}{1\xspace} % metrics.json B_convnext_tiny confusion[resistor][capacitor]
 \newcommand{\cmResCapC}{2\xspace} % metrics.json C_siglip_so400m_linear confusion[resistor][capacitor]
-\newcommand{\cmResTrfA}{1\xspace} % metrics.json A_scratch_cnn confusion[resistor][transformer]
+\newcommand{\cmResTrfA}{0\xspace} % metrics.json A_scratch_cnn confusion[resistor][transformer]
 \newcommand{\cmResTrfB}{0\xspace} % metrics.json B_convnext_tiny confusion[resistor][transformer]
 \newcommand{\cmResTrfC}{2\xspace} % metrics.json C_siglip_so400m_linear confusion[resistor][transformer]
 \newcommand{\cmTrIcA}{3\xspace} % metrics.json A_scratch_cnn confusion[transistor][ic chip]
 \newcommand{\cmTrIcB}{2\xspace} % metrics.json B_convnext_tiny confusion[transistor][ic chip]
 \newcommand{\cmTrIcC}{1\xspace} % metrics.json C_siglip_so400m_linear confusion[transistor][ic chip]
-\newcommand{\cmBbPsmA}{2\xspace} % metrics.json A_scratch_cnn confusion[breadboard][power supply module]
+\newcommand{\cmBbPsmA}{1\xspace} % metrics.json A_scratch_cnn confusion[breadboard][power supply module]
 \newcommand{\cmBbPsmB}{2\xspace} % metrics.json B_convnext_tiny confusion[breadboard][power supply module]
 \newcommand{\cmBbPsmC}{2\xspace} % metrics.json C_siglip_so400m_linear confusion[breadboard][power supply module]
 \newcommand{\cmCapIndA}{1\xspace} % metrics.json A_scratch_cnn confusion[capacitor][inductor coil]
 \newcommand{\cmCapIndB}{0\xspace} % metrics.json B_convnext_tiny confusion[capacitor][inductor coil]
 \newcommand{\cmCapIndC}{2\xspace} % metrics.json C_siglip_so400m_linear confusion[capacitor][inductor coil]
-\newcommand{\trainAccA}{0.59\xspace} % histories.json A_scratch_cnn[best].train_acc
-\newcommand{\minValCEA}{2.357\xspace} % histories.json A_scratch_cnn min val_loss
-\newcommand{\minValCEepA}{118\xspace} % histories.json A_scratch_cnn argmin val_loss + 1
-\newcommand{\valCEA}{2.361\xspace} % histories.json A_scratch_cnn[best].val_loss
-\newcommand{\trainCEA}{1.471\xspace} % histories.json A_scratch_cnn[best].train_ce
-\newcommand{\finalTrainAccA}{0.60\xspace} % histories.json A_scratch_cnn[-1].train_acc
+\newcommand{\trainAccA}{0.83\xspace} % histories.json A_scratch_cnn[best].train_acc
+\newcommand{\minValCEA}{2.447\xspace} % histories.json A_scratch_cnn min val_loss
+\newcommand{\minValCEepA}{81\xspace} % histories.json A_scratch_cnn argmin val_loss + 1
+\newcommand{\valCEA}{2.519\xspace} % histories.json A_scratch_cnn[best].val_loss
+\newcommand{\trainCEA}{0.712\xspace} % histories.json A_scratch_cnn[best].train_ce
+\newcommand{\finalTrainAccA}{0.84\xspace} % histories.json A_scratch_cnn[-1].train_acc
 \newcommand{\epHalfA}{--\xspace} % histories.json A_scratch_cnn first epoch with val_acc>=0.5
 \newcommand{\epTqA}{--\xspace} % histories.json A_scratch_cnn first epoch with val_acc>=0.75
 \newcommand{\trainAccB}{0.90\xspace} % histories.json B_convnext_tiny[best].train_acc
@@ -361,9 +361,9 @@
 \newcommand{\epHalfC}{1\xspace} % histories.json C_siglip_so400m_linear first epoch with val_acc>=0.5
 \newcommand{\epTqC}{3\xspace} % histories.json C_siglip_so400m_linear first epoch with val_acc>=0.75
 \newcommand{\lnTwenty}{3.00\xspace} % ln(20) = chance-level cross-entropy
-\newcommand{\accCleanA}{0.376\xspace} % preds/A_scratch_cnn acc on test ood_suspect==0
-\newcommand{\accOODA}{0.295\xspace} % preds/A_scratch_cnn acc on test ood_suspect==1
-\newcommand{\oodDropA}{8\xspace} % clean - flagged accuracy (points) A_scratch_cnn
+\newcommand{\accCleanA}{0.435\xspace} % preds/A_scratch_cnn acc on test ood_suspect==0
+\newcommand{\accOODA}{0.304\xspace} % preds/A_scratch_cnn acc on test ood_suspect==1
+\newcommand{\oodDropA}{13\xspace} % clean - flagged accuracy (points) A_scratch_cnn
 \newcommand{\accCleanB}{0.686\xspace} % preds/B_convnext_tiny acc on test ood_suspect==0
 \newcommand{\accOODB}{0.500\xspace} % preds/B_convnext_tiny acc on test ood_suspect==1
 \newcommand{\oodDropB}{19\xspace} % clean - flagged accuracy (points) B_convnext_tiny
@@ -435,3 +435,25 @@
 \newcommand{\abDropIn}{0.852\xspace} % cleaning_ablation_siglip_so400m.csv drop_ood.in_acc
 \newcommand{\nPersonTop}{83\xspace} % data/v2/review/ood_suspects.csv top_distractor == person
 \newcommand{\imagesTarSha}{0960de2c881eb839\xspace} % data/v2/leakage_report.json images_tar.sha256 (first 16 hex)
+\newcommand{\foneAOld}{0.336\xspace} % previous build metrics.json (git 47ae396) A test macro_f1
+\newcommand{\accAOld}{0.354\xspace} % previous build metrics.json (git 47ae396) A test accuracy
+\newcommand{\imprFiveAOld}{0.355\xspace} % results/phase2/runs_fixed.jsonl 4e4c6e8f6cf3 5-fold mean macro_f1
+\newcommand{\imprFiveA}{0.390\xspace} % results/runs_win.jsonl b0afa2aa4d60 5-fold mean macro_f1
+\newcommand{\imprFiveKD}{0.436\xspace} % results/runs_win.jsonl fbe64b2765cb 5-fold mean macro_f1
+\newcommand{\imprSchedGain}{3.5\xspace} % 5-fold mean (200 ep - 120 ep) macro-F1, points
+\newcommand{\imprKDGain}{4.6\xspace} % 5-fold mean (KD - 200 ep) macro-F1, points
+\newcommand{\imprKDGainSe}{0.7\xspace} % paired-fold SE of KD - 200 ep, points
+\newcommand{\imprTestA}{0.392\xspace} % results/scratch_cnn_improvement/test_plain_200ep_b0afa2aa4d60_fold0.json macro_f1
+\newcommand{\imprTestKD}{0.393\xspace} % results/scratch_cnn_improvement/test_distill_300ep_fbe64b2765cb_fold0.json macro_f1
+\newcommand{\imprTestAccKD}{0.411\xspace} % results/scratch_cnn_improvement/test_distill_300ep_fbe64b2765cb_fold0.json accuracy
+\newcommand{\imprTestDiffLo}{-4.4\xspace} % results/scratch_cnn_improvement/summary.json paired bootstrap 2.5 pct, points
+\newcommand{\imprTestDiffHi}{+4.5\xspace} % results/scratch_cnn_improvement/summary.json paired bootstrap 97.5 pct, points
+\newcommand{\imprHoldA}{0.257\xspace} % results/scratch_cnn_improvement/web_holdout_plain_200ep_b0afa2aa4d60.json macro_f1
+\newcommand{\imprHoldAccA}{0.283\xspace} % results/scratch_cnn_improvement/web_holdout_plain_200ep_b0afa2aa4d60.json accuracy
+\newcommand{\imprHoldKD}{0.298\xspace} % results/scratch_cnn_improvement/web_holdout_distill_300ep_fbe64b2765cb.json macro_f1
+\newcommand{\imprHoldAccKD}{0.317\xspace} % results/scratch_cnn_improvement/web_holdout_distill_300ep_fbe64b2765cb.json accuracy
+\newcommand{\imprHoldDiff}{+4.0\xspace} % results/scratch_cnn_improvement/web_holdout_summary.json paired bootstrap mean, points
+\newcommand{\imprHoldDiffLo}{+0.3\xspace} % results/scratch_cnn_improvement/web_holdout_summary.json 2.5 pct, points
+\newcommand{\imprHoldDiffHi}{+7.9\xspace} % results/scratch_cnn_improvement/web_holdout_summary.json 97.5 pct, points
+\newcommand{\gpuNameA}{NVIDIA GeForce RTX 4070 Laptop GPU\xspace} % results/itri626/runs/A_scratch_cnn.json machine.gpu.name
+\newcommand{\gpuMemA}{8.0\xspace} % results/itri626/runs/A_scratch_cnn.json machine.gpu.memory_gib
