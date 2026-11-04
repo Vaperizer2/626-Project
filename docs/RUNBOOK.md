@@ -42,7 +42,7 @@ independent accuracy estimate. Allow several seconds for the initial SigLIP load
 
 ## Run the Fast model on an NVIDIA GPU
 
-Fast is the deployed model at 308 px with INT8 weights for TensorRT: the same cross-validated accuracy on the
+Fast is the deployed model at 308 px, INT8 in weights and activations, for TensorRT. It has the same cross-validated accuracy on the
 development folds (0.8268) at 14 ms per picture instead of 113 ms for Deployed on CUDA (RTX 3060 Laptop, in the app).
 The share-2026-10-30 release predates Fast and the GPU launcher: use a bundle built from `main`
 (`apps/gpui-demo/scripts/package_linux.sh`, see below for Fast's model files) or a source build. It needs the GPU
@@ -130,8 +130,8 @@ slightly from Pillow's and the golden comparison does not match. The portable bu
 `turbojpeg-vendored`, so its users need no libjpeg-turbo.
 
 A clean build takes about 2.5 to 3 minutes on legion (the owner's laptop), nearly all of it GPUI Kit. The laptop is
-short of RAM, so the owner runs release builds and full test suites on a Boat.dev CPU sandbox (`boat` CLI). `cargo test -p inference`
-builds the crate without GPUI in under a minute. Options, keys and the profiling setup are in
+short of RAM, so the owner runs release builds and full test suites on a Boat.dev CPU sandbox (`boat` CLI).
+`cargo test -p inference` builds the crate without GPUI in under a minute. Options, keys and the profiling setup are in
 [the app README](../apps/gpui-demo/README.md). A new desktop AI app starts from this one with `scripts/new_app.sh`;
 [TEMPLATE.md](TEMPLATE.md) has the procedure.
 
@@ -174,5 +174,5 @@ models. Test the window on a supported desktop before claiming GUI validation. P
 update the links above and in README. When the archive is at most 1900 MiB, attach the `.tar.gz` and
 `.tar.gz.sha256`. A bundle with Fast is 2.2 GiB before compression, and its ONNX weights barely compress, so expect
 the script to also write `.tar.gz.part-*` files. Then attach the parts and the `.sha256` instead of the `.tar.gz`,
-because GitHub refuses assets over 2 GiB. The bundled `README.txt` explains how to join the parts. Preserve prior releases so
-colleagues can reproduce their downloads. Publish source changes and the matching release together.
+because GitHub refuses assets over 2 GiB. The bundled `README.txt` explains how to join the parts. Preserve prior
+releases so colleagues can reproduce their downloads. Publish source changes and the matching release together.

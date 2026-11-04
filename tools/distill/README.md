@@ -7,9 +7,11 @@ The 2026-10-31 run trained on carlpc2 (RTX 4060 Ti 8 GB), from a copy of this ch
 and the teacher cache were lost with it (README, "Where training runs"). A rerun now starts at step 1 on the laptop
 (RTX 3060 Laptop, 6 GB), the only GPU. Change the `/home/carl/...` paths in `run_carlpc2.sh` and
 `run_fold_diag.sh` first. The B/16 student used 5.7 GB at batch 48 on carlpc2, so expect to lower `--batch` on 6 GB.
-The commands below are the ones the 2026-10-31 run used on carlpc2, with its `/tmp/626-gpu.lock`. On the laptop,
-replace that lock with the laptop's rule for heavy steps: wait for 4 GB of free RAM, take `flock /tmp/626-heavy.lock`
-and run inside `systemd-run --user --scope -p MemoryMax=6G -p MemorySwapMax=2G`. Heavy CPU-only work can run on a
+The commands below are the ones the 2026-10-31 run used on carlpc2, with its `/tmp/626-gpu.lock`. On the laptop, GPU
+steps take `/tmp/626-gpu-bench.lock` instead, the lock the speed harness and the TensorRT probes take, so training
+never overlaps a benchmark. They also follow the laptop's rule for heavy steps: wait until at least 4 GB is
+available (`free -g`), take `flock /tmp/626-heavy.lock`, and run inside
+`systemd-run --user --scope -p MemoryMax=6G -p MemorySwapMax=2G`. Heavy CPU-only work can run on a
 Boat.dev CPU sandbox (`boat` CLI).
 
 1. Build the disjoint pool. Every subdirectory of `--component` and `--generic` is one source.

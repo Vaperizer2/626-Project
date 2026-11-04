@@ -27,8 +27,8 @@ and [EXPERIMENT_LOG.md](EXPERIMENT_LOG.md) for dated research decisions. Older c
   faster than the deployed model on the RTX 3060 Laptop, with the same 5-fold dev accuracy (0.8268). It is the app's
   default where TensorRT is installed. The acceptable faster variants cost 0.1 to 0.5 points. The best, Q5 (MLP pruning
   plus QAT distillation, 11.2 times faster, −0.08 points), is acceptable but not shipped: it was picked from five
-  variants on the same folds, and on 2026-11-03 the owner chose to keep the current Fast (`compose_int8_res308`). The scripts are in
-  `tools/speed*/`; [EXPERIMENT_LOG.md](EXPERIMENT_LOG.md) has the results.
+  variants on the same folds, and on 2026-11-03 the owner chose to keep the current Fast (`compose_int8_res308`).
+  The scripts are in `tools/speed*/`; [EXPERIMENT_LOG.md](EXPERIMENT_LOG.md) has the results.
 - TensorRT 10.16.1 miscompiles these graphs after two onnxruntime rewrites (batch above 1; token merging with INT8).
   A manifest's `session_config` turns them off; the shipped Fast model is batch 1 without token merging and needs
   neither. [docs/TEMPLATE.md](docs/TEMPLATE.md) has the setting.

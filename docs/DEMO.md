@@ -111,7 +111,7 @@ to depend on its core count.
 ### The desktop app on the laptop GPU (RTX 3060 Laptop, 2026-11-01)
 
 The GPUI app (`apps/gpui-demo`) runs Deployed on CUDA and **Fast** on TensorRT. Fast is the deployed recipe on the
-speed track's `compose_int8_res308` backbone: 308 px input and INT8 weights (SmoothQuant), with the fused head and
+speed track's `compose_int8_res308` backbone: 308 px input and INT8 weights and activations (SmoothQuant), with the fused head and
 the temperature in the graph (`exports/fast/`). On the development folds its cross-validated accuracy is 0.8268, the
 same as Deployed's (`exports/fast/fit_report.json`; the sealed test is spent, so there is no test number). Numbers
 through the app's inference service, onnxruntime 1.31.1, TensorRT 10.16.1, `gpui-demo bench` and `classify`

@@ -10,8 +10,8 @@ on an NVIDIA GPU when you add the GPU runtime (see GPU below). Five models are i
   B  ConvNeXt-T, fine-tuned                 (224 px input, ~110 MB)
   C  SigLIP ViT + linear head               (384 px input, shares the 1.7 GB SigLIP weights)
   Deployed  fused SigLIP model, calibrated; it answers "Unsure" when its top probability is below 50%
-  Fast      the Deployed model at 308 px with INT8 weights for NVIDIA TensorRT: same cross-validated accuracy,
-            under 20 ms per picture instead of about 115 ms on an RTX 3060 Laptop (440 MB; needs the GPU runtime)
+  Fast      the Deployed model at 308 px, INT8 in weights and activations, for NVIDIA TensorRT: same
+            cross-validated accuracy, under 20 ms per picture instead of about 115 ms on an RTX 3060 Laptop (440 MB; needs the GPU runtime)
 
 
 Requirements
