@@ -1,0 +1,192 @@
+//! The demo stack (`crate::demo`) with its pictures, decoded once at start-up on their own thread (rayon), and the
+//! answers each picture got, judged against its true label. The Demo and Benchmark tabs share it, so the benchmark's
+//! answers show on the Demo cards, and they share the verdict's looks and the header row here.
+
+use std::sync::Arc;
+use std::time::Instant;
+
+use futures::channel::mpsc as fmpsc;
+use gpui_kit::component::{ActiveTheme as _, h_flex, tag::Tag, v_flex};
+use gpui_kit::{App, Context, Div, FontWeight, Hsla, RenderImage, div, prelude::*};
+use image::RgbImage;
+use inference::{preprocess, prof};
+use rayon::prelude::*;
+
+use super::images;
+use super::results::Results;
+use super::theme;
+use super::widgets::{self, Lucide};
+use crate::demo::{DemoStack, Verdict};
+use inference::service::ImageInput;
+
+#[derive(Default)]
+pub struct Item {
+    pub thumb: Option<Arc<RenderImage>>,
+    pub full: Option<Arc<RenderImage>>,
+    pub rgb: Option<Arc<RgbImage>>,
+    pub load_error: Option<String>,
+    pub results: Results,
+}
+
+pub struct Stack {
+    stack: Result<DemoStack, String>,
+    /// one per image of the stack, in its order
+    pub items: Vec<Item>,
+}
+
+impl Stack {
+    /// The stack `demo::locate` finds; its pictures decode in the background.
+    pub fn new(cx: &mut Context<Self>) -> Self {
+        let stack = crate::demo::locate().and_then(|d| DemoStack::load(&d)).map_err(|e| format!("{e:#}"));
+        let items = match &stack {
+            Ok(s) => {
+                log!("demo stack: {} images in {}", s.images.len(), s.dir.display());
+                let rx = load_thumbnails((0..s.images.len()).map(|i| s.path(i)).collect());
+                super::pump(cx, rx, |this, (i, r), cx| {
+                    if let Some(it) = this.items.get_mut(i) {
+                        match r {
+                            Ok(d) => {
+                                it.thumb = Some(d.thumb);
+                                it.full = Some(d.full);
+                                it.rgb = Some(d.rgb);
+                            }
+                            Err(e) => it.load_error = Some(e),
+                        }
+                    }
+                    cx.notify();
+                });
+                (0..s.images.len()).map(|_| Item::default()).collect()
+            }
+            Err(e) => {
+                log!("demo stack unavailable: {e}");
+                Vec::new()
+            }
+        };
+        Self { stack, items }
+    }
+
+    pub fn stack(&self) -> Option<&DemoStack> {
+        self.stack.as_ref().ok()
+    }
+
+    /// Why there is no stack.
+    pub fn error(&self) -> Option<&str> {
+        self.stack.as_ref().err().map(String::as_str)
+    }
+
+    /// What a request for image `i` sends: the decoded picture once it is ready, else its file.
+    pub fn input(&self, i: usize) -> Option<ImageInput> {
+        match self.items.get(i)?.rgb.clone() {
+            Some(rgb) => Some(ImageInput::Decoded(rgb)),
+            None => Some(ImageInput::Source(inference::fetch::Source::File(self.stack()?.path(i)))),
+        }
+    }
+}
+
+/// Demo grid thumbnails: decoded once at 2x the card size (sharp on HiDPI, cheap to sample).
+const THUMB_MAX_SIDE: u32 = 360;
+
+/// BGRA texture for GPUI, long side <= `max_side`.
+fn texture(rgb: &RgbImage, max_side: u32) -> Arc<RenderImage> {
+    images::render(preprocess::display_bgra(rgb, max_side))
+}
+
+/// One decoded demo image.
+struct Decoded {
+    rgb: Arc<RgbImage>,
+    thumb: Arc<RenderImage>,
+    full: Arc<RenderImage>,
+}
+
+/// Decode every demo image once, in parallel on a pool of their own (one at a time if no pool can be built); results
+/// arrive in completion order as (index, result).
+/// The decodes run on a pool of their own, half the cores: on rayon's global pool the inference service's
+/// preprocessing would queue behind every picture of the stack.
+fn load_thumbnails(paths: Vec<std::path::PathBuf>) -> fmpsc::UnboundedReceiver<(usize, Result<Decoded, String>)> {
+    let (tx, rx) = fmpsc::unbounded();
+    std::thread::Builder::new()
+        .name("thumbnails".into())
+        .spawn(move || {
+            let t0 = Instant::now();
+            let threads = std::thread::available_parallelism().map_or(1, |n| (n.get() / 2).max(1));
+            let one = |i: usize, p: &std::path::Path| {
+                let r = prof!("demo::decode_and_thumbnail", decode_one(p));
+                let _ = tx.unbounded_send((i, r));
+            };
+            match rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .thread_name(|i| format!("thumbnails-{i}"))
+                .build()
+            {
+                Ok(pool) => pool.install(|| paths.par_iter().enumerate().for_each(|(i, p)| one(i, p))),
+                Err(e) => {
+                    // no thread to spare: decode here, one picture at a time
+                    log!("thumbnail pool: {e}; decoding on this thread");
+                    paths.iter().enumerate().for_each(|(i, p)| one(i, p));
+                }
+            }
+            log!("demo stack decoded in {:.0} ms", t0.elapsed().as_secs_f64() * 1000.0);
+        })
+        .expect("spawn thumbnail thread");
+    rx
+}
+
+fn decode_one(p: &std::path::Path) -> Result<Decoded, String> {
+    let bytes = std::fs::read(p).map_err(|e| format!("{}: {e}", p.display()))?;
+    let rgb = preprocess::decode(&bytes).map_err(|e| format!("{}: {e:#}", p.display()))?;
+    let thumb = texture(&rgb, THUMB_MAX_SIDE);
+    let full = texture(&rgb, images::DISPLAY_MAX_SIDE);
+    Ok(Decoded { rgb: Arc::new(rgb), thumb, full })
+}
+
+/// The verdict's icon: three different shapes, so the verdict never rests on colour alone.
+pub fn verdict_icon(v: Verdict) -> Lucide {
+    match v {
+        Verdict::Correct => Lucide::CircleCheck,
+        Verdict::Wrong => Lucide::CircleX,
+        Verdict::Unsure => Lucide::CircleQuestionMark,
+    }
+}
+
+/// The verdict's colour and its soft tint: bluish green, vermillion and violet, which colour-blind eyes tell apart.
+pub fn verdict_colors(v: Verdict, cx: &App) -> (Hsla, Hsla) {
+    let (t, r) = (cx.theme(), theme::roles(cx));
+    match v {
+        Verdict::Correct => (t.success, t.green_light),
+        Verdict::Wrong => (r.wrong, t.red_light),
+        Verdict::Unsure => (r.unsure, r.unsure_soft),
+    }
+}
+
+/// Pill: the verdict's icon and word on its soft tint.
+pub fn verdict_tag(v: Verdict, small: bool, cx: &App) -> Tag {
+    let text = match v {
+        Verdict::Correct => "Correct",
+        Verdict::Wrong => "Wrong",
+        Verdict::Unsure => "Unsure",
+    };
+    widgets::tag(verdict_icon(v), text, verdict_colors(v, cx), small)
+}
+
+/// The Demo and Benchmark tabs' header row: title and subtitle on the left, `controls` on the right. The text gives way (truncates)
+/// so the controls stay inside the window at its smallest size.
+pub fn tab_header(title: &str, subtitle: String, controls: impl IntoElement, cx: &App) -> Div {
+    let (t, r) = (cx.theme(), theme::roles(cx));
+    h_flex()
+        .justify_between()
+        .items_center()
+        .gap_4()
+        .px_4()
+        .py_3()
+        .bg(r.chrome)
+        .border_b_1()
+        .border_color(t.border)
+        .child(
+            v_flex()
+                .flex_1()
+                .min_w_0()
+                .child(div().text_lg().font_weight(FontWeight::SEMIBOLD).truncate().child(title.to_string()))
+                .child(div().text_xs().text_color(t.muted_foreground).truncate().child(subtitle)),
+        )
+        .child(h_flex().flex_none().gap_4().items_center().child(controls))
+}

@@ -3,7 +3,8 @@
 **Share / run:** [private GitHub repository](https://github.com/Vaperizer2/626-Project) ·
 [download models and Linux demo](https://github.com/Vaperizer2/626-Project/releases/tag/share-2026-10-30) ·
 [runbook](docs/RUNBOOK.md) · [current status](STATUS.md) · [agent handoff](AGENTS.md).
-The release includes all four model choices; cloning the source alone does not download the ONNX weights.
+That release has four of the app's five models (A, B, C and Deployed; Fast came later). Cloning the source alone
+does not download the ONNX weights.
 Colleagues need repository access (Settings → Collaborators); send the release link after they accept the invitation.
 
 One importable package (`src/compclass`) trains, probes and evaluates every model family the project compares,
@@ -81,7 +82,8 @@ uv run python scripts/make_report_figures.py
 ```
 
 `exports/final/model.onnx` and `model.onnx.data` are release assets inside the Linux bundle, not Git objects.
-Follow [the runbook](docs/RUNBOOK.md) to download all models into the source checkout or run the bundled demo.
+Follow [the runbook](docs/RUNBOOK.md) to download models A, B, C and Deployed into the source checkout or run the
+bundled demo. Fast's ONNX files are not in a release yet (see the runbook).
 The shared SigLIP weights alone are 1,714,593,792 bytes (1.60 GiB). Exporting again requires the training inputs/caches;
 use the release for inference without rebuilding the dataset.
 
@@ -91,13 +93,21 @@ use the release for inference without rebuilding the dataset.
 src/compclass/        package: data (manifest, folds, transforms), models/registry.py (one builder per family),
                       train, features (frozen probe), zeroshot, classical, evaluate, export, final, demo
 configs/              base.yaml (every knob, commented) + one YAML per family / ablation
-tools/                build_dataset_v2.py (dataset v2 + leakage report), build_web_holdout.py
-scripts/              make_report_figures.py (report figures/tables), gpu_witness.py (hardware check)
+tools/                build_dataset_v2.py (dataset v2 + leakage report), build_web_holdout.py, export_splits.py,
+                      export_itri626_models.py, gen_manifests.py (the app's model.json files); speed/ (the frozen
+                      speed harness), speed2/ to speed4/, compose/, quant/, prune/, tokens/, trtbugs/, distill/
+                      (the speed work; Fast comes from compose/ and quant/), hardcases/ (the hard-case study)
+scripts/              make_report_figures.py (report figures/tables), gpu_witness.py (hardware check),
+                      itri626_experiments.py (models A, B, C), new_app.sh (a new app from the template)
+notebooks/            ITRI626_three_models.ipynb (executed A/B/C comparison), ITRI626_training.ipynb (training)
+crates/inference/     Rust: the models without a UI (manifests, inference service, onnxruntime)
+apps/gpui-demo/       Rust: the GPUI desktop app over crates/inference (README.md there)
 data/v2/              manifest.json, leakage_report.json, review/*.csv (duplicate, conflict and OOD audit records)
 results/              phase1/ (probes, zero-shot, HOG, label audit, cleaning), phase1b/ (TTA probes),
                       phase2/ (fine-tunes: runs_fixed.jsonl main, raw_oldschedule/ ablation, per-fold preds),
                       benchmark.csv, leakage_simulation.csv, schedule_ablation_folds012.csv, final/ (sealed test)
-exports/final/        head.npz, labels.json, preprocess.json, fit_report.json, export_report.json
+exports/              models.json (the app's model index); final/ (head.npz, labels.json, preprocess.json,
+                      model.json, fit_report.json, export_report.json), fast/, itri626/ (A and B)
 docs/report/          REPORT.md + figures/ + tables/ (CSV and booktabs .tex)
 docs/models/, docs/concepts/, docs/LEARNING_PATH.md   per-family explainers, concept notes, reading order
 docs/DEMO.md          OpenCV demo guide
@@ -147,23 +157,17 @@ and `results/phase1/cleaning_ablation_siglip_so400m.csv` were aggregated by anal
 repository. `scripts/make_report_figures.py` re-derives `benchmark.csv` and the schedule ablation from the per-fold
 records and asserts that they agree.
 
-## Syncing the laptop checkout to the GPU PC
+## Where training runs
 
-The GPU PC (`carlpc2`) keeps its copy at `~/Projects/626-Project`. Push code with rsync over Tailscale SSH (port
-2222). The virtualenv and raw data are excluded, because each machine builds its own `.venv` with `uv sync` and only
-`data/v2` is needed for training:
-
-```bash
-rsync -avz --delete -e "ssh -p 2222" \
-  --exclude .venv/ --exclude .git/ --exclude data/raw/ --exclude runs/ --exclude runs_v2/ --exclude results/cache/ \
-  --exclude '__pycache__/' --exclude '*.onnx' --exclude '*.onnx.data' \
-  ~/Work/Prototypes/626-Project/ carl@carlpc2.tail498db1.ts.net:~/Projects/626-Project/
-ssh -p 2222 carl@carlpc2.tail498db1.ts.net 'cd ~/Projects/626-Project && uv sync --python 3.12'
-```
-
-`--delete` makes the PC mirror the laptop. `runs/`, `runs_v2/` and `results/cache/` are excluded, so trained
-checkpoints on the PC are never deleted. To bring results back, reverse the direction for the specific `results/…`
-file you need.
+Since 2026-11-03 GPU work runs on the laptop (RTX 3060 Laptop, 6 GB), the only GPU. Heavy CPU work, such as Rust
+release builds and test suites, runs on Boat.dev CPU sandboxes (`boat` CLI). The GPU PC used before (`carlpc2`) is no
+longer available; its sync commands are in Git history. Its speed3 outputs were copied to the laptop, but speed3's
+fp32 base graphs were lost with it, and so were the inputs to rebuild them (the distillation pool images, the
+teacher feature cache and the MLP activation statistics). The pool's Caltech-256 and COCO val2017 sources must be
+downloaded again; the rest of the chain is in `tools/distill/`, `tools/prune/recover.py`, `tools/prune/build.py` and
+`tools/speed2/remote_build.sh`, with GPU PC paths to change. Training that needs more than 6 GB of GPU memory does
+not fit the laptop; speed3's full-rank QAT run (Q5) peaked at 6.7 GB. The remote subcommands of
+`tools/speed3/run.sh` no longer work.
 
 ## Evaluation contract (short)
 
@@ -190,6 +194,7 @@ Source of these numbers: `results/itri626/metrics.json`.
 | Report (PDF, LaTeX source) | [`docs/itri626_report/main.pdf`](docs/itri626_report/main.pdf), `docs/itri626_report/main.tex` |
 | Rubric compliance checklist | [`docs/itri626_report/RUBRIC_CHECKLIST.md`](docs/itri626_report/RUBRIC_CHECKLIST.md) (also report Appendix E) |
 | Executed notebook (outputs, figures, metric tables) | [`notebooks/ITRI626_three_models.ipynb`](notebooks/ITRI626_three_models.ipynb) (+ `notebooks/itri626_helpers.py`) |
+| Training notebook (one section per model: A, B, C, Deployed, Fast) | [`notebooks/ITRI626_training.ipynb`](notebooks/ITRI626_training.ipynb) |
 | Experiment script | `scripts/itri626_experiments.py` → `results/itri626/` (metrics, per-class, histories, predictions, figures) |
 | Data preparation | `tools/build_dataset_v2.py` (cleaning, duplicate clustering, grouped split), `tools/export_splits.py` |
 | Split files | `data/v2/splits/{train,val,test}.csv`, `split_summary.csv` (per-class counts), `split_info.json` |

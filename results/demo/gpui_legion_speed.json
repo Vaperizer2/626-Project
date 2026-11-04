@@ -1,0 +1,700 @@
+{
+ "machine": "legion: RTX 3060 Laptop 6 GB, 20 cores, 15 GB RAM, driver 615.78.08, onnxruntime-gpu 1.31.1, TensorRT 10.16.1, CUDA 13.4, cuDNN 9.27; every process under flock /tmp/626-gpu-bench.lock and a 6 GB memory scope; other agents shared the machine (load average recorded per cold run)",
+ "cold_start": {
+  "what": "gpui-demo classify --json of one image: ready = model load as the app reports it, process_wall = process start to exit (result printed); 3 rounds, configs alternated",
+  "fast-trt-cold": {
+   "providers": "TensorRT + CUDA + CPU",
+   "ready_s": {
+    "median": 45.916,
+    "min": 44.785,
+    "max": 48.143,
+    "n": 3
+   },
+   "process_wall_s": {
+    "median": 49.84,
+    "min": 46.68,
+    "max": 50.81,
+    "n": 3
+   },
+   "peak_rss_mb_max": 6165,
+   "runs": [
+    {
+     "round": 1,
+     "loadavg": 3.76,
+     "ready_s": 44.785,
+     "providers": "TensorRT + CUDA + CPU",
+     "wall_s": 46.68,
+     "peak_rss_mb": 6165,
+     "major_faults": 4861
+    },
+    {
+     "round": 2,
+     "loadavg": 6.51,
+     "ready_s": 48.143,
+     "providers": "TensorRT + CUDA + CPU",
+     "wall_s": 50.81,
+     "peak_rss_mb": 5725,
+     "major_faults": 176039
+    },
+    {
+     "round": 3,
+     "loadavg": 4.72,
+     "ready_s": 45.916,
+     "providers": "TensorRT + CUDA + CPU",
+     "wall_s": 49.84,
+     "peak_rss_mb": 5835,
+     "major_faults": 143037
+    }
+   ]
+  },
+  "fast-trt-warm": {
+   "providers": "TensorRT + CUDA + CPU",
+   "ready_s": {
+    "median": 1.505,
+    "min": 1.368,
+    "max": 3.492,
+    "n": 3
+   },
+   "process_wall_s": {
+    "median": 1.82,
+    "min": 1.66,
+    "max": 7.02,
+    "n": 3
+   },
+   "peak_rss_mb_max": 1419,
+   "runs": [
+    {
+     "round": 1,
+     "loadavg": 8.82,
+     "ready_s": 3.492,
+     "providers": "TensorRT + CUDA + CPU",
+     "wall_s": 7.02,
+     "peak_rss_mb": 1368,
+     "major_faults": 7931
+    },
+    {
+     "round": 2,
+     "loadavg": 6.47,
+     "ready_s": 1.368,
+     "providers": "TensorRT + CUDA + CPU",
+     "wall_s": 1.66,
+     "peak_rss_mb": 1413,
+     "major_faults": 496
+    },
+    {
+     "round": 3,
+     "loadavg": 5.62,
+     "ready_s": 1.505,
+     "providers": "TensorRT + CUDA + CPU",
+     "wall_s": 1.82,
+     "peak_rss_mb": 1419,
+     "major_faults": 281
+    }
+   ]
+  },
+  "deployed-cuda": {
+   "providers": "CUDA + CPU",
+   "ready_s": {
+    "median": 1.117,
+    "min": 1.101,
+    "max": 1.648,
+    "n": 3
+   },
+   "process_wall_s": {
+    "median": 1.84,
+    "min": 1.84,
+    "max": 2.55,
+    "n": 3
+   },
+   "peak_rss_mb_max": 1241,
+   "runs": [
+    {
+     "round": 1,
+     "loadavg": 30.4,
+     "ready_s": 1.648,
+     "providers": "CUDA + CPU",
+     "wall_s": 2.55,
+     "peak_rss_mb": 1223,
+     "major_faults": 1990
+    },
+    {
+     "round": 2,
+     "loadavg": 7.32,
+     "ready_s": 1.101,
+     "providers": "CUDA + CPU",
+     "wall_s": 1.84,
+     "peak_rss_mb": 1232,
+     "major_faults": 558
+    },
+    {
+     "round": 3,
+     "loadavg": 5.62,
+     "ready_s": 1.117,
+     "providers": "CUDA + CPU",
+     "wall_s": 1.84,
+     "peak_rss_mb": 1241,
+     "major_faults": 578
+    }
+   ]
+  },
+  "fast-cuda": {
+   "providers": "CUDA + CPU",
+   "ready_s": {
+    "median": 0.498,
+    "min": 0.497,
+    "max": 1.06,
+    "n": 3
+   },
+   "process_wall_s": {
+    "median": 0.93,
+    "min": 0.89,
+    "max": 1.74,
+    "n": 3
+   },
+   "peak_rss_mb_max": 968,
+   "runs": [
+    {
+     "round": 1,
+     "loadavg": 12.8,
+     "ready_s": 1.06,
+     "providers": "CUDA + CPU",
+     "wall_s": 1.74,
+     "peak_rss_mb": 957,
+     "major_faults": 1107
+    },
+    {
+     "round": 2,
+     "loadavg": 7.32,
+     "ready_s": 0.498,
+     "providers": "CUDA + CPU",
+     "wall_s": 0.89,
+     "peak_rss_mb": 968,
+     "major_faults": 2
+    },
+    {
+     "round": 3,
+     "loadavg": 5.62,
+     "ready_s": 0.497,
+     "providers": "CUDA + CPU",
+     "wall_s": 0.93,
+     "peak_rss_mb": 967,
+     "major_faults": 5
+    }
+   ]
+  },
+  "default-trt": {
+   "providers": "TensorRT + CUDA + CPU",
+   "ready_s": {
+    "median": 1.007,
+    "min": 0.952,
+    "max": 1.237,
+    "n": 3
+   },
+   "process_wall_s": {
+    "median": 1.38,
+    "min": 1.3,
+    "max": 2.0,
+    "n": 3
+   },
+   "peak_rss_mb_max": 1419,
+   "runs": [
+    {
+     "round": 1,
+     "loadavg": 12.68,
+     "ready_s": 1.237,
+     "providers": "TensorRT + CUDA + CPU",
+     "wall_s": 2.0,
+     "peak_rss_mb": 1416,
+     "major_faults": 1503
+    },
+    {
+     "round": 2,
+     "loadavg": 7.32,
+     "ready_s": 0.952,
+     "providers": "TensorRT + CUDA + CPU",
+     "wall_s": 1.3,
+     "peak_rss_mb": 1419,
+     "major_faults": 0
+    },
+    {
+     "round": 3,
+     "loadavg": 5.62,
+     "ready_s": 1.007,
+     "providers": "TensorRT + CUDA + CPU",
+     "wall_s": 1.38,
+     "peak_rss_mb": 1419,
+     "major_faults": 0
+    }
+   ]
+  }
+ },
+ "latency": {
+  "what": "gpui-demo bench through the inference service, median per run, then median and range over 5 alternated rounds; *-one = 1 image x 25 rounds, *-stack = 28 demo images x 4 rounds; stream = rounds x images submitted at once",
+  "gpu_during_sweep": {
+   "temp_c": {
+    "median": 83.0,
+    "min": 74,
+    "max": 85,
+    "n": 70
+   },
+   "sm_clock_mhz": {
+    "median": 1927.0,
+    "min": 1425,
+    "max": 1950,
+    "n": 70
+   }
+  },
+  "baseline-deployed-cuda-stack": {
+   "binary": "07e569c serial classify loop",
+   "per_image_ms": {
+    "median": 112.6,
+    "min": 111.95,
+    "max": 145.4,
+    "n": 5
+   },
+   "errors": 0
+  },
+  "deployed-cuda-one": {
+   "providers": [
+    "CUDA + CPU"
+   ],
+   "images": 1,
+   "rounds_per_run": 25,
+   "read_decode_ms": {
+    "median": 0.831,
+    "min": 0.774,
+    "max": 1.398,
+    "n": 5
+   },
+   "preprocess_ms": {
+    "median": 1.581,
+    "min": 1.442,
+    "max": 32.304,
+    "n": 5
+   },
+   "queue_ms": {
+    "median": 0.047,
+    "min": 0.017,
+    "max": 0.125,
+    "n": 5
+   },
+   "run_ms": {
+    "median": 113.176,
+    "min": 112.199,
+    "max": 113.538,
+    "n": 5
+   },
+   "readout_ms": {
+    "median": 0.002,
+    "min": 0.002,
+    "max": 0.004,
+    "n": 5
+   },
+   "end_to_end_ms": {
+    "median": 116.319,
+    "min": 114.807,
+    "max": 149.337,
+    "n": 5
+   },
+   "stream_fps": {
+    "median": 8.828,
+    "min": 7.943,
+    "max": 8.915,
+    "n": 5
+   },
+   "errors": 0,
+   "answers_identical_across_runs": true
+  },
+  "deployed-cuda-stack": {
+   "providers": [
+    "CUDA + CPU"
+   ],
+   "images": 28,
+   "rounds_per_run": 4,
+   "read_decode_ms": {
+    "median": 0.841,
+    "min": 0.788,
+    "max": 0.963,
+    "n": 5
+   },
+   "preprocess_ms": {
+    "median": 1.6,
+    "min": 1.55,
+    "max": 1.853,
+    "n": 5
+   },
+   "queue_ms": {
+    "median": 0.111,
+    "min": 0.047,
+    "max": 0.123,
+    "n": 5
+   },
+   "run_ms": {
+    "median": 113.47,
+    "min": 112.542,
+    "max": 118.067,
+    "n": 5
+   },
+   "readout_ms": {
+    "median": 0.002,
+    "min": 0.002,
+    "max": 0.002,
+    "n": 5
+   },
+   "end_to_end_ms": {
+    "median": 116.263,
+    "min": 115.875,
+    "max": 120.864,
+    "n": 5
+   },
+   "stream_fps": {
+    "median": 8.816,
+    "min": 8.664,
+    "max": 8.839,
+    "n": 5
+   },
+   "errors": 0,
+   "answers_identical_across_runs": true
+  },
+  "fast-cudafallback-one": {
+   "providers": [
+    "CUDA + CPU"
+   ],
+   "images": 1,
+   "rounds_per_run": 25,
+   "read_decode_ms": {
+    "median": 0.876,
+    "min": 0.826,
+    "max": 1.532,
+    "n": 5
+   },
+   "preprocess_ms": {
+    "median": 1.229,
+    "min": 1.098,
+    "max": 2.687,
+    "n": 5
+   },
+   "queue_ms": {
+    "median": 0.043,
+    "min": 0.012,
+    "max": 0.115,
+    "n": 5
+   },
+   "run_ms": {
+    "median": 91.649,
+    "min": 91.289,
+    "max": 92.592,
+    "n": 5
+   },
+   "readout_ms": {
+    "median": 0.003,
+    "min": 0.002,
+    "max": 0.004,
+    "n": 5
+   },
+   "end_to_end_ms": {
+    "median": 94.842,
+    "min": 93.785,
+    "max": 95.542,
+    "n": 5
+   },
+   "stream_fps": {
+    "median": 10.84,
+    "min": 10.565,
+    "max": 10.881,
+    "n": 5
+   },
+   "errors": 0,
+   "answers_identical_across_runs": true
+  },
+  "fast-cudafallback-stack": {
+   "providers": [
+    "CUDA + CPU"
+   ],
+   "images": 28,
+   "rounds_per_run": 4,
+   "read_decode_ms": {
+    "median": 0.902,
+    "min": 0.823,
+    "max": 1.286,
+    "n": 5
+   },
+   "preprocess_ms": {
+    "median": 1.263,
+    "min": 1.189,
+    "max": 22.918,
+    "n": 5
+   },
+   "queue_ms": {
+    "median": 0.117,
+    "min": 0.014,
+    "max": 0.12,
+    "n": 5
+   },
+   "run_ms": {
+    "median": 92.582,
+    "min": 88.297,
+    "max": 92.965,
+    "n": 5
+   },
+   "readout_ms": {
+    "median": 0.002,
+    "min": 0.002,
+    "max": 0.003,
+    "n": 5
+   },
+   "end_to_end_ms": {
+    "median": 95.087,
+    "min": 91.267,
+    "max": 115.793,
+    "n": 5
+   },
+   "stream_fps": {
+    "median": 10.782,
+    "min": 10.753,
+    "max": 10.917,
+    "n": 5
+   },
+   "errors": 0,
+   "answers_identical_across_runs": true
+  },
+  "fast-trt-one": {
+   "providers": [
+    "TensorRT + CUDA + CPU"
+   ],
+   "images": 1,
+   "rounds_per_run": 25,
+   "read_decode_ms": {
+    "median": 0.88,
+    "min": 0.736,
+    "max": 0.983,
+    "n": 5
+   },
+   "preprocess_ms": {
+    "median": 1.195,
+    "min": 1.043,
+    "max": 1.282,
+    "n": 5
+   },
+   "queue_ms": {
+    "median": 0.067,
+    "min": 0.037,
+    "max": 0.124,
+    "n": 5
+   },
+   "run_ms": {
+    "median": 15.472,
+    "min": 15.452,
+    "max": 15.751,
+    "n": 5
+   },
+   "readout_ms": {
+    "median": 0.002,
+    "min": 0.001,
+    "max": 0.002,
+    "n": 5
+   },
+   "end_to_end_ms": {
+    "median": 17.891,
+    "min": 17.61,
+    "max": 18.194,
+    "n": 5
+   },
+   "stream_fps": {
+    "median": 63.919,
+    "min": 63.366,
+    "max": 64.549,
+    "n": 5
+   },
+   "errors": 0,
+   "answers_identical_across_runs": true
+  },
+  "fast-trt-stack": {
+   "providers": [
+    "TensorRT + CUDA + CPU"
+   ],
+   "images": 28,
+   "rounds_per_run": 4,
+   "read_decode_ms": {
+    "median": 0.881,
+    "min": 0.806,
+    "max": 1.223,
+    "n": 5
+   },
+   "preprocess_ms": {
+    "median": 1.231,
+    "min": 1.07,
+    "max": 31.707,
+    "n": 5
+   },
+   "queue_ms": {
+    "median": 0.107,
+    "min": 0.018,
+    "max": 0.12,
+    "n": 5
+   },
+   "run_ms": {
+    "median": 15.708,
+    "min": 15.418,
+    "max": 16.037,
+    "n": 5
+   },
+   "readout_ms": {
+    "median": 0.002,
+    "min": 0.001,
+    "max": 0.003,
+    "n": 5
+   },
+   "end_to_end_ms": {
+    "median": 18.168,
+    "min": 17.599,
+    "max": 52.018,
+    "n": 5
+   },
+   "stream_fps": {
+    "median": 64.227,
+    "min": 63.366,
+    "max": 64.459,
+    "n": 5
+   },
+   "errors": 0,
+   "answers_identical_across_runs": true
+  }
+ },
+ "run_stage_vs_harness": {
+  "what": "same engine in Python onnxruntime, 3 x (10 blocks x 40 runs) per mode: gpu_bound = IO binding on the GPU (the harness's method), host_run = sess.run with a numpy input (what the app does)",
+  "deployed_cuda": {
+   "providers": [
+    "CUDAExecutionProvider"
+   ],
+   "gpu_bound": {
+    "median": 114.932,
+    "min": 113.828,
+    "max": 115.742,
+    "n": 3
+   },
+   "host_bound": {
+    "median": 115.001,
+    "min": 112.115,
+    "max": 115.799,
+    "n": 3
+   },
+   "host_run": {
+    "median": 115.182,
+    "min": 114.015,
+    "max": 115.912,
+    "n": 3
+   }
+  },
+  "fast_trt": {
+   "providers": [
+    "TensorrtExecutionProvider"
+   ],
+   "gpu_bound": {
+    "median": 12.709,
+    "min": 12.689,
+    "max": 12.721,
+    "n": 3
+   },
+   "host_bound": {
+    "median": 12.711,
+    "min": 12.69,
+    "max": 12.739,
+    "n": 3
+   },
+   "host_run": {
+    "median": 12.799,
+    "min": 12.77,
+    "max": 12.81,
+    "n": 3
+   }
+  }
+ },
+ "watcher_fix_ab": {
+  "what": "bench of one image, 25 rounds, a = 340624c, b = the watcher fix, alternated, 5 rounds, one GPU lock hold",
+  "deployed-a": {
+   "run_ms": {
+    "median": 112.238,
+    "min": 111.752,
+    "max": 113.421,
+    "n": 5
+   },
+   "end_to_end_ms": {
+    "median": 115.182,
+    "min": 114.634,
+    "max": 116.187,
+    "n": 5
+   },
+   "stream_fps": {
+    "median": 8.86,
+    "min": 8.801,
+    "max": 8.911,
+    "n": 5
+   },
+   "errors": 0
+  },
+  "deployed-b": {
+   "run_ms": {
+    "median": 110.232,
+    "min": 109.979,
+    "max": 110.408,
+    "n": 5
+   },
+   "end_to_end_ms": {
+    "median": 112.997,
+    "min": 112.675,
+    "max": 113.722,
+    "n": 5
+   },
+   "stream_fps": {
+    "median": 8.964,
+    "min": 8.959,
+    "max": 8.991,
+    "n": 5
+   },
+   "errors": 0
+  },
+  "fast-a": {
+   "run_ms": {
+    "median": 15.45,
+    "min": 15.36,
+    "max": 15.595,
+    "n": 5
+   },
+   "end_to_end_ms": {
+    "median": 17.755,
+    "min": 17.683,
+    "max": 17.958,
+    "n": 5
+   },
+   "stream_fps": {
+    "median": 63.759,
+    "min": 62.818,
+    "max": 64.181,
+    "n": 5
+   },
+   "errors": 0
+  },
+  "fast-b": {
+   "run_ms": {
+    "median": 12.134,
+    "min": 12.075,
+    "max": 12.154,
+    "n": 5
+   },
+   "end_to_end_ms": {
+    "median": 14.382,
+    "min": 14.263,
+    "max": 14.429,
+    "n": 5
+   },
+   "stream_fps": {
+    "median": 78.216,
+    "min": 77.521,
+    "max": 78.385,
+    "n": 5
+   },
+   "errors": 0
+  }
+ }
+}

@@ -1,9 +1,9 @@
 # ITRI626 report models for the desktop app
 
 The three models of the ITRI626 report (`results/itri626/metrics.json`), exported for `apps/gpui-demo`. Nothing was
-retrained. Rebuild on the GPU PC (CPU only, ~20 min):
+retrained. A rebuild (CPU only, ~20 min) needs the ITRI626 training checkpoints under `runs/itri626/`, which were on
+the GPU PC and are not on the laptop. With them, from the repo root:
 
-    cd ~/Projects/626-Project && export HF_HOME=$HOME/models_cache/hf TORCH_HOME=$HOME/models_cache/torch
     uv run --frozen python tools/export_itri626_models.py all      # or: ab | c
 
 | report model | where | input | preprocess (eval) | graph outputs | ONNX test acc (418) | report |
@@ -13,10 +13,12 @@ retrained. Rebuild on the GPU PC (CPU only, ~20 min):
 | C SigLIP So400m frozen + linear | `../final/model_multi.onnx` (2.1 MB graph + shared `model.onnx.data`) | `input` [1,3,384,384] | `../final/preprocess.json` (427, bicubic, 384, 0.5) | `logits_c`, `probs_c` [1,20] | 343/418 = 0.8206 | 0.8230 (344) |
 | deployed final model | `../final/model.onnx` or `model_multi.onnx` | same as C | same as C | `logits`, `probs` | 350/418 = 0.8373 | 0.8373 |
 
-Each A/B folder follows the app contract (`apps/gpui-demo/src/contract.rs`): `model.onnx` + `preprocess.json` +
-`labels.json`. The label order is identical to `exports/final/labels.json` (asserted). `probs = softmax(logits)`;
-A, B and C are **not** temperature-calibrated. `abstain_threshold` 0.5 is copied from the deployed model, not tuned
-for these models (UNSURE rate on test at 0.5: A 72.7 %, B 35.2 %). `export_report.json` in each folder holds the parity
+Each A/B folder holds `model.onnx`, `preprocess.json`, `labels.json` and the `model.json` manifest the app reads
+(`crates/inference/src/manifest.rs` parses it; `tools/gen_manifests.py` writes it). The label order is identical to
+`exports/final/labels.json` (asserted). `probs = softmax(logits)`; A, B and C are **not** temperature-calibrated.
+`abstain_threshold` 0.5 in `preprocess.json` is copied from the deployed model, not tuned for these models (UNSURE
+rate on test at 0.5: A 72.7 %, B 35.2 %). The app therefore never abstains with A, B or C: their manifests say
+`commit`, with a low-confidence note below 0.5. `export_report.json` in each folder holds the parity
 and accuracy evidence. Parity is onnxruntime vs PyTorch fp32 on all 418 test images: max |Δp| 6.0e-7 (A) and 1.7e-6 (B),
 with 100 % argmax agreement.
 
@@ -34,9 +36,9 @@ fp32. On 16 test images the minimum cosine similarity between the two is 0.99997
 ## What the Rust app must replicate
 
 - **Model A uses bilinear resizing.** The app now supports both bilinear and bicubic interpolation. Pillow's
-  `BILINEAR` is the same separable `Resample.c` path as `preprocess.rs`, with filter `1 − |x|` and support 1.0
-  instead of the cubic kernel with support 2.0. Feeding A a bicubic resize gives 145/418 (−3 images) and changes 7.4 %
-  of the predictions.
+  `BILINEAR` is the same separable `Resample.c` path as `crates/inference/src/preprocess.rs`, with filter `1 − |x|`
+  and support 1.0 instead of the cubic kernel with support 2.0. Feeding A a bicubic resize gives 145/418 (−3 images)
+  and changes 7.4 % of the predictions.
 - The resize sets the short side to `resize_short_side` and truncates the long side (`int(short·long/short_side)`).
   Resampling is skipped when the size already matches. The centre crop uses `round_half_even((W−S)/2)`. These are
   the same as the deployed model.

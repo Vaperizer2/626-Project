@@ -3,7 +3,7 @@ name = "gpui-demo"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.92"
-description = "Desktop demo for the 626-Project electronic-component classifier (GPUI Kit + onnxruntime via ort)"
+description = "A desktop AI app: a GPUI Kit window and a command line over the inference crate (onnxruntime via ort)"
 license = "MIT"
 publish = false
 
@@ -13,48 +13,36 @@ path = "src/main.rs"
 
 [features]
 default = []
-# Register onnxruntime's CUDA execution provider (needs an onnxruntime-gpu build of libonnxruntime + CUDA/cuDNN).
-cuda = ["ort/cuda"]
 # Decode JPEG pixels with the system libjpeg-turbo (pkg-config libturbojpeg), the same decoder Pillow bundles,
 # making the model input bit-identical to the Python pipeline. Without it the pure-Rust decoder differs by a few
 # grey levels on some pixels (argmax parity is unaffected; see README).
-turbojpeg = ["dep:turbojpeg"]
+turbojpeg = ["inference/turbojpeg"]
 # Same decoder, but libjpeg-turbo is built from the source vendored in turbojpeg-sys (CMake + NASM at build
 # time) and linked statically: no libturbojpeg.so at runtime. Used for the portable Linux bundle.
-turbojpeg-vendored = ["turbojpeg", "turbojpeg/cmake", "turbojpeg/require-simd"]
+turbojpeg-vendored = ["inference/turbojpeg-vendored"]
 # Profiling with hotpath (https://hotpath.rs): timing report on exit for the instrumented blocks (decode,
-# preprocessing, ONNX runs, model loads, thumbnails, demo/benchmark jobs). Off by default: without the feature
+# preprocessing, ONNX runs, model loads, drawing the tabs). Off by default: without the feature
 # the crate is not even in the build and every `prof!` block compiles to plain code.
-hotpath = ["dep:hotpath", "hotpath/hotpath"]
+hotpath = ["dep:hotpath", "hotpath/hotpath", "inference/hotpath"]
 hotpath-alloc = ["hotpath", "hotpath/hotpath-alloc"]
 
 [dependencies]
+# The models, the inference service and onnxruntime: everything that does not need a window.
+inference = { path = "../../crates/inference" }
 # UI: GPUI Kit (longbridge; formerly gpui-component). It pins and re-exports its own GPUI snapshot (`gpui-pre`),
 # so the app does not depend on GPUI directly. Pinned exactly: pre-1.0, APIs change between releases.
 gpui-kit = "=0.7.3"
-# onnxruntime bindings; load-dynamic = dlopen libonnxruntime.so at runtime (no build-time download);
-# api-22 = require only the ORT 1.22 C API so any onnxruntime >= 1.22 works.
-ort = { version = "=2.0.0-rc.14", default-features = false, features = ["std", "ndarray", "load-dynamic", "api-22"] }
-ndarray = "0.17"
 image = { version = "0.25.10", default-features = false, features = ["jpeg", "png", "webp", "gif", "bmp", "tiff", "rayon"] }
 rayon = "1"
 futures = "0.3"
-ureq = { version = "3.4", default-features = false, features = ["rustls", "gzip", "socks-proxy"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 anyhow = "1"
 smallvec = "1"
-turbojpeg = { version = "=1.5.1", default-features = false, features = ["pkg-config"], optional = true }
 hotpath = { version = "0.28", optional = true }
 
 [dev-dependencies]
 # GPUI Kit's headless test platform for the window smoke test (src/gui/tests.rs).
 gpui-kit = { version = "=0.7.3", features = ["test-support"] }
-
-[profile.release]
-opt-level = 3
-debug = false
-codegen-units = 16
-
-[profile.dev.package."*"]
-opt-level = 2
+# The service's fake loader (`inference::testing`) for the window tests.
+inference = { path = "../../crates/inference", features = ["test-support"] }

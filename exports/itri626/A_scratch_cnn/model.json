@@ -1,0 +1,92 @@
+{
+ "schema": "model-manifest/1",
+ "id": "A_scratch_cnn",
+ "graph": {
+  "file": "model.onnx",
+  "external_data": [],
+  "precision": "fp32"
+ },
+ "files": {
+  "labels.json": {
+   "bytes": 307,
+   "sha256": "bb7bd956f6d7cd0645b381ee858006ef33bd16ede6107b926d9eb8a65eb2011e"
+  },
+  "model.onnx": {
+   "bytes": 4803517,
+   "sha256": "f90f49ba39895323551b872086aea0b760fe03f0be00c188e3eddc4a0a515b67"
+  }
+ },
+ "input": {
+  "name": "input",
+  "dtype": "f32",
+  "layout": "NCHW",
+  "size": [
+   160,
+   160
+  ],
+  "batch": {
+   "max": 1
+  },
+  "preprocess": {
+   "kind": "resize_short_center_crop",
+   "resize_short_side": 183,
+   "filter": "pillow_bilinear",
+   "color": "RGB",
+   "scale": 0.00392156862745098,
+   "mean": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "std": [
+    0.5,
+    0.5,
+    0.5
+   ]
+  }
+ },
+ "heads": [
+  {
+   "id": "a",
+   "title": "A · Custom CNN (scratch)",
+   "short": "A · CNN",
+   "task": {
+    "kind": "classify",
+    "readout": {
+     "kind": "probs",
+     "output": "probs"
+    },
+    "labels": "labels.json",
+    "calibration": {
+     "kind": "none"
+    },
+    "decision": {
+     "kind": "commit",
+     "low_confidence_below": 0.5
+    }
+   }
+  }
+ ],
+ "runtime": {
+  "graph_optimization_level": "ORT_ENABLE_LAYOUT",
+  "providers": [
+   {
+    "ep": "cuda"
+   },
+   {
+    "ep": "cpu"
+   }
+  ]
+ },
+ "provenance": {
+  "model": "scratch_cnn",
+  "report_model": "A_scratch_cnn",
+  "config_hash": "4e4c6e8f6cf3",
+  "fold": 0,
+  "checkpoint_sha256": "6d7f73514b91f75d328d29b04859721b252bc5ea3c9d7e7cd5a7b4c6f27cc248",
+  "manifest_fingerprint": "431315e87d2612cb",
+  "details": [
+   "export_report.json"
+  ]
+ }
+}

@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# Runs the harness in its dedicated venv (onnxruntime-gpu + CUDA 13 + TensorRT 10 wheels); see README.md.
+set -euo pipefail
+VENV=/home/vaper/Work/Prototypes/626-artifacts/harness/venv
+export LD_LIBRARY_PATH="$VENV/lib/python3.12/site-packages/tensorrt_libs${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+exec "$VENV/bin/python" "$(dirname "$(readlink -f "$0")")/speed.py" "$@"

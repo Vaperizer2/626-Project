@@ -1,6 +1,6 @@
 """Run the frozen final model over EVERY file of the original Kaggle download and break the score down honestly.
 
-    uv run python scripts/eval_original_kaggle.py        # on the GPU PC, from the repo root
+    uv run python scripts/eval_original_kaggle.py        # from the repo root; a CUDA GPU helps
 
 Every one of the 3,530 original files is scored against its original folder label. Files are mapped to their data-v2
 row (exact duplicates share one row/image); the 27 files of the 13 conflicting-label groups that v2 excluded are
