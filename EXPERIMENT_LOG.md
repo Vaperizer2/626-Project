@@ -104,3 +104,40 @@ Findings that hold beyond these candidates:
   off were 448, 384, 256 and 128 (`tools/speed4`).
 - Batching gains about 10 %, because the GPU is power-capped.
 - The same token-merging graph builds a fused TensorRT engine about 1 time in 4; `tools/speed4/engprobe.sh` tells.
+
+## 2026-11-03 — the demo's hard cases (tools/hardcases)
+
+Question: can the deployed model get the app's five "Hard cases" demo pictures right without losing accuracy? They
+fail as LEDs → diode, a small transformer → inductor coil, DIP switches → ic chip, SMD power inductors → diode, and an
+Arduino board on a breadboard → breadboard. These five pictures come from the web holdout, so the goal itself (the
+five confusion pairs, and the ideas tried for them) was taken from holdout pictures. After that, every candidate was
+ranked on grouped 5-fold dev CV only; no demo, holdout or test picture was scored until the recommendation had been
+written down and the notes hashed, and then the final candidates were run on the demo stack once. Dev holds few of
+these errors (9 in 2,512 images), so the main proxy was the calibrated probability on the wrong partner class over the
+638 dev images of the five classes (baseline 2.32 %). 41 scored variants of 25 hypotheses; the pick rule was fixed
+after H0 to H19 were scored, before H20 to H23. Log and notes in `626-artifacts/hardcases/` on the laptop, code in
+`tools/hardcases/`.
+
+| Change | Dev CV | Δ | McNemar (worse / better), p | Hard-pair errors | Partner mass |
+|---|---:|---:|---|---:|---:|
+| deployed: 384 crop of a 427 short-side resize | 0.8268 | — | — | 9 | 2.32 % |
+| whole picture squashed to 384 × 384, head refit | 0.8428 | +1.59 pt | 45 / 85, 6e-4 | 8 | 1.93 % |
+| short side 384, centre crop (no border cut on the short side) | 0.8424 | +1.55 pt | 27 / 66, 1e-4 | 9 | 2.13 % |
+| squash plus a nearest-neighbour term | 0.8503 | +2.35 pt | 45 / 104, < 1e-4 | 6 | 1.82 % |
+
+The squash gain comes from non-square pictures (62 % of dev, 0.807 → 0.836); square ones do not move, every fold
+improves, and the zero-shot head alone improves without training (0.762 → 0.775). The nearest-neighbour term was one
+of seven changes stacked on squash; corrected for that, its own p is about 0.11. Other whole-picture views did as well
+on accuracy, not better: letterbox without a significant drop in partner mass, and the mean of crop and squash at two
+passes per picture. Nothing else helped: the zero-shot weight and temperature, subtype prompts (zero-shot alone falls
+to 0.67–0.73), flip TTA or training, class-balanced weights, pair specialists, augmented views, prototypes, or a
+ConvNeXt-T ensemble. A SigLIP 2 ensemble was not significant at twice the latency. After 41 scored variants (25
+hypotheses) the dev numbers are optimistic.
+
+The one look at the demo stack, with the recommended squash head: no hard picture flipped. Three are less confidently
+wrong, the small transformer is more confidently wrong (0.965 → 0.987), and the Arduino picture is now accepted as
+breadboard at 0.52 (the deployed model abstains at 0.44; 0.52 clears both its 0.50 threshold and the refit head's
+0.45). In the "Not a component / abstains" section both out-of-scope pictures now abstain (1 of 2 before) and the
+in-scope coin-cell holder is answered correctly, so the section scores 3 of 3 instead of 1 of 3. The one-per-class
+section stays 20 of 20. The study recommends shipping squash without the nearest-neighbour term; it is not shipped,
+because it changes the shipped model, its golden file and the Fast model's recipe, which is the owner's call.
