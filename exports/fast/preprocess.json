@@ -27,5 +27,5 @@
  "w_zs": 0.25,
  "manifest_fingerprint": "431315e87d2612cb",
  "trunk": "compose_int8_res308",
- "built_from": "/home/carl/626-runs/compose/work/compose_int8_res308/smooth05 (INT8 QDQ on 112/112 GEMMs, act max, mlp.fc2 p99.999, exclude ; tools/quant/qdq.py @ b2ed4f1); head refitted by tools/compose/export_fast.py"
+ "built_from": "/home/carl/626-runs/compose/work/compose_int8_res308/smooth05 (INT8 QDQ on 112/112 GEMMs, act max, mlp.fc2 p99.999, exclude ; tools/quant/qdq.py @ 1b57c0a); head refitted by tools/compose/export_fast.py"
 }

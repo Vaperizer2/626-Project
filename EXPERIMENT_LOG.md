@@ -153,7 +153,7 @@ gets 32 of them right, in line with its 309 of 407 (75.9 %) on the whole holdout
 no model was chosen or tuned on it. `notebooks/ITRI626_training.ipynb` adds the training code, one section per model
 (A, B, C, Deployed, Fast).
 
-On 2026-11-04 `main` took PR #1 (merge `d4d5113`), PR #3 (`4bebc2d`), PR #4 (`d089596`) and PR #2 (`5d16657`). The GPU
+On 2026-11-04 `main` took PR #1 (merge `e131c87`), PR #3 (`347f339`), PR #4 (`5b73308`) and PR #2 (`4666364`). The GPU
 PC `carlpc2` is gone. GPU work runs on the laptop, and heavy CPU work on Boat.dev CPU sandboxes. None of this changes
 a recorded research score.
 

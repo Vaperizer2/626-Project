@@ -29,9 +29,9 @@ window, the command line and the classifier's own parts. The app is also the tem
 
 ## Download and run
 
-For colleagues, use the [private release](https://github.com/Vaperizer2/626-Project/releases/tag/share-2026-10-30)
-and follow the [runbook](../../docs/RUNBOOK.md). It includes models A, B, C and Deployed, the CPU runtime and the
-28 demo photos of that time. Fast and the 68-picture stack came later: build a bundle from `main` for them.
+For colleagues, use the [private release](https://github.com/Vaperizer2/626-Project/releases/tag/share-2026-11-04)
+and follow the [runbook](../../docs/RUNBOOK.md). It includes all five models, the CPU runtime and the 68 demo photos.
+Fast needs the GPU runtime, which is installed separately (runbook, "Run the Fast model on an NVIDIA GPU").
 On ordinary x86_64 Linux run `./run.sh --tab demo`; on NixOS run `./run-nixos.sh --tab demo`.
 The first NixOS launch needs network access to fetch runtime libraries. Windows/macOS users can use the Python
 ONNX demo from source; this release's desktop binary is Linux-only.
@@ -152,8 +152,8 @@ Each folder's `model.json` (written by `tools/gen_manifests.py`) names the graph
 the input (name, size, preprocessing), one entry per head (output, labels, calibration, decision rule) and the
 execution providers in order of preference. `model_multi.onnx` is the deployed graph plus the model-C head on the
 same pooled feature, so one forward pass gives both C and Deployed; it reads the unchanged `model.onnx.data`. Fast
-comes from the speed track's `compose_int8_res308` export (`exports/fast/fit_report.json`). Its ONNX files are not in
-the share-2026-10-30 release yet: copy them into `exports/fast/` from the export (see the runbook). Missing files make
+comes from the speed track's `compose_int8_res308` export (`exports/fast/fit_report.json`). Its ONNX files are in
+the share-2026-11-04 release: extracting the release's `exports/` restores them (see the runbook). Missing files make
 a model show as unavailable (greyed out, with the reason in the tooltip and in `gpui-demo models`); the app never
 crashes on a missing model. A model whose files were never checksummed here, or changed size or modification time
 since, shows "checksums not verified"; `gpui-demo models --check` hashes them and records the result.
@@ -436,9 +436,9 @@ inference service, medians over 5 alternated rounds (`results/demo/gpui_legion_s
 | per picture, end to end (read, decode, preprocess, run) | 14.4 ms | 113.0 ms | 94.8 ms¹ |
 | streamed (pictures submitted at once) | 78 / s | 9.0 / s | 10.8 / s¹ |
 
-¹ measured before the watcher fix (ef94d84), which took 2.0 ms (Deployed) to 3.3 ms (Fast) off every run.
+¹ measured before the watcher fix (21908b7), which took 2.0 ms (Deployed) to 3.3 ms (Fast) off every run.
 
-The previous app binary (07e569c, one serial loop) took 112.6 ms per picture for Deployed on CUDA. Fast's run stage
+The previous app binary (ae6e7db, one serial loop) took 112.6 ms per picture for Deployed on CUDA. Fast's run stage
 matches the graph timed alone (the harness's 11.9 ms; 12.7 ms in Python with IO binding the same day). Reading,
 decoding and preprocessing on the CPU add about 2 ms per picture end to end. Fast's batch is 1 (see above), so
 streaming is bound by the engine: 78 / s is 12.8 ms per picture, with decoding and preprocessing overlapped.

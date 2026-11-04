@@ -1,10 +1,10 @@
 # compclass — electronic-component image classification across model families
 
 **Share / run:** [private GitHub repository](https://github.com/Vaperizer2/626-Project) ·
-[download models and Linux demo](https://github.com/Vaperizer2/626-Project/releases/tag/share-2026-10-30) ·
+[download models and Linux demo](https://github.com/Vaperizer2/626-Project/releases/tag/share-2026-11-04) ·
 [runbook](docs/RUNBOOK.md) · [current status](STATUS.md) · [agent handoff](AGENTS.md).
-That release has four of the app's five models (A, B, C and Deployed; Fast came later). Cloning the source alone
-does not download the ONNX weights.
+That release has all five models (A, B, C, Deployed and Fast) and the 68-picture demo stack. Cloning the source
+alone does not download the ONNX weights.
 Colleagues need repository access (Settings → Collaborators); send the release link after they accept the invitation.
 
 One importable package (`src/compclass`) trains, probes and evaluates every model family the project compares,
@@ -82,8 +82,7 @@ uv run python scripts/make_report_figures.py
 ```
 
 `exports/final/model.onnx` and `model.onnx.data` are release assets inside the Linux bundle, not Git objects.
-Follow [the runbook](docs/RUNBOOK.md) to download models A, B, C and Deployed into the source checkout or run the
-bundled demo. Fast's ONNX files are not in a release yet (see the runbook).
+Follow [the runbook](docs/RUNBOOK.md) to download the models into the source checkout or run the bundled demo.
 The shared SigLIP weights alone are 1,714,593,792 bytes (1.60 GiB). Exporting again requires the training inputs/caches;
 use the release for inference without rebuilding the dataset.
 
