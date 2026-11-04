@@ -241,3 +241,34 @@ Findings: (1) With the pre-registered constants, the PE-Core L fused model beats
 Next (author's call): calibration + abstain threshold via a key-generalised `compclass.final fit`, ONNX export with the
 projection baked in, speed vs Deployed, then whether it earns one sealed-test look.
 
+### 2026-11-05 — control for the input view: the PE-Core edge was the preprocessing, not the backbone
+
+The author noticed that the two backbones were compared under different views: SigLIP's recipe resizes the short side
+to 427 and crops 384 (10 % border cut, crop fraction 0.9) while PE-Core's resizes the short side to 336 and crops 336
+(nothing cut). The hard-case study (2026-11-03) had already shown SigLIP gains about 1.6 pt without the border cut.
+Control: dev features re-extracted for SigLIP at crop fraction 1.0 and squashed, and for PE-Core squashed
+(`tools/views/extract_views.py`, 70-90 s per pass on the 4070; caches `results/cache/features/*-crop100.npy`,
+`*-squash.npy`), then the same OOF probe / zero-shot / fusion scoring for every backbone × view
+(`tools/views/view_fusion.py`; PE-Core heads from `tools/views/pe_core_heads.py`). Deployed constants T 50, w 0.25.
+
+| Backbone | view | probe F1 | zero-shot F1 | fused F1 | fused acc |
+|---|---|---:|---:|---:|---:|
+| SigLIP So400m@384 | deployed (short 427, crop 384) | 0.8240 | 0.7623 | 0.8255 | 0.8268 |
+| SigLIP So400m@384 | short 384, crop 384 (crop 1.0) | 0.8330 | 0.7643 | **0.8403** | **0.8420** |
+| SigLIP So400m@384 | squash 384 × 384 | 0.8339 | 0.7758 | 0.8383 | 0.8404 |
+| PE-Core L@336 | default (short 336, crop 336 = crop 1.0) | 0.8298 | 0.7898 | 0.8351 | 0.8368 |
+| PE-Core L@336 | squash 336 × 336 | 0.8323 | 0.7897 | 0.8354 | 0.8368 |
+
+Paired per fold, fused models: SigLIP crop 1.0 vs SigLIP deployed +1.48 ± 0.25 pt F1 (5/5), reproducing the
+hard-case study's +1.55 in this pipeline; SigLIP squash vs deployed +1.29 ± 0.24 (5/5); PE-Core squash vs PE-Core
+default +0.04 ± 0.27 (3/5), no gain. Same view: PE-Core vs SigLIP at crop 1.0 **−0.52 ± 0.27 pt (1/5)**; squash vs
+squash −0.29 ± 0.31 (2/5). Best view each: SigLIP crop 1.0 beats PE-Core by 0.48 ± 0.32.
+
+Findings: (1) The +1.0 pt of the previous entry was the view, not the backbone: PE-Core's default already keeps the
+whole short side, which is worth about 1.5 pt to SigLIP. Like for like, SigLIP So400m is 0.3-0.5 pt ahead of PE-Core L,
+within noise. (2) PE-Core's zero-shot head stays clearly better (0.790 vs 0.764-0.776) but its probe is slightly weaker,
+and the two cancel. (3) PE-Core does not gain from squashing; SigLIP gains from either whole-frame view. (4) The
+cheapest real improvement to the deployed model is therefore the one the hard-case study already found: keep SigLIP,
+drop the border cut (+1.5 pt OOF, 5/5 folds, a preprocessing constant and a head refit). PE-Core L remains the
+smaller/faster equal, 0.6× compute, 1.2 GB, at about −0.5 pt.
+
