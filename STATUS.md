@@ -38,9 +38,9 @@ and [EXPERIMENT_LOG.md](EXPERIMENT_LOG.md) for dated research decisions. Older c
   pictures turns correct. That change resizes the whole picture to 384 × 384 instead of taking a centre crop, and it
   raises dev CV from 0.8268 to 0.8428 (McNemar p 6e-4). It is not shipped; shipping it is an open owner decision.
   [EXPERIMENT_LOG.md](EXPERIMENT_LOG.md) has the numbers.
-- Private source repository: https://github.com/Vaperizer2/626-Project. `main` holds PRs #1 to #4 (2026-11-04).
-  Sharing release: https://github.com/Vaperizer2/626-Project/releases/tag/share-2026-10-30. It predates Fast and the
-  68-picture stack; a release from `main` is not tagged yet.
+- Private source repository: https://github.com/Vaperizer2/626-Project. `main` holds PRs #1 to #6 (2026-11-04).
+  Sharing release: https://github.com/Vaperizer2/626-Project/releases/tag/share-2026-11-04, built from `main`
+  `b97b857` with all five models and the 68-picture stack. The older share-2026-10-30 stays available.
 
 ## Remaining limitations / optional work
 
