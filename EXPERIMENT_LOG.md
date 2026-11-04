@@ -144,7 +144,7 @@ because it changes the shipped model, its golden file and the Fast model's recip
 
 ## 2026-11-03 to 2026-11-04 — decisions and delivery
 
-On 2026-11-03 the owner kept today's Fast model (`compose_int8_res308`) as the app's Fast. Q5 is not shipped. The
+On 2026-11-03 the owner kept the current Fast model (`compose_int8_res308`) as the app's Fast. Q5 is not shipped. The
 squash preprocessing from the hard-case study is not shipped either; whether to ship it is still open.
 
 The demo stack grew from 28 to 68 pictures. The new Random section holds 40 holdout photos, two per class, drawn with

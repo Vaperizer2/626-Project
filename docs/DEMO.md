@@ -19,7 +19,7 @@ says nothing about accuracy (see [Accuracy to expect](#accuracy-to-expect)).*
 
 For a fresh checkout, download the private GitHub Release and extract its `exports/` folder as described in
 [the runbook](RUNBOOK.md#download-models-into-a-source-checkout). The same release contains a portable Linux
-app with all four model choices; it needs neither Python nor Rust installed.
+app with all four model choices of that time (Fast came later); it needs neither Python nor Rust installed.
 
 You need `model.onnx` together with `model.onnx.data`, which holds the weights. The graph refers to the data file by
 name, so keep both in the same folder. You also need `labels.json` and `preprocess.json`. `head.npz` is only used by

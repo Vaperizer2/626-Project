@@ -129,8 +129,8 @@ Ubuntu 24.04 ships 2.1.5, so there build with `--features turbojpeg-vendored` in
 slightly from Pillow's and the golden comparison does not match. The portable bundle always uses
 `turbojpeg-vendored`, so its users need no libjpeg-turbo.
 
-A clean build takes about 2.5 to 3 minutes on legion, nearly all of it GPUI Kit. The laptop is short of RAM, so run
-release builds and full test suites on a Boat.dev CPU sandbox (`boat` CLI) when you can. `cargo test -p inference`
+A clean build takes about 2.5 to 3 minutes on legion (the owner's laptop), nearly all of it GPUI Kit. The laptop is
+short of RAM, so the owner runs release builds and full test suites on a Boat.dev CPU sandbox (`boat` CLI). `cargo test -p inference`
 builds the crate without GPUI in under a minute. Options, keys and the profiling setup are in
 [the app README](../apps/gpui-demo/README.md). A new desktop AI app starts from this one with `scripts/new_app.sh`;
 [TEMPLATE.md](TEMPLATE.md) has the procedure.
@@ -170,8 +170,9 @@ apps/gpui-demo/scripts/package_linux.sh
 The script builds a glibc-2.28-compatible binary and bundles onnxruntime, both launchers, credits, checksums and
 what `apps/gpui-demo/packaging/bundle.txt` lists (the models, the demo stack and the dataset note). Add a new model's
 files to that list. Verify the archive/checksums, extract to a temporary directory and run a headless prediction with all
-models. Test the window on a supported desktop before claiming GUI validation. Publish under a new dated tag,
-attach the `.tar.gz` and `.tar.gz.sha256`, and update the links above and in README. A bundle with Fast can be
-larger than 1900 MiB; the script then also writes `.tar.gz.part-*` files, and the bundled `README.txt` explains how
-to join them. Preserve prior releases so
+models. Test the window on a supported desktop before claiming GUI validation. Publish under a new dated tag and
+update the links above and in README. When the archive is at most 1900 MiB, attach the `.tar.gz` and
+`.tar.gz.sha256`. A bundle with Fast is 2.2 GiB before compression, and its ONNX weights barely compress, so expect
+the script to also write `.tar.gz.part-*` files. Then attach the parts and the `.sha256` instead of the `.tar.gz`,
+because GitHub refuses assets over 2 GiB. The bundled `README.txt` explains how to join the parts. Preserve prior releases so
 colleagues can reproduce their downloads. Publish source changes and the matching release together.

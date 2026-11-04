@@ -11,7 +11,7 @@ is 82.1%. Fusion did not improve the original sealed test, but helped on Wikimed
 
 The course submission separately compares A (scratch CNN), B (fine-tuned ConvNeXt-Tiny) and C (frozen SigLIP +
 linear head) on a fixed split. A Rust GPUI Kit demo switches among A/B/C/Deployed/Fast. C and Deployed share a
-1.7 GB external ONNX weight file. Fast is Deployed at 308 px with INT8 weights for TensorRT. October 30 sharing work
+1.7 GB external ONNX weight file. Fast is Deployed at 308 px, quantised to INT8 (weights and activations) for TensorRT. October 30 sharing work
 published the source privately under `Vaperizer2/626-Project` and prepared a release containing the models and
 portable Linux app. On 2026-11-04 `main` took PRs #1 to #4: the Fast model, the GUI-free inference crate
 (`crates/inference`), the new-app template, the 68-picture demo stack, a hard-case study and the training notebook.

@@ -18,7 +18,7 @@ Requirements
 ------------
 * Linux on x86_64 (64-bit Intel/AMD) with glibc 2.28 or newer: Ubuntu 20.04+, Debian 10+, Fedora 29+,
   RHEL/Rocky/Alma 8+, openSUSE Leap 15.3+, Arch/Manjaro/CachyOS or similar. (Check: ldd --version)
-* About 4 GB of free RAM (the SigLIP models use about 2.5 GB). The extracted folder takes 2.2 GB of disk; keep
+* About 4 GB of free RAM (the SigLIP models use about 2.5 GB). The extracted folder takes 2.4 GB (2.2 GiB) of disk; keep
   room for the archive as well while you extract it.
 * For the window: a Wayland or X11 desktop session with working Vulkan or OpenGL drivers (any normal desktop
   install has them). The command-line "classify" mode needs no display at all.

@@ -22,12 +22,12 @@ and [EXPERIMENT_LOG.md](EXPERIMENT_LOG.md) for dated research decisions. Older c
 - GPUI Kit 0.7.3 desktop demo: Classify/Demo/Benchmark, A/B/C/Deployed/Fast picker, Bench themes, headless CLI;
   portable x86_64 Linux packaging and NixOS launcher. Export parity evidence is in `results/demo/` and `exports/`.
   The demo stack has 68 Wikimedia photos in four sections: Hand-picked (20), Random (40, seeded), Hard cases (5) and
-  Not a component (3). Deployed gets 53 of 68 (`results/demo/golden/classify_all.json`).
+  Not a component / abstains (3). Deployed gets 53 of 68 (`results/demo/golden/classify_all.json`).
 - A fast model for the app: the deployed SigLIP at 308 px, quantised to INT8 (weights and activations), runs 9.2 times
   faster than the deployed model on the RTX 3060 Laptop, with the same 5-fold dev accuracy (0.8268). It is the app's
   default where TensorRT is installed. The acceptable faster variants cost 0.1 to 0.5 points. The best, Q5 (MLP pruning
   plus QAT distillation, 11.2 times faster, −0.08 points), is acceptable but not shipped: it was picked from five
-  variants on the same folds, and on 2026-11-03 the owner chose to keep today's Fast. The scripts are in
+  variants on the same folds, and on 2026-11-03 the owner chose to keep the current Fast (`compose_int8_res308`). The scripts are in
   `tools/speed*/`; [EXPERIMENT_LOG.md](EXPERIMENT_LOG.md) has the results.
 - TensorRT 10.16.1 miscompiles these graphs after two onnxruntime rewrites (batch above 1; token merging with INT8).
   A manifest's `session_config` turns them off; the shipped Fast model is batch 1 without token merging and needs

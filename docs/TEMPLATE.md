@@ -45,7 +45,7 @@ docs/TEMPLATE.md                     this file
 
 Edit `ABOUT` first. The script sets it to "classify pictures".
 
-**The first build.** A clean build compiles GPUI Kit, about 500 crates, which takes 2.5 to 3 minutes on legion. On this project, run release builds and full test suites on a Boat.dev CPU sandbox (`boat` CLI) when you can, because the laptop is short of RAM. Give each app its own target dir, and do not point `CARGO_TARGET_DIR` at another app's `target/`. Both apps have `crates/inference` at the same relative path, cargo names a path crate's artifacts by that path, and in a shared target dir one app can link or test the other app's copy without rebuilding.
+**The first build.** A clean build compiles GPUI Kit, about 500 crates, which takes 2.5 to 3 minutes on legion (the owner's laptop). On this project the owner runs release builds and full test suites on a Boat.dev CPU sandbox (`boat` CLI), because the laptop is short of RAM. Give each app its own target dir, and do not point `CARGO_TARGET_DIR` at another app's `target/`. Both apps have `crates/inference` at the same relative path, cargo names a path crate's artifacts by that path, and in a shared target dir one app can link or test the other app's copy without rebuilding.
 
 ## 2. Add a model
 

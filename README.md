@@ -82,7 +82,8 @@ uv run python scripts/make_report_figures.py
 ```
 
 `exports/final/model.onnx` and `model.onnx.data` are release assets inside the Linux bundle, not Git objects.
-Follow [the runbook](docs/RUNBOOK.md) to download all models into the source checkout or run the bundled demo.
+Follow [the runbook](docs/RUNBOOK.md) to download models A, B, C and Deployed into the source checkout or run the
+bundled demo. Fast's ONNX files are not in a release yet (see the runbook).
 The shared SigLIP weights alone are 1,714,593,792 bytes (1.60 GiB). Exporting again requires the training inputs/caches;
 use the release for inference without rebuilding the dataset.
 
