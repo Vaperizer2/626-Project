@@ -237,6 +237,78 @@ def _siglip(num_classes: int, pretrained: bool, name: str = "vit_base_patch16_si
     return _timm(name, num_classes, pretrained, **kw)
 
 
+# ---------------------------------------------------------------------------------- 5. 2025 backbones (probe sweep, 2026-11-04)
+@_register("dinov3_vithp16", "DINOv3 (self-supervised ViT)", "vit_huge_plus_patch16_dinov3.lvd1689m",
+           name="vit_huge_plus_patch16_dinov3.lvd1689m")
+@_register("dinov3_vitl16", "DINOv3 (self-supervised ViT)", "vit_large_patch16_dinov3.lvd1689m",
+           name="vit_large_patch16_dinov3.lvd1689m")
+def _dinov3(num_classes: int, pretrained: bool, name: str = "vit_large_patch16_dinov3.lvd1689m", **kw):
+    """DINOv3 (Simeoni et al., 2025): self-supervised ViT on 1.7B curated images with Gram anchoring.
+
+    Successor of DINOv2 with register tokens and RoPE; distilled ViT-L/16 (300M) and ViT-H+/16 (840M)
+    students of the 7B teacher. Native 256 px, ImageNet normalisation, crop 1.0. Weights are gated on the
+    Hugging Face Hub (accept the DINOv3 licence once, then ``hf auth login``).
+    """
+    return _timm(name, num_classes, pretrained, **kw)
+
+
+@_register("pe_core_g14_448", "Perception Encoder (contrastive image-text)", "vit_pe_core_gigantic_patch14_448.fb",
+           name="vit_pe_core_gigantic_patch14_448.fb")
+@_register("pe_core_l14_336", "Perception Encoder (contrastive image-text)", "vit_pe_core_large_patch14_336.fb",
+           name="vit_pe_core_large_patch14_336.fb")
+def _pe_core(num_classes: int, pretrained: bool, name: str = "vit_pe_core_large_patch14_336.fb", **kw):
+    """Perception Encoder Core (Bolya et al., 2025): CLIP-style image-text training with a robust recipe.
+
+    Meta's PE-Core L/14 at 336 px (300M) and G/14 at 448 px (1.9B); attention-pooled embedding, mean/std 0.5,
+    crop 1.0. Among the strongest zero-shot and linear-probe image encoders of 2025.
+    """
+    return _timm(name, num_classes, pretrained, **kw)
+
+
+@_register("aimv2_h14_336", "AIMv2 (autoregressive image-text)", "aimv2_huge_patch14_336.apple_pt",
+           name="aimv2_huge_patch14_336.apple_pt")
+@_register("aimv2_l14_336", "AIMv2 (autoregressive image-text)", "aimv2_large_patch14_336.apple_pt",
+           name="aimv2_large_patch14_336.apple_pt")
+def _aimv2(num_classes: int, pretrained: bool, name: str = "aimv2_large_patch14_336.apple_pt", **kw):
+    """AIMv2 (Fini et al., 2024): ViT pre-trained to autoregressively reconstruct image patches and caption text.
+
+    Apple's large (300M) and huge (600M) encoders at 336 px; CLIP normalisation, crop 1.0. Strong frozen
+    features for recognition without a contrastive objective.
+    """
+    return _timm(name, num_classes, pretrained, **kw)
+
+
+@_register("eva02_l14_clip_336", "EVA-02 CLIP (contrastive image-text)", "eva02_large_patch14_clip_336.merged2b",
+           name="eva02_large_patch14_clip_336.merged2b")
+def _eva02_clip(num_classes: int, pretrained: bool, name: str = "eva02_large_patch14_clip_336.merged2b", **kw):
+    """EVA-02 CLIP (Sun et al., 2023): a masked-image-modelling-initialised ViT-L trained CLIP-style on 2B pairs.
+
+    336 px, CLIP normalisation, crop 1.0. Pooled image embedding from the CLIP projection.
+    """
+    return _timm(name, num_classes, pretrained, **kw)
+
+
+@_register("siglip2_so400m_512", "SigLIP (sigmoid image-text)", "vit_so400m_patch16_siglip_512.v2_webli",
+           zeroshot=("ViT-SO400M-16-SigLIP2-512", "webli"), name="vit_so400m_patch16_siglip_512.v2_webli")
+def _siglip2_512(num_classes: int, pretrained: bool, name: str = "vit_so400m_patch16_siglip_512.v2_webli", **kw):
+    """SigLIP 2 So400m/16 at 512 px: the same encoder family as model C at a higher native resolution.
+
+    Mean/std 0.5, crop 0.9, MAP pooling. Tests whether resolution, rather than the backbone, limits the probe.
+    """
+    return _timm(name, num_classes, pretrained, **kw)
+
+
+@_register("metaclip2_g14_378", "MetaCLIP 2 (contrastive image-text)", "vit_gigantic_patch14_clip_378.metaclip2_worldwide",
+           name="vit_gigantic_patch14_clip_378.metaclip2_worldwide")
+@_register("dfn5b_h14_224", "DFN CLIP (contrastive image-text)", "vit_huge_patch14_clip_224.dfn5b",
+           name="vit_huge_patch14_clip_224.dfn5b")
+def _big_clip(num_classes: int, pretrained: bool, name: str = "vit_huge_patch14_clip_224.dfn5b", **kw):
+    """Large CLIP-style encoders: DFN-5B ViT-H/14 (Fang et al., 2023, 630M) and MetaCLIP 2 ViT-bigG/14 at
+    378 px (Chuang et al., 2025, 1.8B). CLIP normalisation, crop 1.0.
+    """
+    return _timm(name, num_classes, pretrained, **kw)
+
+
 # ---------------------------------------------------------------------------------- API
 def build_model(key: str, num_classes: int, pretrained: bool = True, **kw) -> tuple[nn.Module, PreprocessSpec]:
     """Build ``key`` with a fresh ``num_classes``-way head (0 = features only)."""

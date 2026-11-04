@@ -169,3 +169,35 @@ Development-fold study of the from-scratch CNN on an RTX 4070 laptop; full recor
 | 2026-11-03 | Model A + distillation from C (`configs/scratch_cnn_distill.yaml`, `fbe64b2765cb`): cross-fitted per-fold SigLIP So400m probe teacher, alpha 0.9, T 2, 300 ep, 5 folds | 0.4361 (+0.046 ± 0.007 vs 200-ep A, 5/5 folds) | 0.4459 | Separate variant: no pretrained weights or extra images, but soft targets from a pretrained model. 500 epochs: +0.004 ± 0.004, not adopted. |
 | 2026-11-04 | **Sealed test — one look for the two final recipes** (`results/scratch_cnn_improvement/`, fold-0 training, 418 images) | — | — | A 200 ep: test acc 0.3995 / macro-F1 0.3924 (committed course run 0.3541 / 0.3361). A + distillation: 0.4115 / 0.3933. Paired bootstrap distilled − plain: macro-F1 +0.001 [−0.044, +0.045]. Schedule gain carries over; distillation gain not resolvable on the test split. Test split spent for both recipes. |
 | 2026-11-04 | **Wikimedia holdout — one look for the same two checkpoints** (`tools/eval_holdout_cnn.py`, `results/scratch_cnn_improvement/web_holdout_*`, 407 images, files restored from the developer's archive, fingerprint `5458af44e043b3aa`) | — | — | A 200 ep: acc 0.2826 / macro-F1 0.2570 [0.216, 0.293]. A + distillation: 0.3170 / 0.2976 [0.252, 0.334]. Paired bootstrap distilled − plain: macro-F1 +0.040 [+0.003, +0.079], 14/20 classes. Deployed model on the same photos (2026-10-18): 0.8206 / 0.8159. Source shift costs the scratch CNN 10-14 pt macro-F1 vs 2 pt for the pretrained model. Holdout spent for both recipes; B and C not scored. |
+
+## 2026-11-04 — linear-probe sweep of 2025 backbones (laptop RTX 4070, `results/probes_win.jsonl`)
+
+Question: does any backbone released since the October benchmark carry better frozen features for these 20 classes
+than SigLIP So400m/14@384? Same protocol as Phase 1: eval-preprocessed features extracted once (fp16 autocast; models
+above 1 B parameters loaded in fp16 with batch 8-16), standardise + multinomial logistic regression per fold, C by
+grouped 3-fold CV on the training rows, grouped 5-fold dev CV, out-of-fold probabilities in `results/oof/`.
+Paired against the SigLIP probe fold by fold. Backbones registered in `src/compclass/models/registry.py`
+(section 5). Sealed test and web holdout untouched.
+
+| Backbone (probe) | CV macro-F1 (mean ± SD) | CV acc. | Δ vs SigLIP probe (paired ± SE) | folds better | feature pass (s) |
+|---|---:|---:|---:|---:|---:|
+| MetaCLIP 2 ViT-bigG/14@378 (1.84 B, fp16) | 0.8496 ± 0.0081 | 0.8515 | +0.0256 ± 0.0033 | 5/5 | 0 |
+| PE-Core L/14@336 | 0.8298 ± 0.0131 | 0.8308 | +0.0058 ± 0.0039 | 4/5 | 625 |
+| SigLIP 2 So400m/16@512 | 0.8258 ± 0.0061 | 0.8268 | +0.0018 ± 0.0040 | 2/5 | 663 |
+| DFN-5B ViT-H/14@224 | 0.8247 ± 0.0151 | 0.8264 | +0.0007 ± 0.0024 | 2/5 | 734 |
+| SigLIP So400m/14@384 (model C, re-run here) | 0.8240 ± 0.0116 | 0.8256 | +0.0000 ± 0.0000 | 0/5 | 0 |
+| AIMv2 H/14@336 | 0.7978 ± 0.0086 | 0.7990 | -0.0262 ± 0.0024 | 0/5 | 839 |
+| EVA-02 L/14 CLIP@336 | 0.7974 ± 0.0153 | 0.7994 | -0.0266 ± 0.0049 | 0/5 | 391 |
+| AIMv2 L/14@336 | 0.7847 ± 0.0215 | 0.7858 | -0.0393 ± 0.0064 | 0/5 | 419 |
+| DINOv3 ViT-H+/16@256 | 0.6917 ± 0.0155 | 0.6942 | -0.1323 ± 0.0073 | 0/5 | 994 |
+| DINOv3 ViT-L/16@256 | 0.6504 ± 0.0146 | 0.6553 | -0.1735 ± 0.0071 | 0/5 | 440 |
+
+Findings: (1) MetaCLIP 2 ViT-bigG/14 is the first backbone to beat the SigLIP probe beyond noise, +2.6 ± 0.3 pt on
+every fold (0.8496 vs 0.8240), and also above the deployed fused model's OOF 0.8264. (2) The other image-text
+encoders land within ±0.6 pt of SigLIP; resolution (SigLIP 2 at 512 px) adds nothing; self-supervised (DINOv3) and
+autoregressive (AIMv2) features trail by 3-17 pt, as DINOv2 did in October. (3) Cost: the bigG feature pass took
+83 min for 2,930 images on the 4070 (about 1.7 s/image, with the 8 GB card spilling into shared memory), against
+about 1 s/image for So400m on a CPU; its fp16 weights are 3.7 GB. PE-Core G/14@448 (1.88 B) was queued but not run:
+the sweep was stopped by the agent harness for low system memory after the bigG pass.
+Not yet done: zero-shot text head and temperature for the bigG probe (open_clip tag availability to check), and any
+one-look evaluation; both are the author's call.
