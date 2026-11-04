@@ -183,6 +183,7 @@ Source of these numbers: `results/itri626/metrics.json`.
 | Report (PDF, LaTeX source) | [`docs/itri626_report/main.pdf`](docs/itri626_report/main.pdf), `docs/itri626_report/main.tex` |
 | Rubric compliance checklist | [`docs/itri626_report/RUBRIC_CHECKLIST.md`](docs/itri626_report/RUBRIC_CHECKLIST.md) (also report Appendix E) |
 | Executed notebook (outputs, figures, metric tables) | [`notebooks/ITRI626_three_models.ipynb`](notebooks/ITRI626_three_models.ipynb) (+ `notebooks/itri626_helpers.py`) |
+| Training notebook (one section per model: A, B, C, Deployed, Fast) | [`notebooks/ITRI626_training.ipynb`](notebooks/ITRI626_training.ipynb) |
 | Experiment script | `scripts/itri626_experiments.py` → `results/itri626/` (metrics, per-class, histories, predictions, figures) |
 | Data preparation | `tools/build_dataset_v2.py` (cleaning, duplicate clustering, grouped split), `tools/export_splits.py` |
 | Split files | `data/v2/splits/{train,val,test}.csv`, `split_summary.csv` (per-class counts), `split_info.json` |
