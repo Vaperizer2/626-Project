@@ -190,7 +190,7 @@ async fn the_header_stays_inside_the_smallest_window_while_it_runs(cx: &mut Test
 
 /// The Benchmark tab over the shipped exports with onnxruntime on the CPU EP matches the golden classify rows
 /// (top-1, abstain flag, probabilities within 1e-6). Needs the exports, ORT_DYLIB_PATH and the turbojpeg feature,
-/// because the golden rows were decoded with libjpeg-turbo; about 90 s in a debug build.
+/// because the golden rows were decoded with libjpeg-turbo; about 4 minutes in a debug build.
 ///     ORT_DYLIB_PATH=... cargo test -p gpui-demo --features turbojpeg -- --ignored real_benchmark
 #[gpui_kit::test]
 #[ignore]
@@ -253,7 +253,7 @@ async fn real_benchmark_matches_the_golden_rows(cx: &mut TestAppContext) {
             assert!(worst <= 1e-6, "{file} {head}: max |dp| {worst}");
             compared += 1;
         }
-        assert_eq!(compared, 112);
+        assert_eq!(compared, 4 * stack.images.len(), "a row per picture and model");
         eprintln!("benchmark tab: {compared} cells match the golden rows");
     });
 }

@@ -1,4 +1,4 @@
-//! Demo tab: the curated stack as a sectioned thumbnail grid, a detail pane with the result against the true
+//! Demo tab: the demo stack as a sectioned thumbnail grid, a detail pane with the result against the true
 //! label and the photo's attribution, "Run all" with progress and an accuracy summary, keyboard stepping.
 
 use std::collections::HashMap;
