@@ -46,12 +46,19 @@ def extract_features(key: str, rows: list[Row], m: Manifest, cache_dir: str | Pa
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model, spec = build_model(key, num_classes=0, pretrained=pretrained)  # num_classes=0 -> features
     model.eval().to(device)
+    n_params = sum(p.numel() for p in model.parameters())
+    half = device.type == "cuda" and n_params > 1e9  # >1B parameters: fp32 weights alone exceed an 8 GB card
+    if half:
+        model.half()
+        batch_size = min(batch_size, 8 if n_params > 1.5e9 else 16)  # keep the 8 GB card out of shared memory
     dl = DataLoader(ImageDataset(rows, m.root, m.class_to_idx, build_transforms(spec, None, train=False)),
                     batch_size=batch_size, num_workers=num_workers)
     feats = []
     for x, _ in dl:
         with torch.autocast(device.type, dtype=torch.float16, enabled=device.type == "cuda"):
             x = x.to(device)
+            if half:
+                x = x.half()
             f = model(x).float()
             if tta:
                 f = 0.5 * (f + model(torch.flip(x, dims=[3])).float())
