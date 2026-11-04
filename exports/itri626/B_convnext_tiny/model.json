@@ -1,0 +1,92 @@
+{
+ "schema": "model-manifest/1",
+ "id": "B_convnext_tiny",
+ "graph": {
+  "file": "model.onnx",
+  "external_data": [],
+  "precision": "fp32"
+ },
+ "files": {
+  "labels.json": {
+   "bytes": 307,
+   "sha256": "bb7bd956f6d7cd0645b381ee858006ef33bd16ede6107b926d9eb8a65eb2011e"
+  },
+  "model.onnx": {
+   "bytes": 112081040,
+   "sha256": "6840eb127cf5c3896768c8a9a1022058da661f68e4560da1b272c4c0fe7466d7"
+  }
+ },
+ "input": {
+  "name": "input",
+  "dtype": "f32",
+  "layout": "NCHW",
+  "size": [
+   224,
+   224
+  ],
+  "batch": {
+   "max": 1
+  },
+  "preprocess": {
+   "kind": "resize_short_center_crop",
+   "resize_short_side": 256,
+   "filter": "pillow_bicubic",
+   "color": "RGB",
+   "scale": 0.00392156862745098,
+   "mean": [
+    0.485,
+    0.456,
+    0.406
+   ],
+   "std": [
+    0.229,
+    0.224,
+    0.225
+   ]
+  }
+ },
+ "heads": [
+  {
+   "id": "b",
+   "title": "B · ConvNeXt-T (fine-tuned)",
+   "short": "B · ConvNeXt-T",
+   "task": {
+    "kind": "classify",
+    "readout": {
+     "kind": "probs",
+     "output": "probs"
+    },
+    "labels": "labels.json",
+    "calibration": {
+     "kind": "none"
+    },
+    "decision": {
+     "kind": "commit",
+     "low_confidence_below": 0.5
+    }
+   }
+  }
+ ],
+ "runtime": {
+  "graph_optimization_level": "ORT_ENABLE_LAYOUT",
+  "providers": [
+   {
+    "ep": "cuda"
+   },
+   {
+    "ep": "cpu"
+   }
+  ]
+ },
+ "provenance": {
+  "model": "convnext_tiny",
+  "report_model": "B_convnext_tiny",
+  "config_hash": "bb9c72a49446",
+  "fold": 0,
+  "checkpoint_sha256": "1920e1a9ab7ed8bf00ed0f64927bb8561eefbbdf5edb2ee1ca1aa7ff63f98195",
+  "manifest_fingerprint": "431315e87d2612cb",
+  "details": [
+   "export_report.json"
+  ]
+ }
+}

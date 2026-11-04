@@ -45,3 +45,62 @@ The desktop app moved to GPUI Kit 0.7.3 with Classify/Demo/Benchmark, model comp
 Portable glibc-2.28 Linux packaging and a NixOS/Wayland launcher followed. October 30 published the source privately
 at https://github.com/Vaperizer2/626-Project and prepared a model/demo release, runbook and agent handoff.
 This delivery work does not change the recorded research scores or reopen held-out model selection.
+
+## 2026-10-31 — distilled students for single-image speed (branch `wip/distill`)
+
+Hypothesis: a student 5-20x cheaper than the frozen So400m-384 trunk, trained to reproduce its pooled embedding,
+keeps the deployed head and zero-shot fusion and lands within 0.5 pt of its development-CV accuracy. It does not on
+the data available. Students were distilled only on 59,466 unlabeled images disjoint from every `data/v2` and
+`data/web_holdout_v1` image (`tools/distill/pool.py`: 25,193 component photos from 11 Kaggle datasets, 34,273
+Caltech-256 and COCO val2017 images). A pool image was dropped when its CLIP-B/32 cosine to any v2 or holdout image
+reached 0.85 over flips and rotations, or its pHash came within 10 bits. Loss: standardised-feature MSE + cosine +
+KL on the zero-shot text head. KL on the deployed probe head was left out because that head was fitted on all
+development labels.
+
+Numbers from the speed harness (`tools/speed`, legion RTX 3060 Laptop, batch 1, against `baseline_fp32`:
+CV accuracy 0.8268 ± 0.0151, about 110 ms):
+
+| Candidate | Params | Input | CV accuracy | Δ vs baseline | McNemar (B wrong / B right) | Batch-1 ms | Speedup |
+|---|---:|---:|---:|---:|---|---:|---:|
+| SigLIP2 B/16, CUDA fp32 | 93.8 M | 256 | 0.7397 ± 0.0188 | −8.72 pt | 269 / 50, p < 1e-4 | 11.28 | 10.5x |
+| SigLIP2 B/16, TensorRT fp16 | 93.8 M | 256 | 0.7397 ± 0.0187 | −8.72 pt | 269 / 50, p < 1e-4 | 2.28 | 48x |
+| MobileCLIP2-S0, CUDA fp32 | 12.0 M | 256 | 0.6433 ± 0.0326 | −18.35 pt | 520 / 59, p < 1e-4 | 4.27 | 26x |
+| MobileCLIP2-S0, TensorRT fp16 | 12.0 M | 256 | 0.6425 ± 0.0321 | −18.43 pt | 521 / 58, p < 1e-4 | 7.26 | 16x |
+
+All four are REJECT. The B/16 student reaches 0.926 cosine to the teacher on held-out pool images but 0.844 on
+development images (0.859 in-scope). Fidelity is worst on classes the pool covers thinly (switch 0.79, fuse 0.81)
+and best on capacitor and breadboard (0.88). It scores below SigLIP2 B/16's own linear probe (0.760, Phase 1).
+A one-fold diagnostic (`tools/distill/run_fold_diag.sh 0`, unofficial) adds the 2,010 development images outside
+fold 0, label-free. Fold-0 accuracy rises from 0.727 to 0.747 (teacher 0.801) and fold-0 cosine from 0.846 to
+0.869. A pool-only control with the same schedule stays at 0.727. In-domain images help but close about a third
+of the gap.
+
+## 2026-10-31 to 2026-11-03 — fast inference for the desktop app (tools/speed*)
+
+Goal: make the deployed SigLIP So400m-384 fused model faster on the laptop's RTX 3060 (6 GB, 80 W cap) and lose
+at most 0.5 pt of 5-fold dev CV accuracy against 0.8268. Every number in the table comes from the frozen speed harness
+(`tools/speed`): batch-1 latency as a paired ratio against the fp32 graph, 5-fold dev CV, McNemar against the
+baseline. Model choices used only the dev folds; the sealed test and the web holdout stay spent.
+
+| Candidate | Batch-1 speed vs deployed | CV accuracy | Δ | Verdict |
+|---|---:|---:|---:|---|
+| 308 px, INT8 SmoothQuant, weights and activations (`compose_int8_res308`) | 9.2x (11.9 ms) | 0.8268 | 0.00 pt | shipped as the app's Fast model |
+| 294 px, INT8 | about 10x | 0.8240 | −0.28 pt | not shipped |
+| 308 px, token merging at blocks 13 and 20, INT8 | 10.8x, 11.4x with a fused engine | about 0.824 | about −0.3 pt (4 readings, −0.16 to −0.40, one of them fp16) | not shipped |
+| 294 px, MLP pruned to 3840, INT8 (speed2) | 11.3x | 0.8224 | −0.44 pt | acceptable, not shipped |
+| speed2 shape + full-rank QAT distillation, Q5 (speed3) | 11.2x (9.95 ms) | 0.8260 | −0.08 pt (McNemar 60/58, p 0.93) | acceptable, best so far, not yet shipped |
+
+Q5 was picked from five built variants scored on the same dev folds, so its −0.08 pt is optimistic. Against the
+speed2 winner it is +0.36 pt (McNemar 33/42, p 0.36), not beyond noise. LoRA QAT (Q1) and a closed-form fc2 refit
+(C1) land at −0.40 to −0.48 pt; distilling on the dev images themselves is worse (−0.84 pt). Q4 (per-token loss)
+was only screened, by the fake-quant screen rather than the harness: 84 fixed-head flips against Q5's 91, within
+noise. It was not built.
+
+Findings that hold beyond these candidates:
+- TensorRT 10.16.1 miscompiles these graphs after two onnxruntime rewrites (TransposeOptimizer: wrong outputs at
+  batch > 1; MatMulAddFusion: broken token merging with INT8). A manifest's `session_config` turns both off
+  (docs/TEMPLATE.md); the shipped Fast model hits neither.
+- Latency is not linear in tokens: on the 30 SMs it steps with GEMM tiles and CTA waves. The token counts that paid
+  off were 448, 384, 256 and 128 (`tools/speed4`).
+- Batching gains about 10 %, because the GPU is power-capped.
+- The same token-merging graph builds a fused TensorRT engine about 1 time in 4; `tools/speed4/engprobe.sh` tells.

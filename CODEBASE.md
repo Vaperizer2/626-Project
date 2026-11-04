@@ -22,8 +22,12 @@ src/compclass/
   export.py          checkpoint ONNX export + labels.json + preprocess.json + parity check
   final.py           fit/calibrate fused SigLIP head, export, held-out evaluation
   demo.py            Python file/folder/URL/webcam inference through onnxruntime
-apps/gpui-demo/       Rust GPUI Kit 0.7.3 desktop app, model registry A/B/C/Deployed,
-                     headless classify mode and portable Linux/NixOS launchers
+Cargo.toml           Rust workspace: crates/inference and apps/gpui-demo (build from here; binaries in target/)
+crates/inference/    image models without a UI: manifests and registry, inference service, onnxruntime with
+                     execution-provider fallback and TensorRT engine cache, weight integrity (no GPUI dependency)
+apps/gpui-demo/      Rust GPUI Kit 0.7.3 desktop app: Classify, Demo and Benchmark tabs over models
+                     A/B/C/Deployed/Fast, headless classify/bench/models, portable Linux/NixOS launchers
+scripts/new_app.sh   a new desktop AI app from apps/gpui-demo without the classifier's parts (docs/TEMPLATE.md)
 configs/             base.yaml (every knob, commented) + one file per family
 tests/test_smoke.py  CPU smoke tests on a synthetic 3-class manifest (~10 s)
 scripts/gpu_witness.py  per-model download/build/fp16 train-step benchmark + end-to-end CLI witness on the GPU PC
