@@ -1,7 +1,7 @@
 # Runbook
 
-Updated 2026-11-04. Source: https://github.com/Vaperizer2/626-Project (private).
-Release: https://github.com/Vaperizer2/626-Project/releases/tag/share-2026-10-30.
+Updated 2026-11-04. Source: https://github.com/Vaperizer2/626-Project (private). Release:
+https://github.com/Vaperizer2/626-Project/releases/tag/share-2026-11-04 (the older share-2026-10-30 stays available).
 
 ## Give a colleague access
 
@@ -16,16 +16,17 @@ change is needed to use this one. Check `gh auth status` before publishing futur
 ## Run the portable Linux demo
 
 Requires x86_64 Linux, glibc 2.28+, roughly 4 GB free RAM and at least 4 GB disk for archive plus extraction.
-It includes CPU onnxruntime, four model choices and 28 credited demo photos (the share-2026-10-30
-release; later bundles carry 68); no Python/Rust install is needed.
-Download the archive and its checksum from the release page, or use GitHub CLI after `gh auth login`:
+It includes CPU onnxruntime, all five models and 68 credited demo photos; no Python/Rust install is needed.
+The archive is split into two parts below GitHub's 2 GiB asset limit. Download both parts and the checksum file from
+the release page, or use GitHub CLI after `gh auth login`:
 
 ```bash
 mkdir -p component-classifier-download
 cd component-classifier-download
-gh release download share-2026-10-30 --repo Vaperizer2/626-Project \
+gh release download share-2026-11-04 --repo Vaperizer2/626-Project \
   --pattern 'component-classifier-linux-x86_64.tar.gz*'
-sha256sum -c component-classifier-linux-x86_64.tar.gz.sha256
+cat component-classifier-linux-x86_64.tar.gz.part-* > component-classifier-linux-x86_64.tar.gz
+sha256sum -c component-classifier-linux-x86_64.tar.gz.sha256 --ignore-missing
 tar -xzf component-classifier-linux-x86_64.tar.gz
 cd component-classifier-linux-x86_64
 sha256sum -c SHA256SUMS
@@ -37,16 +38,15 @@ On NixOS replace `./run.sh` with `./run-nixos.sh`; `./run-nixos.sh --doctor` dia
 The first NixOS launch fetches libraries through Nix and caches paths under `~/.cache/component-classifier`.
 Later inference is offline once those dependencies are present. A graphical desktop with suitable GPU drivers is
 needed for the window; `classify` works headlessly. See the bundled `README.txt` for shortcuts and troubleshooting.
-Try the Demo tab, then Benchmark to compare A/B/C/Deployed. These photos are a presentation set, not a new
+Try the Demo tab, then Benchmark to compare the models. These photos are a presentation set, not a new
 independent accuracy estimate. Allow several seconds for the initial SigLIP load.
 
 ## Run the Fast model on an NVIDIA GPU
 
 Fast is the deployed model at 308 px, INT8 in weights and activations, for TensorRT. It has the same cross-validated
 accuracy on the development folds (0.8268) at 14 ms per picture instead of 113 ms for Deployed on CUDA (RTX 3060
-Laptop, in the app). The share-2026-10-30 release predates Fast and the GPU launcher: use a bundle built from `main`
-(`apps/gpui-demo/scripts/package_linux.sh`, see below for Fast's model files) or a source build. It needs the GPU
-runtime, which the bundle does not ship (about 7 GB, no root):
+Laptop, in the app). The share-2026-11-04 release includes Fast and the GPU launcher (share-2026-10-30 predates both).
+Fast needs the GPU runtime, which the bundle does not ship (about 7 GB, no root):
 
 ```bash
 uv venv ~/.local/share/onnxruntime-gpu/1.31 --python 3.12
@@ -61,11 +61,9 @@ The driver must support CUDA 13. That folder is one install per machine, shared 
 or an active virtualenv; `COMPCLASS_GPU=0` forces the CPU. Without TensorRT the app starts on Deployed (CUDA); without any GPU
 runtime it runs on the CPU and says so on the launcher's first line and in `./run.sh models`.
 
-Fast's ONNX files are not in any release yet. Copy `model.onnx` and `model.onnx.data` (440 MB) from the export (on
-legion: `/home/vaper/Work/Prototypes/626-artifacts/compose/exports/fast/`) into `exports/fast/` of a source
-checkout, whose other files (`model.json`, `preprocess.json`, `labels.json`, `runtime.json`) are tracked in git,
-then build the app or the bundle (`apps/gpui-demo/scripts/package_linux.sh` includes Fast).
-`gpui-demo models --check` verifies the copied files against the checksums in `exports/fast/model.json`.
+Fast's ONNX files are in the share-2026-11-04 release under `exports/fast/`. In a source checkout, the extraction
+below restores them beside the tracked `model.json`, `preprocess.json`, `labels.json` and `runtime.json`.
+`gpui-demo models --check` verifies them against the checksums in `exports/fast/model.json`.
 
 ## Download models into a source checkout
 
@@ -75,14 +73,16 @@ Authenticate as an invited collaborator. From a terminal:
 gh repo clone Vaperizer2/626-Project
 cd 626-Project
 mkdir -p dist
-gh release download share-2026-10-30 --repo Vaperizer2/626-Project --dir dist \
+gh release download share-2026-11-04 --repo Vaperizer2/626-Project --dir dist \
   --pattern 'component-classifier-linux-x86_64.tar.gz*'
-(cd dist && sha256sum -c component-classifier-linux-x86_64.tar.gz.sha256)
+cat dist/component-classifier-linux-x86_64.tar.gz.part-* > dist/component-classifier-linux-x86_64.tar.gz
+(cd dist && sha256sum -c component-classifier-linux-x86_64.tar.gz.sha256 --ignore-missing)
 tar -xzf dist/component-classifier-linux-x86_64.tar.gz --strip-components=1 \
   component-classifier-linux-x86_64/exports
 ```
 
-This restores `exports/final/` and `exports/itri626/{A_scratch_cnn,B_convnext_tiny}/` in the layout used by both apps.
+This restores `exports/final/`, `exports/fast/` and `exports/itri626/{A_scratch_cnn,B_convnext_tiny}/` in the layout
+used by both apps.
 
 | Asset | Bytes | Purpose |
 |---|---:|---|
@@ -157,8 +157,9 @@ Record changed research conclusions in `EXPERIMENT_LOG.md`; update `STATUS.md` w
 ## Maintain the release
 
 ONNX files and `dist/` remain ignored by Git. This project distributes inference binaries as Release assets rather
-than Git LFS pointers. The share-2026-10-30 archive (1.74 GB) is below GitHub's 2 GiB per-asset limit. LFS is also
-possible, but adds client setup and storage/bandwidth accounting. See
+than Git LFS pointers. The share-2026-11-04 archive (2.12 GB) is uploaded as two parts below GitHub's 2 GiB per-asset
+limit; the share-2026-10-30 archive (1.74 GB) was one file. LFS is also possible, but adds client setup and
+storage/bandwidth accounting. See
 [GitHub large-file guidance](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-large-files-on-github)
 and [LFS limits](https://docs.github.com/en/repositories/working-with-files/managing-large-files/about-git-large-file-storage).
 
