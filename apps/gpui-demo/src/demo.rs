@@ -1,4 +1,4 @@
-//! The curated demo stack (`demo_stack/demo_stack.json` + images) used by the Demo and Benchmark tabs.
+//! The demo stack (`demo_stack/demo_stack.json` + images) used by the Demo and Benchmark tabs.
 //!
 //! Found through `$<ENV_PREFIX>_DEMO_DIR`, else as the first `demo_stack/` (or `apps/<bin>/demo_stack/`) with a
 //! `demo_stack.json` found walking up from the current directory and from the executable.
@@ -245,6 +245,16 @@ mod tests {
             assert!(s.path(i).is_file(), "{} missing", im.file);
             assert!(!im.author.is_empty() && !im.licence.is_empty() && !im.source_url.is_empty(), "{} credit", im.file);
         }
-        assert_eq!(s.section_indices("One per class").len(), 20);
+        let classes = |section: &str| {
+            let mut v: Vec<_> =
+                s.section_indices(section).iter().map(|&i| s.images[i].true_text().to_owned()).collect();
+            v.sort();
+            v
+        };
+        let one = classes("Hand-picked, one per class");
+        assert_eq!(one.len(), 20);
+        one.windows(2).for_each(|w| assert_ne!(w[0], w[1], "one per class"));
+        let two: Vec<_> = one.iter().flat_map(|c| [c.clone(), c.clone()]).collect();
+        assert_eq!(classes("Random, two per class"), two, "two random pictures of every class");
     }
 }

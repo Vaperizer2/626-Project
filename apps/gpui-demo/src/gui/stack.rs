@@ -98,17 +98,33 @@ struct Decoded {
     full: Arc<RenderImage>,
 }
 
-/// Decode every demo image in parallel, once; results arrive in completion order as (index, result).
+/// Decode every demo image once, in parallel on a pool of their own (one at a time if no pool can be built); results
+/// arrive in completion order as (index, result).
+/// The decodes run on a pool of their own, half the cores: on rayon's global pool the inference service's
+/// preprocessing would queue behind every picture of the stack.
 fn load_thumbnails(paths: Vec<std::path::PathBuf>) -> fmpsc::UnboundedReceiver<(usize, Result<Decoded, String>)> {
     let (tx, rx) = fmpsc::unbounded();
     std::thread::Builder::new()
         .name("thumbnails".into())
         .spawn(move || {
             let t0 = Instant::now();
-            paths.into_par_iter().enumerate().for_each(|(i, p)| {
-                let r = prof!("demo::decode_and_thumbnail", decode_one(&p));
+            let threads = std::thread::available_parallelism().map_or(1, |n| (n.get() / 2).max(1));
+            let one = |i: usize, p: &std::path::Path| {
+                let r = prof!("demo::decode_and_thumbnail", decode_one(p));
                 let _ = tx.unbounded_send((i, r));
-            });
+            };
+            match rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .thread_name(|i| format!("thumbnails-{i}"))
+                .build()
+            {
+                Ok(pool) => pool.install(|| paths.par_iter().enumerate().for_each(|(i, p)| one(i, p))),
+                Err(e) => {
+                    // no thread to spare: decode here, one picture at a time
+                    log!("thumbnail pool: {e}; decoding on this thread");
+                    paths.iter().enumerate().for_each(|(i, p)| one(i, p));
+                }
+            }
             log!("demo stack decoded in {:.0} ms", t0.elapsed().as_secs_f64() * 1000.0);
         })
         .expect("spawn thumbnail thread");

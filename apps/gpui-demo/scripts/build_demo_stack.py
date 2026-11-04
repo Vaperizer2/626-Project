@@ -2,18 +2,24 @@
 # requires-python = ">=3.10"
 # dependencies = ["pillow>=10"]
 # ///
-"""Build apps/gpui-demo/demo_stack/: the curated images the GUI's Demo and Benchmark tabs click through.
+"""Build apps/gpui-demo/demo_stack/: the images the GUI's Demo and Benchmark tabs click through.
 
-Every image is NOT used for training or model selection: all but two come from the independent Wikimedia
+No image was used for training or model selection: all but two come from the independent Wikimedia
 Commons web holdout (data/web_holdout_v1, evaluated once), the two out-of-scope photos are the credited demo
 images in results/demo/wikimedia_credits.json (downloaded from Commons, sha256-checked).
+
+Each class has three pictures: one hand-picked (PICKS) and two drawn at random with RANDOM_SEED from the class's
+holdout pictures not already in the stack, so the Random section is an unselected sample.
 
     uv run --no-config apps/gpui-demo/scripts/build_demo_stack.py [--bin target/release/gpui-demo]
 
 Writes demo_stack/*.jpg (long side <= 1024 px; holdout files are copied byte-for-byte, they are <= 512 px),
 demo_stack/demo_stack.json and demo_stack/ATTRIBUTION.md. With --bin, every image is classified by the built
-binary (`classify --json`) and model_pred / model_conf / model_unsure record what it said. The script never
-deletes anything; it overwrites only the files it writes.
+binary (`classify --json --model deployed --ep cpu`) and model_pred / model_conf / model_unsure record what it said.
+Without --bin, a photo keeps the answer recorded for it when its origin and sha256 are unchanged; rerun with --bin
+after a model change.
+The out-of-scope photos are downloaded only when neither --cache nor an earlier build's file has them. The script
+never deletes anything; it overwrites only the files it writes.
 """
 
 from __future__ import annotations
@@ -22,6 +28,7 @@ import argparse
 import hashlib
 import io
 import json
+import random
 import re
 import subprocess
 import sys
@@ -38,9 +45,13 @@ OUT = APP / "demo_stack"
 UA = "compclass-gpui-demo/0.1.0 (educational image-classification demo; build_demo_stack.py)"
 MAX_SIDE = 1024
 
-ONE = "One per class"
+ONE = "Hand-picked, one per class"
+RANDOM = "Random, two per class"
 HARD = "Hard cases"
 ABSTAIN = "Not a component / abstains"
+
+RANDOM_SEED = 20261103
+RANDOM_PER_CLASS = 2
 
 # (section, holdout id, note). Chosen by looking at the photos (clean, recognisable, varied) among the deployed
 # model's confidently-correct holdout predictions (results/final/final_test_web_holdout_v1_preds.npz).
@@ -91,10 +102,39 @@ def slug(s: str) -> str:
     return re.sub(r"[^a-z0-9]+", "_", s.lower()).strip("_")
 
 
+def page_url(url: str) -> str:
+    """The Commons file page. Some holdout rows recorded an archived revision's name, File:<14 digits>!Name."""
+    return re.sub(r"File:\d{14}(?:!|%21)", "File:", url)
+
+
+def changes_of(row: dict) -> str:
+    """What was done to a holdout photo besides the thumbnail conversion; CC BY-SA asks for changes to be indicated."""
+    out = []
+    if m := re.search(r"File:(\d{4})(\d\d)(\d\d)(\d\d)(\d\d)(\d\d)(?:!|%21)", row["source_url"]):
+        y, mo, d, h, mi, s = m.groups()
+        out.append(f"the version replaced on {y}-{mo}-{d} {h}:{mi}:{s} UTC (see the file history)")
+    if "alpha_composited" in row["flags"]:
+        out.append("transparent background filled with white")
+    if row["orig_format"].upper() != "JPEG":
+        out.append(f"converted from {row['orig_format'].upper()} to JPEG")
+    return "; ".join(out)
+
+
 def title_from_url(url: str) -> str:
     name = url.rsplit("File:", 1)[-1]
     name = urllib.request.unquote(name)
     return re.sub(r"\.(jpe?g|png|gif|webp|tiff?)$", "", name, flags=re.I).replace("_", " ")
+
+
+def random_picks(manifest: dict) -> list[str]:
+    """RANDOM_PER_CLASS holdout ids per class, in class order, drawn with RANDOM_SEED from those not in PICKS."""
+    taken = {rid for _, rid, _ in PICKS}
+    rng = random.Random(RANDOM_SEED)
+    out = []
+    for label in manifest["classes"]:
+        pool = sorted(r["id"] for r in manifest["rows"] if r["label"] == label and r["id"] not in taken)
+        out += rng.sample(pool, RANDOM_PER_CLASS)
+    return out
 
 
 def save_jpeg(data: bytes, dst: Path) -> None:
@@ -120,42 +160,54 @@ def main() -> int:
     args = ap.parse_args()
     OUT.mkdir(exist_ok=True)
     manifest = json.loads((HOLDOUT / "manifest.json").read_text())
+    # without --bin, each photo keeps the answer recorded for it (matched by origin, not by file name)
+    previous = {e["origin"]: e for e in json.loads((OUT / "demo_stack.json").read_text())["images"]} \
+        if (OUT / "demo_stack.json").is_file() else {}
     rows = {r["id"]: r for r in manifest["rows"]}
     credits = {c["file"]: c for c in json.loads(CREDITS.read_text())["out_of_scope"]}
     entries = []
     counters: dict[str, int] = {}
-    prefix = {ONE: "", HARD: "hard", ABSTAIN: "x"}
-    for section, rid, note in PICKS:
+    prefix = {ONE: "", RANDOM: "r", HARD: "hard", ABSTAIN: "x"}
+    one = [p for p in PICKS if p[0] == ONE]
+    picks = one + [(RANDOM, rid, "") for rid in random_picks(manifest)] + PICKS[len(one):]
+    for section, rid, note in picks:
         r = rows[rid]
         counters[section] = counters.get(section, 0) + 1
         n = counters[section]
-        name = f"{n:02d}_{slug(r['label'])}.jpg" if section == ONE else f"{prefix[section]}{n}_{slug(r['label'])}.jpg"
+        num = f"{n:02d}" if section in (ONE, RANDOM) else str(n)
+        name = f"{prefix[section]}{num}_{slug(r['label'])}.jpg"
         save_jpeg((HOLDOUT / r["path"]).read_bytes(), OUT / name)
         entries.append({
-            "file": name, "section": section, "true_label": r["label"], "title": title_from_url(r["source_url"]),
-            "author": r["author"], "licence": r["license"], "licence_url": r["license_url"],
-            "source_url": r["source_url"], "origin": f"web_holdout_v1:{rid}", "note": note,
+            "file": name, "section": section, "true_label": r["label"],
+            "title": title_from_url(page_url(r["source_url"])), "author": r["author"], "licence": r["license"],
+            "licence_url": r["license_url"], "source_url": page_url(r["source_url"]),
+            "origin": f"web_holdout_v1:{rid}", "note": note, "changes": changes_of(r),
         })
     for section, file, note in OUT_OF_SCOPE:
         c = credits[file]
         counters[section] = counters.get(section, 0) + 1
         name = f"x{counters[section]}_{slug(file.removeprefix('oos_').removesuffix('.jpg'))}.jpg"
         cached = args.cache / file if args.cache else None
-        data = cached.read_bytes() if cached and cached.is_file() else fetch(c["url"])
-        digest = hashlib.sha256(data).hexdigest()[:16]
-        if digest != c["sha256"]:
-            sys.exit(f"{file}: sha256 {digest} != {c['sha256']} in {CREDITS}")
-        save_jpeg(data, OUT / name)
+        if cached and cached.is_file() or not (OUT / name).is_file():
+            data = cached.read_bytes() if cached and cached.is_file() else fetch(c["url"])
+            digest = hashlib.sha256(data).hexdigest()[:16]
+            if digest != c["sha256"]:
+                sys.exit(f"{file}: sha256 {digest} != {c['sha256']} in {CREDITS}")
+            save_jpeg(data, OUT / name)
         entries.append({
             "file": name, "section": section, "true_label": None, "title": c["title"].removeprefix("File:").rsplit(".", 1)[0],
             "author": AUTHOR_FIX.get(file, c["author"]), "licence": c["license"],
             "licence_url": LICENCE_URLS.get(c["license"], ""), "source_url": c["page"],
             "origin": f"results/demo/wikimedia_credits.json:{file}", "note": note,
+            "changes": "; ".join(x for x in (
+                f"the {c['size'][0]}-px Commons thumbnail" if "/thumb/" in c["url"] else "",
+                f"downscaled to {MAX_SIDE} px on the long side" if max(c["size"]) > MAX_SIDE else "") if x),
         })
 
     if args.bin:
         files = [str(OUT / e["file"]) for e in entries]
-        res = subprocess.run([str(args.bin), "classify", "--json", *files], capture_output=True, text=True, check=True)
+        cmd = [str(args.bin), "classify", "--json", "--model", "deployed", "--ep", "cpu", *files]
+        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
         out = {Path(r["source"]).name: r for r in json.loads(res.stdout)}
         for e in entries:
             r = out[e["file"]]
@@ -163,30 +215,44 @@ def main() -> int:
             e["model_conf"] = round(r["top3"][0][1], 4)
             e["model_unsure"] = r["unsure"]
     for e in entries:
+        e["sha256"] = hashlib.sha256((OUT / e["file"]).read_bytes()).hexdigest()[:16]
+    if not args.bin:
+        for e in entries:
+            old = previous.get(e["origin"], {})
+            if old.get("sha256") == e["sha256"]:
+                e.update({k: old[k] for k in ("model_pred", "model_conf", "model_unsure") if k in old})
+            else:
+                print(f"{e['file']}: no recorded answer for this photo; rerun with --bin", file=sys.stderr)
+    for e in entries:
         im = Image.open(OUT / e["file"])
         e["width"], e["height"] = im.size
 
     doc = {
         "version": 1,
-        "description": "Curated demo images for apps/gpui-demo (Demo and Benchmark tabs). None was used for training "
-                       "or model selection. model_pred/model_conf: deployed model (exports/final) as verified by "
-                       "`gpui-demo classify --json`; true_label null = not one of the 20 classes (expected: UNSURE).",
-        "sections": [ONE, HARD, ABSTAIN],
+        "description": "Demo images for apps/gpui-demo (Demo and Benchmark tabs). None was used for training or model "
+                       "selection. The Random section is drawn from the web holdout with random_seed by "
+                       "scripts/build_demo_stack.py. model_pred/model_conf: deployed model (exports/final) as verified "
+                       "by `gpui-demo classify --json --model deployed --ep cpu`; true_label null = not one of the 20 "
+                       "classes (expected: UNSURE).",
+        "random_seed": RANDOM_SEED,
+        "sections": [ONE, RANDOM, HARD, ABSTAIN],
         "images": entries,
     }
     (OUT / "demo_stack.json").write_text(json.dumps(doc, indent=1, ensure_ascii=False) + "\n")
 
     lines = [
         "# Attribution — demo_stack", "",
-        "Photos from Wikimedia Commons, redistributed under their original licences. Holdout photos are the",
-        "640-px Commons thumbnails downscaled to <= 512 px (data/web_holdout_v1); the two out-of-scope photos are",
-        "downscaled to <= 1024 px. No other changes were made.", "",
-        "| file | section | true label | title | author | licence | source |", "|---|---|---|---|---|---|---|",
+        "Photos from Wikimedia Commons, redistributed under their original licences. Holdout photos are Commons",
+        "downloads (a thumbnail up to 640 px wide, or the original when it is smaller), saved as JPEG (quality 95)",
+        "with the long side at most 512 px (data/web_holdout_v1). The out-of-scope photos are Commons files or",
+        "thumbnails. Any other change to a photo is in its changes column.", "",
+        "| file | section | true label | title | author | licence | source | changes |",
+        "|---|---|---|---|---|---|---|---|",
     ]
     for e in entries:
         lic = f"[{e['licence']}]({e['licence_url']})" if e["licence_url"] else e["licence"]
         lines.append(f"| {e['file']} | {e['section']} | {e['true_label'] or '(not a component)'} | {e['title']} | "
-                     f"{e['author']} | {lic} | [Commons]({e['source_url']}) |")
+                     f"{e['author']} | {lic} | [Commons]({e['source_url']}) | {e['changes']} |")
     (OUT / "ATTRIBUTION.md").write_text("\n".join(lines) + "\n")
     size = sum(p.stat().st_size for p in OUT.iterdir())
     print(f"{len(entries)} images, {size / 1e6:.2f} MB in {OUT}")
