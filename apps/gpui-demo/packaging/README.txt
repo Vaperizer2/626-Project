@@ -83,7 +83,7 @@ Model picker (top right): A / B / C / Deployed / Fast, or Ctrl+M to cycle.
 Other keys: Ctrl+1/2/3 tabs, Ctrl+T light/dark, Esc stop a run, Ctrl+Q quit.
 
 Expected results on the 68 demo photos (Benchmark tab or Demo "Run all"):
-  A 19/68    B 38/68    C 53/68    Deployed 53/68 (10 photos answered "Unsure")
+  A 19/68    B 38/68    C 53/68    Deployed 53/68, its Benchmark tile showing "9 unsure"
 If you get these numbers, everything works. Slightly different numbers would mean a problem; please report them.
 
 
