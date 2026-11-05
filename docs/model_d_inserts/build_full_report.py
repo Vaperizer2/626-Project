@@ -391,7 +391,7 @@ def mark_lines(old: str, new: str) -> str:
     return "\n".join(out)
 
 
-FOUR_MODEL_FIGS = ("fig00_workflow", "fig03_augmentation", "fig04_learning_curves", "fig06_confusion_grid", "fig07_per_class_f1")
+FOUR_MODEL_FIGS = ("fig00_workflow", "fig04_learning_curves", "fig06_confusion_grid", "fig07_per_class_f1")  # fig03 stays the report's own
 THRESH = {"prose": 0.55, "heading": 0.8, "table": 0.35, "figure": 0.5, "code": 0.5}
 
 
