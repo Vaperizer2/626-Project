@@ -469,3 +469,8 @@ the proposed text, with ready-made table rows and four-model figures beside it. 
 figures with D throughout) is parked on the local branch `Meiring-four-model-draft` (2bd71b3, not for merge); in it
 the body grew from 15 to 17 pages, 15.4 with the hyperparameter table moved to the appendix. Open: the lecturer's
 approval of a conv-attention hybrid as a fourth family.
+
+Follow-up (same day): the notebooks carry model D (three-models notebook with a `WITH_D` switch, figures to
+`results/itri626/figures_four_models/`; training notebook section 3b), and `docs/model_d_inserts/` now also holds
+`FULL_REPORT_WITH_MODEL_D.md`, the whole report as Markdown with the additions marked (`<ins>`/`<del>`), built by
+`build_full_report.py` from the three-model report and the four-model trial build. The report itself is unchanged.
