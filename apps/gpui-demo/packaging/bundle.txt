@@ -1,7 +1,7 @@
 # What scripts/package_linux.sh copies into the bundle besides the binary, onnxruntime, the launchers, README.txt and
 # the licences. One entry per line: a path from the repo root, then its place in the bundle when that differs.
 # A folder is copied whole. Packaging stops when an entry is missing.
-exports/models.json
+apps/gpui-demo/packaging/models.json exports/models.json
 # Deployed + C: model_multi.onnx is one graph with both outputs over the 1.7 GB model.onnx.data
 exports/final/model.onnx.data
 exports/final/model_multi.onnx
