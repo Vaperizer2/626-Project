@@ -180,7 +180,8 @@ In the ranking sentence, add D between C and B: "…a frozen MobileCLIP2-S3 hybr
 
 Not an insert but a removal, so that model D fits in the page budget. Model D is a full model with a test result;
 the distillation of C into the scratch CNN is a side experiment whose gain did not show on the test split, and the
-report would no longer mention it at all.
+report would no longer mention it at all. The notebook's section 8 no longer shows it either (removed
+on 5 November); the record of the experiment stays in `docs/SCRATCH_CNN_IMPROVEMENT_REPORT.md`.
 
 - **Section 6.3 "Can the scratch CNN be improved?"** Replace everything from "Two things helped (Table 7)." to the
   end of the paragraph with:
