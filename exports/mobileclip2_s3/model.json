@@ -8,8 +8,8 @@
  },
  "files": {
   "labels.json": {
-   "bytes": 328,
-   "sha256": "38c3d2dfe416a401c872cb14ca0228f9f4fb4f8914d9d0eae76d9c2a8c1ad708"
+   "bytes": 307,
+   "sha256": "bb7bd956f6d7cd0645b381ee858006ef33bd16ede6107b926d9eb8a65eb2011e"
   },
   "model.onnx": {
    "bytes": 502446518,
