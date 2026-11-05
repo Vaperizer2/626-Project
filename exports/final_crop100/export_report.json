@@ -1,0 +1,39 @@
+{
+ "onnx": "exports\\final_crop100\\model.onnx",
+ "external_data": true,
+ "onnx_sha256": "c01300c7acc5856f65859eed85efd3e9b76db7c7607a266be9ffc0a325bb46f2",
+ "onnx_mb": 1637.1,
+ "ort_max_abs_prob_diff": 7.092952728271484e-06,
+ "ort_argmax_agree": 1.0,
+ "ort_cpu_ms_per_image": 1065.4,
+ "n_check": 32,
+ "io": {
+  "inputs": [
+   [
+    "input",
+    [
+     1,
+     3,
+     384,
+     384
+    ]
+   ]
+  ],
+  "outputs": [
+   [
+    "logits",
+    [
+     1,
+     20
+    ]
+   ],
+   [
+    "probs",
+    [
+     1,
+     20
+    ]
+   ]
+  ]
+ }
+}
