@@ -1,7 +1,12 @@
 """Package a small-backbone candidate the way compclass.final packages SigLIP: fit, calibrate, export, check.
 
     uv run python tools/views/package_candidate.py --model mobileclip2_s3 --out exports/mobileclip2_s3
-    uv run python tools/gen_manifests.py --only mobileclip2_s3          # then: model.json + exports/models.json line
+
+One command from a fresh checkout: whatever is missing is built first (the frozen features of the development rows
+with compclass.features.extract_features, a GPU pass; the text embeddings and projection with tools/views/heads.py,
+which downloads the weights from Hugging Face), and when ``--out`` is the model's folder under exports/ the app
+manifest is refreshed at the end (tools/gen_manifests.py --only <model>), so its checksums match the graph just built.
+The graph built on another machine is not byte-identical to the one in the release; `--no-manifest` skips the refresh.
 
 Same pipeline as ``compclass.final fit`` + ``export`` (whose helpers this reuses), generalised to a backbone whose
 timm features sit BEFORE its projection into the text space (tools/views/heads.py): out-of-fold scores of the exact
@@ -13,7 +18,7 @@ outputs ``logits`` and ``probs``), fp32 ``model.onnx`` and an fp16 copy, with ``
 verifies). Parity on 32 real development images: PyTorch vs onnxruntime CPU, max |prob| gap and argmax agreement.
 Selection and calibration use development rows only; nothing here touches the sealed test or Wikimedia rows.
 """
-import argparse, hashlib, json, sys, time
+import argparse, hashlib, json, os, subprocess, sys, time
 from pathlib import Path
 import numpy as np
 import torch
@@ -28,6 +33,24 @@ from compclass.models import build_model
 
 CACHE, HEADS = Path("results/cache/features"), Path("results/cache/zeroshot")
 FP = "431315e87d2612cb-1fdfce4c916e"
+
+
+def ensure_inputs(key, m, dev) -> None:
+    """Build what a fresh checkout lacks: the cached development features and the two zero-shot matrices."""
+    cache = CACHE / f"{key}-{FP}.npy"
+    if not cache.exists():
+        from compclass.features import extract_features
+
+        print(f"feature cache {cache} is missing: extracting {len(dev)} development images (GPU recommended)", flush=True)
+        extract_features(key, dev, m, num_workers=0 if os.name == "nt" else 4)  # Windows: no loader workers from a script
+        if not cache.exists():
+            raise SystemExit(f"extract_features did not write {cache}: the manifest differs from fingerprint {FP}")
+    if not (HEADS / f"{key}_W.npy").exists() or not (HEADS / f"{key}_proj.npz").exists():
+        print(f"zero-shot matrices for {key} are missing: building them (tools/views/heads.py)", flush=True)
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import heads
+
+        heads.write_heads(key)
 
 
 def fused_scores(F, head):
@@ -93,6 +116,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--model", required=True); ap.add_argument("--out", required=True)
     ap.add_argument("--n-check", type=int, default=32)
+    ap.add_argument("--no-manifest", action="store_true", help="do not refresh exports/<model>/model.json afterwards")
     a = ap.parse_args()
     import onnx, onnxruntime as ort
     from onnxruntime.transformers.float16 import convert_float_to_float16
@@ -100,6 +124,7 @@ def main() -> None:
 
     m = load_manifest("data/v2/manifest.json"); dev = get_dev(m)
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
+    ensure_inputs(a.model, m, dev)
     head, report = fit(a.model, m, dev)
     np.savez(out / "head.npz", **head)
     (out / "fit_report.json").write_text(json.dumps(report, indent=1))
@@ -141,6 +166,11 @@ def main() -> None:
                inference_form="timm reparameterize_model", n_check=len(rows))
     (out / "export_report.json").write_text(json.dumps(rep, indent=1))
     print(json.dumps(rep, indent=1))
+    if not a.no_manifest and out.resolve() == (Path("exports") / a.model).resolve():
+        # the app's manifest records the graph's size and sha256: refresh it for the graph just written
+        r = subprocess.run([sys.executable, "tools/gen_manifests.py", "--only", a.model])
+        if r.returncode != 0:
+            print(f"manifest not refreshed: run `uv run python tools/gen_manifests.py --only {a.model}` once it is fixed")
 
 
 if __name__ == "__main__":
