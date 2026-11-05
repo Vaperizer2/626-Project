@@ -1,7 +1,10 @@
 """The deployed model re-fitted and re-exported at crop fraction 1.0, next to (not instead of) exports/final.
 
     uv run python tools/views/deployed_crop100.py [--out exports/final_crop100]
-    uv run python tools/gen_manifests.py --only deployed_crop100
+
+One command from a fresh checkout: a missing crop-1.0 feature cache is extracted first (tools/views/extract_views.py,
+a GPU pass), and when the output is exports/final_crop100 the app manifest is refreshed at the end
+(tools/gen_manifests.py --only deployed_crop100; `--no-manifest` skips it).
 
 Same SigLIP So400m tower, text embeddings (exports/final/head.npz W) and pipeline as compclass.final; the only change
 is the eval preprocessing: resize the short side to 384 and crop nothing, instead of resize to 427 and centre-crop
@@ -12,7 +15,7 @@ external data when the protobuf limit forces it), with head.npz, fit_report.json
 export_report.json (onnx sha256 + IO for tools/gen_manifests.py). exports/final, its recorded sealed-test number and
 the course model C are untouched; the sealed test is not scored here.
 """
-import argparse, hashlib, json, sys, time
+import argparse, hashlib, json, subprocess, sys, time
 from pathlib import Path
 import numpy as np
 import torch
@@ -30,12 +33,17 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--out", default="exports/final_crop100")
     ap.add_argument("--n-check", type=int, default=32)
+    ap.add_argument("--no-manifest", action="store_true", help="do not refresh exports/final_crop100/model.json afterwards")
     a = ap.parse_args()
     import onnx, onnxruntime as ort
 
     m = load_manifest("data/v2/manifest.json"); dev = get_dev(m)
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
-    F = np.load(CACHE / f"{KEY}-{FP}-crop100.npy").astype(np.float32)
+    cache = CACHE / f"{KEY}-{FP}-crop100.npy"
+    if not cache.exists():
+        print(f"feature cache {cache} is missing: extracting the development images at crop 1.0 (GPU)", flush=True)
+        subprocess.run([sys.executable, "tools/views/extract_views.py", KEY, "crop100"], check=True)
+    F = np.load(cache).astype(np.float32)
     W = np.load("exports/final/head.npz")["W"].astype(np.float32)
     head, report = fit_head(F, m, dev, W)
     report.update(view="crop_pct 1.0 (resize short side to 384, no crop)", features=str(CACHE / f"{KEY}-{FP}-crop100.npy"),
@@ -82,6 +90,10 @@ def main() -> None:
            "io": {"inputs": [[i.name, dims(i)] for i in g.graph.input], "outputs": [[o.name, dims(o)] for o in g.graph.output]}}
     (out / "export_report.json").write_text(json.dumps(rep, indent=1))
     print(json.dumps(rep, indent=1))
+    if not a.no_manifest and out.resolve() == Path("exports/final_crop100").resolve():
+        r = subprocess.run([sys.executable, "tools/gen_manifests.py", "--only", "deployed_crop100"])
+        if r.returncode != 0:
+            print("manifest not refreshed: run `uv run python tools/gen_manifests.py --only deployed_crop100` once it is fixed")
 
 
 if __name__ == "__main__":
