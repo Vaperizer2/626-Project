@@ -234,6 +234,14 @@ matrices on one colour scale; it replaces the panel with C row-normalised), `fig
 - "At least one model with transfer learning": "B (fine-tuning), C and D (feature extraction)".
 - "Confusion matrix", "Comparison of all three models": "four" if the four-model figures are used.
 
+## The notebook's file name
+
+`notebooks/ITRI626_three_models.ipynb` now covers four models but keeps its name, because the report cites that
+path in three places (the reproduction commands and the rubric table) and so do `RUBRIC_CHECKLIST.md`,
+`REVISION_NOTES.md`, `README.md`, `AGENTS.md`, `CODEBASE.md`, `STATUS.md` and the training notebook: 14 references in
+9 files. If model D goes into the report, renaming it to `ITRI626_four_models.ipynb` belongs in that same change,
+with those references updated together.
+
 ## If you would rather see it assembled
 
 A complete trial build exists on the local branch `Meiring-four-model-draft` (commit 2bd71b3, not pushed, not for
