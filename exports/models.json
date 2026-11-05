@@ -9,6 +9,7 @@
   "itri626/B_convnext_tiny/model.json",
   "final/model.json",
   "fast/model.json",
-  "mobileclip2_s3/model.json"
+  "mobileclip2_s3/model.json",
+  "final_crop100/model.json"
  ]
 }

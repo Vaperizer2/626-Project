@@ -422,3 +422,27 @@ head id `small`, title "Small (fused MobileCLIP2-S3, 256 px)", default list unch
 the files; weights licence note `apps/gpui-demo/packaging/licenses/MODEL-WEIGHTS-MobileCLIP2.txt` (Apple
 `apple-amlr`, research/education only, unlike SigLIP's Apache-2.0). Write-up: `docs/EFFICIENCY_STUDY.md` with
 `docs/figures/efficiency_frontier.png` (`tools/views/efficiency_figure.py`). Sealed test and Wikimedia untouched.
+
+## 2026-11-05 — THE one sealed-test look at the Small model (exports/mobileclip2_s3)
+
+`tools/views/test_small.py --confirm`, the exact exported pipeline (head refitted on all dev rows, T 1.10, abstain
+0.55) on the 418 sealed test rows, features at the registry view (crop 1.0): **accuracy 0.8062, macro-F1 0.8024**
+(probe only 0.7990 / 0.7953; in-scope n 306: 0.8333 / 0.8306; coverage at the 0.55 threshold 0.785 with accepted
+accuracy 0.912; ECE 0.060). The OOF estimate was 0.8025 / 0.8022, so the development folds predicted the test to
+within 0.4 pt. Paired against the deployed model's recorded test predictions (`results/final/final_test_v2_preds.npz`,
+0.8373 / 0.8337, same 418 rows): Δ accuracy −3.1 pt, 95 % paired bootstrap [−6.0, −0.2]; Δ macro-F1 −3.1 pt
+[−6.2, −0.2]; McNemar 26 deployed-right/Small-wrong vs 13 the other way, agreement 85.6 %. Files:
+`results/final_test_mobileclip2_s3.json` (+ `_preds.npz`). The test split is now spent for the Small model; the
+Wikimedia holdout was not scored.
+
+## 2026-11-05 — The deployed model refitted and exported at crop 1.0 (`exports/final_crop100`, not a replacement)
+
+`tools/views/deployed_crop100.py`: compclass.final's fit_head and FusedClassifier on the crop-1.0 SigLIP cache (the
+only change is eval preprocessing: resize short side to 384, no centre crop), exported next to the shipped
+`exports/final`, which is untouched. OOF of the exact pipeline: accuracy 0.8420 / macro-F1 0.8410 (recorded deployed
+0.8264 / 0.8256, +1.6 pt), in-scope 0.873, probe-only 0.835, temperature 0.888, ECE 0.055 → 0.042, abstain threshold
+0.45 (the 90 %-accepted-accuracy rule reaches its target one grid step earlier than at crop 0.9; the team lead may
+prefer to keep 0.50 for continuity), final C 0.003. Graph: model.onnx + model.onnx.data (1,637 MB fp32, external data
+as for `final`), parity on 32 dev images vs ORT CPU 7e-6 / 32 of 32. Manifest `deployed_crop100` ("Deployed at crop
+1.0"), listed in `exports/models.json`, default list unchanged, no bundle.txt entry (1.7 GB more; the team lead's call
+whether it replaces `final`). Not scored on the sealed test.

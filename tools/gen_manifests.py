@@ -62,6 +62,10 @@ MODELS = [
     dict(dir="mobileclip2_s3", id="mobileclip2_s3", graph="model.onnx", external=[], precision="fp32",
          heads=[classify("small", "Small (fused MobileCLIP2-S3, 256 px)", "Small", "probs", True)],
          providers=GPU_THEN_CPU, opt_level=LEGACY_OPT_LEVEL),
+    # the deployed model refitted at crop fraction 1.0 (no border cut), tools/views/deployed_crop100.py; same tower weights
+    dict(dir="final_crop100", id="deployed_crop100", graph="model.onnx", external=["model.onnx.data"], precision="fp32",
+         heads=[classify("deployed_crop100", "Deployed at crop 1.0 (fused SigLIP, no border cut)", "Deployed 1.0", "probs", True)],
+         providers=GPU_THEN_CPU, opt_level=LEGACY_OPT_LEVEL),
 ]
 # The first default whose preferred provider registers is the app's start-up head; the last needs only its files.
 DEFAULT = ["fast", "deployed"]

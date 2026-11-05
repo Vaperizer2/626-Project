@@ -139,6 +139,25 @@ app lists it as "Small" with no code change; `packaging/bundle.txt` carries its 
 The temperature fit minimises NLL, not ECE, and the ECE moved up slightly; the OOF probabilities were already
 close to calibrated (T 1.10). The threshold rule landed one grid step above the deployed 0.50.
 
+**The one sealed-test look** (418 images, `tools/views/test_small.py --confirm`, 2026-11-05): accuracy **0.806**,
+macro-F1 **0.802**, within 0.4 pt of the out-of-fold estimate; in-scope accuracy 0.833; at the 0.55 threshold it
+answers 78 % of images with 91 % accuracy on those. Paired against the deployed model's recorded predictions on
+the same rows (0.837 / 0.834): −3.1 pt accuracy, 95 % bootstrap interval [−6.0, −0.2], and −3.1 pt macro-F1
+[−6.2, −0.2]; 26 images the deployed model gets right and Small wrong, 13 the other way, 86 % agreement. The gap
+the folds predicted is real and of the predicted size. The test split is spent for this model.
+
+## The deployed model at crop 1.0
+
+`tools/views/deployed_crop100.py` refits and re-exports the deployed SigLIP model with one change, the eval
+preprocessing resizes the short side to 384 and cuts nothing, to `exports/final_crop100/` next to the shipped
+`exports/final/`, which is untouched. Same tower weights, same text embeddings, same `compclass.final` fit, calibration
+and abstain rule, on the crop-1.0 feature cache. OOF accuracy / macro-F1 **0.842 / 0.841** against the recorded
+0.826 / 0.826 (+1.6 pt), in-scope 0.873, temperature 0.888, ECE 0.055 → 0.042; the abstain rule now lands on 0.45
+instead of 0.50 because the better-calibrated scores reach 90 % accepted accuracy one step earlier. The manifest id is
+`deployed_crop100`, head title "Deployed at crop 1.0", listed in `exports/models.json` but not in the default list. It
+was not scored on the sealed test: whether to spend a look on it, or simply swap it in for `final`, is the team lead's
+decision.
+
 **Licence.** MobileCLIP2's weights are released under the Apple Machine Learning Research Model License
 (`apple-amlr`), research and education only; SigLIP and PE-Core are Apache-2.0. For this honours project that is
 fine; for any commercial deployment the Small model is ruled out as packaged, and the licence note ships in the
@@ -153,8 +172,8 @@ bundle (`LICENSES/MODEL-WEIGHTS-MobileCLIP2.txt`).
 - **Two findings are independent of the candidate.** Removing the deployed model's 0.9 centre crop gains 1.5 points
   on SigLIP itself, 5/5 folds, at no cost; and batch-1 latency must be measured, because FLOPs mis-order hybrid and
   transformer backbones by up to 2×.
-- **Open items** are the team lead's calls: whether to re-export the deployed model at crop 1.0, whether the Small
-  model earns a single look at the sealed test, and whether the licence makes it a demo-only model.
+- **Open items** are the team lead's calls: whether to replace `final` with the crop-1.0 export (and spend a test look
+  on it), and whether the licence makes the Small model a demo-only model.
 
 ## Reproduction
 

@@ -1,0 +1,97 @@
+{
+ "schema": "model-manifest/1",
+ "id": "deployed_crop100",
+ "graph": {
+  "file": "model.onnx",
+  "external_data": [
+   "model.onnx.data"
+  ],
+  "precision": "fp32"
+ },
+ "files": {
+  "labels.json": {
+   "bytes": 328,
+   "sha256": "38c3d2dfe416a401c872cb14ca0228f9f4fb4f8914d9d0eae76d9c2a8c1ad708"
+  },
+  "model.onnx": {
+   "bytes": 2066872,
+   "sha256": "c01300c7acc5856f65859eed85efd3e9b76db7c7607a266be9ffc0a325bb46f2"
+  },
+  "model.onnx.data": {
+   "bytes": 1714593792,
+   "sha256": "f2808e8248b99f440f4c86154494fcc9e56b893061f835e00237a2d23165ce85"
+  }
+ },
+ "input": {
+  "name": "input",
+  "dtype": "f32",
+  "layout": "NCHW",
+  "size": [
+   384,
+   384
+  ],
+  "batch": {
+   "max": 1
+  },
+  "preprocess": {
+   "kind": "resize_short_center_crop",
+   "resize_short_side": 384,
+   "filter": "pillow_bicubic",
+   "color": "RGB",
+   "scale": 0.00392156862745098,
+   "mean": [
+    0.5,
+    0.5,
+    0.5
+   ],
+   "std": [
+    0.5,
+    0.5,
+    0.5
+   ]
+  }
+ },
+ "heads": [
+  {
+   "id": "deployed_crop100",
+   "title": "Deployed at crop 1.0 (fused SigLIP, no border cut)",
+   "short": "Deployed 1.0",
+   "task": {
+    "kind": "classify",
+    "readout": {
+     "kind": "probs",
+     "output": "probs"
+    },
+    "labels": "labels.json",
+    "calibration": {
+     "kind": "temperature",
+     "t": 0.8879311680793762,
+     "in_graph": true
+    },
+    "decision": {
+     "kind": "abstain",
+     "below": 0.44999998807907104
+    }
+   }
+  }
+ ],
+ "runtime": {
+  "graph_optimization_level": "ORT_ENABLE_LAYOUT",
+  "providers": [
+   {
+    "ep": "cuda"
+   },
+   {
+    "ep": "cpu"
+   }
+  ]
+ },
+ "provenance": {
+  "model": "siglip_so400m_384",
+  "manifest_fingerprint": "431315e87d2612cb",
+  "details": [
+   "export_report.json",
+   "fit_report.json"
+  ]
+ }
+}
