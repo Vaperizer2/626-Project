@@ -309,6 +309,63 @@ def _big_clip(num_classes: int, pretrained: bool, name: str = "vit_huge_patch14_
     return _timm(name, num_classes, pretrained, **kw)
 
 
+# ---------------------------------------------------------------------------------- 6. small image-text backbones (efficiency study, 2026-11-05)
+# All registered with crop_pct 1.0 (short side resized to the input size, nothing cut off): the 2026-11-05 view control
+# showed the deployed 0.9 crop costs SigLIP about 1.5 pt here, so the efficiency study compares every backbone at
+# the same, better view. SigLIP So400m's crop-1.0 reference lives in results/cache/features/*-crop100.npy.
+@_register("pe_core_b16_336", "Perception Encoder (contrastive image-text)", "vit_pe_core_base_patch16_224.fb",
+           zeroshot=("PE-Core-B-16", "meta"), name="vit_pe_core_base_patch16_224.fb", input_size=336, crop_pct=1.0)
+@_register("pe_core_b16_224", "Perception Encoder (contrastive image-text)", "vit_pe_core_base_patch16_224.fb",
+           zeroshot=("PE-Core-B-16", "meta"), name="vit_pe_core_base_patch16_224.fb", crop_pct=1.0)
+@_register("pe_core_s16_384", "Perception Encoder (contrastive image-text)", "vit_pe_core_small_patch16_384.fb",
+           zeroshot=("PE-Core-S-16-384", "meta"), name="vit_pe_core_small_patch16_384.fb", crop_pct=1.0)
+@_register("pe_core_t16_384", "Perception Encoder (contrastive image-text)", "vit_pe_core_tiny_patch16_384.fb",
+           zeroshot=("PE-Core-T-16-384", "meta"), name="vit_pe_core_tiny_patch16_384.fb", crop_pct=1.0)
+def _pe_core_small(num_classes: int, pretrained: bool, name: str = "vit_pe_core_base_patch16_224.fb", **kw):
+    """PE-Core B/16 (93M, native 224 px; RoPE lets it run at 336), S/16 (24M) and T/16 (6M) at 384 px."""
+    return _timm(name, num_classes, pretrained, **kw)
+
+
+@_register("siglip2_b16_384", "SigLIP (sigmoid image-text)", "vit_base_patch16_siglip_384.v2_webli",
+           zeroshot=("ViT-B-16-SigLIP2-384", "webli"), name="vit_base_patch16_siglip_384.v2_webli", crop_pct=1.0)
+def _siglip2_b16_384(num_classes: int, pretrained: bool, name: str = "vit_base_patch16_siglip_384.v2_webli", **kw):
+    """SigLIP 2 B/16 at 384 px (93M): October's best base-size probe (0.76 at 224 px), at full resolution."""
+    return _timm(name, num_classes, pretrained, **kw)
+
+
+@_register("mobileclip2_s3", "MobileCLIP 2 (contrastive image-text, mobile)", "fastvit_mci3.apple_mclip2_dfndr2b",
+           zeroshot=("MobileCLIP2-S3", "dfndr2b"), name="fastvit_mci3.apple_mclip2_dfndr2b", crop_pct=1.0)
+@_register("mobileclip2_s2", "MobileCLIP 2 (contrastive image-text, mobile)", "fastvit_mci2.apple_mclip2_dfndr2b",
+           zeroshot=("MobileCLIP2-S2", "dfndr2b"), name="fastvit_mci2.apple_mclip2_dfndr2b", crop_pct=1.0)
+@_register("mobileclip2_b", "MobileCLIP 2 (contrastive image-text, mobile)", "vit_base_mci_224.apple_mclip2_dfndr2b",
+           zeroshot=("MobileCLIP2-B", "dfndr2b"), name="vit_base_mci_224.apple_mclip2_dfndr2b", crop_pct=1.0)
+def _mobileclip2(num_classes: int, pretrained: bool, name: str = "fastvit_mci2.apple_mclip2_dfndr2b", **kw):
+    """MobileCLIP 2 (Apple, 2025): image-text encoders built for on-device latency, trained on DFNDR-2B.
+
+    S2 (35M) and S3 (123M) are FastViT hybrids at 256 px; B (86M) is a ViT-B/16 at 224 px. Mean/std 0, 1.
+    """
+    return _timm(name, num_classes, pretrained, **kw)
+
+
+@_register("eva02_b16_clip_224", "EVA-02 CLIP (contrastive image-text)", "eva02_base_patch16_clip_224.merged2b",
+           zeroshot=("EVA02-B-16", "merged2b_s8b_b131k"), name="eva02_base_patch16_clip_224.merged2b", crop_pct=1.0)
+@_register("metaclip_b16_224", "MetaCLIP (contrastive image-text)", "vit_base_patch16_clip_quickgelu_224.metaclip_2pt5b",
+           zeroshot=("ViT-B-16-quickgelu", "metaclip_fullcc"), name="vit_base_patch16_clip_quickgelu_224.metaclip_2pt5b", crop_pct=1.0)
+@_register("dfn2b_b16_224", "DFN CLIP (contrastive image-text)", "vit_base_patch16_clip_224.dfn2b",
+           zeroshot=("ViT-B-16-quickgelu", "dfn2b"), name="vit_base_patch16_clip_224.dfn2b", crop_pct=1.0)
+def _base_clip(num_classes: int, pretrained: bool, name: str = "vit_base_patch16_clip_224.dfn2b", **kw):
+    """Base-size (86M) CLIP-style encoders at 224 px: DFN-2B, MetaCLIP 2.5B and EVA-02 B/16 (merged-2B)."""
+    return _timm(name, num_classes, pretrained, **kw)
+
+
+@_register("convnext_base_clip_320", "ConvNeXt CLIP (contrastive image-text, convolutional)", "convnext_base.clip_laiona_augreg_320",
+           zeroshot=("convnext_base_w_320", "laion_aesthetic_s13b_b82k_augreg"), name="convnext_base.clip_laiona_augreg_320", crop_pct=1.0)
+def _convnext_clip(num_classes: int, pretrained: bool, name: str = "convnext_base.clip_laiona_augreg_320", **kw):
+    """ConvNeXt-Base trained CLIP-style on LAION-Aesthetic at 320 px (88M): the convolutional candidate, the
+    friendliest shape for TensorRT INT8."""
+    return _timm(name, num_classes, pretrained, **kw)
+
+
 # ---------------------------------------------------------------------------------- API
 def build_model(key: str, num_classes: int, pretrained: bool = True, **kw) -> tuple[nn.Module, PreprocessSpec]:
     """Build ``key`` with a fresh ``num_classes``-way head (0 = features only)."""

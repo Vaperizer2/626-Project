@@ -272,3 +272,39 @@ cheapest real improvement to the deployed model is therefore the one the hard-ca
 drop the border cut (+1.5 pt OOF, 5/5 folds, a preprocessing constant and a head refit). PE-Core L remains the
 smaller/faster equal, 0.6× compute, 1.2 GB, at about −0.5 pt.
 
+## 2026-11-05 — efficiency study, step 1: small image-text backbones vs SigLIP So400m at the same view
+
+Author's study: a smaller, cheaper model for the 20 classes, compared with SigLIP So400m under the deployed recipe.
+Step 1 is the frozen linear probe on twelve backbones of 6-123 M parameters (registry section 6, all registered at
+crop 1.0), same protocol as the 2026-11-04 sweep, paired per fold against the SigLIP So400m probe fitted on its
+crop-1.0 cache (0.8330) and against PE-Core L/14@336. Compute is measured GFLOPs per image (torch FlopCounterMode,
+batch 1), since hybrids and CNNs have no token count. `tools/views/small_sweep_summary.py`; records in
+`results/probes_win.jsonl`, OOF probabilities in `results/oof/`. 28 min of GPU for the twelve, 1-3 min each.
+
+| Backbone (probe, crop 1.0) | params | px | GFLOPs/img | compute vs SigLIP | CV macro-F1 (± SD) | CV acc | Δ vs SigLIP probe (± SE) | folds | Δ vs PE-Core L |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| PE-Core L/14@336 | 316 M | 336 | 352 | 0.58× | 0.8298 ± 0.0131 | 0.8308 | -0.32 ± 0.54 pt | 1/5 | +0.00 ± 0.00 pt |
+| MobileCLIP2-S3@256 | 123 M | 256 | 30 | 0.05× | 0.7920 ± 0.0080 | 0.7930 | -4.09 ± 0.42 pt | 0/5 | -3.77 ± 0.46 pt |
+| MobileCLIP2-B@224 | 86 M | 224 | 34 | 0.06× | 0.7776 ± 0.0141 | 0.7795 | -5.54 ± 0.62 pt | 0/5 | -5.22 ± 0.52 pt |
+| SigLIP 2 B/16@384 | 93 M | 384 | 100 | 0.17× | 0.7727 ± 0.0213 | 0.7743 | -6.03 ± 0.83 pt | 0/5 | -5.71 ± 0.55 pt |
+| PE-Core B/16@336 | 93 M | 336 | 77 | 0.13× | 0.7654 ± 0.0109 | 0.7683 | -6.75 ± 0.69 pt | 0/5 | -6.44 ± 0.73 pt |
+| MobileCLIP2-S2@256 | 35 M | 256 | 16 | 0.03× | 0.7579 ± 0.0141 | 0.7604 | -7.50 ± 0.70 pt | 0/5 | -7.19 ± 0.96 pt |
+| DFN-2B B/16@224 | 86 M | 224 | 34 | 0.06× | 0.7542 ± 0.0212 | 0.7564 | -7.88 ± 1.08 pt | 0/5 | -7.56 ± 1.10 pt |
+| PE-Core B/16@224 | 93 M | 224 | 34 | 0.06× | 0.7531 ± 0.0089 | 0.7564 | -7.99 ± 0.52 pt | 0/5 | -7.67 ± 0.60 pt |
+| MetaCLIP B/16@224 | 86 M | 224 | 34 | 0.06× | 0.7526 ± 0.0123 | 0.7548 | -8.03 ± 0.39 pt | 0/5 | -7.71 ± 0.38 pt |
+| ConvNeXt-B CLIP@320 | 88 M | 320 | 63 | 0.10× | 0.7274 ± 0.0135 | 0.7317 | -10.56 ± 0.51 pt | 0/5 | -10.24 ± 0.90 pt |
+| PE-Core S/16@384 | 24 M | 384 | 25 | 0.04× | 0.7190 ± 0.0144 | 0.7209 | -11.39 ± 0.46 pt | 0/5 | -11.07 ± 0.84 pt |
+| EVA-02 B/16 CLIP@224 | 86 M | 224 | 34 | 0.06× | 0.7093 ± 0.0174 | 0.7118 | -12.36 ± 0.78 pt | 0/5 | -12.05 ± 0.93 pt |
+| PE-Core T/16@384 | 6 M | 384 | 6 | 0.01× | 0.6226 ± 0.0310 | 0.6298 | -21.04 ± 1.34 pt | 0/5 | -20.72 ± 1.64 pt |
+
+Findings: (1) Every backbone under 300 M parameters is 4 pt or more below SigLIP So400m on every fold; the gap to
+the 2023 base models seen in October (6-8 pt) holds for the 2025 ones. PE-Core L at 316 M remains the only cheaper
+backbone within noise. (2) The best small model is MobileCLIP2-S3 (123 M, 30 GFLOPs, 5 % of SigLIP's compute) at
+0.792, −4.1 ± 0.4 pt; MobileCLIP2-B (86 M, 34 GFLOPs) 0.778 is the best of the ViT-B class, ahead of DFN, MetaCLIP
+and EVA-02 B/16 at the same cost. (3) Resolution matters for small ViTs: PE-Core B/16 gains 1.2 pt from 224 to
+336 px, SigLIP 2 B/16 at 384 scores 0.773 against October's 0.760 at 224. (4) Below 35 M the curve falls fast:
+PE-Core S 0.719, PE-Core T 0.623. (5) The ConvNeXt CLIP (0.727) trails the ViTs at equal size, so the TensorRT
+friendliness of a CNN would cost 5 pt. Step 2 (zero-shot head + fusion) and step 3 (fine-tuning the best small
+backbone, where the 2023 results say fine-tuning did not close the gap either) are the author's call; candidates
+MobileCLIP2-S3, MobileCLIP2-B and PE-Core B/16@336.
+
