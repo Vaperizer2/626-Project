@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 import json
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -79,3 +80,36 @@ def test_export_splits_matches_manifest():
     assert (frames["val"]["fold"] == 0).all() and frames["test"]["fold"].isna().all()
     tot = summary[summary["class"] == "TOTAL"].iloc[0]
     assert tot["final_rows"] == 2930 and tot["train"] + tot["val"] + tot["test"] == 2930
+
+
+def test_refreshing_original_references_keeps_small_model_metadata(tmp_path, monkeypatch):
+    from compclass import features, final
+
+    spec = importlib.util.spec_from_file_location("itri626_experiments", ROOT / "scripts/itri626_experiments.py")
+    experiments = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(experiments)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(experiments, "ROOT", tmp_path)
+    monkeypatch.setattr(experiments, "OUT", tmp_path / "results/itri626")
+    monkeypatch.setattr(experiments, "PREDS", experiments.OUT / "preds")
+    rows = [{"id": "one", "cluster": "a"}, {"id": "two", "cluster": "b"}]
+    x, y = np.zeros((2, 1)), np.array([0, 1])
+    probs = np.array([[0.9, 0.1], [0.1, 0.9]])
+    split = (rows, x, y)
+    monkeypatch.setattr(experiments, "siglip_features", lambda: (SimpleNamespace(classes=["a", "b"]),
+                                                                 split, split, split))
+    monkeypatch.setattr(features, "fit_probe", lambda *_: SimpleNamespace(
+        best_params_={"logisticregression__C": 0.1}, predict_proba=lambda _: probs))
+    monkeypatch.setattr(final, "fused_scores", lambda *_: np.log(probs))
+    head_path = tmp_path / "exports/final/head.npz"
+    head_path.parent.mkdir(parents=True)
+    np.savez(head_path, temperature=1.0, C=0.1)
+    experiments.jdump({"accuracy": 1.0}, tmp_path / "results/final/final_test_v2.json")
+    path = experiments.OUT / "runs/references.json"
+    small = {"accuracy": 0.806, "temperature": 1.1, "C": 0.01}
+    experiments.jdump({"R3_small_fused": small}, path)
+    for _ in range(2):
+        experiments.step_reference()
+        refs = experiments.jload(path)
+        assert refs["R3_small_fused"] == small
+        assert set(refs) == set(experiments.REFS)

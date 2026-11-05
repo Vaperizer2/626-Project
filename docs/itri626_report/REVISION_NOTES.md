@@ -148,3 +148,14 @@ so the notebook also writes the grid that the report uses.
 - `notebooks/ITRI626_four_models.ipynb`: numbers in sections 7 that quoted A updated; new section 8 built from the
   saved files; notebook re-executed on the laptop (figures regenerated from the saved outputs).
 - `README.md`: model A row of the submission table.
+
+
+# Revision 2026-11-05: PR review corrections
+
+- Regenerated `results/itri626/figures/fig06_confusion_grid.{pdf,png}` from the saved A/B/C confusion matrices.
+  The report grid had retained the 120-epoch A run (148 correct predictions); it now matches the 200-epoch
+  run (167 correct, including 13 battery holders). Rebuilt `main.pdf`; no model was loaded or scored.
+- The documented CPU reproduction command keeps R3 metadata when refreshing R1/R2. The training notebook
+  builds the four original app manifests and copies metadata for Small and crop 1.0 without requiring their graphs.
+- Dataset rebuilds without the original split file preserve recorded legacy split-leakage flags and matching
+  historical audit counts. Missing audit evidence is marked unavailable rather than counted as zero.

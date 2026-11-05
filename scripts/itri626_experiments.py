@@ -209,11 +209,13 @@ def step_reference() -> None:
     ref = jload(ROOT / "results" / "final" / "final_test_v2.json")
     acc = float((pr.argmax(1) == yte).mean())
     assert SMOKE or abs(acc - ref["accuracy"]) < 1e-9, (acc, ref["accuracy"])  # same rows, same head -> same answer
-    jdump({"R1_sklearn_probe": {"best_C": s.best_params_["logisticregression__C"],
+    path = OUT / "runs" / "references.json"
+    refs = jload(path) if path.exists() else {}
+    refs.update({"R1_sklearn_probe": {"best_C": s.best_params_["logisticregression__C"],
                                 "fit_time_s": round(time.perf_counter() - t0, 1)},
            "R2_deployed_fused": {"matches_results_final_final_test_v2_json": True, "accuracy": acc,
-                                 "temperature": float(head["temperature"]), "C": float(head["C"])}},
-          OUT / "runs" / "references.json")
+                                 "temperature": float(head["temperature"]), "C": float(head["C"])}})
+    jdump(refs, path)
 
 
 def step_reference_D() -> None:
