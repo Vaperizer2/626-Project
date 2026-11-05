@@ -308,3 +308,27 @@ friendliness of a CNN would cost 5 pt. Step 2 (zero-shot head + fusion) and step
 backbone, where the 2023 results say fine-tuning did not close the gap either) are the author's call; candidates
 MobileCLIP2-S3, MobileCLIP2-B and PE-Core B/16@336.
 
+### 2026-11-05 — efficiency study, step 2: the deployed recipe (zero-shot head + fusion) on the three best small backbones
+
+`compclass.zeroshot` on MobileCLIP2-S3, MobileCLIP2-B and PE-Core B/16 (open_clip towers; records in
+`results/probes_win.jsonl`, OOF similarities in `results/oof/zeroshot_<key>.npz`), text weights and each backbone's own
+projection from `tools/views/heads.py`, fused table from `tools/views/fusion_table.py`: probe + w · log softmax(T · cos)
+with the deployed T 50 / w 0.25, out-of-fold, every backbone at crop 1.0, paired against SigLIP So400m fused at crop 1.0.
+The timm-feature + projection zero-shot agrees with open_clip's own pipeline on 98 % of decisions for the MobileCLIPs;
+86 % for PE-Core B because open_clip runs it at 224 px and our cache is at 336.
+
+| Backbone (crop 1.0) | GFLOPs | probe F1 | zero-shot F1 | fused F1 | fused acc | fused vs own probe | fused vs SigLIP fused (0.8403) |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| SigLIP So400m@384 | 604 | 0.8330 | 0.7643 | 0.8403 | 0.8420 | +0.73 ± 0.17 (5/5) | reference |
+| PE-Core L/14@336 | 352 | 0.8298 | 0.7898 | 0.8351 | 0.8368 | +0.53 ± 0.37 (4/5) | −0.52 ± 0.27 (1/5) |
+| MobileCLIP2-S3@256 | 30 | 0.7920 | 0.7253 | 0.8013 | 0.8025 | +0.93 ± 0.35 (5/5) | −3.89 ± 0.15 (0/5) |
+| MobileCLIP2-B@224 | 34 | 0.7776 | 0.7050 | 0.7846 | 0.7866 | +0.70 ± 0.20 (5/5) | −5.57 ± 0.37 (0/5) |
+| PE-Core B/16@336 | 77 | 0.7654 | 0.7053 | 0.7758 | 0.7783 | +1.04 ± 0.18 (5/5) | −6.44 ± 0.64 (0/5) |
+
+Findings: (1) The zero-shot head helps every backbone by 0.5-1.0 pt, 5/5 folds for the small ones, so the deployed
+recipe transfers; it does not close the gap: the small text towers know the 20 names less well (0.705-0.725 vs
+0.764 SigLIP, 0.790 PE-Core L). (2) Under the full recipe MobileCLIP2-S3 reaches 0.801 F1 / 0.803 acc at 5 % of
+SigLIP's compute, −3.9 ± 0.2 pt; PE-Core L 0.835 at 58 %, −0.5 ± 0.3. Those two are the efficient frontier; the
+ViT-B models are dominated by MobileCLIP2-S3 on both axes. (3) Step 3 (fine-tuning MobileCLIP2-S3, partial and
+full) and step 4 (ONNX export and measured latency vs Deployed and Fast) remain; selection on dev folds only.
+
