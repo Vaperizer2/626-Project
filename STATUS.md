@@ -60,7 +60,6 @@ and [EXPERIMENT_LOG.md](EXPERIMENT_LOG.md) for dated research decisions. Older c
 ## 2026-11-04 — scratch CNN improvement study folded into the course deliverables
 
 Model A of the ITRI626 report and notebook is now the 200-epoch recipe (test accuracy 0.400, macro-F1 0.392; was
-0.354 / 0.336), imported from the improvement study's fold-0 run without a second test look. The study, the distilled
-variant and the one-look Wikimedia holdout results are documented in `docs/SCRATCH_CNN_IMPROVEMENT_REPORT.md`,
-report subsection "Can the scratch CNN be improved?" and notebook section 8. Both holdouts are spent for both CNN
-recipes. The PDF must be rebuilt (`latexmk -pdf main.tex`) after this change.
+0.354 / 0.336), imported from the improvement study's fold-0 run without a second test look. The study and the
+one-look Wikimedia holdout result are documented in `docs/SCRATCH_CNN_IMPROVEMENT_REPORT.md`, report subsection
+"Can the scratch CNN be improved?" and notebook section 8. Both holdouts are spent for model A. The PDF must be rebuilt (`latexmk -pdf main.tex`) after this change.

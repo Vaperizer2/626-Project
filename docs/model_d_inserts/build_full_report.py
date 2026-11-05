@@ -463,8 +463,7 @@ def mark(old_md: str, new_md: str) -> tuple[str, dict]:
             if k == "prose":
                 out.append(mark_lines(ob, nb))
             elif k == "table":
-                cut = "distillation from C" in ob and "distillation from C" not in nb
-                out += ['> **Proposed cut:** the row "A + distillation from C" is removed from this table.' if cut else NOTE_T, nb]
+                out += [NOTE_T, nb]
             elif k == "figure":
                 out.append(mark_figure(ob, nb))
             elif k == "heading":

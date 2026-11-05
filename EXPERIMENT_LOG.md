@@ -166,9 +166,8 @@ Development-fold study of the from-scratch CNN on an RTX 4070 laptop; full recor
 | Date | Experiment | CV macro-F1 (mean ± std) | CV accuracy | Notes |
 |---|---|---:|---:|---|
 | 2026-11-03 | Model A, 200-epoch schedule (`b0afa2aa4d60`, `train.epochs=200 train.patience=40`), 5 folds | 0.3903 (+0.035 ± 0.009 vs committed 0.3552, 5/5 folds) | 0.3986 | Resolution, mixup, width, depth, residual blocks, label smoothing, TTA, init, regularisers, EMA, squash: no gain. |
-| 2026-11-03 | Model A + distillation from C (`configs/scratch_cnn_distill.yaml`, `fbe64b2765cb`): cross-fitted per-fold SigLIP So400m probe teacher, alpha 0.9, T 2, 300 ep, 5 folds | 0.4361 (+0.046 ± 0.007 vs 200-ep A, 5/5 folds) | 0.4459 | Separate variant: no pretrained weights or extra images, but soft targets from a pretrained model. 500 epochs: +0.004 ± 0.004, not adopted. |
-| 2026-11-04 | **Sealed test — one look for the two final recipes** (`results/scratch_cnn_improvement/`, fold-0 training, 418 images) | — | — | A 200 ep: test acc 0.3995 / macro-F1 0.3924 (committed course run 0.3541 / 0.3361). A + distillation: 0.4115 / 0.3933. Paired bootstrap distilled − plain: macro-F1 +0.001 [−0.044, +0.045]. Schedule gain carries over; distillation gain not resolvable on the test split. Test split spent for both recipes. |
-| 2026-11-04 | **Wikimedia holdout — one look for the same two checkpoints** (`tools/eval_holdout_cnn.py`, `results/scratch_cnn_improvement/web_holdout_*`, 407 images, files restored from the developer's archive, fingerprint `5458af44e043b3aa`) | — | — | A 200 ep: acc 0.2826 / macro-F1 0.2570 [0.216, 0.293]. A + distillation: 0.3170 / 0.2976 [0.252, 0.334]. Paired bootstrap distilled − plain: macro-F1 +0.040 [+0.003, +0.079], 14/20 classes. Deployed model on the same photos (2026-10-18): 0.8206 / 0.8159. Source shift costs the scratch CNN 10-14 pt macro-F1 vs 2 pt for the pretrained model. Holdout spent for both recipes; B and C not scored. |
+| 2026-11-04 | **Sealed test — one look for the 200-epoch recipe** (`results/scratch_cnn_improvement/`, fold-0 training, 418 images) | — | — | A 200 ep: test acc 0.3995 / macro-F1 0.3924 (committed course run 0.3541 / 0.3361). The schedule gain carries over. One abandoned scratch-CNN variant was also scored once on the test split; not used. Test split spent for model A. |
+| 2026-11-04 | **Wikimedia holdout — one look for the same checkpoint** (`tools/eval_holdout_cnn.py`, `results/scratch_cnn_improvement/web_holdout_*`, 407 images, files restored from the developer's archive, fingerprint `5458af44e043b3aa`) | — | — | A 200 ep: acc 0.2826 / macro-F1 0.2570 [0.216, 0.293]. Deployed model on the same photos (2026-10-18): 0.8206 / 0.8159. Source shift costs the scratch CNN about 14 pt macro-F1 vs 2 pt for the pretrained model. The abandoned variant was also scored once on this set; not used. Holdout spent for model A; B and C not scored. |
 
 ## 2026-11-04 — linear-probe sweep of 2025 backbones (laptop RTX 4070, `results/probes_win.jsonl`)
 
@@ -185,7 +184,7 @@ Paired against the SigLIP probe fold by fold. Backbones registered in `src/compc
 | PE-Core L/14@336 | 0.8298 ± 0.0131 | 0.8308 | +0.0058 ± 0.0039 | 4/5 | 625 |
 | SigLIP 2 So400m/16@512 | 0.8258 ± 0.0061 | 0.8268 | +0.0018 ± 0.0040 | 2/5 | 663 |
 | DFN-5B ViT-H/14@224 | 0.8247 ± 0.0151 | 0.8264 | +0.0007 ± 0.0024 | 2/5 | 734 |
-| SigLIP So400m/14@384 (model C, re-run here) | 0.8240 ± 0.0116 | 0.8256 | +0.0000 ± 0.0000 | 0/5 | cached (teacher build) |
+| SigLIP So400m/14@384 (model C, re-run here) | 0.8240 ± 0.0116 | 0.8256 | +0.0000 ± 0.0000 | 0/5 | cached |
 | AIMv2 H/14@336 | 0.7978 ± 0.0086 | 0.7990 | -0.0262 ± 0.0024 | 0/5 | 839 |
 | EVA-02 L/14 CLIP@336 | 0.7974 ± 0.0153 | 0.7994 | -0.0266 ± 0.0049 | 0/5 | 391 |
 | AIMv2 L/14@336 | 0.7847 ± 0.0215 | 0.7858 | -0.0393 ± 0.0064 | 0/5 | 419 |

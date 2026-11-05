@@ -120,35 +120,6 @@ def set_backbone_trainable(model: nn.Module, trainable: bool, frozen: set[int] =
         p.requires_grad_((trainable or id(p) in head) and id(p) not in frozen)
 
 
-class _WithIndex(torch.utils.data.Dataset):
-    """(x, y) -> (x, y, i) so a batch can look up its rows' precomputed teacher logits."""
-
-    def __init__(self, ds):
-        self.ds = ds
-
-    def __len__(self):
-        return len(self.ds)
-
-    def __getitem__(self, i):
-        x, y = self.ds[i]
-        return x, y, i
-
-
-def load_teacher(distill: dict[str, Any], fold: int, train_rows, fingerprint: str, device) -> torch.Tensor:
-    """Teacher logits aligned with ``train_rows`` from ``distill.teacher`` (a path with ``{fold}``).
-
-    Refuses a teacher built on another manifest or one that was fitted on this fold's validation rows.
-    """
-    tf = np.load(str(distill["teacher"]).format(fold=fold), allow_pickle=False)
-    if str(tf["manifest"]) != fingerprint:
-        raise SystemExit(f"teacher manifest {tf['manifest']} != {fingerprint}")
-    pos = {i: j for j, i in enumerate(tf["ids"].tolist())}
-    idx = np.array([pos[r["id"]] for r in train_rows])
-    if not bool(tf["is_train"][idx].all()):
-        raise SystemExit("teacher was fitted on rows outside this fold's training split")
-    return torch.tensor(tf["logits"][idx], dtype=torch.float32, device=device)
-
-
 def run(cfg: Config, fold: int, test: bool = False) -> dict[str, Any]:
     """Train one model on one CV fold; returns the record appended to the run log.
 
@@ -184,11 +155,8 @@ def run(cfg: Config, fold: int, test: bool = False) -> dict[str, Any]:
 
     nw = d.get("num_workers", 4)
     common = dict(num_workers=nw, pin_memory=device.type == "cuda", persistent_workers=nw > 0)
-    distill = t.get("distill")
-    train_ds: torch.utils.data.Dataset = ImageDataset(train_rows, m.root, m.class_to_idx, build_transforms(spec, a, True))
-    if distill:
-        train_ds = _WithIndex(train_ds)
-    train_dl = DataLoader(train_ds, batch_size=t["batch_size"], shuffle=True, drop_last=True, **common)
+    train_dl = DataLoader(ImageDataset(train_rows, m.root, m.class_to_idx, build_transforms(spec, a, True)),
+                          batch_size=t["batch_size"], shuffle=True, drop_last=True, **common)
     val_dl = DataLoader(ImageDataset(val_rows, m.root, m.class_to_idx, build_transforms(spec, a, False)),
                         batch_size=t.get("eval_batch_size", 2 * t["batch_size"]), **common)
 
@@ -203,13 +171,6 @@ def run(cfg: Config, fold: int, test: bool = False) -> dict[str, Any]:
     else:
         criterion = nn.CrossEntropyLoss(label_smoothing=t.get("label_smoothing", 0.0))
 
-    teacher = None
-    if distill:  # knowledge distillation from precomputed per-image teacher logits (tools/make_teacher.py)
-        if mixup is not None:
-            raise SystemExit("distillation is not combined with mixup/cutmix")
-        teacher = load_teacher(distill, fold, train_rows, m.fingerprint, device)
-        kd_alpha, kd_temp = float(distill.get("alpha", 0.5)), float(distill.get("temperature", 4.0))
-        print(f"[{cfg['name']} f{fold}] distilling from {distill['teacher']}  alpha {kd_alpha}  T {kd_temp}", flush=True)
     accum = t.get("accum_steps", 1)
     steps_per_epoch = min(len(train_dl), t.get("max_steps_per_epoch") or len(train_dl))
     opt_steps = math.ceil(steps_per_epoch / accum)
@@ -243,23 +204,16 @@ def run(cfg: Config, fold: int, test: bool = False) -> dict[str, Any]:
                     mod.eval()
         t0, loss_sum, ce_sum, n_correct, n_epoch = time.perf_counter(), 0.0, 0.0, 0, 0
         opt.zero_grad(set_to_none=True)
-        for step, batch in enumerate(train_dl):
+        for step, (x, y) in enumerate(train_dl):
             if step >= steps_per_epoch:
                 break
-            x, y = batch[0], batch[1]
             x, y = x.to(device, non_blocking=True), y.to(device, non_blocking=True)
             y_hard = y  # original labels, kept for train accuracy / plain CE
             if mixup is not None:
                 x, y = mixup(x, y)
             with torch.autocast(device.type, dtype=amp_dtype, enabled=amp_dtype is not None):
                 logits = model(x)
-                loss = criterion(logits, y)
-                if teacher is not None:  # Hinton et al.: KL(teacher^T || student^T) * T^2, mixed with the CE
-                    tl = teacher[batch[2].to(device)]
-                    kd = F.kl_div(F.log_softmax(logits.float() / kd_temp, 1), F.softmax(tl / kd_temp, 1),
-                                  reduction="batchmean") * kd_temp ** 2
-                    loss = (1 - kd_alpha) * loss + kd_alpha * kd
-                loss = loss / accum
+                loss = criterion(logits, y) / accum
             scaler.scale(loss).backward()
             if (step + 1) % accum == 0 or step + 1 == steps_per_epoch:
                 scaler.unscale_(opt)  # so clipping sees true gradient magnitudes

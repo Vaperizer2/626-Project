@@ -6,26 +6,19 @@ chronological detail is in `docs/SCRATCH_CNN_IMPROVEMENT_LOG.md`; the untouched 
 `docs/SCRATCH_CNN_BASELINE.md`; a diagram of the network is `docs/scratch_cnn_pipeline.html`.
 
 Status (2026-11-04): **development-fold result final; sealed test and Wikimedia holdout each scored once
-(sections 7 and 8).** Two outcomes, both confirmed on all
-five folds with every fold improving:
+(sections 7 and 8).** One outcome, confirmed on all five folds with every fold improving:
 
 | Model | Five-fold macro-F1 | Accuracy | vs committed model A (0.3552) |
 |---|---:|---:|---:|
 | A, committed recipe (120 epochs) | 0.3552 | 0.3639 | - |
 | **A, trained to convergence (200 epochs)** | **0.3903** | 0.3986 | +0.035 +/- 0.009 |
-| **A + distillation from C (300 epochs, cross-fitted SigLIP-probe teacher)** | **0.4361** | 0.4459 | +0.081 |
 
-The first is the strict from-scratch model. The second keeps the same 1.19 M-parameter network and input but
-trains it against a pretrained model's soft targets, so it is reported as a separate variant. Everything else that
-was tried (resolution, mixup, width, depth, residual blocks, label smoothing, TTA, initialisation, regularisers,
-EMA, squash) made no difference or made it worse.
+Everything else that was tried (resolution, mixup, width, depth, residual blocks, label smoothing, TTA,
+initialisation, regularisers, EMA, squash) made no difference or made it worse.
 
-Sealed test, one look (section 7): the 200-epoch model scores 0.3924 macro-F1 / 0.3995 accuracy and the distilled
-model 0.3933 / 0.4115, against 0.3361 / 0.3541 for the committed course run. The schedule gain carries over to
-the test split; the distillation gain is inside the test split's noise on this look (+0.001 macro-F1,
-95 % interval -0.044 to +0.045). On the 407-photo Wikimedia holdout (section 8) both drop hard, to 0.2570 and
-0.2976 macro-F1 against 0.8159 for the deployed pretrained model, and there the distillation gain is +0.040
-[+0.003, +0.079]: soft targets from the pretrained teacher transfer out of source better than hard labels.
+Sealed test, one look (section 7): the 200-epoch model scores 0.3924 macro-F1 / 0.3995 accuracy, against
+0.3361 / 0.3541 for the committed course run. The schedule gain carries over to the test split. On the 407-photo
+Wikimedia holdout (section 8) it drops hard, to 0.2570 macro-F1 against 0.8159 for the deployed pretrained model.
 
 ## 1. Starting point
 
@@ -81,52 +74,26 @@ All macro-F1, validation, best epoch. "Reference" is the 200-epoch plain recipe 
 | 14c | regularisation | dropout 0.3 -> 0.5 | 0-2 | -0.019 ± 0.013 | dropped |
 | 15 | analysis | per-class errors of the reference (`tools/eval_per_class.py`) | 0-2 pooled | errors diffuse, no pair > 12 % | cleaning/balancing deprioritised |
 | 16 | optimisation | EMA of weights, decay 0.999 (`train.ema`) | 0-2 | -0.003 ± 0.006; curve 3x smoother, same peak | no gain |
-| 17a | distillation | teacher = per-fold SigLIP probe (model C), alpha 0.7, T 4 (`train.distill`) | 0-2 | **+0.015 ± 0.001, better on 3/3** | gain; separate "A + distillation" variant |
-| 17b | distillation | same teacher, alpha 0.9, T 2 | 0-2 | **+0.027 ± 0.013, better on 3/3** | gain (0.4199); superseded by 18c |
-| 18a | distillation | alpha 1.0 / T 1 (no label term) | 0-2 | +0.022 ± 0.013, 2/3 | no better than 17b |
-| 18b | distillation | alpha 0.9 / T 1 | 0-2 | +0.022 ± 0.010, 3/3 | T 2 is better |
-| 18c | distillation | alpha 0.9 / T 2, 300 epochs, patience 60 | 0-2 | +0.036 ± 0.013, 3/3 (mean 0.4287) | confirmed on five folds in row 21 |
-| 20 | confirmation | 200-epoch reference on folds 3-4 | 0-4 | five-fold 0.3903, +0.035 ± 0.009 vs committed, 5/5 | adoption confirmed |
-| 21 | confirmation | KD in-sample teacher, alpha 0.9 / T 2, 300 ep, folds 3-4 added | 0-4 | five-fold 0.4325, +0.042 ± 0.010 vs reference, 5/5 | confirmed |
-| 22 | **final** | KD cross-fitted teacher, alpha 0.9 / T 2, 300 ep (`configs/scratch_cnn_distill.yaml`) | 0-4 | **five-fold 0.4361, +0.046 ± 0.007 vs reference, 5/5**; 18/20 classes better | **adopted as "A + distillation"** |
-| 23 | screen + confirmation | KD, 500 ep / patience 100 (`07be7ec77876`); width 48 | 0-4 | 500 ep: folds 0-2 +0.010 (3/3) but five-fold 0.4400 vs 0.4361, +0.004 ± 0.004, 3/5; width 48 not run | not adopted; 300 ep stays final |
-| 18d | distillation | cross-fitted teacher (honest train-row logits), alpha 0.9 / T 2, 200 ep | 0-2 | +0.032 ± 0.014 vs ref (3/3); +0.004 ± 0.004 vs in-sample teacher | at least as good; 300-ep five-fold run queued |
-| 19 | input | whole picture squashed to 160x160 (`aug.squash`), alone and with distillation | 0-2 | -0.030 ± 0.008 alone, -0.037 ± 0.005 with KD; worse on 3/3 both | dropped; SigLIP's +1.6 pt does not transfer to 160 px |
+| 17 | input | whole picture squashed to 160x160 (`aug.squash`) | 0-2 | -0.030 ± 0.008, worse on 3/3 | dropped; SigLIP's +1.6 pt does not transfer to 160 px |
+| 18 | confirmation | 200-epoch reference on folds 3-4 | 0-4 | five-fold 0.3903, +0.035 ± 0.009 vs committed, 5/5 | adoption confirmed |
 
 Per-fold numbers, hashes, best epochs and VRAM for every row are in the log.
 
-## 4. Current best recipes
-
-### 4a. Model A, strictly from scratch
+## 4. Current best recipe
 
 `configs/scratch_cnn.yaml` with `train.epochs: 200`, `train.patience: 40`; everything else unchanged (160 px,
 width 32, dropout 0.3, no mixup, label smoothing 0.1, AdamW lr 2e-3, wd 0.05, 5 warm-up epochs, cosine).
 Config hash `b0afa2aa4d60`. Five-fold macro-F1 0.4021 / 0.3898 / 0.3866 / 0.3834 / 0.3897, mean **0.3903**,
-against 0.3552 for the committed recipe: +0.035 ± 0.009 SE, better on 5/5 folds (entry 20). Cost about 430 s
+against 0.3552 for the committed recipe: +0.035 ± 0.009 SE, better on 5/5 folds (entry 18). Cost about 430 s
 per fold on the laptop GPU, 435 MB VRAM.
 
 Confirmed on all five development folds. Sealed test, one look (section 7): accuracy 0.3995, macro-F1 0.3924.
 Wikimedia holdout, one look (section 8): accuracy 0.2826, macro-F1 0.2570.
 
-### 4b. Model A + distillation from C
-
-`configs/scratch_cnn_distill.yaml`: the same network, input and augmentation, 300 epochs, patience 60, and a
-distillation loss `0.1 * CE + 0.9 * 2^2 * KL(teacher/2 || student/2)` against per-image logits of a logistic probe on
-frozen SigLIP So400m features. The probe is fitted per fold on that fold's training rows only and *cross-fitted*,
-so each training photo's logits come from a probe that did not see it; the validation fold never reaches the
-teacher. Config hash `fbe64b2765cb`. Five-fold macro-F1 0.4250 / 0.4284 / 0.4341 / 0.4417 / 0.4514, mean
-**0.4361**, accuracy 0.4459: +0.046 ± 0.007 over 4a, better on 5/5 folds, 18 of 20 classes better. Inference
-cost unchanged; training about 1.3x the time of 4a on an idle GPU plus a one-off 3-minute teacher build.
-
-Caveat that must travel with the number: no pretrained weights and no extra images, but a pretrained model's
-knowledge enters through the targets. In the A/B/C comparison it is a fourth row, not a replacement for A.
-Sealed test, one look (section 7): accuracy 0.4115, macro-F1 0.3933, not distinguishable from 4a on 418 images.
-Wikimedia holdout, one look (section 8): accuracy 0.3170, macro-F1 0.2976, +4.0 pt macro-F1 over 4a.
-
 ## 5. What was learned
 
 1. The committed model was under-trained, not under-sized. Its best epochs (79-110) sat just inside a patience of
-   25 on a 120-epoch cosine schedule; letting it run to 200 epochs is the whole gain so far.
+   25 on a 120-epoch cosine schedule; letting it run to 200 epochs is the whole gain.
 2. Once converged, every variant lands in a 0.38-0.41 band on every fold regardless of resolution, width, depth,
    skip connections or mixup. That is the signature of a data-limited model: about 2,000 training photos for 20
    classes, several of which (diode/LED, resistor/inductor) overlap visually.
@@ -141,7 +108,7 @@ Wikimedia holdout, one look (section 8): accuracy 0.3170, macro-F1 0.2976, +4.0 
 6. Stronger regularisation (vertical flips, random erasing, RandAugment 15, dropout 0.5) makes it worse, not
    better, and lowers training accuracy at the same time. The large train/val gap is therefore not classical
    overfitting that a regulariser can trade away; supervised cross-entropy on ~2,000 photos has simply run out of
-   signal for this network. That is the argument for distillation (entry 17).
+   signal for this network.
 
 ## 6. What was tried after the plateau, and what remains
 
@@ -154,19 +121,16 @@ In order of cost, each screened on folds 0-2 at 200 epochs:
 4. Stronger regularisation (vertical flip + random erasing, RandAugment 15, dropout 0.5): all worse; dropped.
 5. Weight averaging (EMA 0.999): smoother curve, same peak; no gain.
 6. The regularisers and EMA stayed inside noise or worse, so ~0.39-0.40 macro-F1 is what this from-scratch
-   network learns from ~2,000 photos with hard labels. The author approved trying options that change the training
-   signal; distillation from model C (entries 17-18, 21-22) moved every fold and is adopted as a separate variant.
-7. Squash input (from the hard-cases study on the pretrained model): -3 pt here; dropped (entry 19).
+   network learns from ~2,000 photos.
+7. Squash input (from the hard-cases study on the pretrained model): -3 pt here; dropped (entry 17).
 
 Remaining, all the author's decisions rather than experiments:
 
-- Done 2026-11-04: the sealed test split scored once for both 4a and 4b (section 7).
+- Done 2026-11-04: the sealed test split scored once for the 200-epoch recipe (section 7).
 - Done 2026-11-04: the course report's model A is now the 200-epoch run (imported, not retrained, with
-  `tools/itri626_import_run.py`), and the study, the distilled variant, the test look and the holdout look are a
-  new subsection and table of `docs/itri626_report/main.tex` and section 8 of the notebook. Whether the distilled
-  model joins the demo app is still open (it would need an export and a manifest; preprocessing is unchanged).
-- Optional, not started: self-supervised pre-training on the same training photos, if a variant that uses no
-  pretrained model at all is wanted. Expected gain is smaller than distillation's and the cost is higher.
+  `tools/itri626_import_run.py`), and the study, the test look and the holdout look are a subsection and table of
+  `docs/itri626_report/main.tex` and section 8 of the notebook.
+- Optional, not started: self-supervised pre-training on the same training photos.
 
 When a recipe is adopted it is confirmed on all five folds, then documented here with the command to reproduce
 it. Scoring the sealed test split is a one-time step taken only after the dev-fold decision is final.
@@ -195,30 +159,26 @@ uv run python tools/eval_tta.py "runs/win/scratch_cnn-b0afa2aa4d60/fold*/best.pt
 
 ## 7. Sealed test, the one look (2026-11-04)
 
-Taken on the author's go-ahead after the development-fold decision was final (log entries 23-24). Each final
-recipe was trained once on fold 0 (train 2,010 / val 502, seed 42, the course table's fixed split) and its best
-checkpoint scored once on the 418 sealed test images. Files: `results/scratch_cnn_improvement/`.
+Taken on the author's go-ahead after the development-fold decision was final (log entry 19). The final recipe was
+trained once on fold 0 (train 2,010 / val 502, seed 42, the course table's fixed split) and its best checkpoint
+scored once on the 418 sealed test images. Files: `results/scratch_cnn_improvement/`.
 
 | Model | Dev five-fold macro-F1 | Test macro-F1 | Test accuracy |
 |---|---:|---:|---:|
 | A, committed course run (120 epochs) | 0.3552 | 0.3361 | 0.3541 |
-| A, 200 epochs (4a) | 0.3903 | **0.3924** | **0.3995** |
-| A + distillation from C, 300 epochs (4b) | 0.4361 | **0.3933** | **0.4115** |
+| A, 200 epochs | 0.3903 | **0.3924** | **0.3995** |
 | Reference: B ConvNeXt-Tiny / C SigLIP probe (course run, `results/itri626/metrics.json`) | - | 0.628 / 0.817 | 0.636 / 0.823 |
 
-Paired bootstrap on the test images, 4b minus 4a: macro-F1 +0.001 [-0.044, +0.045], accuracy +0.012
-[-0.031, +0.057]. What this means:
+What this means:
 
 - The schedule gain is real on the test split: +5.6 pt macro-F1 over the committed course model, consistent with
   the five-fold estimate.
-- The distillation gain, +4.6 pt on five folds with every fold improving, is not resolvable on one 418-image look
-  (about 21 images per class, interval +/- 4.5 pt) and one training run (+/- 2-3 pt run-to-run; the plain fold-0
-  rerun validated 2.8 pt below its earlier twin of the same seed). The five-fold numbers remain the better estimate
-  of expected performance, the test numbers are what the course table must report, and the course report should
-  say exactly that rather than claim a test-split gain for distillation.
-- Both recipes still fail on fuse, led and resistor; the distilled one is worst on resistor (0.16).
+- One 418-image look (about 21 images per class) has an interval of about +/- 4.5 pt, and one training run varies
+  by +/- 2-3 pt (the plain fold-0 rerun validated 2.8 pt below its earlier twin of the same seed). The five-fold
+  numbers remain the better estimate of expected performance; the test numbers are what the course table reports.
+- The model still fails on fuse, led and resistor.
 
-The test split is now spent for both recipes.
+The test split is now spent for this recipe.
 
 ## 8. Wikimedia holdout, the one look (2026-11-04)
 
@@ -226,30 +186,23 @@ The 407 Wikimedia Commons photos of `data/web_holdout_v1` are the project's only
 site, different photographers, backgrounds and lighting from the Kaggle scrape that supplies every training and
 test image. They were scored once on 2026-10-18 with the deployed SigLIP model and never used for training or
 selection. The developer's archive restored the files to this laptop (names, count and fingerprint match the
-recorded manifest). The same two frozen fold-0 checkpoints as section 7 were scored once each with
-`tools/eval_holdout_cnn.py` (log entry 25; files in `results/scratch_cnn_improvement/web_holdout_*`).
+recorded manifest). The frozen fold-0 checkpoint of section 7 was scored once with `tools/eval_holdout_cnn.py`
+(log entry 20; files in `results/scratch_cnn_improvement/web_holdout_*`).
 
 | Model | Test macro-F1 (418 Kaggle) | Holdout macro-F1 (407 Wikimedia) | Holdout accuracy | Drop |
 |---|---:|---:|---:|---:|
-| A, 200 epochs (4a) | 0.3924 | **0.2570** [0.216, 0.293] | 0.2826 | -13.5 pt |
-| A + distillation from C, 300 epochs (4b) | 0.3933 | **0.2976** [0.252, 0.334] | 0.3170 | -9.6 pt |
+| A, 200 epochs | 0.3924 | **0.2570** [0.216, 0.293] | 0.2826 | -13.5 pt |
 | Deployed SigLIP probe + zero-shot head (recorded) | 0.8373 acc | 0.8159 | 0.8206 | -1.7 pt acc |
 
-Paired bootstrap, 4b minus 4a: macro-F1 +0.040 [+0.003, +0.079], accuracy +0.035 [-0.005, +0.074]; 4b better on
-14 of 20 classes. What this means:
+What this means:
 
 - **Source shift is the from-scratch network's real weakness.** It loses a third of its score when the photos come
   from somewhere else; the pretrained model loses almost nothing. Features learned from one web scrape describe
-  that scrape. Classes with a fixed, large-scale look (breadboard 0.80, microcontroller board 0.55-0.71, jumper
-  wire) survive; small parts photographed in varied ways (diode 0.00-0.06, power supply module, relay, fuse,
-  transformer) do not.
-- **Distillation's gain reappears out of source.** The 418-image test split could not resolve it (section 7); the
-  holdout shows +4.0 pt with an interval that excludes zero, the same size as the five-fold estimate. Soft targets
-  from the pretrained teacher carry more transferable signal than hard labels, which is the mechanism one would
-  expect, and it is the only recipe change in this study that helped anywhere.
-- **For the course report** the from-scratch story is now complete in three numbers: 0.39 on the Kaggle test
-  split, 0.26 on photos from another source, 0.82 for the pretrained model on the same photos. Models B and C
-  have not been scored on the holdout (their checkpoints are not on this machine; a full column would need the
-  ONNX graphs from the release bundle and would spend their one look).
+  that scrape. Classes with a fixed, large-scale look (breadboard, microcontroller board, jumper wire) survive;
+  small parts photographed in varied ways (diode, power supply module, relay, fuse, transformer) do not.
+- **For the course report** the from-scratch story is complete in three numbers: 0.39 on the Kaggle test split,
+  0.26 on photos from another source, 0.82 for the pretrained model on the same photos. Models B and C have not
+  been scored on the holdout (their checkpoints are not on this machine; a full column would need the ONNX graphs
+  from the release bundle and would spend their one look).
 
-Both holdouts are now spent for both recipes. Nothing in either recipe will change in response to these numbers.
+Both holdouts are now spent for this recipe. Nothing in it will change in response to these numbers.

@@ -21,7 +21,7 @@ nothing under `docs/itri626_report/` was edited to make it.
 
 ## Page budget: measured
 
-The version proposed here was built in LaTeX. Its body is **14.8 pages**, the same as the report today, on one
+The version proposed here was built in LaTeX. Its body is **14.8 pages**, against 14.7 for the report today, on one
 condition: the hyperparameter table (Table 3) moves to Appendix B. With a fourth column it fills a page, and left in
 the body the total is 15.8. Everything below is already the short form; an earlier, longer draft came to 16.2.
 
@@ -160,7 +160,6 @@ At the end of the subsection:
 ### 11. Wording that would now mislead
 
 - 5.1: "R2 is not a fourth model" → "R2 is not a further model".
-- 6.3: "so it is a fourth model rather than a better A" disappears with item 13.
 
 ### 12. Section 7 "Conclusion"
 
@@ -174,29 +173,7 @@ lower.":
 > faster on a GPU and 14 times on a CPU, for non-commercial use. Where inference must be faster still, the fine-tuned
 > ConvNeXt-T remains: about 11 times faster than C on a GPU, at about 18.7 percentage points lower.
 
-### 13. Proposed cut to make room: remove the distillation experiment
-
-Not an addition but a removal, so that model D fits. Model D is a full model with a test result; the distillation of
-C into the scratch CNN is a side experiment whose gain did not show on the test split, and the report would no
-longer mention it. The notebook's section 8 no longer shows it either; the record of the experiment stays in
-`docs/SCRATCH_CNN_IMPROVEMENT_REPORT.md`.
-
-- **Section 6.3.** Replace everything from "Two things helped (Table 7)." to the end of the paragraph with:
-
-  > One thing helped (Table 7): training to convergence (200 instead of 120 epochs) added 3.5 points of five-fold
-  > macro-F1 on every fold and 5.6 points on the test split; that schedule is the model A reported in this paper. It
-  > needs ten times the epochs of the fine-tuned network (200 against 20) and still overfits: 0.83 training accuracy
-  > against 0.378 on validation at the selected epoch. On the 407 out-of-source Wikimedia photographs the scratch
-  > network falls to 0.257 macro-F1 against 0.816 for the deployed SigLIP model. The lesson is the main
-  > comparison's: features learned from 2,010 photographs of one web scrape describe that scrape, and the limit is
-  > the data, not the training budget.
-
-- **Table 7.** Remove the row "A + distillation from C".
-- **Section 7.** In "…nothing in architecture, regularisation or initialisation gained anything, and the one further
-  gain came from distilling model C", drop the last clause.
-- **References.** The Hinton et al. distillation paper is then cited nowhere and leaves the list.
-
-### 14. Appendices
+### 13. Appendices
 
 - **Appendix A:** new Table A.3, per-class results of D and of R3 (`tables/tab_per_class_D.tex`); the opening
   sentence names it.

@@ -1759,41 +1759,17 @@
   "value": "0.390",
   "source": "results/runs_win.jsonl b0afa2aa4d60 5-fold mean macro_f1"
  },
- "imprFiveKD": {
-  "value": "0.436",
-  "source": "results/runs_win.jsonl fbe64b2765cb 5-fold mean macro_f1"
- },
  "imprSchedGain": {
   "value": "3.5",
   "source": "5-fold mean (200 ep - 120 ep) macro-F1, points"
  },
- "imprKDGain": {
-  "value": "4.6",
-  "source": "5-fold mean (KD - 200 ep) macro-F1, points"
- },
- "imprKDGainSe": {
-  "value": "0.7",
-  "source": "paired-fold SE of KD - 200 ep, points"
+ "imprTestGain": {
+  "value": "5.6",
+  "source": "test macro-F1 of the 200-epoch run minus the 120-epoch run, points"
  },
  "imprTestA": {
   "value": "0.392",
   "source": "results/scratch_cnn_improvement/test_plain_200ep_b0afa2aa4d60_fold0.json macro_f1"
- },
- "imprTestKD": {
-  "value": "0.393",
-  "source": "results/scratch_cnn_improvement/test_distill_300ep_fbe64b2765cb_fold0.json macro_f1"
- },
- "imprTestAccKD": {
-  "value": "0.411",
-  "source": "results/scratch_cnn_improvement/test_distill_300ep_fbe64b2765cb_fold0.json accuracy"
- },
- "imprTestDiffLo": {
-  "value": "-4.4",
-  "source": "results/scratch_cnn_improvement/summary.json paired bootstrap 2.5 pct, points"
- },
- "imprTestDiffHi": {
-  "value": "+4.5",
-  "source": "results/scratch_cnn_improvement/summary.json paired bootstrap 97.5 pct, points"
  },
  "imprHoldA": {
   "value": "0.257",
@@ -1802,26 +1778,6 @@
  "imprHoldAccA": {
   "value": "0.283",
   "source": "results/scratch_cnn_improvement/web_holdout_plain_200ep_b0afa2aa4d60.json accuracy"
- },
- "imprHoldKD": {
-  "value": "0.298",
-  "source": "results/scratch_cnn_improvement/web_holdout_distill_300ep_fbe64b2765cb.json macro_f1"
- },
- "imprHoldAccKD": {
-  "value": "0.317",
-  "source": "results/scratch_cnn_improvement/web_holdout_distill_300ep_fbe64b2765cb.json accuracy"
- },
- "imprHoldDiff": {
-  "value": "+4.0",
-  "source": "results/scratch_cnn_improvement/web_holdout_summary.json paired bootstrap mean, points"
- },
- "imprHoldDiffLo": {
-  "value": "+0.3",
-  "source": "results/scratch_cnn_improvement/web_holdout_summary.json 2.5 pct, points"
- },
- "imprHoldDiffHi": {
-  "value": "+7.9",
-  "source": "results/scratch_cnn_improvement/web_holdout_summary.json 97.5 pct, points"
  },
  "gpuNameA": {
   "value": "NVIDIA GeForce RTX 4070 Laptop GPU",

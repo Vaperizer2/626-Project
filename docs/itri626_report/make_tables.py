@@ -718,8 +718,8 @@ def main() -> None:
     num("imagesTarSha", lr["images_tar"]["sha256"][:16], "data/v2/leakage_report.json images_tar.sha256 (first 16 hex)")
 
     # ---------------------------------------------------------------- model A improvement study
-    # Development folds (5-fold macro-F1), the one sealed-test look and the one web-holdout look of the two final
-    # scratch-CNN recipes (docs/SCRATCH_CNN_IMPROVEMENT_REPORT.md, EXPERIMENT_LOG.md 2026-11-03/04).
+    # Development folds (5-fold macro-F1), the one sealed-test look and the one web-holdout look of the final
+    # scratch-CNN recipe (docs/SCRATCH_CNN_IMPROVEMENT_REPORT.md, EXPERIMENT_LOG.md 2026-11-03/04).
     def five_folds(path, h):
         recs = {}
         for ln in (ROOT / path).read_text().splitlines():
@@ -733,26 +733,19 @@ def main() -> None:
     IMPR = "results/scratch_cnn_improvement"
     f_old = five_folds("results/phase2/runs_fixed.jsonl", "4e4c6e8f6cf3")
     f_200 = five_folds("results/runs_win.jsonl", "b0afa2aa4d60")
-    f_kd = five_folds("results/runs_win.jsonl", "fbe64b2765cb")
     t_200 = load(f"{IMPR}/test_plain_200ep_b0afa2aa4d60_fold0.json")
-    t_kd = load(f"{IMPR}/test_distill_300ep_fbe64b2765cb_fold0.json")
     h_200 = load(f"{IMPR}/web_holdout_plain_200ep_b0afa2aa4d60.json")
-    h_kd = load(f"{IMPR}/web_holdout_distill_300ep_fbe64b2765cb.json")
-    s_test = load(f"{IMPR}/summary.json")["paired_bootstrap_2000_kd_minus_plain"]
-    s_hold = load(f"{IMPR}/web_holdout_summary.json")["paired_bootstrap_2000_kd_minus_plain"]
     assert abs(t_200["macro_f1"] - M["models"][MAIN[0]]["test"]["macro_f1"]) < 1e-12, "model A in metrics.json is the 200-epoch run"
     assert t_200["config_hash"] == runs[MAIN[0]]["config_hash"] == "b0afa2aa4d60"
-    assert h_200["fingerprint"] == h_kd["fingerprint"] == wh["fingerprint"] and h_200["n"] == wh["n"]
+    assert h_200["fingerprint"] == wh["fingerprint"] and h_200["n"] == wh["n"]
     # The 120-epoch run's test scores: results/itri626/metrics.json of the previous build (git 47ae396), kept in
     # docs/SCRATCH_CNN_BASELINE.md; its predictions were replaced by the 200-epoch run's.
     OLD_TEST = {"accuracy": 0.35406698564593303, "macro_f1": 0.33609486235070335}
-    d5 = f_kd - f_200
     lines = [r"\begin{tabular}{@{}lcccccc@{}}", r"\toprule",
              r"Recipe & Epochs & Dev.\ 5-fold macro-F1 & Test macro-F1 & Test acc. & Holdout macro-F1 & Holdout acc. \\",
              r"\midrule",
              f"A, previous build & 120 & {f_old.mean():.3f} $\\pm$ {f_old.std(ddof=1):.3f} & {OLD_TEST['macro_f1']:.3f} & {OLD_TEST['accuracy']:.3f} & -- & -- \\\\",
              f"\\textbf{{A, this report}} & 200 & {f_200.mean():.3f} $\\pm$ {f_200.std(ddof=1):.3f} & {t_200['macro_f1']:.3f} & {t_200['accuracy']:.3f} & {h_200['macro_f1']:.3f} & {h_200['accuracy']:.3f} \\\\",
-             f"A + distillation from C & 300 & {f_kd.mean():.3f} $\\pm$ {f_kd.std(ddof=1):.3f} & {t_kd['macro_f1']:.3f} & {t_kd['accuracy']:.3f} & {h_kd['macro_f1']:.3f} & {h_kd['accuracy']:.3f} \\\\",
              r"\addlinespace[2pt]",
              f"Deployed SigLIP model (R2) & -- & -- & {ft['macro_f1']:.3f} & {ft['accuracy']:.3f} & {wh['macro_f1']:.3f} & {wh['accuracy']:.3f} \\\\",
              r"\bottomrule", r"\end{tabular}"]
@@ -761,22 +754,12 @@ def main() -> None:
     num("accAOld", OLD_TEST["accuracy"], "previous build metrics.json (git 47ae396) A test accuracy", ".3f")
     num("imprFiveAOld", f_old.mean(), "results/phase2/runs_fixed.jsonl 4e4c6e8f6cf3 5-fold mean macro_f1", ".3f")
     num("imprFiveA", f_200.mean(), "results/runs_win.jsonl b0afa2aa4d60 5-fold mean macro_f1", ".3f")
-    num("imprFiveKD", f_kd.mean(), "results/runs_win.jsonl fbe64b2765cb 5-fold mean macro_f1", ".3f")
     num("imprSchedGain", 100 * (f_200 - f_old).mean(), "5-fold mean (200 ep - 120 ep) macro-F1, points", ".1f")
-    num("imprKDGain", 100 * d5.mean(), "5-fold mean (KD - 200 ep) macro-F1, points", ".1f")
-    num("imprKDGainSe", 100 * d5.std(ddof=1) / np.sqrt(5), "paired-fold SE of KD - 200 ep, points", ".1f")
+    num("imprTestGain", 100 * (t_200["macro_f1"] - OLD_TEST["macro_f1"]),
+        "test macro-F1 of the 200-epoch run minus the 120-epoch run, points", ".1f")
     num("imprTestA", t_200["macro_f1"], f"{IMPR}/test_plain_200ep_b0afa2aa4d60_fold0.json macro_f1", ".3f")
-    num("imprTestKD", t_kd["macro_f1"], f"{IMPR}/test_distill_300ep_fbe64b2765cb_fold0.json macro_f1", ".3f")
-    num("imprTestAccKD", t_kd["accuracy"], f"{IMPR}/test_distill_300ep_fbe64b2765cb_fold0.json accuracy", ".3f")
-    num("imprTestDiffLo", 100 * s_test["macro_f1_ci95"][0], f"{IMPR}/summary.json paired bootstrap 2.5 pct, points", "+.1f")
-    num("imprTestDiffHi", 100 * s_test["macro_f1_ci95"][1], f"{IMPR}/summary.json paired bootstrap 97.5 pct, points", "+.1f")
     num("imprHoldA", h_200["macro_f1"], f"{IMPR}/web_holdout_plain_200ep_b0afa2aa4d60.json macro_f1", ".3f")
     num("imprHoldAccA", h_200["accuracy"], f"{IMPR}/web_holdout_plain_200ep_b0afa2aa4d60.json accuracy", ".3f")
-    num("imprHoldKD", h_kd["macro_f1"], f"{IMPR}/web_holdout_distill_300ep_fbe64b2765cb.json macro_f1", ".3f")
-    num("imprHoldAccKD", h_kd["accuracy"], f"{IMPR}/web_holdout_distill_300ep_fbe64b2765cb.json accuracy", ".3f")
-    num("imprHoldDiff", 100 * s_hold["macro_f1_mean"], f"{IMPR}/web_holdout_summary.json paired bootstrap mean, points", "+.1f")
-    num("imprHoldDiffLo", 100 * s_hold["macro_f1_ci95"][0], f"{IMPR}/web_holdout_summary.json 2.5 pct, points", "+.1f")
-    num("imprHoldDiffHi", 100 * s_hold["macro_f1_ci95"][1], f"{IMPR}/web_holdout_summary.json 97.5 pct, points", "+.1f")
     mach = runs[MAIN[0]].get("machine") or {}
     num("gpuNameA", mach.get("gpu", {}).get("name", env["gpu"]["name"]), "results/itri626/runs/A_scratch_cnn.json machine.gpu.name")
     num("gpuMemA", mach.get("gpu", {}).get("memory_gib", env["gpu"]["memory_gib"]), "results/itri626/runs/A_scratch_cnn.json machine.gpu.memory_gib")
