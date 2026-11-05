@@ -189,11 +189,14 @@ study stays in the notebook's section 8 and in `docs/SCRATCH_CNN_IMPROVEMENT_REP
   > macro-F1 on every fold and 5.6 points on the test split; that schedule is the model A reported in this paper. It
   > needs ten times the epochs of the fine-tuned network (200 against 20) and still overfits: 0.83 training accuracy
   > against 0.378 on validation at the selected epoch. Distilling model C into the CNN [Hinton et al.] gained 4.6
-  > points on the development folds but nothing measurable on the test set; the study is in
-  > `docs/SCRATCH_CNN_IMPROVEMENT_REPORT.md`. On the 407 out-of-source Wikimedia photographs the scratch network falls
-  > to 0.257 macro-F1 against 0.816 for the deployed SigLIP model. The lesson is the main comparison's: features
-  > learned from 2,010 photographs of one web scrape describe that scrape, and the limit is the data, not the
-  > training budget.
+  > points on the development folds but nothing measurable on the test set. On the 407 out-of-source Wikimedia
+  > photographs the scratch network falls to 0.257 macro-F1 against 0.816 for the deployed SigLIP model. The lesson
+  > is the main comparison's: features learned from 2,010 photographs of one web scrape describe that scrape, and
+  > the limit is the data, not the training budget.
+
+  The distillation sentence stands on its own and points to no file. (The opening sentence of 6.3 already names
+  the study's two documents; whether the marker can open repository files depends on how the group submits, link
+  or archive.) To drop distillation altogether, delete that one sentence and the Hinton reference with it.
 
 - **Table 7.** Remove the row "A + distillation from C".
 - **Section 7 "Conclusion".** In "…nothing in architecture, regularisation or initialisation gained anything, and
