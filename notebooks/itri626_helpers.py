@@ -1,4 +1,4 @@
-"""Helpers for notebooks/ITRI626_three_models.ipynb: loading saved results, tables and report figures.
+"""Helpers for notebooks/ITRI626_four_models.ipynb: loading saved results, tables and report figures.
 
 Kept out of the notebook so its cells stay short. Nothing here trains a model; training lives in
 scripts/itri626_experiments.py (the notebook calls it when RETRAIN=True).

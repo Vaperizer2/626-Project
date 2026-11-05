@@ -145,6 +145,6 @@ so the notebook also writes the grid that the report uses.
 - `main.tex`: hyperparameters, fairness, software/hardware (A's final run was on a second machine), learning-curve
   bullet A, "why the models differ", conclusion, reproduction appendix and the environment-table caption updated; new
   subsection "Can the scratch CNN be improved?" (`sec:improveA`) with `generated/tab_improveA.tex`.
-- `notebooks/ITRI626_three_models.ipynb`: numbers in sections 7 that quoted A updated; new section 8 built from the
+- `notebooks/ITRI626_four_models.ipynb`: numbers in sections 7 that quoted A updated; new section 8 built from the
   saved files; notebook re-executed on the laptop (figures regenerated from the saved outputs).
 - `README.md`: model A row of the submission table.

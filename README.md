@@ -98,7 +98,7 @@ tools/                build_dataset_v2.py (dataset v2 + leakage report), build_w
                       (the speed work; Fast comes from compose/ and quant/), hardcases/ (the hard-case study)
 scripts/              make_report_figures.py (report figures/tables), gpu_witness.py (hardware check),
                       itri626_experiments.py (models A, B, C), new_app.sh (a new app from the template)
-notebooks/            ITRI626_three_models.ipynb (executed A/B/C comparison), ITRI626_training.ipynb (training)
+notebooks/            ITRI626_four_models.ipynb (executed A/B/C/D comparison), ITRI626_training.ipynb (training)
 crates/inference/     Rust: the models without a UI (manifests, inference service, onnxruntime)
 apps/gpui-demo/       Rust: the GPUI desktop app over crates/inference (README.md there)
 data/v2/              manifest.json, leakage_report.json, review/*.csv (duplicate, conflict and OOD audit records)
@@ -192,7 +192,7 @@ Source of these numbers: `results/itri626/metrics.json`.
 |---|---|
 | Report (PDF, LaTeX source) | [`docs/itri626_report/main.pdf`](docs/itri626_report/main.pdf), `docs/itri626_report/main.tex` |
 | Rubric compliance checklist | [`docs/itri626_report/RUBRIC_CHECKLIST.md`](docs/itri626_report/RUBRIC_CHECKLIST.md) (also report Appendix E) |
-| Executed notebook (outputs, figures, metric tables) | [`notebooks/ITRI626_three_models.ipynb`](notebooks/ITRI626_three_models.ipynb) (+ `notebooks/itri626_helpers.py`) |
+| Executed notebook (outputs, figures, metric tables) | [`notebooks/ITRI626_four_models.ipynb`](notebooks/ITRI626_four_models.ipynb) (+ `notebooks/itri626_helpers.py`) |
 | Training notebook (one section per model: A, B, C, Deployed, Fast) | [`notebooks/ITRI626_training.ipynb`](notebooks/ITRI626_training.ipynb) |
 | Experiment script | `scripts/itri626_experiments.py` → `results/itri626/` (metrics, per-class, histories, predictions, figures) |
 | Data preparation | `tools/build_dataset_v2.py` (cleaning, duplicate clustering, grouped split), `tools/export_splits.py` |
@@ -248,7 +248,7 @@ uv run python scripts/itri626_experiments.py                        # GPU recomm
 uv run python scripts/itri626_experiments.py --steps head reference collect   # CPU-only parts (cached features)
 
 # 3. execute the notebook (RETRAIN = False in its first code cell loads results/itri626/; True re-runs step 2 first)
-uv run jupyter nbconvert --to notebook --execute --inplace notebooks/ITRI626_three_models.ipynb
+uv run jupyter nbconvert --to notebook --execute --inplace notebooks/ITRI626_four_models.ipynb
 
 # 4. regenerate the report's tables and number macros from the result files, then build the PDF
 uv run --no-project --with numpy --with scipy python docs/itri626_report/make_tables.py
