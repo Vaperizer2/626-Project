@@ -1,4 +1,4 @@
-# Written by notebooks/ITRI626_three_models.ipynb with WITH_D = True. Only the figures that differ from the report's
+# Written by notebooks/ITRI626_four_models.ipynb with WITH_D = True. Only the figures that differ from the report's
 # three-model versions in results/itri626/figures/ are tracked; the rest are identical in content and rebuilt locally.
 fig01_*
 fig02_*

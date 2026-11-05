@@ -29,7 +29,7 @@ apps/gpui-demo/      Rust GPUI Kit 0.7.3 desktop app: Classify, Demo and Benchma
                      A/B/C/Deployed/Fast, headless classify/bench/models, portable Linux/NixOS launchers
 scripts/new_app.sh   a new desktop AI app from apps/gpui-demo without the classifier's parts (docs/TEMPLATE.md)
 exports/models.json  the app's model index; each export folder has a model.json (tools/gen_manifests.py writes them)
-notebooks/           ITRI626_three_models.ipynb (executed A/B/C comparison), ITRI626_training.ipynb (one section per
+notebooks/           ITRI626_four_models.ipynb (executed A/B/C/D comparison), ITRI626_training.ipynb (one section per
                      model: A, B, C, Deployed, Fast)
 tools/               dataset builders, export scripts, tools/speed/ (the frozen speed harness) and the speed tracks
                      behind Fast (speed2-4, compose, quant, prune, tokens, trtbugs, distill), tools/hardcases/

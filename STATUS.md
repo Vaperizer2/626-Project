@@ -16,7 +16,7 @@ and [EXPERIMENT_LOG.md](EXPERIMENT_LOG.md) for dated research decisions. Older c
 - ONNX export plus Python demo using onnxruntime (OpenCV handles I/O, not this graph's inference).
   Reports record numerical parity; `model.onnx.data` is 1,714,593,792 bytes.
 - ITRI626 report, executed notebook and A/B/C comparison: `docs/itri626_report/main.pdf`,
-  `notebooks/ITRI626_three_models.ipynb`, `results/itri626/metrics.json`. The training notebook
+  `notebooks/ITRI626_four_models.ipynb`, `results/itri626/metrics.json`. The training notebook
   `notebooks/ITRI626_training.ipynb` has one section per model: A, B and C, plus Deployed and Fast beyond the brief.
 - IEEE paper, learning notes and offline explorer: `docs/paper/`, `docs/LEARNING_PATH.md`, `docs/explorer/`.
 - GPUI Kit 0.7.3 desktop demo: Classify/Demo/Benchmark, A/B/C/Deployed/Fast picker, Bench themes, headless CLI;

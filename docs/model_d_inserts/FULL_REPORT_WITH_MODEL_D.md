@@ -590,7 +590,7 @@ Table 3 lists every training setting. Settings differ where the architectures re
 
 ### 4.4 Software, hardware and reproducibility
 
-The models are implemented in PyTorch \[30\] with `timm` \[10\]; scikit-learn \[7\] provides the split and the reference probe, and uv \[31\] pins the environment. B was trained on one NVIDIA GeForce RTX 4060 Ti with 7.7 GiB of memory (all versions and the hardware are in Table B.1, Appendix B). The final run of A was trained after the improvement study (Section 6.3) on a second machine, one NVIDIA GeForce RTX 4070 Laptop GPU with 8.0 GiB (Windows 11; the same code, lock file and seed; its software versions are recorded in `results/itri626/runs/A_scratch_cnn.json`). Peak GPU memory was 435 MB for A and 2,312 MB for B, and <del>head</del> <ins>the heads of</ins> C <del>was</del> <ins>and D were</ins> trained on the CPU from cached <del>features.</del> <ins>features (D’s features were extracted, and D was timed, on the second machine).</ins> The training seed is 0 and the split seed 42. GPU training of A is not bit-for-bit reproducible (non-deterministic cuDNN kernels), so a re-run can differ slightly. All result files, the executed notebook `notebooks/ITRI626_three_models.ipynb` and the commands in Appendix D are in the repository.
+The models are implemented in PyTorch \[30\] with `timm` \[10\]; scikit-learn \[7\] provides the split and the reference probe, and uv \[31\] pins the environment. B was trained on one NVIDIA GeForce RTX 4060 Ti with 7.7 GiB of memory (all versions and the hardware are in Table B.1, Appendix B). The final run of A was trained after the improvement study (Section 6.3) on a second machine, one NVIDIA GeForce RTX 4070 Laptop GPU with 8.0 GiB (Windows 11; the same code, lock file and seed; its software versions are recorded in `results/itri626/runs/A_scratch_cnn.json`). Peak GPU memory was 435 MB for A and 2,312 MB for B, and <del>head</del> <ins>the heads of</ins> C <del>was</del> <ins>and D were</ins> trained on the CPU from cached <del>features.</del> <ins>features (D’s features were extracted, and D was timed, on the second machine).</ins> The training seed is 0 and the split seed 42. GPU training of A is not bit-for-bit reproducible (non-deterministic cuDNN kernels), so a re-run can differ slightly. All result files, the executed notebook `notebooks/ITRI626_four_models.ipynb` and the commands in Appendix D are in the repository.
 
 **Fairness.** All <del>three</del> <ins>four</ins> models use the same 2,010 training, 502 validation and 418 test images, the same selection rule (best validation macro-F1) and a single test evaluation each, with no test-time augmentation. Tuning effort is comparable: the recipes of A and B come from the earlier development-set benchmark, and <del>C’s</del> <ins>the</ins> only tuned setting <ins>of C and of D</ins> is a four-value weight-decay grid on the validation set <del>(Table B.4).</del> <ins>(Tables B.4 and B.5). D’s crop fraction of 1.0 is the view it was registered with before any test look; on the development folds the same view is worth about 1.5 points to C’s features as well (`docs/EFFICIENCY_STUDY.md`), so, if anything, the gap from D to C is understated.</ins> Budgets differ only where the architecture requires it (Table 3): A receives 200 epochs and converges within them (best epoch 184), whereas B begins to overfit within 20. B and C also differ in pretraining data, which we treat as part of each method (Section 6.5). No test number led to a change of any setting.
 
@@ -1968,7 +1968,7 @@ All commands run from the repository root with uv (Python 3.12). The images are 
     uv run python tools/export_splits.py --check    # verify data/v2/splits/*.csv
     uv run python scripts/itri626_experiments.py    # train A, B, C, D; score test (GPU)
     uv run jupyter nbconvert --to notebook --execute --inplace \
-        notebooks/ITRI626_three_models.ipynb        # RETRAIN = False by default
+        notebooks/ITRI626_four_models.ipynb        # RETRAIN = False by default
     uv run --no-project --with numpy --with scipy \
         python docs/itri626_report/make_tables.py   # report tables and numbers
     cd docs/itri626_report && latexmk -pdf main.tex # this report
@@ -2182,7 +2182,7 @@ Table E.1 maps every requirement of the project brief to the place where it is a
 </tr>
 <tr>
 <td style="text-align: left;">Notebook with visible outputs, figures, metric tables</td>
-<td style="text-align: left;"><code>notebooks/ITRI626_three_models.ipynb</code></td>
+<td style="text-align: left;"><code>notebooks/ITRI626_four_models.ipynb</code></td>
 </tr>
 <tr>
 <td style="text-align: left;">Python scripts for data preparation and evaluation</td>
