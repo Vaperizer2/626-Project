@@ -407,3 +407,18 @@ not the quantisation. Under ORT CUDA fp16 in one session: SigLIP@384 31.9 ms, Si
 8.9 ms. The small model is therefore 2.3× faster than the Fast trunk at fp16 for 2.1 pt less (0.801 vs 0.822);
 Fast's INT8 engine under TensorRT will be faster than 20 ms, by an amount only measurable with its release files.
 Tooling: `extract_views.py key@px`, `fusion_table.py --siglip-view TAG`, `export_candidate.py --px`.
+
+## 2026-11-05 — Efficiency study: packaged "Small" model and write-up
+
+`tools/views/package_candidate.py --model mobileclip2_s3 --out exports/mobileclip2_s3` builds the small model the way
+`compclass.final` builds the deployed one (helpers reused): OOF of the exact pipeline on the dev folds 0.8025 acc /
+0.8022 macro-F1 (in-scope 0.837; probe-only 0.793), temperature 1.100 by NLL (ECE 0.025 → 0.032: the OOF probabilities
+were already near-calibrated), abstain threshold 0.55 (first grid step with ≥ 90 % accepted accuracy), probe refitted
+on all 2,512 dev rows (C 0.01); one ONNX graph in inference form with the projection, both heads and the temperature
+in-graph, fp32 479 MB (fp16 copy 240 MB); parity on 32 real dev images vs ORT CPU: max |Δp| 4.8e-7, argmax 32/32.
+`tools/gen_manifests.py` gained a row for it and `--only ID` (a machine without every model's graph can still write
+its own manifest); `exports/mobileclip2_s3/model.json` and the index line in `exports/models.json` are its output,
+head id `small`, title "Small (fused MobileCLIP2-S3, 256 px)", default list unchanged. `packaging/bundle.txt` lists
+the files; weights licence note `apps/gpui-demo/packaging/licenses/MODEL-WEIGHTS-MobileCLIP2.txt` (Apple
+`apple-amlr`, research/education only, unlike SigLIP's Apache-2.0). Write-up: `docs/EFFICIENCY_STUDY.md` with
+`docs/figures/efficiency_frontier.png` (`tools/views/efficiency_figure.py`). Sealed test and Wikimedia untouched.
