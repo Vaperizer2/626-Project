@@ -5,8 +5,8 @@
 \midrule
 \addlinespace[4pt]
 \multicolumn{5}{@{}l}{\textsc{model}} \\
-Model / variant & VGG-style CNN (scratch), width 32, 4 stages, dropout 0.3 & ConvNeXt-Tiny, stochastic depth (drop-path rate) 0.1 & ViT-So400m/14 (SigLIP), frozen; \texttt{nn.Linear(1152,\,20)} head & FastViT hybrid (MobileCLIP2-S3), frozen; \texttt{nn.Linear(3072,\,20)} head \\
-Pretrained weights & none (He initialisation) & \file{convnext_tiny.fb_in22k_ft_in1k} (ImageNet-22k$\rightarrow$1k) & \file{vit_so400m_patch14_siglip_384.webli} (WebLI) & \file{fastvit_mci3.apple_mclip2_dfndr2b} (DFNDR-2B) \\
+Model / variant & VGG-style CNN (scratch), width 32, 4 stages, dropout 0.3 & ConvNeXt-Tiny, stochastic depth (drop-path rate) 0.1 & ViT-So400m/14 (SigLIP), frozen; linear head (1,152 inputs, 20 outputs) & FastViT hybrid (MobileCLIP2-S3), frozen; linear head (3,072 inputs, 20 outputs) \\
+Pretrained weights & none (He initialisation) & ImageNet-22k$\rightarrow$1k & WebLI & DFNDR-2B \\
 Trainable / total params & 1,187,636 / 1,187,636 & 27,835,508 / 27,835,508 & 23,060 / 428,248,660 & 61,460 / 122,775,668 \\
 \addlinespace[4pt]
 \multicolumn{5}{@{}l}{\textsc{data and augmentation}} \\

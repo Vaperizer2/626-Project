@@ -68,9 +68,7 @@
 \newcommand{\relsmall}{\fontsize{\fpeval{0.92*\f@size}}{\f@baselineskip}\selectfont}% 92% of the current size
 \makeatother
 \renewcommand{\UrlFont}{\ttfamily\relsmall}
-\newcommand{\cls}[1]{\textit{#1}}
-\DeclareUrlCommand\fileurl{\def\UrlFont{\ttfamily\relsmall}}
-\DeclareRobustCommand{\file}{\fileurl}
+\newcommand{\cls}[1]{#1}
 \newcommand{\mA}{model~A\xspace}
 \newcommand{\mB}{model~B\xspace}
 \newcommand{\mC}{model~C\xspace}
@@ -121,8 +119,8 @@ S Klopper & 45757895\\
 \begin{minipage}{0.9\textwidth}
 \small
 \textbf{\color{accent}Abstract.}
-We classify web photographs of electronic components into 20 classes using the public Kaggle dataset \emph{Electronic Component
-Recognizer}. After exact duplicates and \nConflictGroups groups with contradictory labels are removed,
+We classify web photographs of electronic components into 20 classes using the public Kaggle dataset Electronic Component
+Recognizer. After exact duplicates and \nConflictGroups groups with contradictory labels are removed,
 \nRows images remain; detected near-duplicates are grouped to keep each cluster within a single split, giving a stratified split (seed \splitSeed) of \nTrain training, \nVal validation and \nTest
 test images. Four models are trained on this split and scored once on the same test set: (A) a
 VGG-style CNN trained from scratch, (B) ConvNeXt-Tiny fine-tuned from ImageNet-22k weights, and two frozen encoders with trained linear heads:
@@ -168,12 +166,12 @@ parts common on an electronics workbench (\cref{tab:dataset}).
 \section{Dataset: source, classes, preparation and ethics}\label{sec:data}
 
 \subsection{Source, licence and usage conditions}\label{sec:source}
-The images come from the Kaggle dataset \emph{Electronic Component Recognizer} by the user
-\texttt{mdfaisalahmed025} \citep{kaggle_dataset},
+The images come from the Kaggle dataset Electronic Component Recognizer by the user
+mdfaisalahmed025 \citep{kaggle_dataset},
 \url{https://www.kaggle.com/datasets/mdfaisalahmed025/electronic-component-recognizer}, released under the
-\textbf{MIT licence} (use, copying, modification and redistribution with the copyright notice, without warranty).
-The author collected the images with DuckDuckGo image search, one query per class, so \textbf{the labels are the
-search terms}. The dataset card states 3,661 images, but our download contains \nRaw files; we could not determine
+MIT licence (use, copying, modification and redistribution with the copyright notice, without warranty).
+The author collected the images with DuckDuckGo image search, one query per class, so the labels are the
+search terms. The dataset card states 3,661 images, but our download contains \nRaw files; we could not determine
 the reason (the card may describe an earlier version), and all counts below refer to the files we received. The MIT
 licence covers the compilation, not the copyright of the individual web images, which stays with their owners. We
 therefore use the images only for this non-commercial course project, acknowledge the source, and do not commit the
@@ -186,8 +184,7 @@ files; we do not use it, because it places copies of the same image on both side
 
 \begin{table}[!t]
 \centering\footnotesize
-\caption{The 20 classes, their image counts at each cleaning stage and in each split
-(\file{data/v2/splits/split_summary.csv}).}
+\caption{The 20 classes, their image counts at each cleaning stage and in each split.}
 \label{tab:dataset}
 \setlength{\tabcolsep}{2.6pt}
 \input{generated/tab_dataset.tex}
@@ -208,15 +205,15 @@ infographic under \cls{led}) is typical of the dataset.}
 \end{figure}
 
 \subsection{Cleaning, label checking and corrections}\label{sec:cleaning}
-All cleaning is done by \file{tools/build_dataset_v2.py}, which writes the manifest \file{data/v2/manifest.json} and
-the audit \file{data/v2/leakage_report.json}; \cref{tab:cleaning} summarises the counts.
+The cleaning pipeline records a dataset manifest and an audit of all exclusions and duplicate groups;
+\cref{tab:cleaning} summarises the counts.
 \begin{enumerate}[leftmargin=*]
 \item \textbf{Decoding.} Every file was decoded and stored as an RGB JPEG (the unique files were \nJPEG JPEG,
 \nWEBP WebP, \nPNG PNG, \nAVIF AVIF, \nGIF GIF and \nMPO MPO files; \nAlpha transparent images were composited on
 white). No file was corrupt.
 \item \textbf{Exact duplicates.} Files with identical SHA-256 hashes were collapsed into one image (\nDupRedundant
 redundant copies in \nDupGroups groups). \nConflictGroups groups (\nConflictFiles files) held the same image under two
-class folders, e.g.\ \cls{fuse} and \cls{relay}; their labels contradict each other, so they were \textbf{removed},
+class folders, e.g.\ \cls{fuse} and \cls{relay}; their labels contradict each other, so they were removed,
 leaving \nRows images.
 \item \textbf{Near-duplicates.} Re-encoded or resized copies were linked when their perceptual-hash distance (the
 Hamming distance between pHash codes) was at most \phashRadius and the cosine similarity of their CLIP ViT-B/32
@@ -227,21 +224,20 @@ and \nDistractors distractor concepts (person, car, food, logo, text screenshot,
 schematic, website screenshot, collage) and flags it when the distractor probability mass exceeds \oodThreshold. It
 flagged \nOOD images (\pctOOD\%), concentrated in classes whose names are common words: \nSwitchOOD of \nSwitch
 \cls{switch} images (mostly Nintendo Switch consoles) and \nTransformerOOD of \nTransformer \cls{transformer} images
-(toy robots, cartoons). Flagged images are \textbf{kept and reported separately}: in earlier 5-fold cross-validation,
-dropping them from training lowered the accuracy of a linear classifier on frozen SigLIP features (a \emph{linear
-probe}, \cref{sec:modelC}) from \abKeepAcc to \abDropAcc overall and from \abKeepIn to \abDropIn on unflagged images.
+(toy robots, cartoons). Flagged images are kept and reported separately: in earlier 5-fold cross-validation,
+dropping them from training lowered the accuracy of a linear classifier on frozen SigLIP features (a linear
+probe, \cref{sec:modelC}) from \abKeepAcc to \abDropAcc overall and from \abKeepIn to \abDropIn on unflagged images.
 \item \textbf{Label errors.} A confident-learning audit \citep{northcutt2021confident} on out-of-fold probe
 probabilities listed \nLabelIssues images whose given label is improbable while another class is highly probable.
 \end{enumerate}
 \textbf{How labels were obtained, checked and corrected.} Labels come from the search query. They were checked
-automatically (conflicting duplicates, CLIP screen, confident-learning audit) and by inspecting the review sheets in
-\file{data/v2/review/}. The only correction applied was the removal of the \nConflictGroups conflicting groups; we
+automatically (conflicting duplicates, CLIP screen, confident-learning audit) and by inspecting image review sheets. The only correction applied was the removal of the \nConflictGroups conflicting groups; we
 did not relabel images, which would need a manual review of all \nRows images by more than one annotator. The test
 labels therefore contain the same noise as the training labels, which caps every model's measurable accuracy.
 
 \begin{table}[!tbp]
 \centering\footnotesize
-\caption{Cleaning pipeline (\file{data/v2/leakage_report.json}); indented rows break down the row above.}
+\caption{Cleaning pipeline; indented rows break down the row above.}
 \label{tab:cleaning}
 \input{generated/tab_cleaning.tex}
 \end{table}
@@ -250,22 +246,21 @@ labels therefore contain the same noise as the training labels, which caps every
 After cleaning, the largest class (\cls{\classMaxName}, \classMax images) is \imbalance times the smallest
 (\cls{\classMinName}, \classMin); training classes have \trainMin--\trainMax images and test classes
 \testMin--\testMax (\cref{tab:dataset}, \cref{fig:counts} in \cref{app:extra}). Because the imbalance is mild we used
-\textbf{no class weights and no re-sampling}. Instead the split is stratified by class, early stopping and model
+no class weights and no re-sampling. Instead the split is stratified by class, early stopping and model
 selection use validation macro-F1 (every class counts equally), and we report macro averages and weighted F1.
 
 \subsection{Train/validation/test split and leakage prevention}\label{sec:split}
-The unit of splitting is the \emph{duplicate cluster}: a near-duplicate cluster or a single image without
+The unit of splitting is the duplicate cluster: a near-duplicate cluster or a single image without
 near-duplicates (\nClusters clusters). We split in two stages and always keep a cluster whole. First,
-\texttt{StratifiedGroupKFold} (scikit-learn \citep{pedregosa2011sklearn}; 7 folds, shuffled, \textbf{seed
-\splitSeed}) partitions the clusters, and the fold whose class distribution is closest (total-variation distance) to
-the overall one becomes the \textbf{test} set (\nTest images), which is held out (``sealed'') until the final
+StratifiedGroupKFold (scikit-learn \citep{pedregosa2011sklearn}; 7 folds, shuffled, seed
+\splitSeed) partitions the clusters, and the fold whose class distribution is closest (total-variation distance) to
+the overall one becomes the test set (\nTest images), which is held out (``sealed'') until the final
 evaluation. Second, the remaining 2,512 development images are divided by the same method into five grouped folds:
-fold~0 is the \textbf{validation} set (\nVal) and folds 1--4 form the \textbf{training} set (\nTrain), i.e.\
+fold~0 is the validation set (\nVal) and folds 1--4 form the training set (\nTrain), i.e.\
 \pctTrain/\pctVal/\pctTest\%, close to the 70/15/15 split suggested in the brief.
-The class distribution of each split is in \cref{tab:dataset}. \file{tools/export_splits.py} writes the split from
-the manifest (fingerprint \texttt{\fingerprint}) to \texttt{data/v2/splits/\{train,val,test\}.csv} and, with
-\file{--check}, verifies the files; the notebook and \file{make_tables.py} assert that no image and no cluster
-occurs in two splits. Grouping matters: in the dataset's original random file split (counted over the raw file
+The class distribution of each split is in \cref{tab:dataset}. The manifest fingerprint is \fingerprint.
+The exported splits, notebook and report-generation checks verify that no image or duplicate cluster occurs in two splits.
+Grouping matters: in the dataset's original random file split (counted over the raw file
 entries), \legValCopies of \legValEntries
 validation and \legTestCopies of \legTestEntries test entries are byte-identical copies of a training file, which
 inflates scores \citep{barz2020cifair, kapoor2023leakage} (\cref{sec:further}). The test set was used once per model, after all choices had been fixed on validation data.
@@ -277,8 +272,8 @@ our figures only as small thumbnails from the public dataset. Use follows \cref{
 source is acknowledged, the use is non-commercial and educational, and the images are not redistributed in the
 repository (they are rebuilt from the Kaggle download, \cref{app:repro}). The 407 photographs of the supplementary web
 holdout (\cref{sec:further}) are from Wikimedia Commons under public-domain or Creative-Commons licences; author,
-licence and source of each are listed in \file{data/web_holdout_v1/ATTRIBUTION.md}. Pretrained weights come from
-their official \texttt{timm} releases \citep{wightman2019timm}. The main risk is over-trust in a wrong label,
+licence and source of each are recorded in the accompanying attribution register. Pretrained weights come from
+their official timm releases \citep{wightman2019timm}. The main risk is over-trust in a wrong label,
 which is why we report confidence and a reject option. Web search results may also over-represent clean product
 shots, so performance on cluttered workbench photographs can be lower (cf.\ the Wikimedia holdout in
 \cref{sec:further}).
@@ -293,22 +288,22 @@ validation set only and scored once on the test set.
 \centering
 \includegraphics[width=\textwidth]{diagrams/workflow.pdf}
 \caption{Shared preparation and evaluation of A--D. Duplicate clusters remain whole across the fixed split.
-All choices precede test scoring. Excalidraw source and vector exports are included in \file{diagrams/}.}
+All choices precede test scoring. Editable Excalidraw sources and vector exports accompany the report.}
 \label{fig:workflow}
 \end{figure}
 
 \Needspace{7\baselineskip}
 \subsection{Model A: VGG-style CNN trained from scratch}
-A VGG-style network \citep{simonyan2014vgg} written for this project (\file{src/compclass/models/scratch_cnn.py}):
+A VGG-style network \citep{simonyan2014vgg} written for this project:
 a stride-2 stem convolution, four stages of two $3\times3$ convolution--BatchNorm \citep{ioffe2015bn}--ReLU blocks
 (32, 64, 128, 256 channels) with max-pooling between stages, global average pooling, dropout 0.3 and a linear
-classifier; \paramsA parameters with He initialisation \citep{he2015delving} and \textbf{no pretrained weights}. It
+classifier; \paramsA parameters with He initialisation \citep{he2015delving} and no pretrained weights. It
 shows what can be learned from about 2,000 images alone.
 
 \subsection{Model B: fine-tuned ConvNeXt-Tiny}
 ConvNeXt \citep{liu2022convnext} modernises the ResNet design \citep{he2016resnet} with $7\times7$ depthwise
 convolutions, inverted bottlenecks, LayerNorm and GELU. We use the Tiny variant (\paramsB parameters) with the
-\texttt{timm} weights \file{convnext_tiny.fb_in22k_ft_in1k}, pretrained on ImageNet-22k and fine-tuned on
+timm weights, pretrained on ImageNet-22k and fine-tuned on
 ImageNet-1k \citep{russakovsky2015imagenet}. The 1000-class head is replaced by a new 20-class linear layer, which is
 trained alone in the first epoch so that its large initial gradients do not disturb the pretrained features
 \citep{kumar2022finetuning}. Afterwards all layers are trained, with layer-wise learning-rate decay 0.8 so that early,
@@ -319,18 +314,18 @@ recipe for small datasets \citep{yosinski2014transferable, kornblith2019transfer
 The Vision Transformer \citep{dosovitskiy2020vit} splits an image into patches and processes the patch tokens with
 self-attention. SigLIP \citep{zhai2023siglip} trains a ViT image encoder and a text encoder on WebLI (a web-scale
 image--text collection) with a pairwise sigmoid loss. We use its shape-optimised So400m/14 encoder at $384\times384$ pixels (27 blocks,
-width 1152, patch size 14; \texttt{timm} weights \file{vit_so400m_patch14_siglip_384.webli}). \textbf{The backbone
-is frozen.} Each image is encoded once into its attention-pooled 1152-dimensional embedding; the features are
-standardised with the training-split mean and standard deviation, and only one \texttt{nn.Linear(1152,\,20)} layer
+width 1152, patch size 14; timm weights pretrained on WebLI). The backbone
+is frozen. Each image is encoded once into its attention-pooled 1152-dimensional embedding; the features are
+standardised with the training-split mean and standard deviation, and only one linear layer with 1,152 inputs and 20 outputs
 (\paramsHead parameters) with softmax output is trained with cross-entropy and AdamW, i.e.\ the linear-probe
 protocol used for image--text models \citep{radford2021clip}.
 
 \subsection{Model D: frozen MobileCLIP2-S3 hybrid with a linear head}\label{sec:modelD}
 MobileCLIP2 \citep{faghri2025mobileclip2} provides compact image--text encoders. Its S3 image encoder is a
 FastViT convolution--attention hybrid \citep{vasu2023fastvit}, at $256\times256$ pixels with 122,775,668 parameters
-(3.5 times fewer than C; weights \file{fastvit_mci3.apple_mclip2_dfndr2b}). D uses C's frozen-feature procedure,
-training-only standardisation and selection rule, with a \texttt{nn.Linear(3072,\,20)} head (61,460 trainable parameters).
-It was selected using development folds to study the accuracy--cost trade-off (\file{docs/EFFICIENCY_STUDY.md}).
+(3.5 times fewer than C; weights pretrained on DFNDR-2B). D uses C's frozen-feature procedure,
+training-only standardisation and selection rule, with a linear head with 3,072 inputs and 20 outputs (61,460 trainable parameters).
+It was selected using development folds to study the accuracy--cost trade-off.
 A--C meet the brief's three named families; D is supplementary, with approval as an additional family still unconfirmed.
 
 \subsection{Rationale for the models and evaluation protocol}
@@ -338,7 +333,7 @@ The brief lists a small custom CNN, ConvNeXt and the Vision Transformer as separ
 take one from each (plain CNN, modernised CNN, Vision Transformer) and span the transfer-learning
 spectrum: no transfer (A), full fine-tuning of supervised ImageNet features (B) and frozen features from web-scale
 image--text pretraining (C and D). Between B and C, architecture and pretraining data change together, so the comparison
-measures \emph{model plus pretraining} as available to a practitioner; the supplementary benchmark
+measures model plus pretraining as available to a practitioner; the supplementary benchmark
 (\cref{sec:further}) provides additional comparisons, without isolating a causal effect of architecture.
 
 \textbf{Evaluation.} On the test set we compute per-class precision, recall and F1, their macro averages (all classes equal) and weighted
@@ -351,14 +346,14 @@ tests whether, on the images where exactly one of the two models is right, each 
 \section{Experimental setup and hyperparameters}\label{sec:setup}
 
 \subsection{Preprocessing}
-Every image is decoded to 8-bit RGB, and each model uses the input size and normalisation of its weights. For \textbf{evaluation} (validation, test, and the
+Every image is decoded to 8-bit RGB, and each model uses the input size and normalisation of its weights. For evaluation (validation, test, and the
 feature extraction of C and D) the short side is resized to the input size divided by the crop fraction (0.875 for A
 and B, 0.9 for C, 1.0 for D) and the centre square is cut out:
 183$\to$160\,px bilinear for A, 256$\to$224\,px bicubic for B, 427$\to$384\,px bicubic for C; 256\,px bicubic, with no short-side border removed, for D. Pixels are scaled to
 $[0,1]$ and normalised per channel (mean and standard deviation 0.5 for A and C; ImageNet statistics for B; CLIP statistics for D, recorded in its run JSON).
 
 \subsection{Augmentation (training data only)}
-A and B are trained with \texttt{RandomResizedCrop} (aspect ratio 0.75--1.33), horizontal flips ($p=0.5$) and
+A and B are trained with RandomResizedCrop (aspect ratio 0.75--1.33), horizontal flips ($p=0.5$) and
 RandAugment with two operations of magnitude 9 \citep{cubuk2020randaugment}; A also uses colour jitter 0.2 and a
 wider crop range (scale 0.35--1 instead of 0.5--1), because a network trained from scratch needs stronger
 regularisation (\cref{fig:aug}). Validation and test images always receive the deterministic evaluation transform.
@@ -382,7 +377,7 @@ features of the evaluation crop; D (not pictured) likewise uses a deterministic 
 initialised CNN needs a high learning rate, many epochs and strong augmentation. A pretrained network needs a small
 learning rate and few epochs. A linear head on frozen, standardised features needs neither augmentation nor a
 learning-rate schedule. The recipe of B was fixed earlier in the project's grouped 5-fold cross-validation
-benchmark on the 2,512 development images only (\file{results/benchmark.csv}), and so was A's apart from its
+benchmark on the 2,512 development images only, and so was A's apart from its
 schedule: the benchmark's 120-epoch budget stopped A before it had converged, and the improvement study of
 \cref{sec:improveA}, again on the development folds only, lengthened it to \maxEpochsA epochs (patience 40). The
 \nTest test images were never used for any of this. For each frozen head, the weight decay is selected on the validation set from
@@ -396,16 +391,16 @@ tested. D uses the same grid and tie-break; all four values tied (\cref{tab:wdgr
 
 
 \subsection{Software, hardware and reproducibility}\label{sec:software}
-The models are implemented in PyTorch \citep{paszke2019pytorch} with \texttt{timm} \citep{wightman2019timm};
+The models are implemented in PyTorch \citep{paszke2019pytorch} with timm \citep{wightman2019timm};
 scikit-learn \citep{pedregosa2011sklearn} provides the split and the reference probe, and uv \citep{astral2024uv}
 pins the environment. B was trained on one \gpuName with \gpuMem\,GiB of memory (all versions and the hardware are in
 \cref{tab:env}, \cref{app:extra}). The final run of A was trained after the improvement study (\cref{sec:improveA})
 on a second machine, one \gpuNameA with \gpuMemA\,GiB (Windows 11; the same code, lock file and seed; its software
-versions are recorded in \file{results/itri626/runs/A\_scratch\_cnn.json}). Peak GPU memory was
+versions are recorded with the run metadata). Peak GPU memory was
 \vramA\,MB for A and \vramB\,MB for B, and the heads of C and D were trained on the CPU from cached features. D's feature extraction and timing used the second machine (RTX 4070 Laptop). The training seed is 0
 and the split seed \splitSeed. GPU training of A is not bit-for-bit reproducible (non-deterministic cuDNN kernels), so
-a re-run can differ slightly. All result files, the executed notebook \file{notebooks/ITRI626_four_models.ipynb} and
-the commands in \cref{app:repro} are in the repository.
+a re-run can differ slightly. Result files, the executed comparison notebook and reproduction instructions are available in the project repository
+(\cref{app:repro}).
 
 \textbf{Fairness.}\label{sec:fairness} All four models use the same \nTrain training, \nVal validation and \nTest
 test images, the same selection rule (best validation macro-F1) and a single test evaluation each, with no test-time
@@ -436,7 +431,7 @@ Their extra fitting data and heads prevent attributing these gains solely to bac
 
 \begin{table}[!tbp]
 \centering\footnotesize
-\caption{Test-set metrics ($n=\nTest$, same images for all models; \file{results/itri626/metrics.json}). Bold:
+\caption{Test-set metrics ($n=\nTest$, same images for all models). Bold:
 best main model. CI: 95\% percentile bootstrap (2,000 resamples).}
 \label{tab:test}
 \setlength{\tabcolsep}{2pt}
@@ -455,21 +450,21 @@ best main model. CI: 95\% percentile bootstrap (2,000 resamples).}
 \Cref{fig:curves} shows training and validation loss and validation accuracy and macro-F1 per epoch;
 \cref{tab:curves} (\cref{app:extra}) gives the values at the selected epoch. Losses are plain cross-entropy.
 \begin{itemize}[leftmargin=*]
-\item \textbf{A} improves slowly for most of its \maxEpochsA-epoch budget and is selected at epoch \bestA. There its
+\item A improves slowly for most of its \maxEpochsA-epoch budget and is selected at epoch \bestA. There its
 training accuracy is \trainAccA but its validation accuracy only \valAccA. The validation loss is lowest at epoch
 \minValCEepA (\minValCEA; chance level $\ln 20=\lnTwenty$) and then rises to \valCEA while validation accuracy and
 macro-F1 still improve: the network grows more confident without changing many decisions, and in its second
 hundred epochs it also fits the training set (training cross-entropy \trainCEA). The 120-epoch schedule of the
 earlier benchmark stopped it before this point (\cref{sec:improveA}).
-\item \textbf{B} profits from its pretrained features at once: validation accuracy passes 0.5 in epoch \epHalfB and
+\item B profits from its pretrained features at once: validation accuracy passes 0.5 in epoch \epHalfB and
 plateaus near \valAccB, while training accuracy rises to \finalTrainAccB and validation loss stays at about \valCEB,
 i.e.\ a 28-million-parameter network overfits a small, noisy training set. The cosine schedule and early stopping
 (best epoch \bestB of \epochsB) keep it from getting worse.
-\item \textbf{C} passes 0.75 validation accuracy in epoch \epTqC and reaches \valAccC. Training accuracy goes to
+\item C passes 0.75 validation accuracy in epoch \epTqC and reaches \valAccC. Training accuracy goes to
 \finalTrainAccC, since 1,152 standardised features are almost linearly separable for 2,010 images. Validation loss is
 lowest in epoch \minValCEepC (\minValCEC) and then creeps up while accuracy and macro-F1 stay flat: the head grows more
 confident without changing many decisions. Early stopping selected epoch \bestC.
-\item \textbf{D} reaches validation accuracy \valAccD{} and macro-F1 \valFoneD{} at epoch 11 of 31; its 3,072-dimensional features support the same inexpensive head-fitting procedure.
+\item D reaches validation accuracy \valAccD{} and macro-F1 \valFoneD{} at epoch 11 of 31; its 3,072-dimensional features support the same inexpensive head-fitting procedure.
 \end{itemize}
 
 \begin{figure}[!tbp]
@@ -512,7 +507,7 @@ module} and handwritten notes labelled \cls{inductor coil}.
 \centering
 \includegraphics[width=\textwidth]{figures/gallery_C_siglip_so400m_linear.pdf}
 \caption{Model C: six random correct predictions (top row) and six most confident errors (bottom row, red frame,
-\emph{true $\to$ predicted}). Confidence is the softmax probability of the predicted class.
+true $\to$ predicted). Confidence is the softmax probability of the predicted class.
 MCU board = microcontroller board; PSU module = power supply module; crystal osc.\ = crystal oscillator;
 batt.\ holder = battery holder. A and B are shown in \cref{fig:galleryAB}; D in \cref{fig:galleryD}.}
 \label{fig:galleries}
@@ -546,39 +541,38 @@ anchor, not a ratio against C's different-PC table row; it also excludes C's hea
 \section{Discussion, limitations and error analysis}\label{sec:discussion}
 
 \subsection{Why the models differ}\label{sec:why}
-The ranking follows \emph{how much relevant visual knowledge each model brings} to a 2,010-image problem, rather than
-depth or parameter count. \textbf{A} starts from random weights and must learn edges, textures, shapes and classes at
+The ranking follows how much relevant visual knowledge each model brings to a 2,010-image problem, rather than
+depth or parameter count. A starts from random weights and must learn edges, textures, shapes and classes at
 once from about 100 images per class; its learning curves show it is data-limited, as does the improvement study of
 \cref{sec:improveA} (more epochs helped; more capacity, residual blocks, stronger augmentation and better
 initialisation did not), and its per-class F1 correlates with the number of training images (Spearman $\rho$ over
-the 20 classes \rhoA, against \rhoB for B and \rhoC for C). \textbf{B} re-uses ImageNet-22k features that already encode objects, materials and shapes, so it learns quickly;
+the 20 classes \rhoA, against \rhoB for B and \rhoC for C). B re-uses ImageNet-22k features that already encode objects, materials and shapes, so it learns quickly;
 but ImageNet contains few electronic parts, so the features are generic, and fine-tuning all 28 million parameters on
-2,010 noisy images shows a generalisation gap (training accuracy \finalTrainAccB against \valAccB on validation). \textbf{C} uses a
+2,010 noisy images shows a generalisation gap (training accuracy \finalTrainAccB against \valAccB on validation). C uses a
 428-million-parameter encoder pretrained on web image--text pairs. Its embedding already separates the classes:
 SigLIP zero-shot classification, with no training at all, reaches macro-F1 \bmZeroSiglip in the benchmark
 (\cref{sec:further}). It is also the least affected by off-topic images (\accOODC on flagged test images against
 \accOODB for B, \cref{sec:errors}), plausibly because such images resemble its web pretraining data. Freezing the
 backbone means label noise cannot distort it, and
 training the \paramsHead head parameters takes \timeC\,s for the whole grid on cached features.
-\textbf{D} repeats this strategy with a smaller hybrid: \diffCD{} accuracy points below C and \diffDB{} above B.
+D repeats this strategy with a smaller hybrid: \diffCD{} accuracy points below C and \diffDB{} above B.
 These results support the value of the representation; architecture and pretraining are not independently controlled.
 
 \subsection{Error analysis}\label{sec:errors}
 \textbf{Look-alike components.} \Cref{tab:confused} lists the most frequent confusions. C's largest are
-\cls{resistor}$\to$\cls{inductor coil} (\cmResIndC) and \cls{jumper wire}$\to$\cls{connector} (\cmJumpConC); B's are
-\cls{resistor}$\to$\cls{crystal oscillator} (\cmResXtalB) and \cls{ic chip}$\to$\cls{microcontroller board}
+\cls{resistor} $\to$ \cls{inductor coil} (\cmResIndC) and \cls{jumper wire} $\to$ \cls{connector} (\cmJumpConC); B's are
+\cls{resistor} $\to$ \cls{crystal oscillator} (\cmResXtalB) and \cls{ic chip} $\to$ \cls{microcontroller board}
 (\cmIcMcuB). These pairs share shapes: colour-banded axial bodies (some inductors look like fat resistors), cables
 with plugs, chips mounted on boards. \cls{Resistor} is C's hardest class: precision \precResC but recall only
 \recResC, partly because several test ``resistors'' are icon sheets, banners or schematics. A's confusions (e.g.\
-\cls{fuse}$\to$\cls{connector}, \cls{fuse}$\to$\cls{switch}) are spread widely and often have no obvious visual
+\cls{fuse} $\to$ \cls{connector}, \cls{fuse} $\to$ \cls{switch}) are spread widely and often have no obvious visual
 explanation, consistent with a model that has not learned robust shape features. \cls{Diode} and \cls{led} are
-related devices that are often shown together in infographics (\cmDiodeLedC of C's errors are \cls{diode}$\to$\cls{led}).
+related devices that are often shown together in infographics (\cmDiodeLedC of C's errors are \cls{diode} $\to$ \cls{led}).
 Summed over A, B and C, the most frequent confusions are \confusedSum.
 
 \begin{table}[!tbp]
 \centering\footnotesize
-\caption{Most frequent test confusions of A--C (true $\rightarrow$ predicted) per model, from the confusion matrices in
-\file{results/itri626/metrics.json}; equal counts are listed alphabetically. MCU board: microcontroller board.}
+\caption{Most frequent test confusions of A--C (true $\rightarrow$ predicted) per model, from their recorded confusion matrices; equal counts are listed alphabetically. MCU board: microcontroller board.}
 \label{tab:confused}
 \setlength{\tabcolsep}{3.5pt}
 \input{generated/tab_confused.tex}
@@ -601,7 +595,7 @@ test images and is right on \ftAccepted of those.
 
 \subsection{Can the scratch CNN be improved?}\label{sec:improveA}
 A 19-experiment study used development folds only to test whether recipe changes close the gap
-(\file{docs/SCRATCH_CNN_IMPROVEMENT_REPORT.md}). Resolution, capacity, depth, residual blocks,
+as documented in the supplementary scratch-CNN study. Resolution, capacity, depth, residual blocks,
 regularisation, augmentation and initialisation changes produced no consistent gain. Training to convergence
 (200 rather than 120 epochs) did help: five-fold macro-F1 rose by \imprSchedGain{} points, with gains on all folds
 (\cref{tab:improveA}, \cref{app:benchmark}). That schedule is A in this report; its recorded test gain is
@@ -664,8 +658,7 @@ split are in \cref{tab:dataset}.
 
 \begin{table}[htbp]
 \centering\small
-\caption{Per-class test precision (P), recall (R) and F1 ($n$ = test images per class;
-\file{results/itri626/per_class.csv}). Best F1 among A--C per class in bold.}
+\caption{Per-class test precision (P), recall (R) and F1 ($n$ = test images per class). Best F1 among A--C per class in bold.}
 \label{tab:perclass}
 \setlength{\tabcolsep}{4pt}
 \input{generated/tab_per_class.tex}
@@ -673,8 +666,7 @@ split are in \cref{tab:dataset}.
 
 \begin{table}[htbp]
 \centering\small
-\caption{Per-class test results of the reference rows (\file{results/itri626/metrics.json}, key
-\texttt{references}). R1: scikit-learn logistic-regression probe (inverse regularisation $C=\probeC$) on the same
+\caption{Per-class test results of the reference models. R1: scikit-learn logistic-regression probe (inverse regularisation $C=\probeC$) on the same
 frozen SigLIP features and training split as C. R2: the deployed model (probe fitted on train + validation, fused with
 the zero-shot text head, temperature \tempR).}
 \label{tab:perclassrefs}
@@ -720,7 +712,7 @@ per model. Image selections, predictions and confidence values are unchanged; la
 \section{Additional dataset and training details}\label{app:extra}
 \begin{table}[!htbp]
 \centering\footnotesize\renewcommand{\arraystretch}{1.12}
-\caption{Training settings: architecture and data (\file{results/itri626/hyperparameters.csv}, \file{results/itri626/runs/*.json}).
+\caption{Training settings: architecture and data.
 Epochs are counted from 1. Optimisation and runtime settings continue below.}
 \label{tab:hparams}
 \input{generated/tab_hparams_data.tex}
@@ -735,7 +727,7 @@ Epochs are counted from 1. Optimisation and runtime settings continue below.}
 \Cref{tab:env} lists the software and hardware of the training run.
 \begin{table}[!tbp]
 \centering\footnotesize
-\caption{Software and hardware of the training run of B and C (\file{results/itri626/environment.json}); the final
+\caption{Software and hardware of the training run of B and C; the final
 run of A and the extraction and timing of D used a second machine (\cref{sec:software}).}
 \label{tab:env}
 \setlength{\tabcolsep}{4pt}
@@ -748,7 +740,7 @@ time, \cref{fig:counts} the class distribution before and after cleaning and per
 
 \begin{table}[htbp]
 \centering\small
-\caption{State at the selected (best validation macro-F1) epoch (\file{results/itri626/histories.json}).
+\caption{State at the selected (best validation macro-F1) epoch.
 CE: cross-entropy.}
 \label{tab:curves}
 \footnotesize\setlength{\tabcolsep}{2.4pt}
@@ -757,7 +749,7 @@ CE: cross-entropy.}
 
 \begin{table}[htbp]
 \centering\small
-\caption{Model size and inference time (\file{results/itri626/efficiency.csv}): forward pass of a preprocessed tensor
+\caption{Model size and inference time: forward pass of a preprocessed tensor
 after warm-up, fp16 on the GPU, fp32 on 8 CPU threads, without JPEG decoding and resizing. C's and D's checkpoints hold only
 the trained heads; the large backbone weights are additional. D was timed on an RTX 4070 Laptop, while A--C
 were timed on the environment-table PC. D's tower was reparameterised for inference. MB follows the source files'
@@ -779,7 +771,7 @@ images into training, validation and test sets (\pctTrain\,/\,\pctVal\,/\,\pctTe
 \begin{table}[htbp]
 \centering\small
 \caption{Weight-decay selection for \mC's head on the validation set (learning rate $10^{-3}$, batch 256, at most
-200 epochs, patience 20; \file{results/itri626/head_grid.csv}). The \nTies-way tie was broken by the pre-set
+200 epochs, patience 20). The \nTies-way tie was broken by the pre-set
 smallest-value rule. CE: cross-entropy.}
 \label{tab:wdgrid}
 \input{generated/tab_wdgrid.tex}
@@ -802,15 +794,14 @@ All four values tied on macro-F1; the pre-set smallest-value rule selected $10^{
 
 \FloatBarrier\clearpage
 \section{Supporting analysis}\label{app:benchmark}
-This appendix details the supporting results summarised in \cref{sec:further} (full write-up:
-\file{docs/report/REPORT.md}). In \cref{tab:benchmark}, fine-tuning used one fixed recipe per family, the probe is a
+This appendix details the supporting results summarised in \cref{sec:further}. In \cref{tab:benchmark}, fine-tuning used one fixed recipe per family, the probe is a
 logistic regression on frozen features, and zero-shot uses the model's text encoder with class-name prompts and no
 training.
 
 \begin{table}[!tbp]
 \centering\footnotesize
 \caption{Scratch-CNN improvement study. Development: grouped 5-fold macro-F1 (mean $\pm$ SD over folds). Test
-and holdout: one training run on the fixed split, scored once (\file{results/scratch\_cnn\_improvement/}). The
+and holdout: one training run on the fixed split, scored once. The
 120-epoch row is the model A of the previous build of this report; R2 is the deployed model of \cref{tab:test}.}
 \label{tab:improveA}
 \setlength{\tabcolsep}{1.9pt}
@@ -827,25 +818,23 @@ and partial fine-tuning of the SigLIP backbone (\bmPartial, three folds) did not
 \textbf{Leakage of the original split.} Under the dataset's original file-level split, \leakRows of the \leakEval
 deduplicated development images that it places in validation or test (\leakPct\%) also have a copy in its training
 part (our own test images are excluded; \cref{sec:split} counts raw file entries instead), which inflates three linear probes by \inflSiglip
-(SigLIP), \inflConvnext (ConvNeXt-T) and \inflResnet (ResNet-50) points (\file{results/leakage_simulation.csv}).
+(SigLIP), \inflConvnext (ConvNeXt-T) and \inflResnet (ResNet-50) points in the recorded leakage simulation.
 Weaker models gain most, so leakage also compresses the gaps between models. 
 
 \textbf{Out-of-source test and deployment.} The deployed model (R2) was tested once on \whN Wikimedia Commons
-photographs collected after it was frozen (\file{data/web_holdout_v1/}): \whAcc accuracy and \whFone macro-F1, close
+photographs collected after it was frozen: \whAcc accuracy and \whFone macro-F1, close
 to its in-distribution result. Its weakest classes there are \cls{led} (recall \whRecLed; \whCmLedDiode errors to
 \cls{diode}), \cls{switch} (\whRecSwitch; real switches predicted \cls{ic chip} \whCmSwIc times, a consequence of the
 console-dominated training class) and \cls{transformer} (\whRecTrf; \whCmTrfInd errors to \cls{inductor coil}). It is
-exported to ONNX for an OpenCV demo and a Rust desktop application (\file{docs/DEMO.md}, \file{apps/gpui-demo/}).
+exported to ONNX for an OpenCV demo and a Rust desktop application.
 
 
-\textbf{Efficiency study and packaged models.} Model selection used five grouped development folds
-(\file{docs/EFFICIENCY_STUDY.md}), not the test results. With the fused recipe and the same RTX 4070 Laptop,
+\textbf{Efficiency study and packaged models.} Model selection in the efficiency study used five grouped development folds, rather than test results. With the fused recipe and the same RTX 4070 Laptop,
 fp16 ONNX Runtime CUDA batch-1 latency was 31.9 ms for SigLIP at 384 px, 20.4 ms at 308 px and 8.9 ms for
 MobileCLIP2-S3. Their development OOF macro-F1 values were 0.840, 0.822 and 0.801. The 308 px row measures the
 Fast-resolution tower at fp16; it is not an INT8 TensorRT measurement. These runtime measurements differ from
 \cref{tab:eff}'s PyTorch timings and exclude image decoding and resizing.
-The packaged Small model subsequently scored 0.806 accuracy and 0.802 macro-F1 once on the 418 test rows
-(\file{results/final_test_mobileclip2_s3.json}). It is R3 here; its 0.55 abstention threshold and fitted fusion
+The packaged Small model subsequently scored 0.806 accuracy and 0.802 macro-F1 once on the 418 test rows. It is R3 here; its 0.55 abstention threshold and fitted fusion
 must not be attributed to D. No new test evaluation was performed for this report revision.
 
 \begin{figure}[htbp]
@@ -858,8 +847,7 @@ refitted deployment references. OOF means out-of-fold. Excalidraw sources accomp
 
 \begin{table}[htbp]
 \centering\small
-\caption{Supporting benchmark: grouped 5-fold CV macro-F1 (mean $\pm$ SD over folds) on the development set
-(\file{results/benchmark.csv}). $^{\dagger}$Three folds only. C shares the SigLIP backbone with the probe column; the head-fitting procedure differs.}
+\caption{Supporting benchmark: grouped 5-fold CV macro-F1 (mean $\pm$ SD over folds) on the development set. $^{\dagger}$Three folds only. C shares the SigLIP backbone with the probe column; the head-fitting procedure differs.}
 \label{tab:benchmark}
 \setlength{\tabcolsep}{1.9pt}
 \input{generated/tab_benchmark.tex}
@@ -883,121 +871,29 @@ measures model and pretraining together. The budgets of A and B were fixed by ea
 exhaustively. A was then trained to convergence, and the study of \cref{sec:improveA} found no further recipe gain,
 so the observed gap of \diffCA points to C persists under the tested budgets.
 \item \textbf{D's asymmetries.} D uses a different crop fraction and was timed on a second PC; the
-same-PC C-tower anchor is reported separately. Its weights have research-use restrictions
-(\file{LICENSES/MODEL-WEIGHTS-MobileCLIP2.txt}); commercial suitability is not established.
+same-PC C-tower anchor is reported separately. Its weights have research-use restrictions under the Apple Machine Learning Research Model License; commercial suitability is not established.
 \item \textbf{Cost.} C has \paramsMC million parameters and needs about \cpuMsC\,ms per image on a CPU, which rules it
 out for microcontrollers or real-time video without a GPU.
 \end{enumerate}
 
 \FloatBarrier\clearpage
 \section{Reproduction}\label{app:repro}
-All commands run from the repository root with uv (Python 3.12). The images are not tracked in Git. Download the
-Kaggle dataset (\cref{sec:source}) and unpack it to \file{data/raw/electronic-component-recognizer/} to rebuild
-\file{data/v2/images/} (\nRows JPEG files) with \file{tools/build_dataset_v2.py}; the result must reproduce manifest
-fingerprint \texttt{\fingerprint}.
-\begin{small}
-\begin{verbatim}
-uv sync --locked           # committed runtime environment
-uv run --locked python docs/itri626_report/make_tables.py  # committed results only
-cd docs/itri626_report && latexmk -pdf main.tex
-\end{verbatim}
-\end{small}
-These report-build commands neither train models nor score images. The notebook
-\file{notebooks/ITRI626_four_models.ipynb} visualises the recorded results with \texttt{RETRAIN = False};
-its four-model figures are committed in \file{results/itri626/figures_four_models/}.
-Training and data-rebuild commands are historical reproduction procedures, not routine checks:
-see \file{docs/RUNBOOK.md} and the experiment log. Both recorded holdouts are spent; use development or synthetic
-inputs for routine work. A was imported from the improvement study's fold-0 run rather than retrained for the report.
+The \href{https://github.com/Vaperizer2/626-Project}{project repository} contains the source code, executed
+comparison notebook, fixed split assignments, committed predictions and metrics, figure sources and build instructions.
+The repository is private; access requires a collaborator invitation. Raw images are obtained separately from the
+Kaggle source cited in \cref{sec:source}. Rebuilding the cleaned dataset should reproduce \nRows images and manifest
+fingerprint \fingerprint.
 
-\textbf{Provenance of further numbers in the text.} Cleaning ablation (\cref{sec:cleaning}, item~4):
-\file{results/phase1/cleaning_ablation_siglip_so400m.csv}; label audit (item~5):
-\file{results/phase1/label_issues_v2.csv}; CLIP screen and its top distractors (\cref{sec:cleaning,sec:ethics}):
-\file{data/v2/review/ood_suspects.csv}; off-topic flags of the test images (\cref{sec:errors}):
-\file{data/v2/splits/test.csv}; reject option of the deployed model: \file{results/final/final_test_v2.json};
-full write-up of the wider study (\cref{sec:further}): \file{docs/report/REPORT.md}. Every number macro and its
-source file are listed in \file{docs/itri626_report/generated/key_numbers.json}.
+Python dependencies are pinned by the committed lockfile and managed with uv. The report tables and number macros
+are generated from committed results, and the PDF is compiled with LaTeX. Rebuilding the report neither trains
+models nor scores images. The comparison notebook also defaults to displaying recorded results without retraining.
 
-\FloatBarrier\clearpage
-\section{Rubric compliance checklist}\label{app:rubric}
-\Cref{tab:rubric} maps every requirement of the project brief to the place where it is addressed. The same list,
-with file paths, is in \file{docs/itri626_report/RUBRIC_CHECKLIST.md}.
+The accompanying records identify the sources of the cleaning ablation, label audit, off-topic flags, confidence
+thresholds and broader benchmark. Each reported number is linked to its source in a machine-readable provenance
+register. Wikimedia photograph credits are retained in the attribution register.
 
-{\footnotesize
-\begin{longtable}{@{}>{\raggedright\arraybackslash}p{0.42\linewidth}>{\raggedright\arraybackslash}p{\dimexpr0.58\linewidth-2\tabcolsep\relax}@{}}
-\caption{Brief requirement $\rightarrow$ location in this report or repository.}\label{tab:rubric}\\
-\toprule
-Requirement (brief section) & Where it is addressed \\
-\midrule
-\endfirsthead
-\caption[]{(continued)}\\
-\toprule
-Requirement (brief section) & Where it is addressed \\
-\midrule
-\endhead
-\bottomrule
-\endfoot
-\multicolumn{2}{@{}l}{\textit{Problem definition and motivation (2 marks)}}\\
-Classification task, aim, scope, motivation (brief \S2, \S4) & \cref{sec:intro} (incl.\ research question) \\
-Target classes and reasons for them (brief \S2, \S5) & \cref{sec:intro}, \cref{tab:dataset} \\
-\midrule
-\multicolumn{2}{@{}l}{\textit{Dataset selection and preparation (4 marks)}}\\
-Source, access link, licence, usage conditions (brief \S5) & \cref{sec:source}; README ``ITRI626 submission'' \\
-Class definitions (brief \S5) & \cref{tab:dataset} \\
-Images per class before and after cleaning (brief \S5) & \cref{tab:dataset}, \cref{tab:cleaning}, \cref{fig:counts} \\
-Removed duplicates, corrupt files, irrelevant samples, uncertain labels (brief \S5) & \cref{sec:cleaning}, \cref{tab:cleaning} \\
-How labels were obtained, checked and corrected (brief \S5) & \cref{sec:cleaning} (last paragraph) \\
-Class imbalance and how it was handled (brief \S5) & \cref{sec:imbalance}; \cref{sec:errors} \\
-Representative examples of every class (brief \S5) & \cref{fig:examples} \\
-Ethics, privacy, lawful use, acknowledgement of internet data (brief \S5) & \cref{sec:ethics}, \cref{sec:source} \\
-Train/validation/test split; same test set for all models (brief \S7.1) & \cref{sec:split}; \file{data/v2/splits/} \\
-Leakage prevention by group identity (brief \S7.1) & \cref{sec:split}, \cref{sec:cleaning} item 3, \cref{sec:further} \\
-Random seed, images per split, class distribution per split (brief \S7.1) & \cref{sec:split}, \cref{tab:dataset} \\
-\midrule
-\multicolumn{2}{@{}l}{\textit{Model selection and methodology (4 marks)}}\\
-At least three models from three families (brief \S6) & \cref{sec:method}: plain CNN, ConvNeXt, ViT; D is a supplementary hybrid \\
-At least one model with transfer learning (brief \S6) & B (fine-tuning), C and D (feature extraction), \cref{sec:method} \\
-Methods, transfer-learning approach, complete workflow (brief \S6) & \cref{sec:method}, \cref{fig:workflow} \\
-Same split for all models; fair, justified hyperparameters (brief \S6) & \cref{sec:setup}, \cref{tab:hparams}, \cref{tab:wdgrid} \\
-\midrule
-\multicolumn{2}{@{}l}{\textit{Experimental setup and reproducibility (3 marks)}}\\
-Preprocessing steps (brief \S7.2) & \cref{sec:setup} (Preprocessing) \\
-Augmentation, training data only, realism argued (brief \S7.2) & \cref{sec:setup} (Augmentation), \cref{fig:aug} \\
-Model name, variant, pretrained weights; input size (brief \S7.3) & \cref{tab:hparams} \\
-Batch size, gradient accumulation; epochs, early stopping (brief \S7.3) & \cref{tab:hparams} \\
-Optimiser, learning rate, schedule; weight decay, loss (brief \S7.3) & \cref{tab:hparams}, \cref{tab:wdgrid} \\
-Class weights or sampling; random seed (brief \S7.3) & \cref{tab:hparams}, \cref{sec:imbalance} \\
-Software framework and library versions; hardware, GPU memory (brief \S7.3) & \cref{sec:software}, \cref{tab:env} \\
-Fairness of the comparison (rubric) & \cref{sec:software} (paragraph ``Fairness''), \cref{tab:hparams} \\
-\midrule
-\multicolumn{2}{@{}l}{\textit{Results and evaluation (4 marks)}}\\
-Test accuracy; precision, recall, F1; macro-F1 (brief \S8) & \cref{tab:test} \\
-Per-class precision, recall and F1 (brief \S8) & \cref{fig:perclass}; \cref{tab:perclass}, \cref{tab:perclassrefs}, \cref{tab:perclassD} (\cref{app:perclass}) \\
-Confusion matrix (brief \S8) & \cref{fig:cm,fig:cmCD} (all four models, shared colour scale) \\
-Training and validation loss curves (brief \S8) & \cref{fig:curves} (top row), \cref{tab:curves} \\
-Validation accuracy or F1 curve (brief \S8) & \cref{fig:curves} (bottom row) \\
-Several correct and incorrect predictions (brief \S8) & \cref{fig:galleries}, \cref{fig:galleryD}, \cref{fig:disagree} \\
-Comparison of all four models (rubric) & \cref{tab:test}, \cref{tab:pairwise}, \cref{fig:agree}, \cref{tab:eff} \\
-\midrule
-\multicolumn{2}{@{}l}{\textit{Discussion, error analysis and conclusion (2 marks)}}\\
-Important classification errors (brief \S8) & \cref{sec:errors}, \cref{tab:confused} \\
-Effects of class imbalance and data quality (brief \S8) & \cref{sec:errors}, \cref{sec:imbalance} \\
-Plausible reasons for performance differences (brief \S8) & \cref{sec:why} \\
-Limitations (brief \S9) & \cref{sec:limits} \\
-Justified conclusion and recommended model (rubric) & \cref{sec:conclusion} (incl.\ lessons learned) \\
-\midrule
-\multicolumn{2}{@{}l}{\textit{Report quality and references (1 mark)}}\\
-Nine-part structure, 10--15 pages, PDF (brief \S9) & title page with group members and abstract; sections 1--7; references \\
-Sources, pretrained models, software acknowledged (brief \S9) & \cref{sec:source}, \cref{sec:method}, \cref{tab:env}, references \\
-\midrule
-\multicolumn{2}{@{}l}{\textit{Submission items (brief \S11)}}\\
-Report as PDF & \file{docs/itri626_report/main.pdf} \\
-Presentation slides & to be prepared by the group (not part of this repository) \\
-Notebook with visible outputs, figures, metric tables & \file{notebooks/ITRI626_four_models.ipynb} \\
-Python scripts for data preparation and evaluation & \file{tools/build_dataset_v2.py}, \file{tools/export_splits.py}, \file{scripts/itri626_experiments.py}, \file{src/compclass/} \\
-README with dataset source, setup, reproduction steps & \file{README.md}, section ``ITRI626 submission'' \\
-Split files or a script that recreates them & \file{data/v2/splits/}, \file{tools/export_splits.py} \\
-Repository link or archive; data access instructions & README ``ITRI626 submission''; \cref{app:repro} \\
-\end{longtable}
-}
+Training and data-rebuild procedures are provided for historical reproducibility. Both recorded holdouts are spent;
+use development or synthetic inputs for routine checks. Model A was imported from the improvement study's fold-0 run
+rather than retrained for this report.
 
 \end{document}

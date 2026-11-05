@@ -1,7 +1,7 @@
 # ITRI626 rubric compliance checklist
 
 Maps every requirement of the ITRI626 project brief (sections 2–12) to where it is addressed in the report
-`docs/itri626_report/main.pdf` and in the repository. Same content as report Appendix E (Table E.1).
+`docs/itri626_report/main.pdf` and in the repository. This standalone checklist is retained as submission-planning documentation; it is not included in the paper.
 Section/figure/table numbers refer to the 5 November 2026 four-model revision. Appendix floats are numbered
 per appendix. The authoritative source is `main.tex`; the older model-D inserts are historical proposals.
 A–C meet the three named families; D is supplementary pending any lecturer approval as a fourth family.

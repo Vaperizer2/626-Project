@@ -58,3 +58,10 @@ preserve the 15-page body budget while giving the supporting material more space
 Render the final PDF with Poppler and inspect **all pages**, especially the four-model tables, confusion matrices,
 page transitions, references and appendix floats. The main body budget counts the title and sections 1–7;
 references and supporting appendices follow separately. `RUBRIC_CHECKLIST.md` maps the revised labels.
+
+## Reader-facing cleanup
+
+The submitted PDF omits the rubric checklist (former Appendix E), repository file paths and command listings.
+Appendix D gives a prose reproducibility statement and repository link; exact paths and build commands remain in
+this README and the source/provenance records. Inline class names and emphasis are plain text; structural headings
+and best-result highlighting in tables remain. Scientific values and figure selections are unchanged.

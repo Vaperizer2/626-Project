@@ -1,3 +1,17 @@
+# Reader-facing cleanup and submission (2026-11-05)
+
+At the user's request, removed the former Appendix E rubric checklist from the paper, removed repository file
+paths and command listings throughout, and replaced inline class-name italics and decorative emphasis with plain
+text. Structural headings and standard best-result table highlighting remain. Appendix D now gives a prose
+reproducibility statement and a repository link; exact build paths and commands remain in the companion README.
+The standalone rubric planning checklist is retained outside the PDF.
+
+Validation: clean LaTeX/BibTeX build; all 30 pages rendered and visually checked; no overfull/underfull boxes or
+warnings. All 499 number/provenance entries and all figure input paths are unchanged from `886a538`. No training,
+holdout inference, model assets, releases or main-checkout files were touched.
+
+---
+
 # Three-part adversarial presentation review (2026-11-05)
 
 Reviewed the report at `6db0fb5`, then applied focused presentation changes. The instruction was to preserve

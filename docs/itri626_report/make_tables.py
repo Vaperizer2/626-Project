@@ -246,10 +246,10 @@ def main() -> None:
     fields = [
         ("Model / variant", [r"VGG-style CNN (scratch), width 32, 4 stages, dropout 0.3",
                              r"ConvNeXt-Tiny, stochastic depth (drop-path rate) 0.1",
-                             r"ViT-So400m/14 (SigLIP), frozen; \texttt{nn.Linear(1152,\,20)} head"]),
+                             r"ViT-So400m/14 (SigLIP), frozen; linear head (1,152 inputs, 20 outputs)"]),
         ("Pretrained weights", [r"none (He initialisation)",
-                                r"\file{convnext_tiny.fb_in22k_ft_in1k} (ImageNet-22k$\rightarrow$1k)",
-                                r"\file{vit_so400m_patch14_siglip_384.webli} (WebLI)"]),
+                                r"ImageNet-22k$\rightarrow$1k",
+                                r"WebLI"]),
         ("Trainable / total params", [f"{int(hp[n]['trainable_params']):,} / {int(hp[n]['total_params']):,}" for n in MAIN]),
         ("Input size (px)", [f"{hp[n]['input_size']}$\\times${hp[n]['input_size']}" for n in MAIN]),
         ("Batch size; grad.\\ accumulation", [f"{hp[n]['batch_size']}; none" for n in MAIN]),
@@ -274,8 +274,8 @@ def main() -> None:
     ]
     ds = runs[D]["settings"]
     dfields = {
-        "Model / variant": r"FastViT hybrid (MobileCLIP2-S3), frozen; \texttt{nn.Linear(3072,\,20)} head",
-        "Pretrained weights": r"\file{fastvit_mci3.apple_mclip2_dfndr2b} (DFNDR-2B)",
+        "Model / variant": r"FastViT hybrid (MobileCLIP2-S3), frozen; linear head (3,072 inputs, 20 outputs)",
+        "Pretrained weights": r"DFNDR-2B",
         "Trainable / total params": f"{int(hp[D]['trainable_params']):,} / {int(hp[D]['total_params']):,}",
         "Input size (px)": r"256$\times$256",
         "Epochs (max / run / best)": f"{ds['max_epochs']} / {runs[D]['epochs_run']} / {best1(D)}",
@@ -364,7 +364,7 @@ def main() -> None:
         ("NVIDIA driver", env["nvidia_driver"]),
         ("CPU / RAM", f"{env['cpu']} ({env['cpu_logical_cores']} logical cores) / {env['ram_gib']}\\,GiB"),
         ("Operating system", tex_escape(env["platform"])),
-        ("Environment manager", r"uv (lock file \texttt{uv.lock})"),
+        ("Environment manager", r"uv (locked dependencies)"),
     ]
     lines = [r"\begin{tabularx}{\textwidth}{@{}lY@{}}", r"\toprule", r"Component & Version / specification \\", r"\midrule"]
     lines += [f"{a} & {b} \\\\" for a, b in envrows]
