@@ -313,6 +313,16 @@ def main() -> None:
         lines.append(f"{f} & " + " & ".join(fd[f]) + r" \\")
     lines += [r"\bottomrule", r"\end{tabularx}"]
     write("tab_hparams.tex", "\n".join(lines))
+    for tag, selected in [("data", order[:7]), ("training", order[7:])]:
+        part = [lines[0].replace("YYYY", "YVYVYVY"), lines[1], lines[2], lines[3]]
+        for field in selected:
+            if field in groups:
+                part.append(r"\addlinespace[4pt]")
+                part.append(r"\multicolumn{5}{@{}l}{\textsc{" + groups[field].lower() + r"}} \\")
+            part.append(field + " & " + " & ".join(fd[field]) + r" \\")
+        part += [r"\bottomrule", r"\end{tabularx}"]
+        write(f"tab_hparams_{tag}.tex", "\n".join(part))
+
     for n in MAIN:
         L = LETTER[n]
         num(f"best{L}", best1(n), f"results/itri626/runs/{n}.json best_epoch + 1 (0-based in file)")
@@ -479,7 +489,7 @@ def main() -> None:
     def per_class_table(models, label):
         hdr = " & ".join(rf"\multicolumn{{3}}{{c}}{{{label[m]}}}" for m in models)  # labels kept short
         cm_ = " ".join(rf"\cmidrule(lr){{{3 + 3 * i}-{5 + 3 * i}}}" for i in range(len(models)))
-        L_ = [r"\begin{tabular}{@{}lr" + "ccc" * len(models) + r"@{}}", r"\toprule",
+        L_ = [r"\begin{tabular}{@{}lr" + "V".join(["ccc"] * len(models)) + r"@{}}", r"\toprule",
               r" & & " + hdr + r" \\", cm_,
               r"Class & $n$ & " + " & ".join(["P & R & F1"] * len(models)) + r" \\", r"\midrule"]
         for k in classes:
@@ -530,7 +540,7 @@ def main() -> None:
             num(f"fone{nm}{L}", d[k]["f1"], f"metrics.json {n} per_class.{k}.f1", ".2f")
 
     # ---------------------------------------------------------------- most-confused pairs
-    lines = [r"\begin{tabular}{@{}c" + "lr" * 3 + r"@{}}", r"\toprule",
+    lines = [r"\begin{tabular}{@{}clrVlrVlr" + r"@{}}", r"\toprule",
              r" & " + " & ".join(rf"\multicolumn{{2}}{{c}}{{{TSHORT[n]}}}" for n in MAIN) + r" \\",
              r"\cmidrule(lr){2-3} \cmidrule(lr){4-5} \cmidrule(lr){6-7}",
              r"\# & True $\rightarrow$ predicted & $n$ & True $\rightarrow$ predicted & $n$ & True $\rightarrow$ predicted & $n$ \\",

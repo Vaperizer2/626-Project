@@ -58,11 +58,11 @@ A–C meet the three named families; D is supplementary pending any lecturer app
 |---|---|---|
 | Test accuracy; precision, recall, F1; macro-F1 (§8) | Table 3 | `results/itri626/metrics.json` |
 | Per-class precision, recall and F1 (§8) | Figure 5; Table A.1, Table A.2, Table A.3 (Appendix A) | `results/itri626/per_class.csv` |
-| Confusion matrix (§8) | Figure 6 (all four models, shared colour scale) | `results/itri626/figures_four_models/fig06_confusion_grid.pdf` (+ per-model `fig06_confusion_*.pdf`) |
+| Confusion matrix (§8) | Figure A.1/A.2 (all four models, shared colour scale) | `results/itri626/figures_four_models/fig06_confusion_grid.pdf` (+ per-model `fig06_confusion_*.pdf`) |
 | Training and validation loss curves (§8) | Figure 4 (top row), Table B.3 | `results/itri626/histories.json`, `figures_four_models/fig04_learning_curves.pdf` |
 | Validation accuracy or F1 curve (§8) | Figure 4 (bottom row) | `results/itri626/figures_four_models/fig04_learning_curves.pdf` |
-| Several correct and incorrect predictions (§8) | Figure 7, Figure 9, Figure B.2 (D) | `results/itri626/figures/fig08_gallery_*.pdf`, `fig10_disagreements.pdf` |
-| Comparison of all four models (rubric) | Table 3, Table 4, Figure 8, Table B.4 |  |
+| Several correct and incorrect predictions (§8) | Figure 6 (C) and A.3 (A/B), Figure 7, Figure B.2 (D) | `results/itri626/figures/fig08_gallery_*.pdf`, `fig10_disagreements.pdf` |
+| Comparison of all four models (rubric) | Table 3, Table 4, Figure A.4, Table B.4 |  |
 
 ## Discussion, error analysis and conclusion (2 marks)
 
@@ -78,7 +78,7 @@ A–C meet the three named families; D is supplementary pending any lecturer app
 
 | Brief requirement | Report location | Repository files |
 |---|---|---|
-| Nine-part structure, 10–15 pages, PDF (§9) | title page with group members and abstract; sections 1–7; references |  |
+| Nine-part structure, 10–15 pages, PDF (§9) | 15-page body (title + sections 1–7); references and appendices follow |  |
 | Sources, pretrained models, software acknowledged (§9) | Section 2.1, Section 3, Table B.2, references |  |
 
 ## Submission items (§11)

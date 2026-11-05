@@ -54,6 +54,7 @@
 \captionsetup{font=small,labelfont={bf,color=accent},margin=0pt}
 \setlist{itemsep=1pt,topsep=3pt,parsep=0pt}
 \newcolumntype{Y}{>{\raggedright\arraybackslash}X}
+\newcolumntype{V}{!{\color{black!35}\vrule width 0.3pt}}
 \setlength{\emergencystretch}{1.5em}
 \widowpenalty=10000 \clubpenalty=10000 \displaywidowpenalty=10000
 \setlength{\textfloatsep}{14pt plus 2pt minus 4pt}\setlength{\floatsep}{10pt plus 2pt minus 2pt}
@@ -102,7 +103,7 @@
 {\color{accent}\rule{\textwidth}{0.8pt}}\par\vspace{0.5cm}
 {\huge\bfseries\color{accent} Recognising electronic components\\[4pt] in web photographs\par}
 \vspace{0.4cm}
-{\large A leakage-free comparison of a scratch CNN, a fine-tuned ConvNeXt,\ a frozen SigLIP ViT and a frozen MobileCLIP2 hybrid\par}
+{\large A duplicate-aware comparison of a scratch CNN, a fine-tuned ConvNeXt,\ a frozen SigLIP ViT and a frozen MobileCLIP2 hybrid\par}
 \vspace{0.5cm}{\color{accent}\rule{\textwidth}{0.8pt}}\par
 \vspace{0.9cm}
 {\renewcommand{\arraystretch}{1.25}
@@ -115,24 +116,21 @@ S Klopper & 45757895\\
 \end{tabular}\par}
 \vspace{0.8cm}
 {\small Lecturer: Prof.\ Absalom Ezugwu \quad\textperiodcentered\quad Facilitator: Mr.\ Bernard Swanepoel
- \quad\textperiodcentered\quad 20 October 2026, revised 5 November 2026\par}
+ \\[4pt]20 October 2026, revised 5 November 2026\par}
 \vfill
 \begin{minipage}{0.9\textwidth}
 \small
 \textbf{\color{accent}Abstract.}
-We classify web photographs of electronic components into 20 classes (resistor, capacitor, relay,
-microcontroller board and 16 others) using the public Kaggle dataset \emph{Electronic Component
+We classify web photographs of electronic components into 20 classes using the public Kaggle dataset \emph{Electronic Component
 Recognizer}. After exact duplicates and \nConflictGroups groups with contradictory labels are removed,
-\nRows images remain; near-duplicates are grouped so that no image or re-encoded copy crosses a split
-boundary, giving a stratified split (seed \splitSeed) of \nTrain training, \nVal validation and \nTest
+\nRows images remain; detected near-duplicates are grouped to keep each cluster within a single split, giving a stratified split (seed \splitSeed) of \nTrain training, \nVal validation and \nTest
 test images. Four models are trained on this split and scored once on the same test set: (A) a
-VGG-style CNN trained from scratch, (B) ConvNeXt-Tiny fine-tuned from ImageNet-22k weights, (C) a
-frozen SigLIP So400m Vision Transformer and (D) a frozen MobileCLIP2-S3 hybrid, each with a trained linear head.
+VGG-style CNN trained from scratch, (B) ConvNeXt-Tiny fine-tuned from ImageNet-22k weights, and two frozen encoders with trained linear heads:
+(C) SigLIP So400m and (D) MobileCLIP2-S3.
 Test accuracy is \accA, \accB, \accC and \accD (macro-F1 \foneA, \foneB, \foneC, \foneD).
 C and D have overlapping individual 95\% bootstrap intervals; paired McNemar tests reject equal accuracy for every pair.
-The comparison supports transfer learning: ImageNet fine-tuning adds
-\diffBA percentage points over the scratch baseline, and web-scale image--text pretraining a further
-\diffCB{} with C or \diffDB{} with D. Most remaining errors involve look-alike parts or images that do not show the labelled
+The comparison supports transfer learning: B exceeds the scratch baseline by
+\diffBA{} accuracy points; C and D exceed B by \diffCB{} and \diffDB{} points, respectively. Most remaining errors involve look-alike parts or images that do not show the labelled
 component. We recommend \mC for accuracy, \mD where a smaller research model is needed, and B for lower latency.
 \end{minipage}
 \vspace*{1cm}
@@ -155,7 +153,7 @@ class, the data are noisy, and several classes look alike (resistor, diode and f
 leads; inductor coil and transformer are both windings).
 
 \textbf{Aim and scope.} We compare four models, one trained from scratch and three using transfer learning
-(fine-tuning or frozen features), on one leakage-free train/validation/test split, evaluate all of them on the same held-out test set,
+(fine-tuning or frozen features), on one duplicate-aware train/validation/test split, evaluate all of them on the same held-out test set,
 explain their differences and recommend one. The scope is whole-image classification of the dataset's 20 classes;
 detecting several components in one image is out of scope.
 
@@ -202,7 +200,7 @@ flagged as possibly off-topic (out of distribution) by the CLIP screen (kept).}
 
 \begin{figure}[!tbp]
 \centering
-\includegraphics[width=0.64\textwidth]{fig02_examples_per_class.pdf}
+\includegraphics[width=0.82\textwidth]{fig02_examples_per_class.pdf}
 \caption{Four random training images of every class (in brackets: training images of the class). The mix of product
 photos, close-ups, renders, diagrams and off-topic pictures (e.g.\ the game console under \cls{switch}, the
 infographic under \cls{led}) is typical of the dataset.}
@@ -380,7 +378,7 @@ features of the evaluation crop; D (not pictured) likewise uses a deterministic 
 \end{figure}
 
 \subsection{Hyperparameters}
-\Cref{tab:hparams} lists every training setting. Settings differ where the architectures require it. A randomly
+\Cref{tab:hparams} lists every training setting in two parts. Settings differ where the architectures require it. A randomly
 initialised CNN needs a high learning rate, many epochs and strong augmentation. A pretrained network needs a small
 learning rate and few epochs. A linear head on frozen, standardised features needs neither augmentation nor a
 learning-rate schedule. The recipe of B was fixed earlier in the project's grouped 5-fold cross-validation
@@ -493,50 +491,30 @@ augmented batches; the grey line marks the epoch whose weights were tested.}
 (\cref{fig:cm}) show A's errors spread over the whole matrix, B's concentrated in a few blocks, and those of C and D almost
 diagonal; \cref{sec:errors} analyses the largest off-diagonal entries.
 
-\begin{figure}[p]
+\begin{figure}[!tbp]
 \centering
-\includegraphics[width=0.8\textwidth]{../../results/itri626/figures_four_models/fig07_per_class_f1.pdf}
+\includegraphics[width=0.9\textwidth]{../../results/itri626/figures_four_models/fig07_per_class_f1.pdf}
 \caption{Per-class test F1 of the four models, sorted by \mC; the number after each class is its training-set
 size.}
 \label{fig:perclass}
 
-\medskip
-\includegraphics[width=\textwidth]{../../results/itri626/figures_four_models/fig06_confusion_grid.pdf}
-\caption{Test confusion matrices (rows: true class; columns: predicted class; $n=\nTest$). A--D: counts on one
-shared colour scale, so equal shades mean equal counts; empty cells are zero. Row-normalised matrices are in the notebook.}
-\label{fig:cm}
 \end{figure}
 
 \subsection{Correct and incorrect predictions}
-\Cref{fig:galleries} shows, for A--C, six random correct predictions and its six most confident errors with
-true class, prediction and softmax confidence. D's examples are in \cref{fig:galleryD}. Many of C's confident errors are images that do not show the labelled component: a DIP chip
+\Cref{fig:galleries} shows C's six random correct predictions and its six most confident errors with
+true class, prediction and softmax confidence. A and B appear in \cref{fig:galleryAB}, and D in \cref{fig:galleryD}. Many of C's confident errors are images that do not show the labelled component: a DIP chip
 labelled \cls{transistor}, a breadboard power module labelled \cls{breadboard}, a fibre-optic pigtail and a coaxial
 plug labelled \cls{jumper wire}, and an icon sheet and a ``Capacitor vs Resistor'' banner labelled \cls{resistor}. A's most
 confident errors include a sheet of package drawings labelled \cls{diode}, an LED arrow sign labelled \cls{power supply
 module} and handwritten notes labelled \cls{inductor coil}.
 
-\begin{figure}[p]
+\begin{figure}[!tbp]
 \centering
-\begin{subfigure}{\textwidth}\centering
-\includegraphics[width=\textwidth]{fig08_gallery_A_scratch_cnn.pdf}
-\caption{\MA (scratch CNN)}
-\end{subfigure}
-
-\smallskip
-\begin{subfigure}{\textwidth}\centering
-\includegraphics[width=\textwidth]{fig08_gallery_B_convnext_tiny.pdf}
-\caption{\MB (ConvNeXt-T, fine-tuned)}
-\end{subfigure}
-
-\smallskip
-\begin{subfigure}{\textwidth}\centering
-\includegraphics[width=\textwidth]{fig08_gallery_C_siglip_so400m_linear.pdf}
-\caption{\MC (SigLIP ViT, frozen + linear)}
-\end{subfigure}
-\caption{Six random correct predictions (top row of each panel) and the six most confident errors (bottom row, red
-frame, \emph{true $\to$ predicted}) of A--C on the test set. Confidence is the softmax probability of the
-predicted class. Abbreviations: MCU board = microcontroller board, PSU module = power supply module,
-crystal osc.\ = crystal oscillator, batt.\ holder = battery holder.}
+\includegraphics[width=\textwidth]{figures/gallery_C_siglip_so400m_linear.pdf}
+\caption{Model C: six random correct predictions (top row) and six most confident errors (bottom row, red frame,
+\emph{true $\to$ predicted}). Confidence is the softmax probability of the predicted class.
+MCU board = microcontroller board; PSU module = power supply module; crystal osc.\ = crystal oscillator;
+batt.\ holder = battery holder. A and B are shown in \cref{fig:galleryAB}; D in \cref{fig:galleryD}.}
 \label{fig:galleries}
 \end{figure}
 
@@ -545,25 +523,13 @@ A, B and C are right on \allRight test images and all three wrong on \allWrong (
 images are recognised only by C and \bcNotA by B and C but not A, whereas C is wrong on only \cWrongOther images that A
 or B get right (examples in \cref{fig:disagree}).
 
-\begin{figure}[tb]
+\begin{figure}[!tbp]
 \centering
-\begin{minipage}[b]{0.36\textwidth}\centering
-\includegraphics[width=\textwidth]{fig09_agreement.pdf}
-\end{minipage}\hfill
-\begin{minipage}[b]{0.61\textwidth}\centering
 \includegraphics[width=\textwidth]{fig10_disagreements.pdf}
-\end{minipage}
-
-\begin{minipage}[t]{0.36\textwidth}
-\caption{Test images by the subset of A, B and C that classifies them correctly (D excluded).}
-\label{fig:agree}
-\end{minipage}\hfill
-\begin{minipage}[t]{0.61\textwidth}
-\caption{Disagreements. Rows: C right and B wrong; B right and C wrong; all three wrong. Each title gives the true
-class (bold) and each model's prediction; a green tick marks a correct and a red cross a wrong prediction. Abbreviations as in
-\cref{fig:galleries}.}
+\caption{Disagreements among A--C. Rows: C right and B wrong; B right and C wrong; all three wrong.
+Titles give the true class (bold) and each model's prediction; ticks mark correct predictions and crosses errors.
+Abbreviations as in \cref{fig:galleries}. The agreement counts are plotted in \cref{fig:agree}.}
 \label{fig:disagree}
-\end{minipage}
 \end{figure}
 
 Accuracy has a price (\cref{tab:eff} in \cref{app:extra}): C needs \gpuMsC\,ms per
@@ -585,9 +551,9 @@ depth or parameter count. \textbf{A} starts from random weights and must learn e
 once from about 100 images per class; its learning curves show it is data-limited, as does the improvement study of
 \cref{sec:improveA} (more epochs helped; more capacity, residual blocks, stronger augmentation and better
 initialisation did not), and its per-class F1 correlates with the number of training images (Spearman $\rho$ over
-the 20 classes \rhoA, against \rhoB for B and \rhoC for C). \textbf{B} re-uses ImageNet-22k features that already encode objects, materials and shapes, so it learns fast;
+the 20 classes \rhoA, against \rhoB for B and \rhoC for C). \textbf{B} re-uses ImageNet-22k features that already encode objects, materials and shapes, so it learns quickly;
 but ImageNet contains few electronic parts, so the features are generic, and fine-tuning all 28 million parameters on
-2,010 noisy images overfits (training accuracy \finalTrainAccB against \valAccB on validation). \textbf{C} uses a
+2,010 noisy images shows a generalisation gap (training accuracy \finalTrainAccB against \valAccB on validation). \textbf{C} uses a
 428-million-parameter encoder pretrained on web image--text pairs. Its embedding already separates the classes:
 SigLIP zero-shot classification, with no training at all, reaches macro-F1 \bmZeroSiglip in the benchmark
 (\cref{sec:further}). It is also the least affected by off-topic images (\accOODC on flagged test images against
@@ -691,7 +657,7 @@ future selection requires fresh evaluation data rather than further use of the s
 \appendix
 \crefalias{section}{appendix}
 \counterwithin{figure}{section}\counterwithin{table}{section}
-\section{Full per-class results}\label{app:perclass}
+\section{Detailed evaluation results}\label{app:perclass}
 \Cref{tab:perclass} gives the per-class test precision, recall and F1 of A--C, and
 \cref{tab:perclassrefs} those of R1 and R2 on the same test images. \Cref{tab:perclassD} adds D and R3 (Small). The per-class image counts of every
 split are in \cref{tab:dataset}.
@@ -724,14 +690,48 @@ R3 refits on development rows and fuses with the zero-shot head. They are differ
 \end{table}
 
 \FloatBarrier
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{figures/confusion_AB.pdf}
+\caption{Test confusion counts for A and B ($n=\nTest$). Numbered axes use the class key on the right;
+rows are true classes and columns predictions. Zero cells are blank. The count scale is shared with \cref{fig:cmCD}.}
+\label{fig:cm}
+\end{figure}
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{figures/confusion_CD.pdf}
+\caption{Test confusion counts for C and D, with the same class key and count scale as \cref{fig:cm}.}
+\label{fig:cmCD}
+\end{figure}
+\begin{figure}[p]
+\centering
+\includegraphics[width=\textwidth]{figures/gallery_A_scratch_cnn.pdf}
+\par\medskip
+\includegraphics[width=\textwidth]{figures/gallery_B_convnext_tiny.pdf}
+\caption{Model A (upper panel) and B (lower panel): six random correct predictions and six most confident errors
+per model. Image selections, predictions and confidence values are unchanged; labels follow \cref{fig:galleries}.}
+\label{fig:galleryAB}
+\par\medskip
+\includegraphics[width=0.43\textwidth]{fig09_agreement.pdf}
+\caption{Test images by the subset of A, B and C that classifies them correctly (D excluded).}
+\label{fig:agree}
+\end{figure}
+\FloatBarrier
 \section{Additional dataset and training details}\label{app:extra}
 \begin{table}[!htbp]
-\centering\scriptsize
-\caption{Training settings (\file{results/itri626/hyperparameters.csv}, \file{results/itri626/runs/*.json}).
-Epochs are counted from 1.}
+\centering\footnotesize\renewcommand{\arraystretch}{1.12}
+\caption{Training settings: architecture and data (\file{results/itri626/hyperparameters.csv}, \file{results/itri626/runs/*.json}).
+Epochs are counted from 1. Optimisation and runtime settings continue below.}
 \label{tab:hparams}
-\input{generated/tab_hparams.tex}
+\input{generated/tab_hparams_data.tex}
 \end{table}
+\begin{table}[!htbp]\ContinuedFloat
+\centering\footnotesize\renewcommand{\arraystretch}{1.12}
+\caption[]{Training settings (continued): optimisation, stopping and runtime. Times for C/D exclude feature extraction.}
+\label{tab:hparamsTraining}
+\input{generated/tab_hparams_training.tex}
+\end{table}
+
 \Cref{tab:env} lists the software and hardware of the training run.
 \begin{table}[!tbp]
 \centering\footnotesize
@@ -794,13 +794,13 @@ All four values tied on macro-F1; the pre-set smallest-value rule selected $10^{
 \end{table}
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=\textwidth]{../../results/itri626/figures_four_models/fig08_gallery_D_mobileclip2_s3_linear.pdf}
+\includegraphics[width=\textwidth]{figures/gallery_D_mobileclip2_s3_linear.pdf}
 \caption{D: six random correct predictions and six most confident errors; layout and abbreviations as in
 \cref{fig:galleries}. Confidence is uncalibrated softmax probability.}
 \label{fig:galleryD}
 \end{figure}
 
-\FloatBarrier
+\FloatBarrier\clearpage
 \section{Supporting analysis}\label{app:benchmark}
 This appendix details the supporting results summarised in \cref{sec:further} (full write-up:
 \file{docs/report/REPORT.md}). In \cref{tab:benchmark}, fine-tuning used one fixed recipe per family, the probe is a
@@ -865,6 +865,7 @@ refitted deployment references. OOF means out-of-fold. Excalidraw sources accomp
 \input{generated/tab_benchmark.tex}
 \end{table}
 
+\FloatBarrier\clearpage
 \textbf{Detailed limitations of the comparison.}
 \begin{enumerate}[leftmargin=*]
 \item \textbf{One split, one training seed.} With about 21 test images per class, one image can materially change a per-class F1, and the precision of an accuracy difference depends on the models' paired errors; no fixed significance threshold applies. The cross-validation benchmark
@@ -888,7 +889,7 @@ same-PC C-tower anchor is reported separately. Its weights have research-use res
 out for microcontrollers or real-time video without a GPU.
 \end{enumerate}
 
-\FloatBarrier
+\FloatBarrier\clearpage
 \section{Reproduction}\label{app:repro}
 All commands run from the repository root with uv (Python 3.12). The images are not tracked in Git. Download the
 Kaggle dataset (\cref{sec:source}) and unpack it to \file{data/raw/electronic-component-recognizer/} to rebuild
@@ -971,7 +972,7 @@ Fairness of the comparison (rubric) & \cref{sec:software} (paragraph ``Fairness'
 \multicolumn{2}{@{}l}{\textit{Results and evaluation (4 marks)}}\\
 Test accuracy; precision, recall, F1; macro-F1 (brief \S8) & \cref{tab:test} \\
 Per-class precision, recall and F1 (brief \S8) & \cref{fig:perclass}; \cref{tab:perclass}, \cref{tab:perclassrefs}, \cref{tab:perclassD} (\cref{app:perclass}) \\
-Confusion matrix (brief \S8) & \cref{fig:cm} (all four models, shared colour scale) \\
+Confusion matrix (brief \S8) & \cref{fig:cm,fig:cmCD} (all four models, shared colour scale) \\
 Training and validation loss curves (brief \S8) & \cref{fig:curves} (top row), \cref{tab:curves} \\
 Validation accuracy or F1 curve (brief \S8) & \cref{fig:curves} (bottom row) \\
 Several correct and incorrect predictions (brief \S8) & \cref{fig:galleries}, \cref{fig:galleryD}, \cref{fig:disagree} \\

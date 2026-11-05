@@ -36,8 +36,24 @@ The four-model statistical table includes all six pairs; reported McNemar p-valu
 `diagrams/` preserves the actual Excalidraw MCP input arrays, editable `.excalidraw` scenes, SVG and PDF exports.
 The report uses the vector PDFs. Open a scene in Excalidraw to edit and export SVG again; convert with
 `rsvg-convert -f pdf -o workflow.pdf workflow.svg` (and likewise for `protocols`). See its README for provenance.
-The other plots are committed notebook exports from `results/itri626/figures_four_models/`; the three-model
-augmentation, example, agreement and disagreement figures retain captions stating their scope.
+Most plots remain committed notebook exports. `make_presentation_figures.py` creates report-local figures under
+`figures/` from those exports and committed metrics: it enlarges gallery labels while keeping all selected embedded
+photos and title/confidence text, and draws the four confusion matrices in two larger panels with class keys.
+It reads no raw images, loads no models and performs no inference. The original exports remain untouched.
+The three-model augmentation, agreement and disagreement figures retain captions stating their scope.
+
+For an intentional artwork refresh, this isolated document-tool command pins the extra PDF library and uses the
+numpy/matplotlib versions recorded in the project lockfile:
+
+```sh
+uv run --no-project --with pymupdf==2.1 --with numpy==2.5.4 --with matplotlib==3.11.2 \
+    python docs/itri626_report/make_presentation_figures.py
+```
+
+The 5 November adversarial presentation pass is recorded at the top of `REVISION_NOTES.md`. The training-settings
+table has two continued parts at a larger font; thin vertical rules separate model groups in the dense tables.
+Full confusion counts and A/B examples are in Appendix A, with C's examples retained in the body. These moves
+preserve the 15-page body budget while giving the supporting material more space.
 
 Render the final PDF with Poppler and inspect **all pages**, especially the four-model tables, confusion matrices,
 page transitions, references and appendix floats. The main body budget counts the title and sections 1–7;
