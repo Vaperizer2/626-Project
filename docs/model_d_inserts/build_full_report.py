@@ -372,6 +372,8 @@ def mark_lines(old: str, new: str) -> str:
                 mk, rest = split_marker(ln)
                 if rest.strip() and ok_run(rest):
                     out.append(mk + f"<del>{rest}</del>")
+                elif rest.strip():  # markup that a <del> would break: say it in words
+                    out.append(mk + "**Removed:** " + rest)
         else:
             olds, news = ol[i1:i2], nl[j1:j2]
             for k, ln in enumerate(news):
@@ -420,7 +422,9 @@ def mark(old_md: str, new_md: str) -> tuple[str, dict]:
         for ob in blocks:
             if kind(ob) == "prose" and ob.strip():
                 stats["removed"] += 1
-                out.append(mark_lines(ob, ""))
+                # a whole block that the new version drops: struck through, or named in words if a <del> would break its markup
+                one_line = len(ob.splitlines()) == 1
+                out.append(f"<del>{ob}</del>" if ok_run(ob) and one_line else "**Removed:** " + ob)
 
     for op, i1, i2, j1, j2 in sm.get_opcodes():
         if op == "equal":
@@ -494,6 +498,8 @@ def main() -> None:
     md, dates = to_markdown(draft, csl)
     tb, td = tidy(mb), tidy(md)
     cmap = cite_numbers(td["body"])
+    for k in cite_numbers(tb["body"]):  # a reference the new version no longer cites keeps a number past the end
+        cmap.setdefault(k, len(cmap) + 1)
     pandoc_first = re.search(r"\\\[(\d+)\\\]CITEKEYS([0-9a-f]+)ENDCITE", td["body"])
     assert pandoc_first and cmap[bytes.fromhex(pandoc_first.group(2)).decode().split(",")[0]] == int(pandoc_first.group(1))
     for t in (tb, td):

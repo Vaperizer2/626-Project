@@ -20,9 +20,8 @@ Markdown edition with model D, prepared by Meiring van Niekerk for the team lead
 > hyperparameter table moved to the appendix. (3) Section 5.1 can no longer say that all 95 % bootstrap intervals
 > are disjoint: those of C and D overlap and the paired test separates them.
 >
-> **One proposed cut, to make room.** The distillation experiment on model A is shortened to one sentence in
-> Section 6.3, its row leaves Table 7 and its clause leaves the conclusion (about a fifth of a page). The study stays
-> in the notebook's section 8 and in `docs/SCRATCH_CNN_IMPROVEMENT_REPORT.md`. This is a suggestion, marked like the
-> other changes; keep the original text if you prefer.
+> **One proposed cut, to make room.** The distillation experiment on model A is removed: its sentences leave
+> Section 6.3, its row leaves Table 7, its clause leaves the conclusion and its reference leaves the list (about a
+> fifth of a page). This is a suggestion, marked like the other changes; keep the original text if you prefer.
 
 **Abstract.** {{ABSTRACT}}
