@@ -250,6 +250,39 @@ def _time(fn, n: int, warm: int, sync) -> float:
     return (time.perf_counter() - t0) / n * 1000
 
 
+def _c_tower_reference(gpu: bool, dev, sync) -> dict:
+    """Model C's frozen tower timed on THIS machine with step_profile's procedure (random weights and input: the
+    forward cost does not depend on their values). A model profiled on another PC than A-C carries this as its
+    same-machine anchor, so its ratio to C does not mix two computers."""
+    from compclass.models import build_model
+
+    net, spec = build_model(SIGLIP, num_classes=0, pretrained=False)
+    net.eval()
+    X = torch.randn(32, 3, spec.input_size, spec.input_size)
+    out = {"model": "C's tower (SigLIP So400m, no head)", "input_size": spec.input_size}
+    with torch.no_grad():
+        if gpu:
+            net.to(dev)
+            x1, xb = X[:1].to(dev), X.to(dev)
+
+            def f1():
+                with torch.autocast("cuda", dtype=torch.float16):
+                    net(x1).float().softmax(1)
+
+            def fb():
+                with torch.autocast("cuda", dtype=torch.float16):
+                    net(xb).float().softmax(1)
+
+            out["gpu_ms_per_image_batch1_fp16"] = round(_time(f1, 50, 10, sync), 2)
+            out["gpu_ms_per_image_batch32_fp16"] = round(_time(fb, 10, 3, sync) / 32, 3)
+            net.cpu()
+            torch.cuda.empty_cache()
+        torch.set_num_threads(8)
+        x1 = X[:1]
+        out["cpu_ms_per_image_batch1_fp32_8threads"] = round(_time(lambda: net(x1).softmax(1), 5, 2, lambda: None), 1)
+    return out
+
+
 def step_profile() -> None:
     """Parameters, checkpoint size and forward-pass latency (preprocessed tensor in, probabilities out;
     JPEG decoding and resizing excluded) for the main models. With ``--profile-only`` just the named models are
@@ -331,6 +364,8 @@ def step_profile() -> None:
         if PROFILE_ONLY:
             r["machine"] = {"gpu": torch.cuda.get_device_name(0) if gpu else None, "cpu": platform.processor(),
                             "platform": platform.platform()}
+            if name != "C_siglip_so400m_linear":
+                r["machine"]["c_tower_reference"] = _c_tower_reference(gpu, dev, sync)
         rec[name] = r
         print("[profile]", name, r, flush=True)
         del net

@@ -146,6 +146,12 @@ the same rows (0.837 / 0.834): −3.1 pt accuracy, 95 % bootstrap interval [−6
 [−6.2, −0.2]; 26 images the deployed model gets right and Small wrong, 13 the other way, 86 % agreement. The gap
 the folds predicted is real and of the predicted size. The test split is spent for this model.
 
+**As a course model (D).** For the ITRI626 comparison the same tower was also given a head trained only on the fixed
+split's 2,010 training rows, with model C's code, grid and selection rule: test accuracy 0.773, macro-F1 0.770,
+5.0 points below C (paired p = 0.0075) and 13.6 above the fine-tuned ConvNeXt-T. That is a different head from the
+packaged one above (fitted on all development rows, fused, 0.806), and each was scored on the test split once. The
+proposed report text is in `docs/model_d_inserts/INSERTS.md`.
+
 ## The deployed model at crop 1.0
 
 `tools/views/deployed_crop100.py` refits and re-exports the deployed SigLIP model with one change, the eval
