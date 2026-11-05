@@ -1,3 +1,9 @@
+> **Historical proposal (5 November 2026).** The integrated, polished course report is now
+> [`../itri626_report/main.tex`](../itri626_report/main.tex), with its compiled PDF beside it.
+> This file preserves the earlier proposal/redline. In particular, its R3 description is superseded:
+> committed `metrics.json` identifies R3 as Small, refitted on train + validation and fused with zero-shot scores,
+> not a same-training-split alternative head. Its page counts and table numbers are historical.
+
 # Model D: proposed additions to the ITRI626 report
 
 From Meiring van Niekerk, 2026-11-05. For the team lead to place in `docs/itri626_report/main.tex`.

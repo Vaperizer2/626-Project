@@ -1,3 +1,38 @@
+# Four-model report polish (2026-11-05)
+
+The current source is `main.tex`, integrated from the three-model course report on main `17aff8b` and the
+historical proposals in `../model_d_inserts/`. The wider study in `../report/REPORT.md` is a separate document.
+
+- Integrated D (frozen MobileCLIP2-S3 + linear head) across methods, preprocessing, fairness, metrics, learning
+  curves, per-class F1, confusion matrices, appendix examples and full per-class results.
+- Extended `make_tables.py` to read committed D/R3 results and all six paired comparisons. The existing number
+  provenance entries remain identical; no recorded experiment metrics or prediction files changed.
+- Corrected the proposal's R3 identification: `R3_small_fused` is the packaged Small classifier, refitted on all
+  development rows and fused with zero-shot scores. It is not the course D head or a same-training-split reference.
+- Replaced the workflow with an actual Excalidraw MCP scene; added an evaluation-protocol diagram. Editable scenes,
+  MCP inputs and official-library SVG/PDF exports are in `diagrams/`. No Mermaid substitution was used.
+- Distinguished C/D's overlapping individual intervals from their paired result; labelled unadjusted McNemar
+  p-values. Removed claims that log-loss proves calibration or that practical recipe comparisons isolate causality.
+- Qualified CPU/GPU cost claims by hardware, precision, runtime, batch and excluded preprocessing; added the
+  same-machine C-tower anchor. D and Small differ; Fast's INT8 engine is not the 308 px fp16 benchmark.
+- Moved the wide hyperparameter table and detailed supporting/limitation material to the appendices, retained a
+  concise limitations section, updated references and captions, and removed stale training commands from the routine
+  report build. Both holdouts remain spent.
+- Marked older inserts as historical, refreshed the rubric map and corrected the efficiency study's stale opening
+  claim that no test scoring had occurred after development selection.
+
+Validation: generated tables rebuilt from committed predictions/metrics; existing macro entries compared with HEAD
+and unchanged; all figure/table inputs present; editable scenes parse as standard Excalidraw documents. `latexmk`
+completed with no warnings, undefined references, overfull or underfull boxes. The PDF was rendered with Poppler and
+all pages visually inspected, with larger views of the diagrams, metrics, matrices and appendix tables.
+
+The final PDF has 27 pages: title plus sections 1–7 occupy 15 physical pages (printed pages 1–14 after the title);
+references occupy printed pages 15–16 and supporting appendices 17–26. This follows the earlier report's body-budget
+convention; references and appendices are additional. Lecturer approval for D as an extra family and the group's
+slides/submission arrangements remain outside this edit. Main checkout, model assets and releases were untouched.
+
+---
+
 # ITRI626 report: revision notes (2026-10-20)
 
 This revision applies two reviews of `main.pdf` at commit b5c4fea: the visual/layout review (**V**) and the

@@ -130,10 +130,29 @@
 \newcommand{\valFoneC}{0.801\xspace} % metrics.json models.C_siglip_so400m_linear.val_at_best_epoch.macro_f1
 \newcommand{\confOkC}{0.87\xspace} % preds/C_siglip_so400m_linear_test.npz mean max-prob on correct
 \newcommand{\confBadC}{0.47\xspace} % preds/C_siglip_so400m_linear_test.npz mean max-prob on wrong
+\newcommand{\accD}{0.773\xspace} % metrics.json models.D_mobileclip2_s3_linear.test.accuracy
+\newcommand{\foneD}{0.770\xspace} % metrics.json models.D_mobileclip2_s3_linear.test.macro_f1
+\newcommand{\mpD}{0.779\xspace} % metrics.json models.D_mobileclip2_s3_linear.test.macro_precision
+\newcommand{\mrD}{0.772\xspace} % metrics.json models.D_mobileclip2_s3_linear.test.macro_recall
+\newcommand{\balD}{0.772\xspace} % metrics.json models.D_mobileclip2_s3_linear.test.balanced_accuracy
+\newcommand{\wfoneD}{0.772\xspace} % metrics.json models.D_mobileclip2_s3_linear.test.weighted_f1
+\newcommand{\loglossD}{0.800\xspace} % metrics.json models.D_mobileclip2_s3_linear.test.log_loss
+\newcommand{\nCorrectD}{323\xspace} % preds/D_mobileclip2_s3_linear_test.npz argmax==y
+\newcommand{\nWrongD}{95\xspace} % preds/D_mobileclip2_s3_linear_test.npz argmax!=y
+\newcommand{\accLoD}{0.732\xspace} % bootstrap (2000, rng 0) 2.5 pct
+\newcommand{\accHiD}{0.811\xspace} % bootstrap 97.5 pct
+\newcommand{\foneLoD}{0.726\xspace} % bootstrap macro-F1 2.5 pct
+\newcommand{\foneHiD}{0.806\xspace} % bootstrap macro-F1 97.5 pct
+\newcommand{\valAccD}{0.775\xspace} % metrics.json models.D_mobileclip2_s3_linear.val_at_best_epoch.accuracy
+\newcommand{\valFoneD}{0.772\xspace} % metrics.json models.D_mobileclip2_s3_linear.val_at_best_epoch.macro_f1
+\newcommand{\confOkD}{0.90\xspace} % preds/D_mobileclip2_s3_linear_test.npz mean max-prob on correct
+\newcommand{\confBadD}{0.56\xspace} % preds/D_mobileclip2_s3_linear_test.npz mean max-prob on wrong
 \newcommand{\accRA}{0.833\xspace} % metrics.json references.R1_sklearn_probe.test.accuracy
 \newcommand{\foneRA}{0.829\xspace} % metrics.json references.R1_sklearn_probe.test.macro_f1
 \newcommand{\accRB}{0.837\xspace} % metrics.json references.R2_deployed_fused.test.accuracy
 \newcommand{\foneRB}{0.834\xspace} % metrics.json references.R2_deployed_fused.test.macro_f1
+\newcommand{\accRC}{0.806\xspace} % metrics.json references.R3_small_fused.test.accuracy
+\newcommand{\foneRC}{0.802\xspace} % metrics.json references.R3_small_fused.test.macro_f1
 \newcommand{\gapRAC}{4\xspace} % R1 correct - C correct (test images)
 \newcommand{\diffBA}{23.7\xspace} % acc difference BA (points)
 \newcommand{\diffLoBA}{18.9\xspace} % paired bootstrap 2.5 pct BA (points)
@@ -153,6 +172,24 @@
 \newcommand{\onlyFirstCA}{184\xspace} % McNemar discordant CA: first right only
 \newcommand{\onlySecondCA}{7\xspace} % McNemar discordant CA: second right only
 \newcommand{\pvalCA}{$1.1\times10^{-45}$\xspace} % exact binomial McNemar CA
+\newcommand{\diffCD}{5.0\xspace} % acc difference CD (points)
+\newcommand{\diffLoCD}{1.4\xspace} % paired bootstrap 2.5 pct CD (points)
+\newcommand{\diffHiCD}{8.6\xspace} % paired bootstrap 97.5 pct CD (points)
+\newcommand{\onlyFirstCD}{39\xspace} % McNemar discordant CD: first right only
+\newcommand{\onlySecondCD}{18\xspace} % McNemar discordant CD: second right only
+\newcommand{\pvalCD}{$7.5\times10^{-3}$\xspace} % exact binomial McNemar CD
+\newcommand{\diffDB}{13.6\xspace} % acc difference DB (points)
+\newcommand{\diffLoDB}{9.1\xspace} % paired bootstrap 2.5 pct DB (points)
+\newcommand{\diffHiDB}{17.9\xspace} % paired bootstrap 97.5 pct DB (points)
+\newcommand{\onlyFirstDB}{80\xspace} % McNemar discordant DB: first right only
+\newcommand{\onlySecondDB}{23\xspace} % McNemar discordant DB: second right only
+\newcommand{\pvalDB}{$1.5\times10^{-8}$\xspace} % exact binomial McNemar DB
+\newcommand{\diffDA}{37.3\xspace} % acc difference DA (points)
+\newcommand{\diffLoDA}{32.5\xspace} % paired bootstrap 2.5 pct DA (points)
+\newcommand{\diffHiDA}{42.3\xspace} % paired bootstrap 97.5 pct DA (points)
+\newcommand{\onlyFirstDA}{166\xspace} % McNemar discordant DA: first right only
+\newcommand{\onlySecondDA}{10\xspace} % McNemar discordant DA: second right only
+\newcommand{\pvalDA}{$1.3\times10^{-37}$\xspace} % exact binomial McNemar DA
 \newcommand{\allRight}{143\xspace} % preds: all three correct
 \newcommand{\allWrong}{57\xspace} % preds: all three wrong
 \newcommand{\onlyC}{75\xspace} % preds: only C correct
@@ -360,6 +397,14 @@
 \newcommand{\finalTrainAccC}{1.00\xspace} % histories.json C_siglip_so400m_linear[-1].train_acc
 \newcommand{\epHalfC}{1\xspace} % histories.json C_siglip_so400m_linear first epoch with val_acc>=0.5
 \newcommand{\epTqC}{3\xspace} % histories.json C_siglip_so400m_linear first epoch with val_acc>=0.75
+\newcommand{\trainAccD}{1.00\xspace} % histories.json D_mobileclip2_s3_linear[best].train_acc
+\newcommand{\minValCED}{0.889\xspace} % histories.json D_mobileclip2_s3_linear min val_loss
+\newcommand{\minValCEepD}{9\xspace} % histories.json D_mobileclip2_s3_linear argmin val_loss + 1
+\newcommand{\valCED}{0.900\xspace} % histories.json D_mobileclip2_s3_linear[best].val_loss
+\newcommand{\trainCED}{0.048\xspace} % histories.json D_mobileclip2_s3_linear[best].train_ce
+\newcommand{\finalTrainAccD}{1.00\xspace} % histories.json D_mobileclip2_s3_linear[-1].train_acc
+\newcommand{\epHalfD}{1\xspace} % histories.json D_mobileclip2_s3_linear first epoch with val_acc>=0.5
+\newcommand{\epTqD}{4\xspace} % histories.json D_mobileclip2_s3_linear first epoch with val_acc>=0.75
 \newcommand{\lnTwenty}{3.00\xspace} % ln(20) = chance-level cross-entropy
 \newcommand{\accCleanA}{0.435\xspace} % preds/A_scratch_cnn acc on test ood_suspect==0
 \newcommand{\accOODA}{0.304\xspace} % preds/A_scratch_cnn acc on test ood_suspect==1
@@ -370,6 +415,9 @@
 \newcommand{\accCleanC}{0.846\xspace} % preds/C_siglip_so400m_linear acc on test ood_suspect==0
 \newcommand{\accOODC}{0.759\xspace} % preds/C_siglip_so400m_linear acc on test ood_suspect==1
 \newcommand{\oodDropC}{9\xspace} % clean - flagged accuracy (points) C_siglip_so400m_linear
+\newcommand{\accCleanD}{0.807\xspace} % preds/D_mobileclip2_s3_linear acc on test ood_suspect==0
+\newcommand{\accOODD}{0.679\xspace} % preds/D_mobileclip2_s3_linear acc on test ood_suspect==1
+\newcommand{\oodDropD}{13\xspace} % clean - flagged accuracy (points) D_mobileclip2_s3_linear
 \newcommand{\gpuMsA}{0.52\xspace} % efficiency.csv A_scratch_cnn gpu_ms_per_image_batch1_fp16
 \newcommand{\cpuMsA}{1.7\xspace} % efficiency.csv A_scratch_cnn cpu_ms_per_image_batch1_fp32_8threads
 \newcommand{\paramsMA}{1.2\xspace} % efficiency.csv A_scratch_cnn params / 1e6
@@ -382,6 +430,10 @@
 \newcommand{\cpuMsC}{893.5\xspace} % efficiency.csv C_siglip_so400m_linear cpu_ms_per_image_batch1_fp32_8threads
 \newcommand{\paramsMC}{428.2\xspace} % efficiency.csv C_siglip_so400m_linear params / 1e6
 \newcommand{\fpMBC}{1,633.6\xspace} % efficiency.csv C_siglip_so400m_linear fp32_weights_mb
+\newcommand{\gpuMsD}{15.16\xspace} % efficiency.csv D_mobileclip2_s3_linear gpu_ms_per_image_batch1_fp16
+\newcommand{\cpuMsD}{111.5\xspace} % efficiency.csv D_mobileclip2_s3_linear cpu_ms_per_image_batch1_fp32_8threads
+\newcommand{\paramsMD}{122.8\xspace} % efficiency.csv D_mobileclip2_s3_linear params / 1e6
+\newcommand{\fpMBD}{468.4\xspace} % efficiency.csv D_mobileclip2_s3_linear fp32_weights_mb
 \newcommand{\gpuRatioCB}{11\xspace} % efficiency.csv gpu b1 C/B
 \newcommand{\cpuRatioCB}{49\xspace} % efficiency.csv cpu b1 C/B
 \newcommand{\bmProbeSiglip}{0.824\xspace} % results/benchmark.csv probe_siglip_so400m_384 f1

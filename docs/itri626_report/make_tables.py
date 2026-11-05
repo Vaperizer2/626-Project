@@ -1,6 +1,6 @@
 """Generate every LaTeX table and number macro of the ITRI626 report from the committed result files.
 
-    uv run --no-project --with numpy --with scipy python docs/itri626_report/make_tables.py
+    uv run --locked python docs/itri626_report/make_tables.py
 
 Reads only repository files (results/itri626/, data/v2/, results/benchmark.csv, results/final/,
 results/kaggle_original/, results/leakage_simulation.csv) and writes
@@ -24,13 +24,19 @@ ROOT = Path(__file__).resolve().parents[2]
 OUT = Path(__file__).resolve().parent / "generated"
 RES = ROOT / "results" / "itri626"
 MAIN = ["A_scratch_cnn", "B_convnext_tiny", "C_siglip_so400m_linear"]
-REFS = ["R1_sklearn_probe", "R2_deployed_fused"]
+D = "D_mobileclip2_s3_linear"
+FOUR = MAIN + [D]
+REFS = ["R1_sklearn_probe", "R2_deployed_fused", "R3_small_fused"]
 SHORT = {"A_scratch_cnn": "A: scratch CNN", "B_convnext_tiny": "B: ConvNeXt-T (fine-tuned)",
          "C_siglip_so400m_linear": "C: SigLIP ViT (frozen + linear)",
          "R1_sklearn_probe": "R1: SigLIP + sklearn probe", "R2_deployed_fused": "R2: deployed fused model"}
+SHORT[D] = "D: MobileCLIP2-S3 (frozen + linear)"
+SHORT[REFS[2]] = "R3: Small (refitted + fused)"
 LETTER = {"A_scratch_cnn": "A", "B_convnext_tiny": "B", "C_siglip_so400m_linear": "C"}
+LETTER[D] = "D"
 # table label with the model's figure colour (\\msq{A} is defined in main.tex: a small square in colour mA/mB/mC)
 TSHORT = {n: (f"\\msq{{{LETTER[n]}}}" + v if n in LETTER else v) for n, v in SHORT.items()}
+TSHORT[D] = r"\msq{D}D: MobileCLIP2-S3"
 # compact class names where three confusion pairs must share one line (Table 7)
 ABBR = {"microcontroller board": "MCU board"}
 
@@ -224,8 +230,8 @@ def main() -> None:
 
     # ---------------------------------------------------------------- hyperparameters
     hp = {r["model"]: r for r in read_csv("results/itri626/hyperparameters.csv")}
-    runs = {n: load(f"results/itri626/runs/{n}.json") for n in MAIN}
-    cfg = {n: runs[n].get("config", {}) for n in MAIN}
+    runs = {n: load(f"results/itri626/runs/{n}.json") for n in FOUR}
+    cfg = {n: runs[n].get("config", {}) for n in FOUR}
     cs = runs[MAIN[2]]["settings"]
 
     def best1(n):  # 1-based best epoch (files store it 0-based)
@@ -266,6 +272,17 @@ def main() -> None:
         ("Training time", [f"{runs[MAIN[0]]['train_time_s']:.0f}\\,s (GPU)", f"{runs[MAIN[1]]['train_time_s']:.0f}\\,s (GPU)",
                            f"{runs[MAIN[2]]['train_time_s']:.1f}\\,s for all 4 grid runs (CPU, cached features)"]),
     ]
+    ds = runs[D]["settings"]
+    dfields = {
+        "Model / variant": r"FastViT hybrid (MobileCLIP2-S3), frozen; \texttt{nn.Linear(3072,\,20)} head",
+        "Pretrained weights": r"\file{fastvit_mci3.apple_mclip2_dfndr2b} (DFNDR-2B)",
+        "Trainable / total params": f"{int(hp[D]['trainable_params']):,} / {int(hp[D]['total_params']):,}",
+        "Input size (px)": r"256$\times$256",
+        "Epochs (max / run / best)": f"{ds['max_epochs']} / {runs[D]['epochs_run']} / {best1(D)}",
+        "Weight decay": r"0.0001 (grid on val., \cref{tab:wdgridD})",
+        "Training time": f"{runs[D]['train_time_s']:.1f}\\,s for all 4 grid runs (CPU, cached features)",
+    }
+    fields = [(key, vals + [dfields.get(key, vals[2])]) for key, vals in fields]
     assert hp[MAIN[0]]["lr"] == "0.002" and hp[MAIN[1]]["lr"] == "0.0002" and hp[MAIN[2]]["lr"] == "0.001"
     assert cfg[MAIN[0]]["train"]["grad_clip"] == 1.0 and cfg[MAIN[1]]["train"]["grad_clip"] == 1.0
     assert cfg[MAIN[1]]["train"]["freeze_epochs"] == 1 and cfg[MAIN[1]]["train"]["layer_decay"] == 0.8
@@ -275,9 +292,9 @@ def main() -> None:
     assert cfg[MAIN[0]]["aug"]["rrc_scale"] == [0.35, 1.0] and cfg[MAIN[1]]["aug"]["rrc_scale"] == [0.5, 1.0]
     assert cfg[MAIN[0]]["aug"]["color_jitter"] == 0.2 and cfg[MAIN[1]]["aug"]["color_jitter"] == 0.0
     assert all(cfg[n]["aug"][k] == 0.0 for n in MAIN[:2] for k in ("vflip", "mixup", "cutmix", "random_erasing"))
-    lines = [r"\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{3.1cm}YYY@{}}", r"\toprule",
+    lines = [r"\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{2.35cm}YYYY@{}}", r"\toprule",
              r" & " + " & ".join(r"\msq{" + LETTER[n] + r"}\textbf{" + SHORT[n].split(": ")[0] + "}: " + SHORT[n].split(": ")[1]
-                                 for n in MAIN) + r" \\",
+                                 for n in FOUR) + r" \\",
              r"\midrule"]
     groups = {"Model / variant": "Model", "Input size (px)": "Data and augmentation", "Optimiser": "Optimisation",
               "Early stopping": "Regularisation and stopping", "Numerical precision": "Runtime"}
@@ -292,7 +309,7 @@ def main() -> None:
         if f in groups:
             if f != order[0]:
                 lines.append(r"\addlinespace[3pt]")
-            lines.append(r"\multicolumn{4}{@{}l}{\textsc{" + groups[f].lower() + r"}} \\")
+            lines.append(r"\multicolumn{5}{@{}l}{\textsc{" + groups[f].lower() + r"}} \\")
         lines.append(f"{f} & " + " & ".join(fd[f]) + r" \\")
     lines += [r"\bottomrule", r"\end{tabularx}"]
     write("tab_hparams.tex", "\n".join(lines))
@@ -347,10 +364,11 @@ def main() -> None:
     num("gpuMem", env["gpu"]["memory_gib"], "results/itri626/environment.json gpu.memory_gib")
 
     # ---------------------------------------------------------------- test metrics + bootstrap
-    preds = {n: np.load(RES / "preds" / f"{n}_test.npz", allow_pickle=True) for n in MAIN + REFS}
+    preds = {n: np.load(RES / "preds" / f"{n}_test.npz", allow_pickle=True) for n in FOUR + REFS}
     ids0 = preds[MAIN[0]]["ids"]
     assert all((preds[n]["ids"] == ids0).all() for n in preds), "same test rows"
     assert set(str(i) for i in ids0) == ids["test"]
+    assert all(np.array_equal(preds[n]["y"], preds[MAIN[0]]["y"]) for n in preds), "same test labels"
     y = preds[MAIN[0]]["y"].astype(int)
     N = len(y)
     pred = {n: preds[n]["probs"].argmax(1) for n in preds}
@@ -362,16 +380,16 @@ def main() -> None:
     B = 2000
     idx = rng.integers(0, N, (B, N))
     boot = {n: {"acc": (pred[n][idx] == y[idx]).mean(1),
-                "f1": np.array([macro_f1(y[i], pred[n][i]) for i in idx])} for n in MAIN}
-    ci = {n: {k: np.percentile(boot[n][k], [2.5, 97.5]) for k in ("acc", "f1")} for n in MAIN}
+                "f1": np.array([macro_f1(y[i], pred[n][i]) for i in idx])} for n in FOUR}
+    ci = {n: {k: np.percentile(boot[n][k], [2.5, 97.5]) for k in ("acc", "f1")} for n in FOUR}
 
     cols = [("accuracy", "Acc."), ("balanced_accuracy", "Bal.\\ acc."), ("macro_precision", "Macro P"),
             ("macro_recall", "Macro R"), ("macro_f1", "Macro F1"), ("weighted_f1", "Weighted F1"), ("log_loss", "Log loss")]
     lines = [r"\begin{tabular}{@{}lccccccc@{}}", r"\toprule",
              "Model & " + " & ".join(h for _, h in cols) + r" \\", r"\midrule"]
-    best = {k: max(M["models"][n]["test"][k] for n in MAIN) for k, _ in cols if k != "log_loss"}
-    best["log_loss"] = min(M["models"][n]["test"]["log_loss"] for n in MAIN)
-    for n in MAIN:
+    best = {k: max(M["models"][n]["test"][k] for n in FOUR) for k, _ in cols if k != "log_loss"}
+    best["log_loss"] = min(M["models"][n]["test"]["log_loss"] for n in FOUR)
+    for n in FOUR:
         t = M["models"][n]["test"]
         cells = []
         for k, _ in cols:
@@ -380,16 +398,16 @@ def main() -> None:
         if n != MAIN[0]:
             lines.append(r"\addlinespace[2pt]")
         lines.append(f"{TSHORT[n]} & " + " & ".join(cells) + r" \\")
-        lines.append(r"\quad{\scriptsize\color{black!60}95\% CI} & " + f"{{\scriptsize\color{{black!60}}[{ci[n]['acc'][0]:.3f}, {ci[n]['acc'][1]:.3f}]}} & & & & "
-                     f"{{\scriptsize\color{{black!60}}[{ci[n]['f1'][0]:.3f}, {ci[n]['f1'][1]:.3f}]}} & & \\\\")
+        lines.append(r"\quad{\scriptsize\color{black!60}95\% CI} & " + f"{{\\scriptsize\\color{{black!60}}[{ci[n]['acc'][0]:.3f}, {ci[n]['acc'][1]:.3f}]}} & & & & "
+                     f"{{\\scriptsize\\color{{black!60}}[{ci[n]['f1'][0]:.3f}, {ci[n]['f1'][1]:.3f}]}} & & \\\\")
     lines.append(r"\midrule")
-    lines.append(r"\multicolumn{8}{@{}l}{\textit{Reference rows (same frozen SigLIP features as C; not additional models)}} \\")
+    lines.append(r"\multicolumn{8}{@{}l}{\textit{Reference rows (refitted or alternative heads; not matched main models)}} \\")
     for n in REFS:
         t = M["references"][n]["test"]
         lines.append(r"{\color{black!60}" + SHORT[n] + "} & " + " & ".join(r"{\color{black!60}" + f3(t[k]) + "}" for k, _ in cols) + r" \\")
     lines += [r"\bottomrule", r"\end{tabular}"]
     write("tab_test_metrics.tex", "\n".join(lines))
-    for n in MAIN:
+    for n in FOUR:
         L = LETTER[n]
         t = M["models"][n]["test"]
         num(f"acc{L}", t["accuracy"], f"metrics.json models.{n}.test.accuracy", ".3f")
@@ -412,7 +430,7 @@ def main() -> None:
         ok = pred[n] == y
         num(f"confOk{L}", conf[ok].mean(), f"preds/{n}_test.npz mean max-prob on correct", ".2f")
         num(f"confBad{L}", conf[~ok].mean(), f"preds/{n}_test.npz mean max-prob on wrong", ".2f")
-    for n, L in zip(REFS, ["RA", "RB"]):
+    for n, L in zip(REFS, ["RA", "RB", "RC"]):
         t = M["references"][n]["test"]
         num(f"acc{L}", t["accuracy"], f"metrics.json references.{n}.test.accuracy", ".3f")
         num(f"fone{L}", t["macro_f1"], f"metrics.json references.{n}.test.macro_f1", ".3f")
@@ -422,7 +440,7 @@ def main() -> None:
     lines = [r"\begin{tabular}{@{}lrcrrr@{}}", r"\toprule",
              r"Pair & $\Delta$ accuracy & 95\% CI & Only 1st right & Only 2nd right & McNemar $p$ \\",
              r"\midrule"]
-    for a, b, tag in [(MAIN[1], MAIN[0], "BA"), (MAIN[2], MAIN[1], "CB"), (MAIN[2], MAIN[0], "CA")]:
+    for a, b, tag in [(MAIN[1], MAIN[0], "BA"), (MAIN[2], MAIN[1], "CB"), (MAIN[2], MAIN[0], "CA"), (MAIN[2], D, "CD"), (D, MAIN[1], "DB"), (D, MAIN[0], "DA")]:
         ca, cb = pred[a] == y, pred[b] == y
         n10, n01 = int((ca & ~cb).sum()), int((~ca & cb).sum())
         d = boot[a]["acc"] - boot[b]["acc"]
@@ -483,7 +501,15 @@ def main() -> None:
 
     write("tab_per_class.tex", per_class_table(MAIN, {"A_scratch_cnn": r"\msq{A}A: scratch CNN", "B_convnext_tiny": r"\msq{B}B: ConvNeXt-T",
                                                       "C_siglip_so400m_linear": r"\msq{C}C: SigLIP ViT"}))
-    write("tab_per_class_refs.tex", per_class_table(REFS, {"R1_sklearn_probe": "R1: sklearn probe", "R2_deployed_fused": "R2: deployed"}))
+    write("tab_per_class_refs.tex", per_class_table(REFS[:2], {"R1_sklearn_probe": "R1: sklearn probe", "R2_deployed_fused": "R2: deployed"}))
+    write("tab_per_class_D.tex", per_class_table([D, REFS[2]], {D: r"\msq{D}D: MobileCLIP2-S3", REFS[2]: "R3: Small fused"}))
+    grid = runs[D]["weight_decay_grid"]
+    lines = [r"\begin{tabular}{@{}rrrrr@{}}", r"\toprule",
+             r"Weight decay & Best epoch & Val. acc. & Val. macro-F1 & Val. CE \\", r"\midrule"]
+    for row in grid:
+        lines.append(f"{row['weight_decay']:g} & {row['best_epoch']+1} & {row['val_acc']:.3f} & {row['val_macro_f1']:.3f} & {row['val_loss']:.3f}" + r" \\")
+    lines += [r"\bottomrule", r"\end{tabular}"]
+    write("tab_wdgrid_D.tex", "\n".join(lines))
     for n in MAIN:
         L = LETTER[n]
         f1 = {k: M["models"][n]["test"]["per_class"][k]["f1"] for k in classes}
@@ -551,7 +577,7 @@ def main() -> None:
     lines = [r"\begin{tabular}{@{}lrrrrrrr@{}}", r"\toprule",
              r"Model & Epochs run & Best epoch & Train acc. & Val.\ acc. & Val.\ macro-F1 & Train CE & Val.\ CE \\",
              r"\midrule"]
-    for n in MAIN:
+    for n in FOUR:
         h = H[n]
         b = runs[n]["best_epoch"]
         e = h[b]
@@ -579,7 +605,7 @@ def main() -> None:
     assert ood.sum() == ood_split["test"]
     lines = [r"\begin{tabular}{@{}lccc@{}}", r"\toprule",
              f"Model & Clean ($n={int((~ood).sum())}$) & OOD-flagged ($n={int(ood.sum())}$) & All ($n={N}$) \\\\", r"\midrule"]
-    for n in MAIN:
+    for n in FOUR:
         ok = pred[n] == y
         lines.append(f"{SHORT[n]} & {ok[~ood].mean():.3f} & {ok[ood].mean():.3f} & {ok.mean():.3f} \\\\")
         L = LETTER[n]
@@ -592,10 +618,10 @@ def main() -> None:
     # ---------------------------------------------------------------- efficiency
     eff = {r["model"]: r for r in read_csv("results/itri626/efficiency.csv")}
     lines = [r"\begin{tabular}{@{}l S[table-format=3.2] S[table-format=8.0, group-minimum-digits=4] S[table-format=3.0] "
-             r"S[table-format=3.2] S[table-format=2.2] S[table-format=2.3] S[table-format=3.1]@{}}", r"\toprule",
+             r"S[table-format=3.2] S[table-format=2.2] S[table-format=2.3] S[table-format=4.1]@{}}", r"\toprule",
              r"Model & {Params} & {Trainable} & {Input} & {Checkpoint} & {GPU, $b=1$} & {GPU, $b=32$} & {CPU, $b=1$} \\",
              r" & {(M)} & {params} & {(px)} & {(MB)} & {(ms/img)} & {(ms/img)} & {(ms/img)} \\", r"\midrule"]
-    for n in MAIN:
+    for n in FOUR:
         e = eff[n]
         lines.append(f"{TSHORT[n]} & {int(e['params']) / 1e6:.2f} & {int(e['trainable_params'])} & {e['input_size']} & "
                      f"{float(e['checkpoint_mb']):.2f} & {float(e['gpu_ms_per_image_batch1_fp16']):.2f} & "
@@ -606,6 +632,12 @@ def main() -> None:
         num(f"paramsM{L}", int(e["params"]) / 1e6, f"efficiency.csv {n} params / 1e6", ".1f")
         num(f"fpMB{L}", f'{float(e["fp32_weights_mb"]):,}', f"efficiency.csv {n} fp32_weights_mb")
     lines += [r"\bottomrule", r"\end{tabular}"]
+    anchor = load("results/itri626/runs/profile.json")[D]["machine"]["c_tower_reference"]
+    anchor_row = ("C tower (D's PC) & 428.25 & {--} & 384 & {--} & "
+                  f"{anchor['gpu_ms_per_image_batch1_fp16']:.2f} & "
+                  f"{anchor['gpu_ms_per_image_batch32_fp16']:.3f} & "
+                  f"{anchor['cpu_ms_per_image_batch1_fp32_8threads']:.1f}" + r" \\")
+    lines.insert(-2, anchor_row)
     write("tab_efficiency.tex", "\n".join(lines))
     num("gpuRatioCB", float(eff[MAIN[2]]["gpu_ms_per_image_batch1_fp16"]) / float(eff[MAIN[1]]["gpu_ms_per_image_batch1_fp16"]),
         "efficiency.csv gpu b1 C/B", ".0f")
