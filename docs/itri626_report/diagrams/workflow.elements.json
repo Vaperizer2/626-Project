@@ -1,0 +1,353 @@
+[
+  {
+    "type": "cameraUpdate",
+    "width": 800,
+    "height": 600,
+    "x": 0,
+    "y": 0
+  },
+  {
+    "type": "text",
+    "id": "title",
+    "x": 30,
+    "y": 15,
+    "text": "Shared data, four matched course models",
+    "fontSize": 24,
+    "fontFamily": 2,
+    "strokeColor": "#1e293b"
+  },
+  {
+    "type": "rectangle",
+    "id": "clean",
+    "x": 30,
+    "y": 65,
+    "width": 220,
+    "height": 85,
+    "backgroundColor": "#a5d8ff",
+    "fillStyle": "solid",
+    "roughness": 0.7,
+    "roundness": {
+      "type": 3
+    },
+    "label": {
+      "text": "Clean and group\n2,930 images\nDuplicate clusters kept whole",
+      "fontSize": 18,
+      "fontFamily": 2
+    }
+  },
+  {
+    "type": "arrow",
+    "id": "a1",
+    "x": 250,
+    "y": 108,
+    "width": 55,
+    "height": 0,
+    "points": [
+      [
+        0,
+        0
+      ],
+      [
+        55,
+        0
+      ]
+    ],
+    "endArrowhead": "arrow"
+  },
+  {
+    "type": "rectangle",
+    "id": "split",
+    "x": 305,
+    "y": 65,
+    "width": 465,
+    "height": 85,
+    "backgroundColor": "#c3fae8",
+    "fillStyle": "solid",
+    "roughness": 0.7,
+    "roundness": {
+      "type": 3
+    },
+    "label": {
+      "text": "One fixed, grouped split (seed 42)\nTrain 2,010  |  Validation 502  |  Test 418",
+      "fontSize": 18,
+      "fontFamily": 2
+    }
+  },
+  {
+    "type": "text",
+    "id": "rule",
+    "x": 30,
+    "y": 180,
+    "text": "Train on training rows; choose by validation macro-F1",
+    "fontSize": 20,
+    "fontFamily": 2,
+    "strokeColor": "#1e293b"
+  },
+  {
+    "type": "rectangle",
+    "id": "A",
+    "x": 30,
+    "y": 240,
+    "width": 170,
+    "height": 120,
+    "backgroundColor": "#ffd8a8",
+    "fillStyle": "solid",
+    "roughness": 0.7,
+    "roundness": {
+      "type": 3
+    },
+    "label": {
+      "text": "A\nScratch CNN\n160 px\nAll weights learned",
+      "fontSize": 18,
+      "fontFamily": 2
+    }
+  },
+  {
+    "type": "arrow",
+    "id": "inA",
+    "x": 115,
+    "y": 210,
+    "width": 0,
+    "height": 30,
+    "points": [
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        30
+      ]
+    ],
+    "endArrowhead": "arrow"
+  },
+  {
+    "type": "arrow",
+    "id": "outA",
+    "x": 115,
+    "y": 360,
+    "width": 0,
+    "height": 45,
+    "points": [
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        45
+      ]
+    ],
+    "endArrowhead": "arrow"
+  },
+  {
+    "type": "rectangle",
+    "id": "B",
+    "x": 220,
+    "y": 240,
+    "width": 170,
+    "height": 120,
+    "backgroundColor": "#a5d8ff",
+    "fillStyle": "solid",
+    "roughness": 0.7,
+    "roundness": {
+      "type": 3
+    },
+    "label": {
+      "text": "B\nConvNeXt-T\n224 px\nFine-tune weights",
+      "fontSize": 18,
+      "fontFamily": 2
+    }
+  },
+  {
+    "type": "arrow",
+    "id": "inB",
+    "x": 305,
+    "y": 210,
+    "width": 0,
+    "height": 30,
+    "points": [
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        30
+      ]
+    ],
+    "endArrowhead": "arrow"
+  },
+  {
+    "type": "arrow",
+    "id": "outB",
+    "x": 305,
+    "y": 360,
+    "width": 0,
+    "height": 45,
+    "points": [
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        45
+      ]
+    ],
+    "endArrowhead": "arrow"
+  },
+  {
+    "type": "rectangle",
+    "id": "C",
+    "x": 410,
+    "y": 240,
+    "width": 170,
+    "height": 120,
+    "backgroundColor": "#b2f2bb",
+    "fillStyle": "solid",
+    "roughness": 0.7,
+    "roundness": {
+      "type": 3
+    },
+    "label": {
+      "text": "C\nSigLIP So400m\n384 px\nFrozen + linear",
+      "fontSize": 18,
+      "fontFamily": 2
+    }
+  },
+  {
+    "type": "arrow",
+    "id": "inC",
+    "x": 495,
+    "y": 210,
+    "width": 0,
+    "height": 30,
+    "points": [
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        30
+      ]
+    ],
+    "endArrowhead": "arrow"
+  },
+  {
+    "type": "arrow",
+    "id": "outC",
+    "x": 495,
+    "y": 360,
+    "width": 0,
+    "height": 45,
+    "points": [
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        45
+      ]
+    ],
+    "endArrowhead": "arrow"
+  },
+  {
+    "type": "rectangle",
+    "id": "D",
+    "x": 600,
+    "y": 240,
+    "width": 170,
+    "height": 120,
+    "backgroundColor": "#eebefa",
+    "fillStyle": "solid",
+    "roughness": 0.7,
+    "roundness": {
+      "type": 3
+    },
+    "label": {
+      "text": "D\nMobileCLIP2-S3\n256 px\nFrozen + linear",
+      "fontSize": 18,
+      "fontFamily": 2
+    }
+  },
+  {
+    "type": "arrow",
+    "id": "inD",
+    "x": 685,
+    "y": 210,
+    "width": 0,
+    "height": 30,
+    "points": [
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        30
+      ]
+    ],
+    "endArrowhead": "arrow"
+  },
+  {
+    "type": "arrow",
+    "id": "outD",
+    "x": 685,
+    "y": 360,
+    "width": 0,
+    "height": 45,
+    "points": [
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        45
+      ]
+    ],
+    "endArrowhead": "arrow"
+  },
+  {
+    "type": "rectangle",
+    "id": "test",
+    "x": 30,
+    "y": 405,
+    "width": 740,
+    "height": 65,
+    "backgroundColor": "#fff3bf",
+    "fillStyle": "solid",
+    "roughness": 0.7,
+    "roundness": {
+      "type": 3
+    },
+    "label": {
+      "text": "Fixed choices -> recorded test predictions (418 shared images)\nAccuracy, macro-F1, confusion matrices and paired comparisons",
+      "fontSize": 18,
+      "fontFamily": 2
+    }
+  },
+  {
+    "type": "text",
+    "id": "note",
+    "x": 30,
+    "y": 500,
+    "text": "Report build reads committed results only.",
+    "fontSize": 18,
+    "fontFamily": 2,
+    "strokeColor": "#1e293b"
+  },
+  {
+    "type": "text",
+    "id": "note2",
+    "x": 30,
+    "y": 530,
+    "text": "No training, model selection or holdout inference during editing.",
+    "fontSize": 18,
+    "fontFamily": 2,
+    "strokeColor": "#1e293b"
+  }
+]

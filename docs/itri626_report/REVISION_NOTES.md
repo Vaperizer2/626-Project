@@ -1,3 +1,165 @@
+# Reader-facing cleanup and submission (2026-11-05)
+
+At the user's request, removed the former Appendix E rubric checklist from the paper, removed repository file
+paths and command listings throughout, and replaced inline class-name italics and decorative emphasis with plain
+text. Structural headings and standard best-result table highlighting remain. Appendix D now gives a prose
+reproducibility statement and a repository link; exact build paths and commands remain in the companion README.
+The standalone rubric planning checklist is retained outside the PDF.
+
+Validation: clean LaTeX/BibTeX build; all 30 pages rendered and visually checked; no overfull/underfull boxes or
+warnings. All 499 number/provenance entries and all figure input paths are unchanged from `886a538`. No training,
+holdout inference, model assets, releases or main-checkout files were touched.
+
+---
+
+# Three-part adversarial presentation review (2026-11-05)
+
+Reviewed the report at `6db0fb5`, then applied focused presentation changes. The instruction was to preserve
+scientific content and make the report read and print like a well prepared article. This is three review passes,
+not a claim of three independent reviewers: a Codex visual reviewer inspected all original pages, and the parent
+performed the prose and reference passes. The configured Claude prose reviewer failed immediately with an API rate
+limit; no findings were attributed to it and no replacement reviewer was launched.
+
+## 1. Prose and article structure
+
+Verified against `git show 6db0fb5:docs/itri626_report/main.tex` and the rendered PDF:
+
+| Finding | Applied response |
+|---|---|
+| The abstract's “each with a trained linear head” could attach to the entire A–D list. | Named C/D explicitly as the two frozen encoders with fitted heads. |
+| The abstract described score gaps as effects of pretraining although the discussion acknowledges confounding. | Expressed the same numerical gaps as comparisons between B, C and D. |
+| “Leakage-free” implied a stronger guarantee than the residual-duplicate limitation. | Used “duplicate-aware” in the subtitle/scope and “detected” near-duplicate clusters in the abstract. |
+| Dense prose and awkward date wrapping distracted from the article presentation. | Kept the section structure and content, tightened a few phrases and placed the title-page date on its own line. |
+| Appendix floats interrupted “Measured accuracy…” across a whole intervening page. | Flushed floats before the detailed limitations; began the following appendix on a fresh page. |
+
+No model selection, reported outcome, image selection or overall conclusion was changed. Recommendations to
+change the scientific scope or fit a new publication template were dropped: the user's request was a polish pass.
+
+## 2. Figures and tables
+
+The independent reviewer rendered all 27 original pages using `pdftoppm -r 110` and measured fonts with
+`pdftohtml -xml -hidden -i -zoom 1`. Confirmed findings and final dispositions:
+
+| Original evidence | Applied response |
+|---|---|
+| Physical p11: Figure 6 count labels approximately 6 pt, 20×20 matrices about 51 mm square. | Moved full counts to Figures A.1/A.2, two larger matrices per page; 8.5 pt counts, numbered axes and a readable class key, with one shared count scale. |
+| Physical pp14,18–19: repeated model P/R/F1 and confusion groups lacked body guides. | Added 0.3 pt subdued vertical separators between model groups in Table 5 and Tables A.1–A.3. No outer boxes or per-cell grid. |
+| Physical p20: Table B.1 used 7–8 pt text with four long model columns. | Split into two continued parts with repeated model headers, 9 pt text, more row spacing and group rules. Every setting remains. |
+| Physical pp4,13–14,22: example, gallery and disagreement labels were marginal. | Enlarged the class-example figure; reset original gallery titles/confidences at 8.5 pt and reused exactly the same embedded photos; gave disagreements the full line width. |
+| Crowded body figures competed for space. | Retained C's examples in the body, moved A/B's full examples to Appendix A, and kept all four matrices and agreement counts as directly linked supporting figures. |
+
+The original Excalidraw scenes/exports and all notebook-result exports remain unchanged. New report-local PDFs
+and their reproduction script are in `figures/` and `make_presentation_figures.py`. The class numbering is asserted
+against `split_info.json`. No raw images or model execution are used for this artwork refresh.
+
+## 3. References and formatting consistency
+
+Checked all 33 rendered bibliography entries against Crossref, publisher/proceedings pages, author arXiv records
+or official project sources. Resolved initial Crossref 429 responses through later individual requests. OpenReview
+forum pages presented a browser challenge; author records confirmed the relevant ICLR publication information.
+The Kaggle URL responds but its live card exposed no readable metadata, so its recorded citation/access date was
+preserved rather than re-inventing metadata. This is the remaining source-access limitation.
+
+Added visible DOI/source links to the IEEE-style bibliography. Completed FastViT's missing pages and DOI and
+normalised its venue abbreviation. Its DOI-registered IEEE pagination is 5762–5772; CVF's accepted-version
+pagination differs. Likewise ConvNeXt's existing 11966–11976 is the DOI-registered version and was correctly
+retained despite the different CVF accepted-version page range. Other identities and numerical metadata matched.
+
+| Citation key | Check and primary source |
+|---|---|
+| `shao2025electronic` | [Crossref: title/authors, publication year and pages/article number matched](https://doi.org/10.1109/uv63228.2024.11189118) |
+| `zhou2025electronic` | [Crossref: title/authors, publication year and pages/article number matched](https://doi.org/10.1142/9789819801473_0011) |
+| `ling2023pcb` | [Crossref: title/authors, publication year and pages/article number matched](https://doi.org/10.1109/access.2023.3245093) |
+| `kaggle_dataset` | [URL responds; live card unreadable; retained recorded citation](https://www.kaggle.com/datasets/mdfaisalahmed025/electronic-component-recognizer) |
+| `radford2021clip` | [PMLR: authors, title, 2021, vol. 139, 8748–8763](https://proceedings.mlr.press/v139/radford21a.html) |
+| `northcutt2021confident` | [Crossref: title/authors, publication year and pages/article number matched](https://doi.org/10.1613/jair.1.12125) |
+| `pedregosa2011sklearn` | [JMLR: authors, title, 2011, vol. 12, 2825–2830](https://jmlr.org/papers/v12/pedregosa11a.html) |
+| `barz2020cifair` | [Crossref: title/authors, publication year and pages/article number matched](https://doi.org/10.3390/jimaging6060041) |
+| `kapoor2023leakage` | [Crossref: title/authors, publication year and pages/article number matched](https://doi.org/10.1016/j.patter.2023.100804) |
+| `wightman2019timm` | [Official project identity and URL](https://github.com/huggingface/pytorch-image-models) |
+| `simonyan2014vgg` | [Author paper: title/authors; ICLR 2015 publication retained](https://arxiv.org/abs/1409.1556) |
+| `ioffe2015bn` | [PMLR: authors, title, 2015, vol. 37, 448–456](https://proceedings.mlr.press/v37/ioffe15.html) |
+| `he2015delving` | [Crossref: title/authors, publication year and pages/article number matched](https://doi.org/10.1109/ICCV.2015.123) |
+| `liu2022convnext` | [Crossref: title/authors, publication year and pages/article number matched](https://doi.org/10.1109/cvpr52688.2022.01167) |
+| `he2016resnet` | [Crossref: title/authors, publication year and pages/article number matched](https://doi.org/10.1109/cvpr.2016.90) |
+| `russakovsky2015imagenet` | [Crossref: title/authors, publication year and pages/article number matched](https://doi.org/10.1007/s11263-015-0816-y) |
+| `kumar2022finetuning` | [Author record: authors/title and ICLR 2022 oral](https://arxiv.org/abs/2202.10054) |
+| `yosinski2014transferable` | [NeurIPS proceedings identity/year](https://proceedings.neurips.cc/paper/2014/hash/532a2f85b6977104bc93f8580abbb330-Abstract.html) |
+| `kornblith2019transfer` | [Crossref: title/authors, publication year and pages/article number matched](https://doi.org/10.1109/cvpr.2019.00277) |
+| `dosovitskiy2020vit` | [Author record: authors/title and ICLR camera-ready version](https://arxiv.org/abs/2010.11929) |
+| `zhai2023siglip` | [Crossref: authors/title, ICCV 2023, 11941–11952](https://doi.org/10.1109/ICCV51070.2023.01100) |
+| `faghri2025mobileclip2` | [Author/publisher records: authors/title, TMLR 2025](https://machinelearning.apple.com/research/mobileclip2) |
+| `vasu2023fastvit` | [Crossref: authors/title, ICCV 2023, 5762–5772](https://doi.org/10.1109/ICCV51070.2023.00532) |
+| `efron1979bootstrap` | [Crossref: title/authors, publication year and pages/article number matched](https://doi.org/10.1214/aos/1176344552) |
+| `mcnemar1947` | [Crossref: title/authors, publication year and pages/article number matched](https://doi.org/10.1007/BF02295996) |
+| `cubuk2020randaugment` | [Crossref: authors/title, CVPRW 2020, 3008–3017](https://doi.org/10.1109/CVPRW50498.2020.00359) |
+| `loshchilov2019adamw` | [Author record: authors/title, ICLR 2019](https://arxiv.org/abs/1711.05101) |
+| `szegedy2016inception` | [Crossref: title/authors, publication year and pages/article number matched](https://doi.org/10.1109/cvpr.2016.308) |
+| `loshchilov2017sgdr` | [Author record: authors/title, ICLR 2017](https://arxiv.org/abs/1608.03983) |
+| `paszke2019pytorch` | [NeurIPS proceedings identity/year](https://proceedings.neurips.cc/paper/2019/hash/bdbca288fee7f92f2bfa9f7012727740-Abstract.html) |
+| `astral2024uv` | [Official project identity and URL](https://docs.astral.sh/uv/) |
+| `chow1970reject` | [Crossref: title/authors, publication year and pages/article number matched](https://doi.org/10.1109/tit.1970.1054406) |
+| `geifman2017selective` | [NeurIPS proceedings: authors/title, vol. 30, 2017](https://proceedings.neurips.cc/paper/2017/hash/4a8423d5e91fda00bb7e46540e2b0cf1-Abstract.html) |
+
+Formatting references inspected: [Springer IJCV author guidance](https://link.springer.com/journal/11263/submission-guidelines),
+[Zhai et al., SigLIP, author PDF](https://arxiv.org/pdf/2303.15343) and
+[Liu et al., ConvNeXt, author PDF](https://arxiv.org/pdf/2201.03545). The examples informed label sizes, grouping
+and caption placement. The existing Charter single-column course layout and IEEE bibliography were retained;
+this is not a claim of compliance with a specific Springer journal template.
+
+## Final verification
+
+- `latexmk -pdf -interaction=nonstopmode -halt-on-error main.tex`: passes; no LaTeX/BibTeX warnings, undefined
+  references, overfull or underfull boxes.
+- All 32 final PDF pages rendered with Poppler at 120 dpi and visually inspected; larger views checked the
+  reworked matrices, gallery labels, table separators, continued settings and appendix transitions.
+- All 499 `generated/key_numbers.json` values and provenance entries are identical to `6db0fb5`.
+- Pixel hashes of all 12 photos in each A/B/C/D gallery match the original PDFs (48 photos total).
+- `pdffonts`: all fonts embedded. `git diff --check`: passes.
+- No changes under `results/`, `exports/`, `apps/`, `crates/` or packaging. No training, holdout inference,
+  main-checkout edits or release work.
+
+The PDF now has 32 physical pages. The conclusion ends on printed page 14 (physical page 15), preserving the
+15-page body budget. References begin later on that page and continue through printed page 16. Appendices use
+printed pages 17–31; the extra supporting pages give the original evidence readable space.
+
+---
+
+# Four-model report polish (2026-11-05)
+
+The current source is `main.tex`, integrated from the three-model course report on main `17aff8b` and the
+historical proposals in `../model_d_inserts/`. The wider study in `../report/REPORT.md` is a separate document.
+
+- Integrated D (frozen MobileCLIP2-S3 + linear head) across methods, preprocessing, fairness, metrics, learning
+  curves, per-class F1, confusion matrices, appendix examples and full per-class results.
+- Extended `make_tables.py` to read committed D/R3 results and all six paired comparisons. The existing number
+  provenance entries remain identical; no recorded experiment metrics or prediction files changed.
+- Corrected the proposal's R3 identification: `R3_small_fused` is the packaged Small classifier, refitted on all
+  development rows and fused with zero-shot scores. It is not the course D head or a same-training-split reference.
+- Replaced the workflow with an actual Excalidraw MCP scene; added an evaluation-protocol diagram. Editable scenes,
+  MCP inputs and official-library SVG/PDF exports are in `diagrams/`. No Mermaid substitution was used.
+- Distinguished C/D's overlapping individual intervals from their paired result; labelled unadjusted McNemar
+  p-values. Removed claims that log-loss proves calibration or that practical recipe comparisons isolate causality.
+- Qualified CPU/GPU cost claims by hardware, precision, runtime, batch and excluded preprocessing; added the
+  same-machine C-tower anchor. D and Small differ; Fast's INT8 engine is not the 308 px fp16 benchmark.
+- Moved the wide hyperparameter table and detailed supporting/limitation material to the appendices, retained a
+  concise limitations section, updated references and captions, and removed stale training commands from the routine
+  report build. Both holdouts remain spent.
+- Marked older inserts as historical, refreshed the rubric map and corrected the efficiency study's stale opening
+  claim that no test scoring had occurred after development selection.
+
+Validation: generated tables rebuilt from committed predictions/metrics; existing macro entries compared with HEAD
+and unchanged; all figure/table inputs present; editable scenes parse as standard Excalidraw documents. `latexmk`
+completed with no warnings, undefined references, overfull or underfull boxes. The PDF was rendered with Poppler and
+all pages visually inspected, with larger views of the diagrams, metrics, matrices and appendix tables.
+
+The final PDF has 27 pages: title plus sections 1–7 occupy 15 physical pages (printed pages 1–14 after the title);
+references occupy printed pages 15–16 and supporting appendices 17–26. This follows the earlier report's body-budget
+convention; references and appendices are additional. Lecturer approval for D as an extra family and the group's
+slides/submission arrangements remain outside this edit. Main checkout, model assets and releases were untouched.
+
+---
+
 # ITRI626 report: revision notes (2026-10-20)
 
 This revision applies two reviews of `main.pdf` at commit b5c4fea: the visual/layout review (**V**) and the

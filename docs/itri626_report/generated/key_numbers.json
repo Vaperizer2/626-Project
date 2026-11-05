@@ -523,6 +523,74 @@
   "value": "0.47",
   "source": "preds/C_siglip_so400m_linear_test.npz mean max-prob on wrong"
  },
+ "accD": {
+  "value": "0.773",
+  "source": "metrics.json models.D_mobileclip2_s3_linear.test.accuracy"
+ },
+ "foneD": {
+  "value": "0.770",
+  "source": "metrics.json models.D_mobileclip2_s3_linear.test.macro_f1"
+ },
+ "mpD": {
+  "value": "0.779",
+  "source": "metrics.json models.D_mobileclip2_s3_linear.test.macro_precision"
+ },
+ "mrD": {
+  "value": "0.772",
+  "source": "metrics.json models.D_mobileclip2_s3_linear.test.macro_recall"
+ },
+ "balD": {
+  "value": "0.772",
+  "source": "metrics.json models.D_mobileclip2_s3_linear.test.balanced_accuracy"
+ },
+ "wfoneD": {
+  "value": "0.772",
+  "source": "metrics.json models.D_mobileclip2_s3_linear.test.weighted_f1"
+ },
+ "loglossD": {
+  "value": "0.800",
+  "source": "metrics.json models.D_mobileclip2_s3_linear.test.log_loss"
+ },
+ "nCorrectD": {
+  "value": "323",
+  "source": "preds/D_mobileclip2_s3_linear_test.npz argmax==y"
+ },
+ "nWrongD": {
+  "value": "95",
+  "source": "preds/D_mobileclip2_s3_linear_test.npz argmax!=y"
+ },
+ "accLoD": {
+  "value": "0.732",
+  "source": "bootstrap (2000, rng 0) 2.5 pct"
+ },
+ "accHiD": {
+  "value": "0.811",
+  "source": "bootstrap 97.5 pct"
+ },
+ "foneLoD": {
+  "value": "0.726",
+  "source": "bootstrap macro-F1 2.5 pct"
+ },
+ "foneHiD": {
+  "value": "0.806",
+  "source": "bootstrap macro-F1 97.5 pct"
+ },
+ "valAccD": {
+  "value": "0.775",
+  "source": "metrics.json models.D_mobileclip2_s3_linear.val_at_best_epoch.accuracy"
+ },
+ "valFoneD": {
+  "value": "0.772",
+  "source": "metrics.json models.D_mobileclip2_s3_linear.val_at_best_epoch.macro_f1"
+ },
+ "confOkD": {
+  "value": "0.90",
+  "source": "preds/D_mobileclip2_s3_linear_test.npz mean max-prob on correct"
+ },
+ "confBadD": {
+  "value": "0.56",
+  "source": "preds/D_mobileclip2_s3_linear_test.npz mean max-prob on wrong"
+ },
  "accRA": {
   "value": "0.833",
   "source": "metrics.json references.R1_sklearn_probe.test.accuracy"
@@ -538,6 +606,14 @@
  "foneRB": {
   "value": "0.834",
   "source": "metrics.json references.R2_deployed_fused.test.macro_f1"
+ },
+ "accRC": {
+  "value": "0.806",
+  "source": "metrics.json references.R3_small_fused.test.accuracy"
+ },
+ "foneRC": {
+  "value": "0.802",
+  "source": "metrics.json references.R3_small_fused.test.macro_f1"
  },
  "gapRAC": {
   "value": "4",
@@ -614,6 +690,78 @@
  "pvalCA": {
   "value": "$1.1\\times10^{-45}$",
   "source": "exact binomial McNemar CA"
+ },
+ "diffCD": {
+  "value": "5.0",
+  "source": "acc difference CD (points)"
+ },
+ "diffLoCD": {
+  "value": "1.4",
+  "source": "paired bootstrap 2.5 pct CD (points)"
+ },
+ "diffHiCD": {
+  "value": "8.6",
+  "source": "paired bootstrap 97.5 pct CD (points)"
+ },
+ "onlyFirstCD": {
+  "value": "39",
+  "source": "McNemar discordant CD: first right only"
+ },
+ "onlySecondCD": {
+  "value": "18",
+  "source": "McNemar discordant CD: second right only"
+ },
+ "pvalCD": {
+  "value": "$7.5\\times10^{-3}$",
+  "source": "exact binomial McNemar CD"
+ },
+ "diffDB": {
+  "value": "13.6",
+  "source": "acc difference DB (points)"
+ },
+ "diffLoDB": {
+  "value": "9.1",
+  "source": "paired bootstrap 2.5 pct DB (points)"
+ },
+ "diffHiDB": {
+  "value": "17.9",
+  "source": "paired bootstrap 97.5 pct DB (points)"
+ },
+ "onlyFirstDB": {
+  "value": "80",
+  "source": "McNemar discordant DB: first right only"
+ },
+ "onlySecondDB": {
+  "value": "23",
+  "source": "McNemar discordant DB: second right only"
+ },
+ "pvalDB": {
+  "value": "$1.5\\times10^{-8}$",
+  "source": "exact binomial McNemar DB"
+ },
+ "diffDA": {
+  "value": "37.3",
+  "source": "acc difference DA (points)"
+ },
+ "diffLoDA": {
+  "value": "32.5",
+  "source": "paired bootstrap 2.5 pct DA (points)"
+ },
+ "diffHiDA": {
+  "value": "42.3",
+  "source": "paired bootstrap 97.5 pct DA (points)"
+ },
+ "onlyFirstDA": {
+  "value": "166",
+  "source": "McNemar discordant DA: first right only"
+ },
+ "onlySecondDA": {
+  "value": "10",
+  "source": "McNemar discordant DA: second right only"
+ },
+ "pvalDA": {
+  "value": "$1.3\\times10^{-37}$",
+  "source": "exact binomial McNemar DA"
  },
  "allRight": {
   "value": "143",
@@ -1443,6 +1591,38 @@
   "value": "3",
   "source": "histories.json C_siglip_so400m_linear first epoch with val_acc>=0.75"
  },
+ "trainAccD": {
+  "value": "1.00",
+  "source": "histories.json D_mobileclip2_s3_linear[best].train_acc"
+ },
+ "minValCED": {
+  "value": "0.889",
+  "source": "histories.json D_mobileclip2_s3_linear min val_loss"
+ },
+ "minValCEepD": {
+  "value": "9",
+  "source": "histories.json D_mobileclip2_s3_linear argmin val_loss + 1"
+ },
+ "valCED": {
+  "value": "0.900",
+  "source": "histories.json D_mobileclip2_s3_linear[best].val_loss"
+ },
+ "trainCED": {
+  "value": "0.048",
+  "source": "histories.json D_mobileclip2_s3_linear[best].train_ce"
+ },
+ "finalTrainAccD": {
+  "value": "1.00",
+  "source": "histories.json D_mobileclip2_s3_linear[-1].train_acc"
+ },
+ "epHalfD": {
+  "value": "1",
+  "source": "histories.json D_mobileclip2_s3_linear first epoch with val_acc>=0.5"
+ },
+ "epTqD": {
+  "value": "4",
+  "source": "histories.json D_mobileclip2_s3_linear first epoch with val_acc>=0.75"
+ },
  "lnTwenty": {
   "value": "3.00",
   "source": "ln(20) = chance-level cross-entropy"
@@ -1482,6 +1662,18 @@
  "oodDropC": {
   "value": "9",
   "source": "clean - flagged accuracy (points) C_siglip_so400m_linear"
+ },
+ "accCleanD": {
+  "value": "0.807",
+  "source": "preds/D_mobileclip2_s3_linear acc on test ood_suspect==0"
+ },
+ "accOODD": {
+  "value": "0.679",
+  "source": "preds/D_mobileclip2_s3_linear acc on test ood_suspect==1"
+ },
+ "oodDropD": {
+  "value": "13",
+  "source": "clean - flagged accuracy (points) D_mobileclip2_s3_linear"
  },
  "gpuMsA": {
   "value": "0.52",
@@ -1530,6 +1722,22 @@
  "fpMBC": {
   "value": "1,633.6",
   "source": "efficiency.csv C_siglip_so400m_linear fp32_weights_mb"
+ },
+ "gpuMsD": {
+  "value": "15.16",
+  "source": "efficiency.csv D_mobileclip2_s3_linear gpu_ms_per_image_batch1_fp16"
+ },
+ "cpuMsD": {
+  "value": "111.5",
+  "source": "efficiency.csv D_mobileclip2_s3_linear cpu_ms_per_image_batch1_fp32_8threads"
+ },
+ "paramsMD": {
+  "value": "122.8",
+  "source": "efficiency.csv D_mobileclip2_s3_linear params / 1e6"
+ },
+ "fpMBD": {
+  "value": "468.4",
+  "source": "efficiency.csv D_mobileclip2_s3_linear fp32_weights_mb"
  },
  "gpuRatioCB": {
   "value": "11",
