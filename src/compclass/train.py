@@ -172,6 +172,13 @@ def run(cfg: Config, fold: int, test: bool = False) -> dict[str, Any]:
     model, spec = build_model(mc["key"], len(m.classes), mc.get("pretrained", True), **mc.get("kwargs", {}))
     if t.get("grad_checkpointing") and hasattr(model, "set_grad_checkpointing"):
         model.set_grad_checkpointing(True)  # recompute activations in backward: less VRAM, ~30% slower
+    if t.get("head_init"):  # LP-FT (Kumar et al. 2022): start from a fitted linear probe instead of a random head;
+        hi = np.load(str(t["head_init"]).format(fold=fold))  # {weight [C, D], bias [C]}, e.g. tools/views/probe_heads.py
+        head = model.get_classifier()
+        with torch.no_grad():
+            head.weight.copy_(torch.as_tensor(hi["weight"], dtype=head.weight.dtype))
+            head.bias.copy_(torch.as_tensor(hi["bias"], dtype=head.bias.dtype))
+        print(f"[{cfg['name']} f{fold}] head initialised from {str(t['head_init']).format(fold=fold)}", flush=True)
     model.to(device)
     n_params = sum(p.numel() for p in model.parameters())
 
@@ -228,7 +235,9 @@ def run(cfg: Config, fold: int, test: bool = False) -> dict[str, Any]:
         backbone_on = epoch >= t.get("freeze_epochs", 0)
         set_backbone_trainable(model, backbone_on, frozen)
         model.train()
-        if not backbone_on:  # a frozen CNN backbone should not keep updating its BatchNorm running statistics
+        # A frozen CNN backbone should not keep updating its BatchNorm running statistics; ``train.freeze_bn`` keeps
+        # them frozen for the whole run (small-batch fine-tuning of a BN network; the affine parameters still train).
+        if not backbone_on or t.get("freeze_bn"):
             for mod in model.modules():
                 if isinstance(mod, nn.modules.batchnorm._BatchNorm):
                     mod.eval()

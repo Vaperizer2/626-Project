@@ -1,0 +1,12 @@
+{
+ "model": "pe_core_l14_336",
+ "px": 336,
+ "fp32_mb": 1212.6315479278564,
+ "fp16_mb": 607.4895992279053,
+ "fp32_max_gap_random": 2.384185791015625e-06,
+ "fp32_argmax_agree_random": true,
+ "fp16_max_gap_random": 0.0065670013427734375,
+ "fp16_argmax_agree_random": true,
+ "real16_argmax_agree": 16,
+ "real16_max_gap": 0.014664649963378906
+}

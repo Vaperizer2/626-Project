@@ -322,14 +322,22 @@ def _big_clip(num_classes: int, pretrained: bool, name: str = "vit_huge_patch14_
 @_register("pe_core_t16_384", "Perception Encoder (contrastive image-text)", "vit_pe_core_tiny_patch16_384.fb",
            zeroshot=("PE-Core-T-16-384", "meta"), name="vit_pe_core_tiny_patch16_384.fb", crop_pct=1.0)
 def _pe_core_small(num_classes: int, pretrained: bool, name: str = "vit_pe_core_base_patch16_224.fb", **kw):
-    """PE-Core B/16 (93M, native 224 px; RoPE lets it run at 336), S/16 (24M) and T/16 (6M) at 384 px."""
+    """PE-Core B/16 (93M, native 224 px; RoPE lets it run at 336), S/16 (24M) and T/16 (6M) at 384 px.
+
+    The small members of Meta's Perception Encoder family (same MetaCLIP-style training as PE-Core L/G), the
+    efficiency study's cheap end; timm features are pre-projection, see tools/views/heads.py.
+    """
     return _timm(name, num_classes, pretrained, **kw)
 
 
 @_register("siglip2_b16_384", "SigLIP (sigmoid image-text)", "vit_base_patch16_siglip_384.v2_webli",
            zeroshot=("ViT-B-16-SigLIP2-384", "webli"), name="vit_base_patch16_siglip_384.v2_webli", crop_pct=1.0)
 def _siglip2_b16_384(num_classes: int, pretrained: bool, name: str = "vit_base_patch16_siglip_384.v2_webli", **kw):
-    """SigLIP 2 B/16 at 384 px (93M): October's best base-size probe (0.76 at 224 px), at full resolution."""
+    """SigLIP 2 B/16 at 384 px (93M): October's best base-size probe (0.76 at 224 px), at full resolution.
+
+    Same sigmoid image-text pre-training family as the deployed So400m tower, one size class down; the efficiency
+    study's like-for-like small SigLIP.
+    """
     return _timm(name, num_classes, pretrained, **kw)
 
 
@@ -339,12 +347,24 @@ def _siglip2_b16_384(num_classes: int, pretrained: bool, name: str = "vit_base_p
            zeroshot=("MobileCLIP2-S2", "dfndr2b"), name="fastvit_mci2.apple_mclip2_dfndr2b", crop_pct=1.0)
 @_register("mobileclip2_b", "MobileCLIP 2 (contrastive image-text, mobile)", "vit_base_mci_224.apple_mclip2_dfndr2b",
            zeroshot=("MobileCLIP2-B", "dfndr2b"), name="vit_base_mci_224.apple_mclip2_dfndr2b", crop_pct=1.0)
-def _mobileclip2(num_classes: int, pretrained: bool, name: str = "fastvit_mci2.apple_mclip2_dfndr2b", **kw):
+def _mobileclip2(num_classes: int, pretrained: bool, name: str = "fastvit_mci2.apple_mclip2_dfndr2b",
+                 trainable_stages: int | None = None, **kw):
     """MobileCLIP 2 (Apple, 2025): image-text encoders built for on-device latency, trained on DFNDR-2B.
 
     S2 (35M) and S3 (123M) are FastViT hybrids at 256 px; B (86M) is a ViT-B/16 at 224 px. Mean/std 0, 1.
+
+    ``trainable_stages: N`` (FastViT only) is the partial fine-tune analogue of ``train.trainable_blocks``: the stem
+    and all but the last N of the five stages stay frozen (``frozen_param_ids``, read by compclass.train); the
+    last N stages, ``final_conv`` and the head are trained. S3's stage 4 alone is 59M of its 123M parameters.
     """
-    return _timm(name, num_classes, pretrained, **kw)
+    model, spec = _timm(name, num_classes, pretrained, **kw)
+    if trainable_stages is not None:
+        if not hasattr(model, "stages"):
+            raise ValueError(f"{name} has no stages; use train.trainable_blocks for the ViT-B variant")
+        n = len(model.stages)
+        frozen = [model.stem, *list(model.stages)[: max(0, n - trainable_stages)]]
+        model.frozen_param_ids = {id(p) for mod in frozen for p in mod.parameters()}
+    return model, spec
 
 
 @_register("eva02_b16_clip_224", "EVA-02 CLIP (contrastive image-text)", "eva02_base_patch16_clip_224.merged2b",
@@ -354,7 +374,11 @@ def _mobileclip2(num_classes: int, pretrained: bool, name: str = "fastvit_mci2.a
 @_register("dfn2b_b16_224", "DFN CLIP (contrastive image-text)", "vit_base_patch16_clip_224.dfn2b",
            zeroshot=("ViT-B-16-quickgelu", "dfn2b"), name="vit_base_patch16_clip_224.dfn2b", crop_pct=1.0)
 def _base_clip(num_classes: int, pretrained: bool, name: str = "vit_base_patch16_clip_224.dfn2b", **kw):
-    """Base-size (86M) CLIP-style encoders at 224 px: DFN-2B, MetaCLIP 2.5B and EVA-02 B/16 (merged-2B)."""
+    """Base-size (86M) CLIP-style encoders at 224 px: DFN-2B, MetaCLIP 2.5B and EVA-02 B/16 (merged-2B).
+
+    Three ViT-B/16 image towers that differ only in their contrastive pre-training data and recipe; in the
+    efficiency study they bracket what a base-size CLIP tower gives on the 20 classes.
+    """
     return _timm(name, num_classes, pretrained, **kw)
 
 

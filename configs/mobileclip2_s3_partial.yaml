@@ -1,0 +1,6 @@
+# Efficiency study, step 3: partial fine-tune of MobileCLIP2-S3: stem and stages 0-3 frozen, stage 4 (59M of 123M)
+# + final_conv + head trained (model.kwargs.trainable_stages, registry). Sits between the probe and the full fine-tune.
+base: mobileclip2_s3_full.yaml
+name: mobileclip2_s3_partial
+model: {key: mobileclip2_s3, kwargs: {drop_path_rate: 0.1, trainable_stages: 1}}
+train: {lr: 1.0e-4, layer_decay: 0.8, epochs: 20, patience: 6}
