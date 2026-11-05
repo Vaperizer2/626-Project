@@ -2,8 +2,11 @@
 
 From Meiring van Niekerk, 2026-11-05. For the team lead to place in `docs/itri626_report/main.tex`.
 
-Nothing in the report, its generated tables, its figures, the two notebooks or `make_tables.py` has been changed on
-branch `Meiring`. This file lists where I would like text added and gives the text. Section numbers are those of the
+Nothing in the report has been changed on branch `Meiring`: `main.tex`, `make_tables.py`, the bibliography, the
+generated tables, `main.pdf` and the report's figures in `results/itri626/figures/` are as you left them. The two
+notebooks do include model D, but the three-models notebook now writes its figures to
+`results/itri626/figures_four_models/`; with `WITH_D = False` in its first cell it runs on A, B and C only and writes
+the report's figures as before. This file lists where I would like text added to the report and gives the text. Section numbers are those of the
 current PDF. Numbers are written out (the report's macros for D do not exist yet); every one comes from
 `results/itri626/metrics.json` and is listed with its source in `key_numbers_with_D.json` next to this file.
 
@@ -190,10 +193,10 @@ Efficiency row for D (timed on an RTX 4070 Laptop PC, not the report's RTX 4060 
 122.78 M parameters, 61,460 trainable, 256 px, checkpoint 0.26 MB, GPU 15.16 ms at batch 1 and 3.098 ms per image
 at batch 32, CPU 111.5 ms. C's tower on that same PC: 37.94, 27.877 and 1,563.3.
 
-## Figures with D (in `figures/`, PDF and PNG)
+## Figures with D (in `results/itri626/figures_four_models/`, PDF and PNG)
 
-The report's own figures in `results/itri626/figures/` are untouched. These are the four-model versions, should you
-want them: `fig03_augmentation`, `fig04_learning_curves`, `fig05_test_metrics`, `fig06_confusion_grid` (four count
+The report's own figures in `results/itri626/figures/` are untouched. These are the four-model versions, written by
+`notebooks/ITRI626_three_models.ipynb`, should you want them: `fig03_augmentation`, `fig04_learning_curves`, `fig05_test_metrics`, `fig06_confusion_grid` (four count
 matrices on one colour scale; it replaces the panel with C row-normalised), `fig06_confusion_D_…`,
 `fig07_per_class_f1`, `fig08_gallery_D_…` (D's correct and incorrect predictions), `fig11_ood_accuracy`,
 `fig12_efficiency`. D's colour is wine `#882255`, checked against the existing three for colour-vision deficiency.
@@ -225,5 +228,5 @@ matrices on one colour scale; it replaces the panel with C row-normalised), `fig
 ## If you would rather see it assembled
 
 A complete trial build exists on the local branch `Meiring-four-model-draft` (commit 2bd71b3, not pushed, not for
-merge): `main.tex`, `make_tables.py` and `extra.bib` with every insert above as macros, the notebook and helpers
-generalised to four models, and the rebuilt PDF. It is there only as a reference for the text and layout.
+merge): `main.tex`, `make_tables.py` and `extra.bib` with every insert above as macros, and the rebuilt PDF. It is
+there only as a reference for the text and layout.
