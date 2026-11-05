@@ -1,6 +1,7 @@
 [workspace]
 resolver = "3"
 members = ["crates/inference", "apps/gpui-demo"]
+exclude = ["vendor/gpui-pre-windows", "tools/windows-shader-check"]
 
 # Profiles live here: cargo ignores them in member manifests.
 [profile.release]
@@ -14,3 +15,6 @@ opt-level = 2
 # "*" leaves out workspace members. Unoptimised, inference's pixel loops make the GUI tests' demo-stack decode 10x slower.
 [profile.dev.package.inference]
 opt-level = 2
+
+[patch.crates-io]
+gpui-pre-windows = { path = "vendor/gpui-pre-windows" }
