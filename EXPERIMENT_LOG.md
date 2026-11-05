@@ -399,3 +399,11 @@ axis for the write-up. (4) The efficient frontier on this card is therefore SigL
 MobileCLIP2-S3 (0.801 / 9 ms); PE-Core L (0.835 / 26 ms) sits close to the line but is dominated once Fast's INT8
 trunk is counted. Conclusion of the study: frozen features + fused linear heads is the right recipe at every size,
 fine-tuning adds nothing at this data scale, and the choice is 4 pt of macro-F1 for a 3.6× latency and 3.4× size cut.
+
+Follow-up (same day): the Fast trunk's resolution without its INT8. SigLIP So400m at 308 px, crop 1.0, fp16: fused
+OOF 0.8222 F1 / 0.8244 acc, −1.81 ± 0.21 pt vs 384 px (0/5 folds), which matches the team lead's recorded Fast
+fit (0.826 OOF acc, INT8 trunk, exports/fast/fit_report.json), so the Fast model's accuracy cost is the resolution,
+not the quantisation. Under ORT CUDA fp16 in one session: SigLIP@384 31.9 ms, SigLIP@308 20.4 ms, MobileCLIP2-S3
+8.9 ms. The small model is therefore 2.3× faster than the Fast trunk at fp16 for 2.1 pt less (0.801 vs 0.822);
+Fast's INT8 engine under TensorRT will be faster than 20 ms, by an amount only measurable with its release files.
+Tooling: `extract_views.py key@px`, `fusion_table.py --siglip-view TAG`, `export_candidate.py --px`.

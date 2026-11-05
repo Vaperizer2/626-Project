@@ -1,0 +1,26 @@
+{
+ "onnxruntime": "1.31.1",
+ "rows": [
+  {
+   "graph": "exports/candidates/siglip_so400m_384/model_fp16.onnx",
+   "mb": 821.3566198348999,
+   "median_ms": 31.93995,
+   "p90_ms": 32.604209999999995,
+   "min_ms": 29.2373
+  },
+  {
+   "graph": "exports/candidates/siglip_so400m_308/model_fp16.onnx",
+   "mb": 820.8182897567749,
+   "median_ms": 20.3533,
+   "p90_ms": 20.57909,
+   "min_ms": 20.0019
+  },
+  {
+   "graph": "exports/candidates/mobileclip2_s3/model_fp16.onnx",
+   "mb": 240.49223709106445,
+   "median_ms": 8.885,
+   "p90_ms": 9.259770000000001,
+   "min_ms": 8.2396
+  }
+ ]
+}
