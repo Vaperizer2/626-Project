@@ -2,6 +2,7 @@
 development folds, paired per fold against SigLIP So400m at crop 1.0 and against each backbone's own probe.
 
     uv run python tools/views/fusion_table.py --model mobileclip2_s3 --model mobileclip2_b --model pe_core_b16_336
+    uv run python tools/views/fusion_table.py --siglip-view crop100@308      # SigLIP at the Fast trunk's 308 px
 
 Needs each key's feature cache (compclass.features), its heads (tools/views/heads.py) and, for the cross-check,
 its compclass.zeroshot OOF file. SigLIP's crop-1.0 cache comes from tools/views/extract_views.py.
@@ -27,7 +28,8 @@ def log_softmax(z):
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--model", action="append", required=True)
+    ap.add_argument("--model", action="append", default=[])
+    ap.add_argument("--siglip-view", action="append", default=[], help="extra SigLIP rows from another view cache tag, e.g. crop100@308")
     args = ap.parse_args()
     m = load_manifest("data/v2/manifest.json")
     dev = get_dev(m)
@@ -51,6 +53,9 @@ def main() -> None:
     Fs = np.load(CACHE / f"siglip_so400m_384-{FP}-crop100.npy").astype(np.float32)
     ref = score(Fs, Fs, hz["W"].astype(np.float32))
     rows = [("SigLIP So400m@384, crop 1.0 (reference)", ref)]
+    for tag in args.siglip_view:  # SigLIP under another view/input size, its own text head (identity projection)
+        Fv = np.load(CACHE / f"siglip_so400m_384-{FP}-{tag}.npy").astype(np.float32)
+        rows.append((f"SigLIP So400m, {tag}", score(Fv, Fv, hz["W"].astype(np.float32))))
     for key in args.model:
         F = np.load(CACHE / f"{key}-{FP}.npy").astype(np.float32)
         pr = np.load(HEADS / f"{key}_proj.npz")

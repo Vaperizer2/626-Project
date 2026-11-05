@@ -1,0 +1,12 @@
+{
+ "model": "siglip_so400m_384",
+ "px": 308,
+ "fp32_mb": 1.974654197692871,
+ "fp16_mb": 820.8182897567749,
+ "fp32_max_gap_random": 4.76837158203125e-06,
+ "fp32_argmax_agree_random": true,
+ "fp16_max_gap_random": 0.0040607452392578125,
+ "fp16_argmax_agree_random": true,
+ "real16_argmax_agree": 16,
+ "real16_max_gap": 0.01636219024658203
+}

@@ -57,10 +57,10 @@ class Candidate(nn.Module):
         return logits, F.softmax(logits, dim=1)
 
 
-def recipe_model(key, m):
+def recipe_model(key, m, px=None):
     dev = get_dev(m)
     y = np.array([m.class_to_idx[r["label"]] for r in dev]); cl = np.array([r["cluster"] for r in dev])
-    view = "-crop100" if key == "siglip_so400m_384" else ""
+    view = ("-crop100" if key == "siglip_so400m_384" else "") + (f"@{px}" if px else "")
     Fc = np.load(CACHE / f"{key}-{FP}{view}.npy").astype(np.float32)
     search = fit_probe(Fc, y, cl)
     sc, lr = search.best_estimator_.named_steps["standardscaler"], search.best_estimator_.named_steps["logisticregression"]
@@ -70,7 +70,8 @@ def recipe_model(key, m):
     else:
         W = np.load(HEADS / f"{key}_W.npy"); pr = np.load(HEADS / f"{key}_proj.npz"); pw, pb = pr["weight"], pr["bias"]
     head = FusedHead(sc.mean_, sc.scale_, lr.coef_, lr.intercept_, pw, pb, W)
-    tower, spec = build_model(key, 0, pretrained=True, **({"crop_pct": 1.0} if view else {}))  # the view the cache was extracted with
+    kw = ({"crop_pct": 1.0} if view else {}) | ({"input_size": px} if px else {})  # the view the cache was extracted with
+    tower, spec = build_model(key, 0, pretrained=True, **kw)
     model = Candidate(tower.eval(), head).eval()
     # the exported head must reproduce the numpy recipe on cached features
     with torch.no_grad():
@@ -87,12 +88,13 @@ def main() -> None:
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--model"); g.add_argument("--checkpoint")
     ap.add_argument("--out", required=True)
+    ap.add_argument("--px", type=int, help="input size override (needs the matching view cache, e.g. crop100@308)")
     a = ap.parse_args()
     import onnxruntime as ort
     m = load_manifest("data/v2/manifest.json")
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
     if a.model:
-        model, spec, dev, Fc = recipe_model(a.model, m)
+        model, spec, dev, Fc = recipe_model(a.model, m, a.px)
         key, extra = a.model, {"recipe": "probe (all dev rows) + zero-shot, T_zs 50, w_zs 0.25, uncalibrated"}
     else:
         from compclass.export import load_checkpoint_model
