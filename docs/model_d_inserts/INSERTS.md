@@ -45,7 +45,8 @@ B, C, R1 and R2 in those files were checked to be unchanged. D's head was scored
    the lecturer's approval. A, B and C satisfy the brief without it.
 2. **Page budget.** The body is at the recommended 15 pages now. In a trial build with every insert below it grew to
    17; with the hyperparameter table moved to Appendix B it was 15.4. Inserts are marked **core** or **optional** so
-   you can choose. The core set alone is about 0.6 page.
+   you can choose. The core set alone is about 0.6 page. Item 15 below proposes one cut, the distillation passage,
+   that gives back about a fifth of a page.
 3. **Two sentences in the current text stop being true** once D is in the tables (inserts 6 and 13).
 
 ## Inserts, in report order
@@ -174,6 +175,33 @@ In the ranking sentence, add D between C and B: "…a frozen MobileCLIP2-S3 hybr
 
 > Where C is too heavy, model D is the second choice: 5.0 points lower with 3.5 times fewer parameters, 2.5 times
 > faster on a GPU and 14 times on a CPU (about 112 ms per image), for non-commercial use under its weights' licence.
+
+### 15. Proposed cut to make room: the distillation experiment (optional)
+
+Not an insert but a shortening, so that model D fits in the page budget. Model D is a full model with a test result;
+the distillation of C into the scratch CNN is a side experiment whose gain did not show on the test split. The full
+study stays in the notebook's section 8 and in `docs/SCRATCH_CNN_IMPROVEMENT_REPORT.md`.
+
+- **Section 6.3 "Can the scratch CNN be improved?"** Replace everything from "Two things helped (Table 7)." to the
+  end of the paragraph with:
+
+  > One thing helped (Table 7): training to convergence (200 instead of 120 epochs) added 3.5 points of five-fold
+  > macro-F1 on every fold and 5.6 points on the test split; that schedule is the model A reported in this paper. It
+  > needs ten times the epochs of the fine-tuned network (200 against 20) and still overfits: 0.83 training accuracy
+  > against 0.378 on validation at the selected epoch. Distilling model C into the CNN [Hinton et al.] gained 4.6
+  > points on the development folds but nothing measurable on the test set; the study is in
+  > `docs/SCRATCH_CNN_IMPROVEMENT_REPORT.md`. On the 407 out-of-source Wikimedia photographs the scratch network falls
+  > to 0.257 macro-F1 against 0.816 for the deployed SigLIP model. The lesson is the main comparison's: features
+  > learned from 2,010 photographs of one web scrape describe that scrape, and the limit is the data, not the
+  > training budget.
+
+- **Table 7.** Remove the row "A + distillation from C".
+- **Section 7 "Conclusion".** In "…nothing in architecture, regularisation or initialisation gained anything, and
+  the one further gain came from distilling model C", drop the last clause.
+
+The message this leaves about model A: a scratch CNN can be trained to convergence, and doing so was worth 5.6 test
+points, but it needs ten times the epochs of the fine-tuned network and still memorises its 2,010 training images.
+It is not expensive to train (about 6.5 minutes on a laptop GPU); the limit is the data.
 
 ## Table rows (ready-made LaTeX in `tables/`)
 

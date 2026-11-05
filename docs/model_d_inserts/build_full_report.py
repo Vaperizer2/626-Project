@@ -247,7 +247,7 @@ def tidy(md: str) -> dict:
     body = re.sub(r'(src|data)="([^"/]+)\.pdf"', r'\1="figures/\2.png"', body)
     body = re.sub(r"\]\(([^)/]+)\.pdf\)", r"](figures/\1.png)", body)
     body = re.sub(r'<embed src="(figures/[^"]+)"[^>]*/>', r'<img src="\1" alt="" />', body)
-    body = re.sub(r"</?span[^>]*>", "", body)                      # pandoc's math / small-caps / colour wrappers
+    body = re.sub(r"</?span[^>]*>", "", body).replace("<!-- -->", "")  # pandoc's math / small-caps / colour wrappers
     body = re.sub(r"^</?div[^>]*>\n?", "", body, flags=re.M)        # size wrappers around the command block
     body = re.sub(r"\n{3,}", "\n\n", body)
     return {"abstract": demath(abstract), "subtitle": demath(subtitle), "body": demath(body)}
@@ -459,7 +459,8 @@ def mark(old_md: str, new_md: str) -> tuple[str, dict]:
             if k == "prose":
                 out.append(mark_lines(ob, nb))
             elif k == "table":
-                out += [NOTE_T, nb]
+                cut = "distillation from C" in ob and "distillation from C" not in nb
+                out += ['> **Proposed cut:** the row "A + distillation from C" is removed from this table.' if cut else NOTE_T, nb]
             elif k == "figure":
                 out.append(mark_figure(ob, nb))
             elif k == "heading":
