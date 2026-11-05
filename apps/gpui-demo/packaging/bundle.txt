@@ -24,5 +24,12 @@ exports/fast/model.json
 exports/fast/preprocess.json
 exports/fast/runtime.json
 exports/fast/labels.json
+# Small (480 MB fp32): MobileCLIP2-S3 tower + fused heads, efficiency study 2026-11-05 (docs/EFFICIENCY_STUDY.md);
+# Apple research-licence weights, see LICENSES/MODEL-WEIGHTS-MobileCLIP2.txt
+exports/mobileclip2_s3/model.onnx
+exports/mobileclip2_s3/model.json
+exports/mobileclip2_s3/preprocess.json
+exports/mobileclip2_s3/labels.json
 apps/gpui-demo/demo_stack demo_stack
 apps/gpui-demo/packaging/licenses/DATASET.txt LICENSES/DATASET.txt
+apps/gpui-demo/packaging/licenses/MODEL-WEIGHTS-MobileCLIP2.txt LICENSES/MODEL-WEIGHTS-MobileCLIP2.txt

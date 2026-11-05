@@ -58,6 +58,10 @@ MODELS = [
     # providers, optimisation level and batch come from its runtime.json (TensorRT fp16 + int8, engine cache)
     dict(dir="fast", id="fast", graph="model.onnx", external=["model.onnx.data"], precision="int8_qdq",
          heads=[classify("fast", "Fast (fused SigLIP, 308 px INT8)", "Fast", "probs", True)]),
+    # efficiency-study candidate (2026-11-05): MobileCLIP2-S3 tower + the deployed recipe, tools/views/package_candidate.py
+    dict(dir="mobileclip2_s3", id="mobileclip2_s3", graph="model.onnx", external=[], precision="fp32",
+         heads=[classify("small", "Small (fused MobileCLIP2-S3, 256 px)", "Small", "probs", True)],
+         providers=GPU_THEN_CPU, opt_level=LEGACY_OPT_LEVEL),
 ]
 # The first default whose preferred provider registers is the app's start-up head; the last needs only its files.
 DEFAULT = ["fast", "deployed"]
@@ -251,10 +255,14 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--exports", default=str(Path(__file__).resolve().parents[1] / "exports"))
     ap.add_argument("--check", action="store_true", help="compare with the committed files instead of writing")
+    ap.add_argument("--only", action="append", default=[], metavar="ID",
+                    help="build only these manifests (a machine without every model's graph files); the index still lists all")
     a = ap.parse_args()
     exports = Path(a.exports)
     outputs = {}
     for spec in MODELS:
+        if a.only and spec["id"] not in a.only:
+            continue
         outputs[exports / spec["dir"] / "model.json"] = render(build(exports, spec, a.check))
     ids = [h["id"] for spec in MODELS for h in spec["heads"]]
     check(len(ids) == len(set(ids)), f"head ids are not unique: {ids}")

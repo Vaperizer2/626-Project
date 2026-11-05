@@ -1,0 +1,91 @@
+{
+ "schema": "model-manifest/1",
+ "id": "mobileclip2_s3",
+ "graph": {
+  "file": "model.onnx",
+  "external_data": [],
+  "precision": "fp32"
+ },
+ "files": {
+  "labels.json": {
+   "bytes": 328,
+   "sha256": "38c3d2dfe416a401c872cb14ca0228f9f4fb4f8914d9d0eae76d9c2a8c1ad708"
+  },
+  "model.onnx": {
+   "bytes": 502446518,
+   "sha256": "faf118f8ebe8064642341eb4924afffa13cbf601f376a45003985d14193e4052"
+  }
+ },
+ "input": {
+  "name": "input",
+  "dtype": "f32",
+  "layout": "NCHW",
+  "size": [
+   256,
+   256
+  ],
+  "batch": {
+   "max": 1
+  },
+  "preprocess": {
+   "kind": "resize_short_center_crop",
+   "resize_short_side": 256,
+   "filter": "pillow_bicubic",
+   "color": "RGB",
+   "scale": 0.00392156862745098,
+   "mean": [
+    0.48145466,
+    0.4578275,
+    0.40821073
+   ],
+   "std": [
+    0.26862954,
+    0.26130258,
+    0.27577711
+   ]
+  }
+ },
+ "heads": [
+  {
+   "id": "small",
+   "title": "Small (fused MobileCLIP2-S3, 256 px)",
+   "short": "Small",
+   "task": {
+    "kind": "classify",
+    "readout": {
+     "kind": "probs",
+     "output": "probs"
+    },
+    "labels": "labels.json",
+    "calibration": {
+     "kind": "temperature",
+     "t": 1.099745273590088,
+     "in_graph": true
+    },
+    "decision": {
+     "kind": "abstain",
+     "below": 0.550000011920929
+    }
+   }
+  }
+ ],
+ "runtime": {
+  "graph_optimization_level": "ORT_ENABLE_LAYOUT",
+  "providers": [
+   {
+    "ep": "cuda"
+   },
+   {
+    "ep": "cpu"
+   }
+  ]
+ },
+ "provenance": {
+  "model": "mobileclip2_s3",
+  "manifest_fingerprint": "431315e87d2612cb",
+  "details": [
+   "export_report.json",
+   "fit_report.json"
+  ]
+ }
+}

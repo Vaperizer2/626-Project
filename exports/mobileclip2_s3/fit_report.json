@@ -1,0 +1,122 @@
+{
+ "model": "mobileclip2_s3",
+ "oof_accuracy": 0.802547770700637,
+ "oof_macro_f1": 0.8021716629200455,
+ "oof_inscope_accuracy": 0.8373893805309734,
+ "oof_probe_only_accuracy": 0.7929936305732485,
+ "oof_probe_only_macro_f1": 0.7930700868617472,
+ "temperature": 1.0997452926865614,
+ "ece_before": 0.024964527648155883,
+ "ece_after": 0.03180394863567438,
+ "abstain_threshold": 0.55,
+ "abstain_table": [
+  {
+   "threshold": 0.0,
+   "coverage": 1.0,
+   "accepted_acc": 0.802547770700637
+  },
+  {
+   "threshold": 0.05,
+   "coverage": 1.0,
+   "accepted_acc": 0.802547770700637
+  },
+  {
+   "threshold": 0.1,
+   "coverage": 1.0,
+   "accepted_acc": 0.802547770700637
+  },
+  {
+   "threshold": 0.15,
+   "coverage": 0.9932324840764332,
+   "accepted_acc": 0.8072144288577154
+  },
+  {
+   "threshold": 0.2,
+   "coverage": 0.9796974522292994,
+   "accepted_acc": 0.814303128809427
+  },
+  {
+   "threshold": 0.25,
+   "coverage": 0.9546178343949044,
+   "accepted_acc": 0.8294412010008341
+  },
+  {
+   "threshold": 0.3,
+   "coverage": 0.9299363057324841,
+   "accepted_acc": 0.8441780821917808
+  },
+  {
+   "threshold": 0.35,
+   "coverage": 0.9028662420382165,
+   "accepted_acc": 0.857583774250441
+  },
+  {
+   "threshold": 0.4,
+   "coverage": 0.8757961783439491,
+   "accepted_acc": 0.8690909090909091
+  },
+  {
+   "threshold": 0.45,
+   "coverage": 0.8427547770700637,
+   "accepted_acc": 0.8861596598960794
+  },
+  {
+   "threshold": 0.5,
+   "coverage": 0.8128980891719745,
+   "accepted_acc": 0.8996082272282077
+  },
+  {
+   "threshold": 0.55,
+   "coverage": 0.7838375796178344,
+   "accepted_acc": 0.9116302691721686
+  },
+  {
+   "threshold": 0.6,
+   "coverage": 0.7523885350318471,
+   "accepted_acc": 0.917989417989418
+  },
+  {
+   "threshold": 0.65,
+   "coverage": 0.7281050955414012,
+   "accepted_acc": 0.9250956806998359
+  },
+  {
+   "threshold": 0.7,
+   "coverage": 0.6954617834394905,
+   "accepted_acc": 0.934745277618775
+  },
+  {
+   "threshold": 0.75,
+   "coverage": 0.6616242038216561,
+   "accepted_acc": 0.9434416365824309
+  },
+  {
+   "threshold": 0.8,
+   "coverage": 0.6218152866242038,
+   "accepted_acc": 0.9507042253521126
+  },
+  {
+   "threshold": 0.85,
+   "coverage": 0.57921974522293,
+   "accepted_acc": 0.9560137457044674
+  },
+  {
+   "threshold": 0.9,
+   "coverage": 0.5262738853503185,
+   "accepted_acc": 0.9652042360060514
+  },
+  {
+   "threshold": 0.95,
+   "coverage": 0.4299363057324841,
+   "accepted_acc": 0.9703703703703703
+  }
+ ],
+ "final_C": 0.01,
+ "t_zs": 50.0,
+ "w_zs": 0.25,
+ "manifest": "431315e87d2612cb",
+ "n_dev": 2512,
+ "features": "results\\cache\\features\\mobileclip2_s3-431315e87d2612cb-1fdfce4c916e.npy",
+ "text_embeddings": "results\\cache\\zeroshot\\mobileclip2_s3_W.npy",
+ "projection": "results\\cache\\zeroshot\\mobileclip2_s3_proj.npz"
+}
