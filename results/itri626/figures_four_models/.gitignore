@@ -1,0 +1,12 @@
+# Written by notebooks/ITRI626_three_models.ipynb with WITH_D = True. Only the figures that differ from the report's
+# three-model versions in results/itri626/figures/ are tracked; the rest are identical in content and rebuilt locally.
+fig01_*
+fig02_*
+fig06_confusion_A_*
+fig06_confusion_B_*
+fig06_confusion_C_*
+fig08_gallery_A_*
+fig08_gallery_B_*
+fig08_gallery_C_*
+fig09_*
+fig10_*
