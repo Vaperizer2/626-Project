@@ -10,6 +10,15 @@ the report's figures as before. This file lists where I would like text added to
 current PDF. Numbers are written out (the report's macros for D do not exist yet); every one comes from
 `results/itri626/metrics.json` and is listed with its source in `key_numbers_with_D.json` next to this file.
 
+## The whole report with the additions in place
+
+`FULL_REPORT_WITH_MODEL_D.md`, next to this file, is the complete report as Markdown with model D written in. Added
+text is underlined, removed text is struck through, and a quoted note marks each changed or new table and figure.
+Its figures are in `figures/` (the report's own for the unchanged ones, the four-model versions for the changed
+ones, and the workflow diagram rendered from the TikZ source). It was generated from the trial build by
+`build_full_report.py`; nothing under `docs/itri626_report/` was edited. The numbered list below gives the same
+additions one at a time, with a core or optional mark.
+
 ## What model D is
 
 A fourth main model trained and scored by the course pipeline exactly as model C, with a smaller backbone.
