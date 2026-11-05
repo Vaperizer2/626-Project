@@ -1,0 +1,2354 @@
+{
+ "nRaw": {
+  "value": "3,530",
+  "source": "data/v2/leakage_report.json counts.raw_files"
+ },
+ "nUnique": {
+  "value": "2,943",
+  "source": "data/v2/leakage_report.json counts.unique_sha256"
+ },
+ "nDupGroups": {
+  "value": "533",
+  "source": "data/v2/leakage_report.json counts.exact_dup_groups"
+ },
+ "nDupRedundant": {
+  "value": "587",
+  "source": "data/v2/leakage_report.json counts.exact_dup_redundant_files"
+ },
+ "nConflictGroups": {
+  "value": "13",
+  "source": "data/v2/leakage_report.json counts.exact_dup_conflicting_label_groups"
+ },
+ "nConflictFiles": {
+  "value": "27",
+  "source": "data/v2/splits/split_summary.csv TOTAL.excluded_conflict_files"
+ },
+ "nCorrupt": {
+  "value": "0",
+  "source": "leakage_report unique_sha256 - decoded_unique"
+ },
+ "nRows": {
+  "value": "2,930",
+  "source": "data/v2/leakage_report.json counts.rows"
+ },
+ "nClusters": {
+  "value": "2,787",
+  "source": "data/v2/leakage_report.json counts.clusters"
+ },
+ "nNearDupClusters": {
+  "value": "91",
+  "source": "data/v2/leakage_report.json counts.near_dup_clusters"
+ },
+ "nNearDupRows": {
+  "value": "234",
+  "source": "data/v2/leakage_report.json counts.rows_in_near_dup_clusters"
+ },
+ "nNearDupMixed": {
+  "value": "2",
+  "source": "data/v2/leakage_report.json counts.near_dup_mixed_label_clusters"
+ },
+ "nNearDupMixedRows": {
+  "value": "4",
+  "source": "data/v2/leakage_report.json counts.near_dup_label_conflict_rows_kept"
+ },
+ "maxClusterSize": {
+  "value": "29",
+  "source": "data/v2/leakage_report.json counts.near_dup_cluster_size_hist"
+ },
+ "nOOD": {
+  "value": "816",
+  "source": "data/v2/leakage_report.json counts.ood_suspect"
+ },
+ "pctOOD": {
+  "value": "27.8",
+  "source": "ood_suspect / rows"
+ },
+ "nAlpha": {
+  "value": "345",
+  "source": "data/v2/leakage_report.json counts.flags.alpha_composited"
+ },
+ "nJPEG": {
+  "value": "1,486",
+  "source": "data/v2/leakage_report.json counts.orig_format_unique_decoded.JPEG"
+ },
+ "nWEBP": {
+  "value": "787",
+  "source": "data/v2/leakage_report.json counts.orig_format_unique_decoded.WEBP"
+ },
+ "nPNG": {
+  "value": "402",
+  "source": "data/v2/leakage_report.json counts.orig_format_unique_decoded.PNG"
+ },
+ "nAVIF": {
+  "value": "245",
+  "source": "data/v2/leakage_report.json counts.orig_format_unique_decoded.AVIF"
+ },
+ "nGIF": {
+  "value": "20",
+  "source": "data/v2/leakage_report.json counts.orig_format_unique_decoded.GIF"
+ },
+ "nMPO": {
+  "value": "3",
+  "source": "data/v2/leakage_report.json counts.orig_format_unique_decoded.MPO"
+ },
+ "phashRadius": {
+  "value": "10",
+  "source": "leakage_report near_dup_rule.phash_radius"
+ },
+ "cosWithPhash": {
+  "value": "0.85",
+  "source": "leakage_report near_dup_rule.cos_with_phash"
+ },
+ "cosOnly": {
+  "value": "0.92",
+  "source": "leakage_report near_dup_rule.cos_only"
+ },
+ "oodThreshold": {
+  "value": "0.25",
+  "source": "leakage_report ood_rule.threshold"
+ },
+ "nDistractors": {
+  "value": "9",
+  "source": "leakage_report ood_rule.distractors"
+ },
+ "splitSeed": {
+  "value": "42",
+  "source": "data/v2/splits/split_info.json seed"
+ },
+ "fingerprint": {
+  "value": "431315e87d2612cb",
+  "source": "data/v2/splits/split_info.json fingerprint"
+ },
+ "nTrain": {
+  "value": "2,010",
+  "source": "data/v2/splits/split_info.json sizes.train"
+ },
+ "nVal": {
+  "value": "502",
+  "source": "data/v2/splits/split_info.json sizes.val"
+ },
+ "nTest": {
+  "value": "418",
+  "source": "data/v2/splits/split_info.json sizes.test"
+ },
+ "pctTrain": {
+  "value": "68.6",
+  "source": "split_info sizes.train / total"
+ },
+ "pctVal": {
+  "value": "17.1",
+  "source": "split_info sizes.val / total"
+ },
+ "pctTest": {
+  "value": "14.3",
+  "source": "split_info sizes.test / total"
+ },
+ "classMax": {
+  "value": "177",
+  "source": "data/v2/splits/split_summary.csv final_rows (switch)"
+ },
+ "classMaxName": {
+  "value": "switch",
+  "source": "data/v2/splits/split_summary.csv"
+ },
+ "classMin": {
+  "value": "110",
+  "source": "data/v2/splits/split_summary.csv final_rows (connector)"
+ },
+ "classMinName": {
+  "value": "connector",
+  "source": "data/v2/splits/split_summary.csv"
+ },
+ "imbalance": {
+  "value": "1.61",
+  "source": "data/v2/splits/split_summary.csv max/min final_rows"
+ },
+ "trainMin": {
+  "value": "76",
+  "source": "data/v2/splits/split_summary.csv train min"
+ },
+ "trainMax": {
+  "value": "121",
+  "source": "data/v2/splits/split_summary.csv train max"
+ },
+ "testMin": {
+  "value": "16",
+  "source": "data/v2/splits/split_summary.csv test min"
+ },
+ "testMax": {
+  "value": "25",
+  "source": "data/v2/splits/split_summary.csv test max"
+ },
+ "nSwitchOOD": {
+  "value": "121",
+  "source": "data/v2/splits/split_summary.csv switch.ood_flagged"
+ },
+ "nSwitch": {
+  "value": "177",
+  "source": "data/v2/splits/split_summary.csv switch.final_rows"
+ },
+ "nTransformerOOD": {
+  "value": "64",
+  "source": "data/v2/splits/split_summary.csv transformer.ood_flagged"
+ },
+ "nTransformer": {
+  "value": "128",
+  "source": "data/v2/splits/split_summary.csv transformer.final_rows"
+ },
+ "legValEntries": {
+  "value": "522",
+  "source": "leakage_report legacy_split.val_test_vs_train.val.entries"
+ },
+ "legTestEntries": {
+  "value": "523",
+  "source": "leakage_report legacy_split.val_test_vs_train.test.entries"
+ },
+ "legValCopies": {
+  "value": "128",
+  "source": "leakage_report legacy val exact_byte_copy_of_legacy_train"
+ },
+ "legTestCopies": {
+  "value": "115",
+  "source": "leakage_report legacy test exact_byte_copy_of_legacy_train"
+ },
+ "legValCluster": {
+  "value": "151",
+  "source": "leakage_report legacy val share_cluster_with_legacy_train"
+ },
+ "legTestCluster": {
+  "value": "141",
+  "source": "leakage_report legacy test share_cluster_with_legacy_train"
+ },
+ "oodTrain": {
+  "value": "565",
+  "source": "data/v2/splits/train.csv sum(ood_suspect)"
+ },
+ "oodVal": {
+  "value": "139",
+  "source": "data/v2/splits/val.csv sum(ood_suspect)"
+ },
+ "oodTest": {
+  "value": "112",
+  "source": "data/v2/splits/test.csv sum(ood_suspect)"
+ },
+ "nTestClean": {
+  "value": "306",
+  "source": "test rows - ood_suspect"
+ },
+ "bestA": {
+  "value": "184",
+  "source": "results/itri626/runs/A_scratch_cnn.json best_epoch + 1 (0-based in file)"
+ },
+ "epochsA": {
+  "value": "200",
+  "source": "results/itri626/runs/A_scratch_cnn.json epochs_run"
+ },
+ "maxEpochsA": {
+  "value": "200",
+  "source": "results/itri626/runs/A_scratch_cnn.json max epochs"
+ },
+ "timeA": {
+  "value": "390.3",
+  "source": "results/itri626/runs/A_scratch_cnn.json train_time_s"
+ },
+ "bestB": {
+  "value": "19",
+  "source": "results/itri626/runs/B_convnext_tiny.json best_epoch + 1 (0-based in file)"
+ },
+ "epochsB": {
+  "value": "20",
+  "source": "results/itri626/runs/B_convnext_tiny.json epochs_run"
+ },
+ "maxEpochsB": {
+  "value": "20",
+  "source": "results/itri626/runs/B_convnext_tiny.json max epochs"
+ },
+ "timeB": {
+  "value": "120.0",
+  "source": "results/itri626/runs/B_convnext_tiny.json train_time_s"
+ },
+ "bestC": {
+  "value": "14",
+  "source": "results/itri626/runs/C_siglip_so400m_linear.json best_epoch + 1 (0-based in file)"
+ },
+ "epochsC": {
+  "value": "34",
+  "source": "results/itri626/runs/C_siglip_so400m_linear.json epochs_run"
+ },
+ "maxEpochsC": {
+  "value": "200",
+  "source": "results/itri626/runs/C_siglip_so400m_linear.json max epochs"
+ },
+ "timeC": {
+  "value": "1.7",
+  "source": "results/itri626/runs/C_siglip_so400m_linear.json train_time_s"
+ },
+ "bestD": {
+  "value": "11",
+  "source": "results/itri626/runs/D_mobileclip2_s3_linear.json best_epoch + 1 (0-based in file)"
+ },
+ "epochsD": {
+  "value": "31",
+  "source": "results/itri626/runs/D_mobileclip2_s3_linear.json epochs_run"
+ },
+ "maxEpochsD": {
+  "value": "200",
+  "source": "results/itri626/runs/D_mobileclip2_s3_linear.json max epochs"
+ },
+ "timeD": {
+  "value": "2.4",
+  "source": "results/itri626/runs/D_mobileclip2_s3_linear.json train_time_s"
+ },
+ "vramA": {
+  "value": "435",
+  "source": "metrics.json A peak_vram_mb"
+ },
+ "vramB": {
+  "value": "2,312",
+  "source": "metrics.json B peak_vram_mb"
+ },
+ "paramsHead": {
+  "value": "23,060",
+  "source": "runs/C trainable_params"
+ },
+ "paramsA": {
+  "value": "1,187,636",
+  "source": "hyperparameters.csv A total_params"
+ },
+ "paramsB": {
+  "value": "27,835,508",
+  "source": "hyperparameters.csv B total_params"
+ },
+ "paramsC": {
+  "value": "428,248,660",
+  "source": "hyperparameters.csv C total_params"
+ },
+ "paramsD": {
+  "value": "122,775,668",
+  "source": "hyperparameters.csv D total_params"
+ },
+ "paramsHeadD": {
+  "value": "61,460",
+  "source": "runs/D trainable_params"
+ },
+ "nTies": {
+  "value": "3",
+  "source": "metrics.json head_weight_decay_grid: count at max val_macro_f1"
+ },
+ "nTiesD": {
+  "value": "4",
+  "source": "metrics.json head_weight_decay_grid_D: count at max val_macro_f1"
+ },
+ "gpuName": {
+  "value": "NVIDIA GeForce RTX 4060 Ti",
+  "source": "results/itri626/environment.json gpu.name"
+ },
+ "gpuMem": {
+  "value": "7.7",
+  "source": "results/itri626/environment.json gpu.memory_gib"
+ },
+ "accA": {
+  "value": "0.400",
+  "source": "metrics.json models.A_scratch_cnn.test.accuracy"
+ },
+ "foneA": {
+  "value": "0.392",
+  "source": "metrics.json models.A_scratch_cnn.test.macro_f1"
+ },
+ "mpA": {
+  "value": "0.399",
+  "source": "metrics.json models.A_scratch_cnn.test.macro_precision"
+ },
+ "mrA": {
+  "value": "0.391",
+  "source": "metrics.json models.A_scratch_cnn.test.macro_recall"
+ },
+ "balA": {
+  "value": "0.391",
+  "source": "metrics.json models.A_scratch_cnn.test.balanced_accuracy"
+ },
+ "wfoneA": {
+  "value": "0.400",
+  "source": "metrics.json models.A_scratch_cnn.test.weighted_f1"
+ },
+ "loglossA": {
+  "value": "2.361",
+  "source": "metrics.json models.A_scratch_cnn.test.log_loss"
+ },
+ "nCorrectA": {
+  "value": "167",
+  "source": "preds/A_scratch_cnn_test.npz argmax==y"
+ },
+ "nWrongA": {
+  "value": "251",
+  "source": "preds/A_scratch_cnn_test.npz argmax!=y"
+ },
+ "accLoA": {
+  "value": "0.354",
+  "source": "bootstrap (2000, rng 0) 2.5 pct"
+ },
+ "accHiA": {
+  "value": "0.445",
+  "source": "bootstrap 97.5 pct"
+ },
+ "foneLoA": {
+  "value": "0.342",
+  "source": "bootstrap macro-F1 2.5 pct"
+ },
+ "foneHiA": {
+  "value": "0.432",
+  "source": "bootstrap macro-F1 97.5 pct"
+ },
+ "valAccA": {
+  "value": "0.378",
+  "source": "metrics.json models.A_scratch_cnn.val_at_best_epoch.accuracy"
+ },
+ "valFoneA": {
+  "value": "0.374",
+  "source": "metrics.json models.A_scratch_cnn.val_at_best_epoch.macro_f1"
+ },
+ "confOkA": {
+  "value": "0.67",
+  "source": "preds/A_scratch_cnn_test.npz mean max-prob on correct"
+ },
+ "confBadA": {
+  "value": "0.39",
+  "source": "preds/A_scratch_cnn_test.npz mean max-prob on wrong"
+ },
+ "accB": {
+  "value": "0.636",
+  "source": "metrics.json models.B_convnext_tiny.test.accuracy"
+ },
+ "foneB": {
+  "value": "0.628",
+  "source": "metrics.json models.B_convnext_tiny.test.macro_f1"
+ },
+ "mpB": {
+  "value": "0.642",
+  "source": "metrics.json models.B_convnext_tiny.test.macro_precision"
+ },
+ "mrB": {
+  "value": "0.630",
+  "source": "metrics.json models.B_convnext_tiny.test.macro_recall"
+ },
+ "balB": {
+  "value": "0.630",
+  "source": "metrics.json models.B_convnext_tiny.test.balanced_accuracy"
+ },
+ "wfoneB": {
+  "value": "0.632",
+  "source": "metrics.json models.B_convnext_tiny.test.weighted_f1"
+ },
+ "loglossB": {
+  "value": "1.346",
+  "source": "metrics.json models.B_convnext_tiny.test.log_loss"
+ },
+ "nCorrectB": {
+  "value": "266",
+  "source": "preds/B_convnext_tiny_test.npz argmax==y"
+ },
+ "nWrongB": {
+  "value": "152",
+  "source": "preds/B_convnext_tiny_test.npz argmax!=y"
+ },
+ "accLoB": {
+  "value": "0.591",
+  "source": "bootstrap (2000, rng 0) 2.5 pct"
+ },
+ "accHiB": {
+  "value": "0.682",
+  "source": "bootstrap 97.5 pct"
+ },
+ "foneLoB": {
+  "value": "0.578",
+  "source": "bootstrap macro-F1 2.5 pct"
+ },
+ "foneHiB": {
+  "value": "0.668",
+  "source": "bootstrap macro-F1 97.5 pct"
+ },
+ "valAccB": {
+  "value": "0.618",
+  "source": "metrics.json models.B_convnext_tiny.val_at_best_epoch.accuracy"
+ },
+ "valFoneB": {
+  "value": "0.617",
+  "source": "metrics.json models.B_convnext_tiny.val_at_best_epoch.macro_f1"
+ },
+ "confOkB": {
+  "value": "0.76",
+  "source": "preds/B_convnext_tiny_test.npz mean max-prob on correct"
+ },
+ "confBadB": {
+  "value": "0.43",
+  "source": "preds/B_convnext_tiny_test.npz mean max-prob on wrong"
+ },
+ "accC": {
+  "value": "0.823",
+  "source": "metrics.json models.C_siglip_so400m_linear.test.accuracy"
+ },
+ "foneC": {
+  "value": "0.817",
+  "source": "metrics.json models.C_siglip_so400m_linear.test.macro_f1"
+ },
+ "mpC": {
+  "value": "0.827",
+  "source": "metrics.json models.C_siglip_so400m_linear.test.macro_precision"
+ },
+ "mrC": {
+  "value": "0.821",
+  "source": "metrics.json models.C_siglip_so400m_linear.test.macro_recall"
+ },
+ "balC": {
+  "value": "0.821",
+  "source": "metrics.json models.C_siglip_so400m_linear.test.balanced_accuracy"
+ },
+ "wfoneC": {
+  "value": "0.820",
+  "source": "metrics.json models.C_siglip_so400m_linear.test.weighted_f1"
+ },
+ "loglossC": {
+  "value": "0.614",
+  "source": "metrics.json models.C_siglip_so400m_linear.test.log_loss"
+ },
+ "nCorrectC": {
+  "value": "344",
+  "source": "preds/C_siglip_so400m_linear_test.npz argmax==y"
+ },
+ "nWrongC": {
+  "value": "74",
+  "source": "preds/C_siglip_so400m_linear_test.npz argmax!=y"
+ },
+ "accLoC": {
+  "value": "0.787",
+  "source": "bootstrap (2000, rng 0) 2.5 pct"
+ },
+ "accHiC": {
+  "value": "0.859",
+  "source": "bootstrap 97.5 pct"
+ },
+ "foneLoC": {
+  "value": "0.774",
+  "source": "bootstrap macro-F1 2.5 pct"
+ },
+ "foneHiC": {
+  "value": "0.851",
+  "source": "bootstrap macro-F1 97.5 pct"
+ },
+ "valAccC": {
+  "value": "0.803",
+  "source": "metrics.json models.C_siglip_so400m_linear.val_at_best_epoch.accuracy"
+ },
+ "valFoneC": {
+  "value": "0.801",
+  "source": "metrics.json models.C_siglip_so400m_linear.val_at_best_epoch.macro_f1"
+ },
+ "confOkC": {
+  "value": "0.87",
+  "source": "preds/C_siglip_so400m_linear_test.npz mean max-prob on correct"
+ },
+ "confBadC": {
+  "value": "0.47",
+  "source": "preds/C_siglip_so400m_linear_test.npz mean max-prob on wrong"
+ },
+ "accD": {
+  "value": "0.773",
+  "source": "metrics.json models.D_mobileclip2_s3_linear.test.accuracy"
+ },
+ "foneD": {
+  "value": "0.770",
+  "source": "metrics.json models.D_mobileclip2_s3_linear.test.macro_f1"
+ },
+ "mpD": {
+  "value": "0.779",
+  "source": "metrics.json models.D_mobileclip2_s3_linear.test.macro_precision"
+ },
+ "mrD": {
+  "value": "0.772",
+  "source": "metrics.json models.D_mobileclip2_s3_linear.test.macro_recall"
+ },
+ "balD": {
+  "value": "0.772",
+  "source": "metrics.json models.D_mobileclip2_s3_linear.test.balanced_accuracy"
+ },
+ "wfoneD": {
+  "value": "0.772",
+  "source": "metrics.json models.D_mobileclip2_s3_linear.test.weighted_f1"
+ },
+ "loglossD": {
+  "value": "0.800",
+  "source": "metrics.json models.D_mobileclip2_s3_linear.test.log_loss"
+ },
+ "nCorrectD": {
+  "value": "323",
+  "source": "preds/D_mobileclip2_s3_linear_test.npz argmax==y"
+ },
+ "nWrongD": {
+  "value": "95",
+  "source": "preds/D_mobileclip2_s3_linear_test.npz argmax!=y"
+ },
+ "accLoD": {
+  "value": "0.732",
+  "source": "bootstrap (2000, rng 0) 2.5 pct"
+ },
+ "accHiD": {
+  "value": "0.811",
+  "source": "bootstrap 97.5 pct"
+ },
+ "foneLoD": {
+  "value": "0.726",
+  "source": "bootstrap macro-F1 2.5 pct"
+ },
+ "foneHiD": {
+  "value": "0.806",
+  "source": "bootstrap macro-F1 97.5 pct"
+ },
+ "valAccD": {
+  "value": "0.775",
+  "source": "metrics.json models.D_mobileclip2_s3_linear.val_at_best_epoch.accuracy"
+ },
+ "valFoneD": {
+  "value": "0.772",
+  "source": "metrics.json models.D_mobileclip2_s3_linear.val_at_best_epoch.macro_f1"
+ },
+ "confOkD": {
+  "value": "0.90",
+  "source": "preds/D_mobileclip2_s3_linear_test.npz mean max-prob on correct"
+ },
+ "confBadD": {
+  "value": "0.56",
+  "source": "preds/D_mobileclip2_s3_linear_test.npz mean max-prob on wrong"
+ },
+ "accRA": {
+  "value": "0.833",
+  "source": "metrics.json references.R1_sklearn_probe.test.accuracy"
+ },
+ "foneRA": {
+  "value": "0.829",
+  "source": "metrics.json references.R1_sklearn_probe.test.macro_f1"
+ },
+ "accRB": {
+  "value": "0.837",
+  "source": "metrics.json references.R2_deployed_fused.test.accuracy"
+ },
+ "foneRB": {
+  "value": "0.834",
+  "source": "metrics.json references.R2_deployed_fused.test.macro_f1"
+ },
+ "accRC": {
+  "value": "0.806",
+  "source": "metrics.json references.R3_small_fused.test.accuracy"
+ },
+ "foneRC": {
+  "value": "0.802",
+  "source": "metrics.json references.R3_small_fused.test.macro_f1"
+ },
+ "gapRAC": {
+  "value": "4",
+  "source": "R1 correct - C correct (test images)"
+ },
+ "diffBA": {
+  "value": "23.7",
+  "source": "acc difference BA (points)"
+ },
+ "diffLoBA": {
+  "value": "18.9",
+  "source": "paired bootstrap 2.5 pct BA (points)"
+ },
+ "diffHiBA": {
+  "value": "28.9",
+  "source": "paired bootstrap 97.5 pct BA (points)"
+ },
+ "onlyFirstBA": {
+  "value": "119",
+  "source": "McNemar discordant BA: first right only"
+ },
+ "onlySecondBA": {
+  "value": "20",
+  "source": "McNemar discordant BA: second right only"
+ },
+ "pvalBA": {
+  "value": "$2.4\\times10^{-18}$",
+  "source": "exact binomial McNemar BA"
+ },
+ "diffCB": {
+  "value": "18.7",
+  "source": "acc difference CB (points)"
+ },
+ "diffLoCB": {
+  "value": "14.1",
+  "source": "paired bootstrap 2.5 pct CB (points)"
+ },
+ "diffHiCB": {
+  "value": "23.2",
+  "source": "paired bootstrap 97.5 pct CB (points)"
+ },
+ "onlyFirstCB": {
+  "value": "92",
+  "source": "McNemar discordant CB: first right only"
+ },
+ "onlySecondCB": {
+  "value": "14",
+  "source": "McNemar discordant CB: second right only"
+ },
+ "pvalCB": {
+  "value": "$3.1\\times10^{-15}$",
+  "source": "exact binomial McNemar CB"
+ },
+ "diffCA": {
+  "value": "42.3",
+  "source": "acc difference CA (points)"
+ },
+ "diffLoCA": {
+  "value": "37.3",
+  "source": "paired bootstrap 2.5 pct CA (points)"
+ },
+ "diffHiCA": {
+  "value": "47.4",
+  "source": "paired bootstrap 97.5 pct CA (points)"
+ },
+ "onlyFirstCA": {
+  "value": "184",
+  "source": "McNemar discordant CA: first right only"
+ },
+ "onlySecondCA": {
+  "value": "7",
+  "source": "McNemar discordant CA: second right only"
+ },
+ "pvalCA": {
+  "value": "$1.1\\times10^{-45}$",
+  "source": "exact binomial McNemar CA"
+ },
+ "diffCD": {
+  "value": "5.0",
+  "source": "acc difference CD (points)"
+ },
+ "diffLoCD": {
+  "value": "1.4",
+  "source": "paired bootstrap 2.5 pct CD (points)"
+ },
+ "diffHiCD": {
+  "value": "8.6",
+  "source": "paired bootstrap 97.5 pct CD (points)"
+ },
+ "onlyFirstCD": {
+  "value": "39",
+  "source": "McNemar discordant CD: first right only"
+ },
+ "onlySecondCD": {
+  "value": "18",
+  "source": "McNemar discordant CD: second right only"
+ },
+ "pvalCD": {
+  "value": "$7.5\\times10^{-3}$",
+  "source": "exact binomial McNemar CD"
+ },
+ "diffDB": {
+  "value": "13.6",
+  "source": "acc difference DB (points)"
+ },
+ "diffLoDB": {
+  "value": "9.1",
+  "source": "paired bootstrap 2.5 pct DB (points)"
+ },
+ "diffHiDB": {
+  "value": "17.9",
+  "source": "paired bootstrap 97.5 pct DB (points)"
+ },
+ "onlyFirstDB": {
+  "value": "80",
+  "source": "McNemar discordant DB: first right only"
+ },
+ "onlySecondDB": {
+  "value": "23",
+  "source": "McNemar discordant DB: second right only"
+ },
+ "pvalDB": {
+  "value": "$1.5\\times10^{-8}$",
+  "source": "exact binomial McNemar DB"
+ },
+ "diffDA": {
+  "value": "37.3",
+  "source": "acc difference DA (points)"
+ },
+ "diffLoDA": {
+  "value": "32.5",
+  "source": "paired bootstrap 2.5 pct DA (points)"
+ },
+ "diffHiDA": {
+  "value": "42.3",
+  "source": "paired bootstrap 97.5 pct DA (points)"
+ },
+ "onlyFirstDA": {
+  "value": "166",
+  "source": "McNemar discordant DA: first right only"
+ },
+ "onlySecondDA": {
+  "value": "10",
+  "source": "McNemar discordant DA: second right only"
+ },
+ "pvalDA": {
+  "value": "$1.3\\times10^{-37}$",
+  "source": "exact binomial McNemar DA"
+ },
+ "allRight": {
+  "value": "143",
+  "source": "preds: all three correct"
+ },
+ "allWrong": {
+  "value": "57",
+  "source": "preds: all three wrong"
+ },
+ "onlyC": {
+  "value": "75",
+  "source": "preds: only C correct"
+ },
+ "bcNotA": {
+  "value": "109",
+  "source": "preds: B and C correct, A wrong"
+ },
+ "cWrongOther": {
+  "value": "17",
+  "source": "preds: C wrong but A or B right"
+ },
+ "allFourRight": {
+  "value": "140",
+  "source": "preds: A, B, C and D all correct"
+ },
+ "allFourWrong": {
+  "value": "43",
+  "source": "preds: A, B, C and D all wrong"
+ },
+ "onlyD": {
+  "value": "14",
+  "source": "preds: only D correct"
+ },
+ "worstA": {
+  "value": "fuse",
+  "source": "per_class.csv A_scratch_cnn argmin f1"
+ },
+ "worstFoneA": {
+  "value": "0.18",
+  "source": "per_class.csv A_scratch_cnn min f1"
+ },
+ "bestClsA": {
+  "value": "microcontroller board",
+  "source": "per_class.csv A_scratch_cnn argmax f1"
+ },
+ "bestFoneA": {
+  "value": "0.68",
+  "source": "per_class.csv A_scratch_cnn max f1"
+ },
+ "rhoA": {
+  "value": "+0.51",
+  "source": "Spearman(train images per class, test F1) A_scratch_cnn"
+ },
+ "rhopA": {
+  "value": "0.02",
+  "source": "Spearman p A_scratch_cnn"
+ },
+ "recResA": {
+  "value": "0.27",
+  "source": "metrics.json A_scratch_cnn per_class.resistor.recall"
+ },
+ "precResA": {
+  "value": "0.30",
+  "source": "metrics.json A_scratch_cnn per_class.resistor.precision"
+ },
+ "foneResA": {
+  "value": "0.29",
+  "source": "metrics.json A_scratch_cnn per_class.resistor.f1"
+ },
+ "recFuseA": {
+  "value": "0.20",
+  "source": "metrics.json A_scratch_cnn per_class.fuse.recall"
+ },
+ "precFuseA": {
+  "value": "0.16",
+  "source": "metrics.json A_scratch_cnn per_class.fuse.precision"
+ },
+ "foneFuseA": {
+  "value": "0.18",
+  "source": "metrics.json A_scratch_cnn per_class.fuse.f1"
+ },
+ "recSwitchA": {
+  "value": "0.68",
+  "source": "metrics.json A_scratch_cnn per_class.switch.recall"
+ },
+ "precSwitchA": {
+  "value": "0.61",
+  "source": "metrics.json A_scratch_cnn per_class.switch.precision"
+ },
+ "foneSwitchA": {
+  "value": "0.64",
+  "source": "metrics.json A_scratch_cnn per_class.switch.f1"
+ },
+ "recLedA": {
+  "value": "0.22",
+  "source": "metrics.json A_scratch_cnn per_class.led.recall"
+ },
+ "precLedA": {
+  "value": "0.21",
+  "source": "metrics.json A_scratch_cnn per_class.led.precision"
+ },
+ "foneLedA": {
+  "value": "0.22",
+  "source": "metrics.json A_scratch_cnn per_class.led.f1"
+ },
+ "recTrfA": {
+  "value": "0.22",
+  "source": "metrics.json A_scratch_cnn per_class.transformer.recall"
+ },
+ "precTrfA": {
+  "value": "0.25",
+  "source": "metrics.json A_scratch_cnn per_class.transformer.precision"
+ },
+ "foneTrfA": {
+  "value": "0.24",
+  "source": "metrics.json A_scratch_cnn per_class.transformer.f1"
+ },
+ "recCapA": {
+  "value": "0.29",
+  "source": "metrics.json A_scratch_cnn per_class.capacitor.recall"
+ },
+ "precCapA": {
+  "value": "0.33",
+  "source": "metrics.json A_scratch_cnn per_class.capacitor.precision"
+ },
+ "foneCapA": {
+  "value": "0.31",
+  "source": "metrics.json A_scratch_cnn per_class.capacitor.f1"
+ },
+ "recIcA": {
+  "value": "0.41",
+  "source": "metrics.json A_scratch_cnn per_class.ic chip.recall"
+ },
+ "precIcA": {
+  "value": "0.47",
+  "source": "metrics.json A_scratch_cnn per_class.ic chip.precision"
+ },
+ "foneIcA": {
+  "value": "0.44",
+  "source": "metrics.json A_scratch_cnn per_class.ic chip.f1"
+ },
+ "recDiodeA": {
+  "value": "0.38",
+  "source": "metrics.json A_scratch_cnn per_class.diode.recall"
+ },
+ "precDiodeA": {
+  "value": "0.40",
+  "source": "metrics.json A_scratch_cnn per_class.diode.precision"
+ },
+ "foneDiodeA": {
+  "value": "0.39",
+  "source": "metrics.json A_scratch_cnn per_class.diode.f1"
+ },
+ "recPsmA": {
+  "value": "0.36",
+  "source": "metrics.json A_scratch_cnn per_class.power supply module.recall"
+ },
+ "precPsmA": {
+  "value": "0.42",
+  "source": "metrics.json A_scratch_cnn per_class.power supply module.precision"
+ },
+ "fonePsmA": {
+  "value": "0.39",
+  "source": "metrics.json A_scratch_cnn per_class.power supply module.f1"
+ },
+ "recPotA": {
+  "value": "0.57",
+  "source": "metrics.json A_scratch_cnn per_class.potentiometer.recall"
+ },
+ "precPotA": {
+  "value": "0.67",
+  "source": "metrics.json A_scratch_cnn per_class.potentiometer.precision"
+ },
+ "fonePotA": {
+  "value": "0.62",
+  "source": "metrics.json A_scratch_cnn per_class.potentiometer.f1"
+ },
+ "recXtalA": {
+  "value": "0.24",
+  "source": "metrics.json A_scratch_cnn per_class.crystal oscillator.recall"
+ },
+ "precXtalA": {
+  "value": "0.24",
+  "source": "metrics.json A_scratch_cnn per_class.crystal oscillator.precision"
+ },
+ "foneXtalA": {
+  "value": "0.24",
+  "source": "metrics.json A_scratch_cnn per_class.crystal oscillator.f1"
+ },
+ "worstB": {
+  "value": "fuse",
+  "source": "per_class.csv B_convnext_tiny argmin f1"
+ },
+ "worstFoneB": {
+  "value": "0.34",
+  "source": "per_class.csv B_convnext_tiny min f1"
+ },
+ "bestClsB": {
+  "value": "jumper wire",
+  "source": "per_class.csv B_convnext_tiny argmax f1"
+ },
+ "bestFoneB": {
+  "value": "0.85",
+  "source": "per_class.csv B_convnext_tiny max f1"
+ },
+ "rhoB": {
+  "value": "+0.56",
+  "source": "Spearman(train images per class, test F1) B_convnext_tiny"
+ },
+ "rhopB": {
+  "value": "0.01",
+  "source": "Spearman p B_convnext_tiny"
+ },
+ "recResB": {
+  "value": "0.36",
+  "source": "metrics.json B_convnext_tiny per_class.resistor.recall"
+ },
+ "precResB": {
+  "value": "0.50",
+  "source": "metrics.json B_convnext_tiny per_class.resistor.precision"
+ },
+ "foneResB": {
+  "value": "0.42",
+  "source": "metrics.json B_convnext_tiny per_class.resistor.f1"
+ },
+ "recFuseB": {
+  "value": "0.25",
+  "source": "metrics.json B_convnext_tiny per_class.fuse.recall"
+ },
+ "precFuseB": {
+  "value": "0.56",
+  "source": "metrics.json B_convnext_tiny per_class.fuse.precision"
+ },
+ "foneFuseB": {
+  "value": "0.34",
+  "source": "metrics.json B_convnext_tiny per_class.fuse.f1"
+ },
+ "recSwitchB": {
+  "value": "0.76",
+  "source": "metrics.json B_convnext_tiny per_class.switch.recall"
+ },
+ "precSwitchB": {
+  "value": "0.66",
+  "source": "metrics.json B_convnext_tiny per_class.switch.precision"
+ },
+ "foneSwitchB": {
+  "value": "0.70",
+  "source": "metrics.json B_convnext_tiny per_class.switch.f1"
+ },
+ "recLedB": {
+  "value": "0.44",
+  "source": "metrics.json B_convnext_tiny per_class.led.recall"
+ },
+ "precLedB": {
+  "value": "0.42",
+  "source": "metrics.json B_convnext_tiny per_class.led.precision"
+ },
+ "foneLedB": {
+  "value": "0.43",
+  "source": "metrics.json B_convnext_tiny per_class.led.f1"
+ },
+ "recTrfB": {
+  "value": "0.56",
+  "source": "metrics.json B_convnext_tiny per_class.transformer.recall"
+ },
+ "precTrfB": {
+  "value": "0.56",
+  "source": "metrics.json B_convnext_tiny per_class.transformer.precision"
+ },
+ "foneTrfB": {
+  "value": "0.56",
+  "source": "metrics.json B_convnext_tiny per_class.transformer.f1"
+ },
+ "recCapB": {
+  "value": "0.53",
+  "source": "metrics.json B_convnext_tiny per_class.capacitor.recall"
+ },
+ "precCapB": {
+  "value": "0.75",
+  "source": "metrics.json B_convnext_tiny per_class.capacitor.precision"
+ },
+ "foneCapB": {
+  "value": "0.62",
+  "source": "metrics.json B_convnext_tiny per_class.capacitor.f1"
+ },
+ "recIcB": {
+  "value": "0.59",
+  "source": "metrics.json B_convnext_tiny per_class.ic chip.recall"
+ },
+ "precIcB": {
+  "value": "0.76",
+  "source": "metrics.json B_convnext_tiny per_class.ic chip.precision"
+ },
+ "foneIcB": {
+  "value": "0.67",
+  "source": "metrics.json B_convnext_tiny per_class.ic chip.f1"
+ },
+ "recDiodeB": {
+  "value": "0.76",
+  "source": "metrics.json B_convnext_tiny per_class.diode.recall"
+ },
+ "precDiodeB": {
+  "value": "0.48",
+  "source": "metrics.json B_convnext_tiny per_class.diode.precision"
+ },
+ "foneDiodeB": {
+  "value": "0.59",
+  "source": "metrics.json B_convnext_tiny per_class.diode.f1"
+ },
+ "recPsmB": {
+  "value": "0.68",
+  "source": "metrics.json B_convnext_tiny per_class.power supply module.recall"
+ },
+ "precPsmB": {
+  "value": "0.79",
+  "source": "metrics.json B_convnext_tiny per_class.power supply module.precision"
+ },
+ "fonePsmB": {
+  "value": "0.73",
+  "source": "metrics.json B_convnext_tiny per_class.power supply module.f1"
+ },
+ "recPotB": {
+  "value": "0.71",
+  "source": "metrics.json B_convnext_tiny per_class.potentiometer.recall"
+ },
+ "precPotB": {
+  "value": "0.65",
+  "source": "metrics.json B_convnext_tiny per_class.potentiometer.precision"
+ },
+ "fonePotB": {
+  "value": "0.68",
+  "source": "metrics.json B_convnext_tiny per_class.potentiometer.f1"
+ },
+ "recXtalB": {
+  "value": "0.62",
+  "source": "metrics.json B_convnext_tiny per_class.crystal oscillator.recall"
+ },
+ "precXtalB": {
+  "value": "0.45",
+  "source": "metrics.json B_convnext_tiny per_class.crystal oscillator.precision"
+ },
+ "foneXtalB": {
+  "value": "0.52",
+  "source": "metrics.json B_convnext_tiny per_class.crystal oscillator.f1"
+ },
+ "worstC": {
+  "value": "resistor",
+  "source": "per_class.csv C_siglip_so400m_linear argmin f1"
+ },
+ "worstFoneC": {
+  "value": "0.61",
+  "source": "per_class.csv C_siglip_so400m_linear min f1"
+ },
+ "bestClsC": {
+  "value": "switch",
+  "source": "per_class.csv C_siglip_so400m_linear argmax f1"
+ },
+ "bestFoneC": {
+  "value": "0.96",
+  "source": "per_class.csv C_siglip_so400m_linear max f1"
+ },
+ "rhoC": {
+  "value": "+0.43",
+  "source": "Spearman(train images per class, test F1) C_siglip_so400m_linear"
+ },
+ "rhopC": {
+  "value": "0.06",
+  "source": "Spearman p C_siglip_so400m_linear"
+ },
+ "recResC": {
+  "value": "0.45",
+  "source": "metrics.json C_siglip_so400m_linear per_class.resistor.recall"
+ },
+ "precResC": {
+  "value": "0.91",
+  "source": "metrics.json C_siglip_so400m_linear per_class.resistor.precision"
+ },
+ "foneResC": {
+  "value": "0.61",
+  "source": "metrics.json C_siglip_so400m_linear per_class.resistor.f1"
+ },
+ "recFuseC": {
+  "value": "0.75",
+  "source": "metrics.json C_siglip_so400m_linear per_class.fuse.recall"
+ },
+ "precFuseC": {
+  "value": "0.94",
+  "source": "metrics.json C_siglip_so400m_linear per_class.fuse.precision"
+ },
+ "foneFuseC": {
+  "value": "0.83",
+  "source": "metrics.json C_siglip_so400m_linear per_class.fuse.f1"
+ },
+ "recSwitchC": {
+  "value": "0.96",
+  "source": "metrics.json C_siglip_so400m_linear per_class.switch.recall"
+ },
+ "precSwitchC": {
+  "value": "0.96",
+  "source": "metrics.json C_siglip_so400m_linear per_class.switch.precision"
+ },
+ "foneSwitchC": {
+  "value": "0.96",
+  "source": "metrics.json C_siglip_so400m_linear per_class.switch.f1"
+ },
+ "recLedC": {
+  "value": "0.94",
+  "source": "metrics.json C_siglip_so400m_linear per_class.led.recall"
+ },
+ "precLedC": {
+  "value": "0.68",
+  "source": "metrics.json C_siglip_so400m_linear per_class.led.precision"
+ },
+ "foneLedC": {
+  "value": "0.79",
+  "source": "metrics.json C_siglip_so400m_linear per_class.led.f1"
+ },
+ "recTrfC": {
+  "value": "0.83",
+  "source": "metrics.json C_siglip_so400m_linear per_class.transformer.recall"
+ },
+ "precTrfC": {
+  "value": "0.79",
+  "source": "metrics.json C_siglip_so400m_linear per_class.transformer.precision"
+ },
+ "foneTrfC": {
+  "value": "0.81",
+  "source": "metrics.json C_siglip_so400m_linear per_class.transformer.f1"
+ },
+ "recCapC": {
+  "value": "0.71",
+  "source": "metrics.json C_siglip_so400m_linear per_class.capacitor.recall"
+ },
+ "precCapC": {
+  "value": "0.80",
+  "source": "metrics.json C_siglip_so400m_linear per_class.capacitor.precision"
+ },
+ "foneCapC": {
+  "value": "0.75",
+  "source": "metrics.json C_siglip_so400m_linear per_class.capacitor.f1"
+ },
+ "recIcC": {
+  "value": "0.68",
+  "source": "metrics.json C_siglip_so400m_linear per_class.ic chip.recall"
+ },
+ "precIcC": {
+  "value": "0.88",
+  "source": "metrics.json C_siglip_so400m_linear per_class.ic chip.precision"
+ },
+ "foneIcC": {
+  "value": "0.77",
+  "source": "metrics.json C_siglip_so400m_linear per_class.ic chip.f1"
+ },
+ "recDiodeC": {
+  "value": "0.86",
+  "source": "metrics.json C_siglip_so400m_linear per_class.diode.recall"
+ },
+ "precDiodeC": {
+  "value": "0.86",
+  "source": "metrics.json C_siglip_so400m_linear per_class.diode.precision"
+ },
+ "foneDiodeC": {
+  "value": "0.86",
+  "source": "metrics.json C_siglip_so400m_linear per_class.diode.f1"
+ },
+ "recPsmC": {
+  "value": "0.77",
+  "source": "metrics.json C_siglip_so400m_linear per_class.power supply module.recall"
+ },
+ "precPsmC": {
+  "value": "0.74",
+  "source": "metrics.json C_siglip_so400m_linear per_class.power supply module.precision"
+ },
+ "fonePsmC": {
+  "value": "0.76",
+  "source": "metrics.json C_siglip_so400m_linear per_class.power supply module.f1"
+ },
+ "recPotC": {
+  "value": "0.95",
+  "source": "metrics.json C_siglip_so400m_linear per_class.potentiometer.recall"
+ },
+ "precPotC": {
+  "value": "0.91",
+  "source": "metrics.json C_siglip_so400m_linear per_class.potentiometer.precision"
+ },
+ "fonePotC": {
+  "value": "0.93",
+  "source": "metrics.json C_siglip_so400m_linear per_class.potentiometer.f1"
+ },
+ "recXtalC": {
+  "value": "0.90",
+  "source": "metrics.json C_siglip_so400m_linear per_class.crystal oscillator.recall"
+ },
+ "precXtalC": {
+  "value": "0.76",
+  "source": "metrics.json C_siglip_so400m_linear per_class.crystal oscillator.precision"
+ },
+ "foneXtalC": {
+  "value": "0.83",
+  "source": "metrics.json C_siglip_so400m_linear per_class.crystal oscillator.f1"
+ },
+ "worstD": {
+  "value": "led",
+  "source": "per_class.csv D_mobileclip2_s3_linear argmin f1"
+ },
+ "worstFoneD": {
+  "value": "0.61",
+  "source": "per_class.csv D_mobileclip2_s3_linear min f1"
+ },
+ "bestClsD": {
+  "value": "potentiometer",
+  "source": "per_class.csv D_mobileclip2_s3_linear argmax f1"
+ },
+ "bestFoneD": {
+  "value": "0.93",
+  "source": "per_class.csv D_mobileclip2_s3_linear max f1"
+ },
+ "rhoD": {
+  "value": "+0.20",
+  "source": "Spearman(train images per class, test F1) D_mobileclip2_s3_linear"
+ },
+ "rhopD": {
+  "value": "0.41",
+  "source": "Spearman p D_mobileclip2_s3_linear"
+ },
+ "recResD": {
+  "value": "0.55",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.resistor.recall"
+ },
+ "precResD": {
+  "value": "0.92",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.resistor.precision"
+ },
+ "foneResD": {
+  "value": "0.69",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.resistor.f1"
+ },
+ "recFuseD": {
+  "value": "0.80",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.fuse.recall"
+ },
+ "precFuseD": {
+  "value": "0.84",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.fuse.precision"
+ },
+ "foneFuseD": {
+  "value": "0.82",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.fuse.f1"
+ },
+ "recSwitchD": {
+  "value": "0.96",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.switch.recall"
+ },
+ "precSwitchD": {
+  "value": "0.89",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.switch.precision"
+ },
+ "foneSwitchD": {
+  "value": "0.92",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.switch.f1"
+ },
+ "recLedD": {
+  "value": "0.61",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.led.recall"
+ },
+ "precLedD": {
+  "value": "0.61",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.led.precision"
+ },
+ "foneLedD": {
+  "value": "0.61",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.led.f1"
+ },
+ "recTrfD": {
+  "value": "0.78",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.transformer.recall"
+ },
+ "precTrfD": {
+  "value": "0.70",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.transformer.precision"
+ },
+ "foneTrfD": {
+  "value": "0.74",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.transformer.f1"
+ },
+ "recCapD": {
+  "value": "0.82",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.capacitor.recall"
+ },
+ "precCapD": {
+  "value": "0.82",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.capacitor.precision"
+ },
+ "foneCapD": {
+  "value": "0.82",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.capacitor.f1"
+ },
+ "recIcD": {
+  "value": "0.64",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.ic chip.recall"
+ },
+ "precIcD": {
+  "value": "0.88",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.ic chip.precision"
+ },
+ "foneIcD": {
+  "value": "0.74",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.ic chip.f1"
+ },
+ "recDiodeD": {
+  "value": "0.81",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.diode.recall"
+ },
+ "precDiodeD": {
+  "value": "0.63",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.diode.precision"
+ },
+ "foneDiodeD": {
+  "value": "0.71",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.diode.f1"
+ },
+ "recPsmD": {
+  "value": "0.68",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.power supply module.recall"
+ },
+ "precPsmD": {
+  "value": "0.71",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.power supply module.precision"
+ },
+ "fonePsmD": {
+  "value": "0.70",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.power supply module.f1"
+ },
+ "recPotD": {
+  "value": "0.90",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.potentiometer.recall"
+ },
+ "precPotD": {
+  "value": "0.95",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.potentiometer.precision"
+ },
+ "fonePotD": {
+  "value": "0.93",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.potentiometer.f1"
+ },
+ "recXtalD": {
+  "value": "0.76",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.crystal oscillator.recall"
+ },
+ "precXtalD": {
+  "value": "0.64",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.crystal oscillator.precision"
+ },
+ "foneXtalD": {
+  "value": "0.70",
+  "source": "metrics.json D_mobileclip2_s3_linear per_class.crystal oscillator.f1"
+ },
+ "confusedSum": {
+  "value": "resistor $\\rightarrow$ crystal oscillator (8); jumper wire $\\rightarrow$ connector (7); transistor $\\rightarrow$ diode (7); crystal oscillator $\\rightarrow$ relay (6)",
+  "source": "metrics.json confusion matrices of A+B+C summed, top 4 off-diagonal"
+ },
+ "confusedD": {
+  "value": "ic chip $\\rightarrow$ microcontroller board (4); inductor coil $\\rightarrow$ transformer (3); jumper wire $\\rightarrow$ connector (3); led $\\rightarrow$ diode (3)",
+  "source": "metrics.json confusion matrix of D, top 4 off-diagonal"
+ },
+ "cmResIndA": {
+  "value": "1",
+  "source": "metrics.json A_scratch_cnn confusion[resistor][inductor coil]"
+ },
+ "cmResIndB": {
+  "value": "0",
+  "source": "metrics.json B_convnext_tiny confusion[resistor][inductor coil]"
+ },
+ "cmResIndC": {
+  "value": "4",
+  "source": "metrics.json C_siglip_so400m_linear confusion[resistor][inductor coil]"
+ },
+ "cmResIndD": {
+  "value": "1",
+  "source": "metrics.json D_mobileclip2_s3_linear confusion[resistor][inductor coil]"
+ },
+ "cmJumpConA": {
+  "value": "2",
+  "source": "metrics.json A_scratch_cnn confusion[jumper wire][connector]"
+ },
+ "cmJumpConB": {
+  "value": "2",
+  "source": "metrics.json B_convnext_tiny confusion[jumper wire][connector]"
+ },
+ "cmJumpConC": {
+  "value": "3",
+  "source": "metrics.json C_siglip_so400m_linear confusion[jumper wire][connector]"
+ },
+ "cmJumpConD": {
+  "value": "3",
+  "source": "metrics.json D_mobileclip2_s3_linear confusion[jumper wire][connector]"
+ },
+ "cmResXtalA": {
+  "value": "2",
+  "source": "metrics.json A_scratch_cnn confusion[resistor][crystal oscillator]"
+ },
+ "cmResXtalB": {
+  "value": "5",
+  "source": "metrics.json B_convnext_tiny confusion[resistor][crystal oscillator]"
+ },
+ "cmResXtalC": {
+  "value": "1",
+  "source": "metrics.json C_siglip_so400m_linear confusion[resistor][crystal oscillator]"
+ },
+ "cmResXtalD": {
+  "value": "1",
+  "source": "metrics.json D_mobileclip2_s3_linear confusion[resistor][crystal oscillator]"
+ },
+ "cmIcMcuA": {
+  "value": "0",
+  "source": "metrics.json A_scratch_cnn confusion[ic chip][microcontroller board]"
+ },
+ "cmIcMcuB": {
+  "value": "4",
+  "source": "metrics.json B_convnext_tiny confusion[ic chip][microcontroller board]"
+ },
+ "cmIcMcuC": {
+  "value": "0",
+  "source": "metrics.json C_siglip_so400m_linear confusion[ic chip][microcontroller board]"
+ },
+ "cmIcMcuD": {
+  "value": "4",
+  "source": "metrics.json D_mobileclip2_s3_linear confusion[ic chip][microcontroller board]"
+ },
+ "cmFuseConA": {
+  "value": "2",
+  "source": "metrics.json A_scratch_cnn confusion[fuse][connector]"
+ },
+ "cmFuseConB": {
+  "value": "0",
+  "source": "metrics.json B_convnext_tiny confusion[fuse][connector]"
+ },
+ "cmFuseConC": {
+  "value": "0",
+  "source": "metrics.json C_siglip_so400m_linear confusion[fuse][connector]"
+ },
+ "cmFuseConD": {
+  "value": "0",
+  "source": "metrics.json D_mobileclip2_s3_linear confusion[fuse][connector]"
+ },
+ "cmFuseSwA": {
+  "value": "2",
+  "source": "metrics.json A_scratch_cnn confusion[fuse][switch]"
+ },
+ "cmFuseSwB": {
+  "value": "1",
+  "source": "metrics.json B_convnext_tiny confusion[fuse][switch]"
+ },
+ "cmFuseSwC": {
+  "value": "0",
+  "source": "metrics.json C_siglip_so400m_linear confusion[fuse][switch]"
+ },
+ "cmFuseSwD": {
+  "value": "1",
+  "source": "metrics.json D_mobileclip2_s3_linear confusion[fuse][switch]"
+ },
+ "cmDiodeLedA": {
+  "value": "1",
+  "source": "metrics.json A_scratch_cnn confusion[diode][led]"
+ },
+ "cmDiodeLedB": {
+  "value": "0",
+  "source": "metrics.json B_convnext_tiny confusion[diode][led]"
+ },
+ "cmDiodeLedC": {
+  "value": "2",
+  "source": "metrics.json C_siglip_so400m_linear confusion[diode][led]"
+ },
+ "cmDiodeLedD": {
+  "value": "2",
+  "source": "metrics.json D_mobileclip2_s3_linear confusion[diode][led]"
+ },
+ "cmLedDiodeA": {
+  "value": "1",
+  "source": "metrics.json A_scratch_cnn confusion[led][diode]"
+ },
+ "cmLedDiodeB": {
+  "value": "0",
+  "source": "metrics.json B_convnext_tiny confusion[led][diode]"
+ },
+ "cmLedDiodeC": {
+  "value": "1",
+  "source": "metrics.json C_siglip_so400m_linear confusion[led][diode]"
+ },
+ "cmLedDiodeD": {
+  "value": "3",
+  "source": "metrics.json D_mobileclip2_s3_linear confusion[led][diode]"
+ },
+ "cmSwIcA": {
+  "value": "0",
+  "source": "metrics.json A_scratch_cnn confusion[switch][ic chip]"
+ },
+ "cmSwIcB": {
+  "value": "0",
+  "source": "metrics.json B_convnext_tiny confusion[switch][ic chip]"
+ },
+ "cmSwIcC": {
+  "value": "0",
+  "source": "metrics.json C_siglip_so400m_linear confusion[switch][ic chip]"
+ },
+ "cmSwIcD": {
+  "value": "0",
+  "source": "metrics.json D_mobileclip2_s3_linear confusion[switch][ic chip]"
+ },
+ "cmTrfIndA": {
+  "value": "1",
+  "source": "metrics.json A_scratch_cnn confusion[transformer][inductor coil]"
+ },
+ "cmTrfIndB": {
+  "value": "1",
+  "source": "metrics.json B_convnext_tiny confusion[transformer][inductor coil]"
+ },
+ "cmTrfIndC": {
+  "value": "0",
+  "source": "metrics.json C_siglip_so400m_linear confusion[transformer][inductor coil]"
+ },
+ "cmTrfIndD": {
+  "value": "1",
+  "source": "metrics.json D_mobileclip2_s3_linear confusion[transformer][inductor coil]"
+ },
+ "cmTrfRelayA": {
+  "value": "2",
+  "source": "metrics.json A_scratch_cnn confusion[transformer][relay]"
+ },
+ "cmTrfRelayB": {
+  "value": "3",
+  "source": "metrics.json B_convnext_tiny confusion[transformer][relay]"
+ },
+ "cmTrfRelayC": {
+  "value": "0",
+  "source": "metrics.json C_siglip_so400m_linear confusion[transformer][relay]"
+ },
+ "cmTrfRelayD": {
+  "value": "0",
+  "source": "metrics.json D_mobileclip2_s3_linear confusion[transformer][relay]"
+ },
+ "cmRelayTrfA": {
+  "value": "3",
+  "source": "metrics.json A_scratch_cnn confusion[relay][transformer]"
+ },
+ "cmRelayTrfB": {
+  "value": "1",
+  "source": "metrics.json B_convnext_tiny confusion[relay][transformer]"
+ },
+ "cmRelayTrfC": {
+  "value": "0",
+  "source": "metrics.json C_siglip_so400m_linear confusion[relay][transformer]"
+ },
+ "cmRelayTrfD": {
+  "value": "1",
+  "source": "metrics.json D_mobileclip2_s3_linear confusion[relay][transformer]"
+ },
+ "cmLedSwA": {
+  "value": "0",
+  "source": "metrics.json A_scratch_cnn confusion[led][switch]"
+ },
+ "cmLedSwB": {
+  "value": "3",
+  "source": "metrics.json B_convnext_tiny confusion[led][switch]"
+ },
+ "cmLedSwC": {
+  "value": "0",
+  "source": "metrics.json C_siglip_so400m_linear confusion[led][switch]"
+ },
+ "cmLedSwD": {
+  "value": "1",
+  "source": "metrics.json D_mobileclip2_s3_linear confusion[led][switch]"
+ },
+ "cmResDiodeA": {
+  "value": "1",
+  "source": "metrics.json A_scratch_cnn confusion[resistor][diode]"
+ },
+ "cmResDiodeB": {
+  "value": "3",
+  "source": "metrics.json B_convnext_tiny confusion[resistor][diode]"
+ },
+ "cmResDiodeC": {
+  "value": "1",
+  "source": "metrics.json C_siglip_so400m_linear confusion[resistor][diode]"
+ },
+ "cmResDiodeD": {
+  "value": "2",
+  "source": "metrics.json D_mobileclip2_s3_linear confusion[resistor][diode]"
+ },
+ "cmCapDiodeA": {
+  "value": "2",
+  "source": "metrics.json A_scratch_cnn confusion[capacitor][diode]"
+ },
+ "cmCapDiodeB": {
+  "value": "3",
+  "source": "metrics.json B_convnext_tiny confusion[capacitor][diode]"
+ },
+ "cmCapDiodeC": {
+  "value": "0",
+  "source": "metrics.json C_siglip_so400m_linear confusion[capacitor][diode]"
+ },
+ "cmCapDiodeD": {
+  "value": "0",
+  "source": "metrics.json D_mobileclip2_s3_linear confusion[capacitor][diode]"
+ },
+ "cmResCapA": {
+  "value": "0",
+  "source": "metrics.json A_scratch_cnn confusion[resistor][capacitor]"
+ },
+ "cmResCapB": {
+  "value": "1",
+  "source": "metrics.json B_convnext_tiny confusion[resistor][capacitor]"
+ },
+ "cmResCapC": {
+  "value": "2",
+  "source": "metrics.json C_siglip_so400m_linear confusion[resistor][capacitor]"
+ },
+ "cmResCapD": {
+  "value": "2",
+  "source": "metrics.json D_mobileclip2_s3_linear confusion[resistor][capacitor]"
+ },
+ "cmResTrfA": {
+  "value": "0",
+  "source": "metrics.json A_scratch_cnn confusion[resistor][transformer]"
+ },
+ "cmResTrfB": {
+  "value": "0",
+  "source": "metrics.json B_convnext_tiny confusion[resistor][transformer]"
+ },
+ "cmResTrfC": {
+  "value": "2",
+  "source": "metrics.json C_siglip_so400m_linear confusion[resistor][transformer]"
+ },
+ "cmResTrfD": {
+  "value": "0",
+  "source": "metrics.json D_mobileclip2_s3_linear confusion[resistor][transformer]"
+ },
+ "cmTrIcA": {
+  "value": "3",
+  "source": "metrics.json A_scratch_cnn confusion[transistor][ic chip]"
+ },
+ "cmTrIcB": {
+  "value": "2",
+  "source": "metrics.json B_convnext_tiny confusion[transistor][ic chip]"
+ },
+ "cmTrIcC": {
+  "value": "1",
+  "source": "metrics.json C_siglip_so400m_linear confusion[transistor][ic chip]"
+ },
+ "cmTrIcD": {
+  "value": "1",
+  "source": "metrics.json D_mobileclip2_s3_linear confusion[transistor][ic chip]"
+ },
+ "cmBbPsmA": {
+  "value": "1",
+  "source": "metrics.json A_scratch_cnn confusion[breadboard][power supply module]"
+ },
+ "cmBbPsmB": {
+  "value": "2",
+  "source": "metrics.json B_convnext_tiny confusion[breadboard][power supply module]"
+ },
+ "cmBbPsmC": {
+  "value": "2",
+  "source": "metrics.json C_siglip_so400m_linear confusion[breadboard][power supply module]"
+ },
+ "cmBbPsmD": {
+  "value": "2",
+  "source": "metrics.json D_mobileclip2_s3_linear confusion[breadboard][power supply module]"
+ },
+ "cmCapIndA": {
+  "value": "1",
+  "source": "metrics.json A_scratch_cnn confusion[capacitor][inductor coil]"
+ },
+ "cmCapIndB": {
+  "value": "0",
+  "source": "metrics.json B_convnext_tiny confusion[capacitor][inductor coil]"
+ },
+ "cmCapIndC": {
+  "value": "2",
+  "source": "metrics.json C_siglip_so400m_linear confusion[capacitor][inductor coil]"
+ },
+ "cmCapIndD": {
+  "value": "1",
+  "source": "metrics.json D_mobileclip2_s3_linear confusion[capacitor][inductor coil]"
+ },
+ "trainAccA": {
+  "value": "0.83",
+  "source": "histories.json A_scratch_cnn[best].train_acc"
+ },
+ "minValCEA": {
+  "value": "2.447",
+  "source": "histories.json A_scratch_cnn min val_loss"
+ },
+ "minValCEepA": {
+  "value": "81",
+  "source": "histories.json A_scratch_cnn argmin val_loss + 1"
+ },
+ "valCEA": {
+  "value": "2.519",
+  "source": "histories.json A_scratch_cnn[best].val_loss"
+ },
+ "trainCEA": {
+  "value": "0.712",
+  "source": "histories.json A_scratch_cnn[best].train_ce"
+ },
+ "finalTrainAccA": {
+  "value": "0.84",
+  "source": "histories.json A_scratch_cnn[-1].train_acc"
+ },
+ "epHalfA": {
+  "value": "--",
+  "source": "histories.json A_scratch_cnn first epoch with val_acc>=0.5"
+ },
+ "epTqA": {
+  "value": "--",
+  "source": "histories.json A_scratch_cnn first epoch with val_acc>=0.75"
+ },
+ "trainAccB": {
+  "value": "0.90",
+  "source": "histories.json B_convnext_tiny[best].train_acc"
+ },
+ "minValCEB": {
+  "value": "1.431",
+  "source": "histories.json B_convnext_tiny min val_loss"
+ },
+ "minValCEepB": {
+  "value": "19",
+  "source": "histories.json B_convnext_tiny argmin val_loss + 1"
+ },
+ "valCEB": {
+  "value": "1.431",
+  "source": "histories.json B_convnext_tiny[best].val_loss"
+ },
+ "trainCEB": {
+  "value": "0.542",
+  "source": "histories.json B_convnext_tiny[best].train_ce"
+ },
+ "finalTrainAccB": {
+  "value": "0.91",
+  "source": "histories.json B_convnext_tiny[-1].train_acc"
+ },
+ "epHalfB": {
+  "value": "4",
+  "source": "histories.json B_convnext_tiny first epoch with val_acc>=0.5"
+ },
+ "epTqB": {
+  "value": "--",
+  "source": "histories.json B_convnext_tiny first epoch with val_acc>=0.75"
+ },
+ "trainAccC": {
+  "value": "0.99",
+  "source": "histories.json C_siglip_so400m_linear[best].train_acc"
+ },
+ "minValCEC": {
+  "value": "0.756",
+  "source": "histories.json C_siglip_so400m_linear min val_loss"
+ },
+ "minValCEepC": {
+  "value": "10",
+  "source": "histories.json C_siglip_so400m_linear argmin val_loss + 1"
+ },
+ "valCEC": {
+  "value": "0.759",
+  "source": "histories.json C_siglip_so400m_linear[best].val_loss"
+ },
+ "trainCEC": {
+  "value": "0.139",
+  "source": "histories.json C_siglip_so400m_linear[best].train_ce"
+ },
+ "finalTrainAccC": {
+  "value": "1.00",
+  "source": "histories.json C_siglip_so400m_linear[-1].train_acc"
+ },
+ "epHalfC": {
+  "value": "1",
+  "source": "histories.json C_siglip_so400m_linear first epoch with val_acc>=0.5"
+ },
+ "epTqC": {
+  "value": "3",
+  "source": "histories.json C_siglip_so400m_linear first epoch with val_acc>=0.75"
+ },
+ "trainAccD": {
+  "value": "1.00",
+  "source": "histories.json D_mobileclip2_s3_linear[best].train_acc"
+ },
+ "minValCED": {
+  "value": "0.889",
+  "source": "histories.json D_mobileclip2_s3_linear min val_loss"
+ },
+ "minValCEepD": {
+  "value": "9",
+  "source": "histories.json D_mobileclip2_s3_linear argmin val_loss + 1"
+ },
+ "valCED": {
+  "value": "0.900",
+  "source": "histories.json D_mobileclip2_s3_linear[best].val_loss"
+ },
+ "trainCED": {
+  "value": "0.048",
+  "source": "histories.json D_mobileclip2_s3_linear[best].train_ce"
+ },
+ "finalTrainAccD": {
+  "value": "1.00",
+  "source": "histories.json D_mobileclip2_s3_linear[-1].train_acc"
+ },
+ "epHalfD": {
+  "value": "1",
+  "source": "histories.json D_mobileclip2_s3_linear first epoch with val_acc>=0.5"
+ },
+ "epTqD": {
+  "value": "4",
+  "source": "histories.json D_mobileclip2_s3_linear first epoch with val_acc>=0.75"
+ },
+ "lnTwenty": {
+  "value": "3.00",
+  "source": "ln(20) = chance-level cross-entropy"
+ },
+ "accCleanA": {
+  "value": "0.435",
+  "source": "preds/A_scratch_cnn acc on test ood_suspect==0"
+ },
+ "accOODA": {
+  "value": "0.304",
+  "source": "preds/A_scratch_cnn acc on test ood_suspect==1"
+ },
+ "oodDropA": {
+  "value": "13",
+  "source": "clean - flagged accuracy (points) A_scratch_cnn"
+ },
+ "accCleanB": {
+  "value": "0.686",
+  "source": "preds/B_convnext_tiny acc on test ood_suspect==0"
+ },
+ "accOODB": {
+  "value": "0.500",
+  "source": "preds/B_convnext_tiny acc on test ood_suspect==1"
+ },
+ "oodDropB": {
+  "value": "19",
+  "source": "clean - flagged accuracy (points) B_convnext_tiny"
+ },
+ "accCleanC": {
+  "value": "0.846",
+  "source": "preds/C_siglip_so400m_linear acc on test ood_suspect==0"
+ },
+ "accOODC": {
+  "value": "0.759",
+  "source": "preds/C_siglip_so400m_linear acc on test ood_suspect==1"
+ },
+ "oodDropC": {
+  "value": "9",
+  "source": "clean - flagged accuracy (points) C_siglip_so400m_linear"
+ },
+ "accCleanD": {
+  "value": "0.807",
+  "source": "preds/D_mobileclip2_s3_linear acc on test ood_suspect==0"
+ },
+ "accOODD": {
+  "value": "0.679",
+  "source": "preds/D_mobileclip2_s3_linear acc on test ood_suspect==1"
+ },
+ "oodDropD": {
+  "value": "13",
+  "source": "clean - flagged accuracy (points) D_mobileclip2_s3_linear"
+ },
+ "gpuMsA": {
+  "value": "0.52",
+  "source": "efficiency.csv A_scratch_cnn gpu_ms_per_image_batch1_fp16"
+ },
+ "cpuMsA": {
+  "value": "1.7",
+  "source": "efficiency.csv A_scratch_cnn cpu_ms_per_image_batch1_fp32_8threads"
+ },
+ "paramsMA": {
+  "value": "1.2",
+  "source": "efficiency.csv A_scratch_cnn params / 1e6"
+ },
+ "fpMBA": {
+  "value": "4.5",
+  "source": "efficiency.csv A_scratch_cnn fp32_weights_mb"
+ },
+ "gpuMsB": {
+  "value": "2.79",
+  "source": "efficiency.csv B_convnext_tiny gpu_ms_per_image_batch1_fp16"
+ },
+ "cpuMsB": {
+  "value": "18.4",
+  "source": "efficiency.csv B_convnext_tiny cpu_ms_per_image_batch1_fp32_8threads"
+ },
+ "paramsMB": {
+  "value": "27.8",
+  "source": "efficiency.csv B_convnext_tiny params / 1e6"
+ },
+ "fpMBB": {
+  "value": "106.2",
+  "source": "efficiency.csv B_convnext_tiny fp32_weights_mb"
+ },
+ "gpuMsC": {
+  "value": "31.1",
+  "source": "efficiency.csv C_siglip_so400m_linear gpu_ms_per_image_batch1_fp16"
+ },
+ "cpuMsC": {
+  "value": "893.5",
+  "source": "efficiency.csv C_siglip_so400m_linear cpu_ms_per_image_batch1_fp32_8threads"
+ },
+ "paramsMC": {
+  "value": "428.2",
+  "source": "efficiency.csv C_siglip_so400m_linear params / 1e6"
+ },
+ "fpMBC": {
+  "value": "1,633.6",
+  "source": "efficiency.csv C_siglip_so400m_linear fp32_weights_mb"
+ },
+ "gpuMsD": {
+  "value": "15.16",
+  "source": "efficiency.csv D_mobileclip2_s3_linear gpu_ms_per_image_batch1_fp16"
+ },
+ "cpuMsD": {
+  "value": "111.5",
+  "source": "efficiency.csv D_mobileclip2_s3_linear cpu_ms_per_image_batch1_fp32_8threads"
+ },
+ "paramsMD": {
+  "value": "122.8",
+  "source": "efficiency.csv D_mobileclip2_s3_linear params / 1e6"
+ },
+ "fpMBD": {
+  "value": "468.4",
+  "source": "efficiency.csv D_mobileclip2_s3_linear fp32_weights_mb"
+ },
+ "machineD": {
+  "value": "RTX 4070 Laptop GPU",
+  "source": "efficiency.csv D machine (GPU of the PC that timed D)"
+ },
+ "gpuMsCref": {
+  "value": "37.9",
+  "source": "runs/profile.json D.machine.c_tower_reference gpu b1"
+ },
+ "cpuMsCref": {
+  "value": "1563",
+  "source": "runs/profile.json D.machine.c_tower_reference cpu b1"
+ },
+ "gpuRatioCD": {
+  "value": "2.5",
+  "source": "same PC: C's tower / D, gpu b1"
+ },
+ "gpuBatchRatioCD": {
+  "value": "9",
+  "source": "same PC: C's tower / D, gpu b32"
+ },
+ "cpuRatioCD": {
+  "value": "14",
+  "source": "same PC: C's tower / D, cpu b1"
+ },
+ "sizeRatioCD": {
+  "value": "3.5",
+  "source": "efficiency.csv fp32 MB C / D"
+ },
+ "paramRatioCD": {
+  "value": "3.5",
+  "source": "efficiency.csv params C / D"
+ },
+ "gpuRatioCB": {
+  "value": "11",
+  "source": "efficiency.csv gpu b1 C/B"
+ },
+ "cpuRatioCB": {
+  "value": "49",
+  "source": "efficiency.csv cpu b1 C/B"
+ },
+ "bmProbeSiglip": {
+  "value": "0.824",
+  "source": "results/benchmark.csv probe_siglip_so400m_384 f1"
+ },
+ "bmProbeSiglipSd": {
+  "value": "0.012",
+  "source": "benchmark.csv f1_sd"
+ },
+ "bmConvnext": {
+  "value": "0.641",
+  "source": "results/benchmark.csv convnext_tiny fixed f1"
+ },
+ "bmConvnextSd": {
+  "value": "0.034",
+  "source": "benchmark.csv f1_sd"
+ },
+ "bmScratch": {
+  "value": "0.355",
+  "source": "results/benchmark.csv scratch_cnn fixed f1"
+ },
+ "bmScratchSd": {
+  "value": "0.015",
+  "source": "benchmark.csv f1_sd"
+ },
+ "bmPartial": {
+  "value": "0.812",
+  "source": "benchmark.csv siglip partial v2 f1"
+ },
+ "bmZeroSiglip": {
+  "value": "0.776",
+  "source": "benchmark.csv zeroshot_siglip_so400m_384 f1"
+ },
+ "bmHog": {
+  "value": "0.206",
+  "source": "benchmark.csv hog_hsv_svm f1"
+ },
+ "bmImagenetLo": {
+  "value": "0.547",
+  "source": "benchmark.csv ImageNet fine-tunes min f1"
+ },
+ "bmImagenetHi": {
+  "value": "0.654",
+  "source": "benchmark.csv ImageNet fine-tunes max f1"
+ },
+ "leakRows": {
+  "value": "198",
+  "source": "results/leakage_simulation.csv leaked_rows"
+ },
+ "leakEval": {
+  "value": "853",
+  "source": "results/leakage_simulation.csv legacy_eval_rows"
+ },
+ "leakPct": {
+  "value": "23.2",
+  "source": "leaked/eval"
+ },
+ "inflSiglip": {
+  "value": "5.5",
+  "source": "leakage_simulation.csv siglip_so400m_384 inflation_pts"
+ },
+ "inflConvnext": {
+  "value": "11.0",
+  "source": "leakage_simulation.csv convnext_tiny inflation_pts"
+ },
+ "inflResnet": {
+  "value": "13.6",
+  "source": "leakage_simulation.csv resnet50 inflation_pts"
+ },
+ "whN": {
+  "value": "407",
+  "source": "results/final/final_test_web_holdout_v1.json n"
+ },
+ "whAcc": {
+  "value": "0.821",
+  "source": "final_test_web_holdout_v1.json accuracy"
+ },
+ "whFone": {
+  "value": "0.816",
+  "source": "final_test_web_holdout_v1.json macro_f1"
+ },
+ "whProbe": {
+  "value": "0.779",
+  "source": "final_test_web_holdout_v1.json probe_only_accuracy"
+ },
+ "whCov": {
+  "value": "85.3",
+  "source": "final_test_web_holdout_v1.json coverage"
+ },
+ "whAccepted": {
+  "value": "0.890",
+  "source": "final_test_web_holdout_v1.json accepted_accuracy"
+ },
+ "ftCov": {
+  "value": "87.1",
+  "source": "results/final/final_test_v2.json coverage"
+ },
+ "ftAccepted": {
+  "value": "0.909",
+  "source": "final_test_v2.json accepted_accuracy"
+ },
+ "ftEce": {
+  "value": "0.034",
+  "source": "final_test_v2.json ece"
+ },
+ "ftThr": {
+  "value": "0.5",
+  "source": "final_test_v2.json abstain_threshold"
+ },
+ "koReplayAcc": {
+  "value": "0.877",
+  "source": "results/kaggle_original/summary.json legacy_test_replay.all.accuracy"
+ },
+ "koReplayN": {
+  "value": "521",
+  "source": "kaggle_original legacy_test_replay.all.n"
+ },
+ "koLeakedN": {
+  "value": "113",
+  "source": "kaggle_original legacy_test_replay.leaked_copy_of_train.n"
+ },
+ "koLeakedAcc": {
+  "value": "1.000",
+  "source": "kaggle_original leaked_copy_of_train.accuracy"
+ },
+ "koCleanAcc": {
+  "value": "0.843",
+  "source": "kaggle_original clean_not_in_train.accuracy"
+ },
+ "koOldBest": {
+  "value": "0.713",
+  "source": "kaggle_original old_best_for_reference.accuracy"
+ },
+ "koOldModel": {
+  "value": "ConvNeXt-Base strong recipe",
+  "source": "kaggle_original old_best_for_reference.model"
+ },
+ "koUnseenN": {
+  "value": "493",
+  "source": "kaggle_original by_v2_split.test.n"
+ },
+ "koUnseenAcc": {
+  "value": "0.830",
+  "source": "kaggle_original by_v2_split.test.accuracy"
+ },
+ "tempR": {
+  "value": "0.898",
+  "source": "runs/references.json R2 temperature"
+ },
+ "probeC": {
+  "value": "0.01",
+  "source": "runs/references.json R1 best_C"
+ },
+ "whRecLed": {
+  "value": "0.47",
+  "source": "final_test_web_holdout_v1.json per_class.led.recall"
+ },
+ "whRecSwitch": {
+  "value": "0.52",
+  "source": "final_test_web_holdout_v1.json per_class.switch.recall"
+ },
+ "whRecTrf": {
+  "value": "0.67",
+  "source": "final_test_web_holdout_v1.json per_class.transformer.recall"
+ },
+ "whCmLedDiode": {
+  "value": "7",
+  "source": "final_test_web_holdout_v1.json confusion[led][diode]"
+ },
+ "whCmSwIc": {
+  "value": "6",
+  "source": "final_test_web_holdout_v1.json confusion[switch][ic chip]"
+ },
+ "whCmTrfInd": {
+  "value": "5",
+  "source": "final_test_web_holdout_v1.json confusion[transformer][inductor coil]"
+ },
+ "nLabelIssues": {
+  "value": "69",
+  "source": "results/phase1/label_issues_v2.csv rows"
+ },
+ "abKeepAcc": {
+  "value": "0.825",
+  "source": "cleaning_ablation_siglip_so400m.csv keep_all.all_acc"
+ },
+ "abDropAcc": {
+  "value": "0.792",
+  "source": "cleaning_ablation_siglip_so400m.csv drop_ood.all_acc"
+ },
+ "abKeepIn": {
+  "value": "0.861",
+  "source": "cleaning_ablation_siglip_so400m.csv keep_all.in_acc"
+ },
+ "abDropIn": {
+  "value": "0.852",
+  "source": "cleaning_ablation_siglip_so400m.csv drop_ood.in_acc"
+ },
+ "nPersonTop": {
+  "value": "83",
+  "source": "data/v2/review/ood_suspects.csv top_distractor == person"
+ },
+ "imagesTarSha": {
+  "value": "0960de2c881eb839",
+  "source": "data/v2/leakage_report.json images_tar.sha256 (first 16 hex)"
+ },
+ "foneAOld": {
+  "value": "0.336",
+  "source": "previous build metrics.json (git 47ae396) A test macro_f1"
+ },
+ "accAOld": {
+  "value": "0.354",
+  "source": "previous build metrics.json (git 47ae396) A test accuracy"
+ },
+ "imprFiveAOld": {
+  "value": "0.355",
+  "source": "results/phase2/runs_fixed.jsonl 4e4c6e8f6cf3 5-fold mean macro_f1"
+ },
+ "imprFiveA": {
+  "value": "0.390",
+  "source": "results/runs_win.jsonl b0afa2aa4d60 5-fold mean macro_f1"
+ },
+ "imprFiveKD": {
+  "value": "0.436",
+  "source": "results/runs_win.jsonl fbe64b2765cb 5-fold mean macro_f1"
+ },
+ "imprSchedGain": {
+  "value": "3.5",
+  "source": "5-fold mean (200 ep - 120 ep) macro-F1, points"
+ },
+ "imprKDGain": {
+  "value": "4.6",
+  "source": "5-fold mean (KD - 200 ep) macro-F1, points"
+ },
+ "imprKDGainSe": {
+  "value": "0.7",
+  "source": "paired-fold SE of KD - 200 ep, points"
+ },
+ "imprTestA": {
+  "value": "0.392",
+  "source": "results/scratch_cnn_improvement/test_plain_200ep_b0afa2aa4d60_fold0.json macro_f1"
+ },
+ "imprTestKD": {
+  "value": "0.393",
+  "source": "results/scratch_cnn_improvement/test_distill_300ep_fbe64b2765cb_fold0.json macro_f1"
+ },
+ "imprTestAccKD": {
+  "value": "0.411",
+  "source": "results/scratch_cnn_improvement/test_distill_300ep_fbe64b2765cb_fold0.json accuracy"
+ },
+ "imprTestDiffLo": {
+  "value": "-4.4",
+  "source": "results/scratch_cnn_improvement/summary.json paired bootstrap 2.5 pct, points"
+ },
+ "imprTestDiffHi": {
+  "value": "+4.5",
+  "source": "results/scratch_cnn_improvement/summary.json paired bootstrap 97.5 pct, points"
+ },
+ "imprHoldA": {
+  "value": "0.257",
+  "source": "results/scratch_cnn_improvement/web_holdout_plain_200ep_b0afa2aa4d60.json macro_f1"
+ },
+ "imprHoldAccA": {
+  "value": "0.283",
+  "source": "results/scratch_cnn_improvement/web_holdout_plain_200ep_b0afa2aa4d60.json accuracy"
+ },
+ "imprHoldKD": {
+  "value": "0.298",
+  "source": "results/scratch_cnn_improvement/web_holdout_distill_300ep_fbe64b2765cb.json macro_f1"
+ },
+ "imprHoldAccKD": {
+  "value": "0.317",
+  "source": "results/scratch_cnn_improvement/web_holdout_distill_300ep_fbe64b2765cb.json accuracy"
+ },
+ "imprHoldDiff": {
+  "value": "+4.0",
+  "source": "results/scratch_cnn_improvement/web_holdout_summary.json paired bootstrap mean, points"
+ },
+ "imprHoldDiffLo": {
+  "value": "+0.3",
+  "source": "results/scratch_cnn_improvement/web_holdout_summary.json 2.5 pct, points"
+ },
+ "imprHoldDiffHi": {
+  "value": "+7.9",
+  "source": "results/scratch_cnn_improvement/web_holdout_summary.json 97.5 pct, points"
+ },
+ "gpuNameA": {
+  "value": "NVIDIA GeForce RTX 4070 Laptop GPU",
+  "source": "results/itri626/runs/A_scratch_cnn.json machine.gpu.name"
+ },
+ "gpuMemA": {
+  "value": "8.0",
+  "source": "results/itri626/runs/A_scratch_cnn.json machine.gpu.memory_gib"
+ }
+}

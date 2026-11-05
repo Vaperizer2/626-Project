@@ -446,3 +446,26 @@ prefer to keep 0.50 for continuity), final C 0.003. Graph: model.onnx + model.on
 as for `final`), parity on 32 dev images vs ORT CPU 7e-6 / 32 of 32. Manifest `deployed_crop100` ("Deployed at crop
 1.0"), listed in `exports/models.json`, default list unchanged, no bundle.txt entry (1.7 GB more; the team lead's call
 whether it replaces `final`). Not scored on the sealed test.
+
+## 2026-11-05 — Course pipeline: model D (frozen MobileCLIP2-S3 hybrid + linear head), one test look
+
+The user decided to present the small model as a fourth main model of the ITRI626 comparison. The brief (§6) requires
+main models to be trained and evaluated on the same split, so D is a new head, not the packaged Small model (whose
+head was fitted on all dev rows): `scripts/itri626_experiments.py --steps head_D reference_D` trains
+`nn.Linear(3072, 20)` on the standardised cached MobileCLIP2-S3 features of the fixed split's 2,010 training rows with
+the same code, weight-decay grid {1e-4 … 1e-1} and validation rule as model C's head (all four values tie; 1e-4 kept),
+best epoch 11 of 31, validation 0.7749 acc / 0.7724 macro-F1, and scores the 418 test rows once: **accuracy 0.7727,
+macro-F1 0.7703** (95 % bootstrap 0.732–0.811 / 0.726–0.806). Paired on the same rows: C − D +5.0 pt [1.4, 8.6], 39 vs
+18 discordant, McNemar p = 7.5e-3; D − B +13.6 pt [9.1, 17.9], 80 vs 23, p = 1.5e-8; D − A +37.3 pt. R3 reference row =
+the packaged Small model recomputed from cached features and asserted equal to its recorded look (0.8062). A, B, C, R1,
+R2 entries of metrics.json and profile.json verified unchanged. Profile (`--profile-only`, RTX 4070 Laptop PC, not the
+report's 4060 Ti PC): D 15.2 ms GPU b1 / 3.10 ms per image b32 / 111.5 ms CPU; C's tower timed on the same PC with the
+same procedure as the anchor: 37.9 / 27.9 / 1,563 ms, so D is 2.5× / 9× / 14× faster. The fused Small model's test
+look (0.806) and this one are two different heads on the same tower; both are recorded, neither rescored.
+
+Report integration: the team lead places report text himself, so `docs/itri626_report/`, both notebooks, the helpers
+and `results/itri626/figures/` are untouched on `Meiring`. `docs/model_d_inserts/INSERTS.md` lists each location and
+the proposed text, with ready-made table rows and four-model figures beside it. A full trial build (report, notebook,
+figures with D throughout) is parked on the local branch `Meiring-four-model-draft` (2bd71b3, not for merge); in it
+the body grew from 15 to 17 pages, 15.4 with the hyperparameter table moved to the appendix. Open: the lecturer's
+approval of a conv-attention hybrid as a fourth family.
