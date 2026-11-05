@@ -105,27 +105,26 @@ unavailable (greyed out) until its graph file exists; it never fails on a missin
 | Small | `exports/mobileclip2_s3/` | frozen MobileCLIP2-S3 tower (123 M parameters, 256 px) with the Deployed recipe: probe + zero-shot head, calibrated, abstains below 0.55. Test accuracy 0.806; 9 ms per image under onnxruntime CUDA fp16 against 32 ms for Deployed (`docs/EFFICIENCY_STUDY.md`). Apple research-only weights licence. |
 | Deployed at crop 1.0 | `exports/final_crop100/` | the Deployed SigLIP model refitted with no border cut (resize the short side to 384, crop nothing). Out-of-fold accuracy 0.842 against 0.826; not scored on the sealed test. `exports/final/` is unchanged. |
 
-The manifests, labels, preprocessing and reports are in Git; the graphs are not. Get them in one of two ways.
+The manifests, labels, preprocessing and reports are in Git; the graphs are not.
 
-**Download** (the checksums in the committed manifests match these files):
+**Small: download** (the checksums in the committed manifest match these files):
 
 ```bash
 mkdir -p dist
-gh release download meiring-models-2026-11-05 --repo Vaperizer2/626-Project --dir dist
-(cd dist && sha256sum -c SHA256SUMS-meiring-models.txt)
+gh release download meiring-small-2026-11-05 --repo Vaperizer2/626-Project --dir dist
+(cd dist && sha256sum -c SHA256SUMS-meiring-small.txt)
 tar -xf dist/small-mobileclip2_s3.tar      # exports/mobileclip2_s3/{model.onnx, model_fp16.onnx}
-tar -xf dist/deployed-crop100.tar          # exports/final_crop100/{model.onnx, model.onnx.data}
 ```
 
 | Asset | Bytes | Contents |
 |---|---:|---|
 | `small-mobileclip2_s3.tar` | 754,626,560 | `model.onnx` (fp32, 502,446,518 bytes, the graph the manifest names) and `model_fp16.onnx` |
-| `deployed-crop100.tar` | 1,716,664,320 | `model.onnx` and its external weights `model.onnx.data` (1,714,593,792 bytes) |
 
-**Or build** them, one command each, on a machine with a GPU and `data/v2/images/`. Each command first builds what a
-fresh checkout lacks (the cached features, a GPU pass of about a minute, and for Small the text matrices, which
-download the MobileCLIP 2 weights from Hugging Face) and ends by refreshing the model's manifest, because a graph
-built on another machine is not byte-identical to the released one:
+**Or build** it, and **build Deployed at crop 1.0**, which is not in a release because it would be a second 1.7 GB
+copy of the SigLIP weights. One command each, on a machine with a GPU and `data/v2/images/`. Each command first
+builds what a fresh checkout lacks (the cached features, a GPU pass of about a minute, and for Small the text
+matrices, which download the MobileCLIP 2 weights from Hugging Face) and ends by refreshing the model's manifest,
+because a graph built on another machine is not byte-identical to the one built for this branch:
 
 ```bash
 uv run python tools/views/package_candidate.py --model mobileclip2_s3 --out exports/mobileclip2_s3
