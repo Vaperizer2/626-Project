@@ -332,3 +332,70 @@ SigLIP's compute, −3.9 ± 0.2 pt; PE-Core L 0.835 at 58 %, −0.5 ± 0.3. Thos
 ViT-B models are dominated by MobileCLIP2-S3 on both axes. (3) Step 3 (fine-tuning MobileCLIP2-S3, partial and
 full) and step 4 (ONNX export and measured latency vs Deployed and Fast) remain; selection on dev folds only.
 
+
+## 2026-11-05 — Efficiency study, step 3: fine-tuning MobileCLIP2-S3 (development folds)
+
+Question: does updating the backbone of the best small candidate beat its frozen linear probe (0.7920 CV macro-F1,
+crop 1.0) or the fused recipe on it (0.8013)? Two configs, one recipe each, chosen before looking at folds:
+`configs/mobileclip2_s3_full.yaml` (all 123M parameters) and `configs/mobileclip2_s3_partial.yaml` (stem and stages
+0–3 frozen via the new `model.kwargs.trainable_stages` of the registry builder; stage 4 + final conv + head, 61M).
+Windows run log `results/runs_win.jsonl`, run dirs `runs/win/`.
+
+Two recipe problems surfaced on fold 0 before the recorded runs and are part of the evidence:
+(1) batch 32 at 256 px peaks at 7.8 GB on the 8 GB card and pages to system memory (17 s/step); 16 × 2 accumulation
+with gradient checkpointing peaks at 2.9 GB at ~38 img/s. (2) With a random head at the CLIP-safe LR (5e-5, layer
+decay 0.75) fold 0 reached only 0.3955 after 30 epochs (record `a2f89f7ff4fe`): train acc 0.60, and validation
+swung 0.15–0.40 from epoch to epoch because the FastViT BatchNorm running statistics drifted on small batches. The
+recorded runs therefore use LP-FT (Kumar et al. 2022): `train.head_init` loads the fold's own fitted probe, folded
+into the Linear head (`tools/views/probe_heads.py`; the folded layer reproduces the probe's F1 to 4 decimals), and
+`train.freeze_bn` keeps BN statistics frozen (affine parameters still train). Both are new, additive options in
+`compclass.train`. A one-step smoke run scores exactly the probe (0.7829 on fold 0) before any update.
+
+| Run | trainable | epochs (best) | min/fold | peak VRAM | CV macro-F1 (± SD) | CV acc | vs S3 probe | vs S3 fused | vs SigLIP fused | folds |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| mobileclip2_s3_full `e33f614a2fe3` | 122.9 M | 13.4 (4.4) | 9.6 | 2895 MB | 0.7923 ± 0.0202 | 0.7934 | +0.03 ± 0.79 (3/5) | −0.91 ± 0.97 (2/5) | −4.80 ± 1.00 (0/5) | 0.774, 0.769, 0.807, 0.797, 0.815 |
+| mobileclip2_s3_partial `974ca5091a8d` | 60.6 M | 9.6 (2.6) | 2.4 | 1496 MB | 0.7890 ± 0.0227 | 0.7918 | −0.30 ± 0.72 (2/5) | −1.24 ± 0.65 (1/5) | −5.13 ± 0.67 (0/5) | 0.756, 0.786, 0.785, 0.801, 0.817 |
+
+Findings: fine-tuning ties the probe (full) or loses to it (partial) and never reaches the fused probe; the best
+epoch is 0–5 in eight of ten runs, train accuracy passes 0.95 within four epochs, and per-fold differences of ±2 pt
+are the fold-to-fold noise of 500-image validation sets (folds 2–4 gained, 0–1 lost, for both recipes). Same answer
+as October's SigLIP partial fine-tunes: on 2,000 training images the frozen features plus linear heads are the
+ceiling for this backbone too, so the deployable small model is the fused probe on the frozen tower, not a
+fine-tuned network. Summary: `tools/views/finetune_summary.py` → `results/efficiency/step3_finetune_summary.md`.
+
+## 2026-11-05 — Efficiency study, step 4: exported graphs and measured latency (RTX 4070 Laptop, 8 GB)
+
+Graphs: `tools/views/export_candidate.py` exports a candidate as one ONNX graph (tower + probe head refitted on all
+dev rows + zero-shot head, fused; uncalibrated), fp32 and fp16, in inference form (timm `reparameterize_model`,
+which folds FastViT's training branches into single convolutions, 1593 → 785 modules, identical outputs). Parity:
+ORT CPU vs PyTorch max |logit| gap ≤ 6e-6 fp32 / ≤ 0.07 fp16, argmax equal; on 16 real dev images the graph agrees
+with the numpy recipe on cached features 16/16 for all three (max gap 0.013–0.023). The check caught one bug: the
+SigLIP graph was first built at crop 0.9 while its head was fitted on crop-1.0 features (gap 1.26) — fixed.
+Sidecars tracked under `exports/candidates/`, `.onnx` files git-ignored.
+
+Latency, batch 1, same machine, two runtimes (`results/efficiency/step4_latency.md`, JSON next to it):
+
+| Tower (fused recipe) | px | params | GFLOPs | fp16 graph | PyTorch eager fp16, median ms | batch-8 img/s | ORT CUDA EP fp16, median ms | vs SigLIP@384 (ORT) |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| SigLIP So400m (Deployed trunk) | 384 | 428 M | 604 | 821 MB | 30.4 | 35 | 32.7 | 1.00× |
+| SigLIP So400m at 308 px (Fast trunk, fp16 not INT8) | 308 | 428 M | 401 | – | 18.2 | 58 | – | – |
+| PE-Core L/14 | 336 | 316 M | 352 | 607 MB | 18.6 | 63 | 26.1 | 0.80× |
+| MobileCLIP2-S3 | 256 | 123 M | 30 | 240 MB | 10.6 | 376 | 9.0 | 0.27× |
+| ConvNeXt-T (model B, scale) | 224 | 28 M | 9 | – | 3.9 | 1393 | – | – |
+
+Method: PyTorch — static GPU input, fp16 autocast, CUDA events, 5 rounds × 60 runs interleaved across models
+(`tools/views/latency.py`); ORT — IO binding, ORT_ENABLE_ALL, warm-up ≥ 20 runs and 10 s, 5 × 60 interleaved
+(`tools/views/ort_latency.py`, run from a throw-away venv with onnxruntime-gpu 1.31.1 + NVIDIA CUDA 13 wheels so
+`uv.lock` is untouched). The team lead's Fast model (INT8 under TensorRT on the 3060) is not reproducible here;
+its trunk at fp16 is the 308-px row, an upper bound on its latency on this card.
+
+Findings: (1) MobileCLIP2-S3 runs the deployed recipe in 9 ms, 3.6× faster than SigLIP under ORT and 10× more
+throughput at batch 8, in a 240 MB fp16 file instead of 821 MB; the price is 3.9 pt macro-F1 (0.801 vs 0.840 OOF).
+(2) PE-Core L is only 20 % faster than SigLIP under ORT (39 % in eager PyTorch): its attention-pooling graph does not
+fuse as well, so its −0.5 pt costs more latency than the GFLOPs suggested. (3) Before reparameterisation
+MobileCLIP2-S3 took 23 ms at batch 1 in eager PyTorch, slower than PE-Core L, despite 12× fewer FLOPs: a hybrid's
+batch-1 cost is kernel launches, not arithmetic, so FLOPs alone mis-rank the candidates and measured latency is the
+axis for the write-up. (4) The efficient frontier on this card is therefore SigLIP at 384 (0.840 / 33 ms) and
+MobileCLIP2-S3 (0.801 / 9 ms); PE-Core L (0.835 / 26 ms) sits close to the line but is dominated once Fast's INT8
+trunk is counted. Conclusion of the study: frozen features + fused linear heads is the right recipe at every size,
+fine-tuning adds nothing at this data scale, and the choice is 4 pt of macro-F1 for a 3.6× latency and 3.4× size cut.

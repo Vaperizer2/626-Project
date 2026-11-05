@@ -1,0 +1,12 @@
+{
+ "model": "mobileclip2_s3",
+ "px": 256,
+ "fp32_mb": 479.1760559082031,
+ "fp16_mb": 240.49223709106445,
+ "fp32_max_gap_random": 5.7220458984375e-06,
+ "fp32_argmax_agree_random": true,
+ "fp16_max_gap_random": 0.06933403015136719,
+ "fp16_argmax_agree_random": true,
+ "real16_argmax_agree": 16,
+ "real16_max_gap": 0.022539138793945312
+}
