@@ -38,5 +38,30 @@
   "gpu_ms_per_image_batch32_fp16": 22.475,
   "cpu_ms_per_image_batch1_fp32_8threads": 893.5
  },
- "_note": "Forward pass of a preprocessed tensor to softmax probabilities, after warm-up; excludes JPEG decode and resizing. C = frozen SigLIP So400m image tower + standardisation + linear head; its checkpoint is only the head (the frozen backbone is the public timm weight file)."
+ "D_mobileclip2_s3_linear": {
+  "params": 122775668,
+  "trainable_params": 61460,
+  "input_size": 256,
+  "checkpoint_files": [
+   "runs\\itri626\\mobileclip2_s3_linear\\fold0\\head.pt"
+  ],
+  "checkpoint_mb": 0.26,
+  "fp32_weights_mb": 468.4,
+  "gpu_ms_per_image_batch1_fp16": 15.16,
+  "gpu_ms_per_image_batch32_fp16": 3.098,
+  "cpu_ms_per_image_batch1_fp32_8threads": 111.5,
+  "machine": {
+   "gpu": "NVIDIA GeForce RTX 4070 Laptop GPU",
+   "cpu": "AMD64 Family 26 Model 36 Stepping 0, AuthenticAMD",
+   "platform": "Windows-11-10.0.26200-SP0",
+   "c_tower_reference": {
+    "model": "C's tower (SigLIP So400m, no head)",
+    "input_size": 384,
+    "gpu_ms_per_image_batch1_fp16": 37.94,
+    "gpu_ms_per_image_batch32_fp16": 27.877,
+    "cpu_ms_per_image_batch1_fp32_8threads": 1563.3
+   }
+  }
+ },
+ "_note": "Forward pass of a preprocessed tensor to softmax probabilities, after warm-up; excludes JPEG decode and resizing. C = frozen SigLIP So400m image tower + standardisation + linear head; its checkpoint is only the head (the frozen backbone is the public timm weight file). D = the same with the MobileCLIP2-S3 tower in its inference form (timm reparameterize_model); an entry with a 'machine' field was timed on that machine, the others on the PC in environment.json."
 }

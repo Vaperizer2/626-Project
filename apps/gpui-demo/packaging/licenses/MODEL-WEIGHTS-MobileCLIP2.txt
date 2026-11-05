@@ -1,0 +1,8 @@
+Small model weights (MobileCLIP2-S3)
+====================================
+
+The "Small" model (exports/mobileclip2_s3) uses the image tower of Apple's MobileCLIP2-S3
+(https://huggingface.co/apple/MobileCLIP2-S3, timm checkpoint fastvit_mci3.apple_mclip2_dfndr2b), released under the
+Apple Machine Learning Research Model License ("apple-amlr"). That licence permits research and educational use and
+restricts commercial use; read it before redistributing this bundle for any other purpose. The two linear heads on top
+of it were fitted on the dataset described in DATASET.txt. SigLIP (Deployed, Fast, C) is Apache-2.0 and unaffected.

@@ -95,15 +95,18 @@ def _register(key: str, family: str, timm_name: str | None = None, zeroshot: tup
 
 # ---------------------------------------------------------------------------------- 0. from scratch
 @_register("scratch_cnn", "Scratch CNN")
-def _scratch(num_classes: int, pretrained: bool, width: int = 32, dropout: float = 0.3, input_size: int = 160):
+def _scratch(num_classes: int, pretrained: bool, width: int = 32, dropout: float = 0.3, input_size: int = 160,
+             residual: bool = False, blocks: int = 1, identity_init: bool = False, whiten_stem: bool = False):
     """Plain VGG-style CNN trained from random initialisation (see models/scratch_cnn.py).
 
     No pretraining: everything -- edges, textures, part detectors -- must be learned from ~3k images. It is the
-    lower bound that shows how much the pretrained families gain from transfer learning.
+    lower bound that shows how much the pretrained families gain from transfer learning. ``residual=True``
+    swaps each stage's conv pair for a ResNet basic block; ``blocks`` sets blocks (or conv pairs) per stage.
+    ``identity_init`` / ``whiten_stem`` select the airbench-style initialisations (see scratch_cnn.py).
     """
     from .scratch_cnn import ScratchCNN
 
-    return ScratchCNN(num_classes, width, dropout), PreprocessSpec(input_size, (0.5,) * 3, (0.5,) * 3, "bilinear", 0.875)
+    return ScratchCNN(num_classes, width, dropout, residual, blocks, identity_init, whiten_stem), PreprocessSpec(input_size, (0.5,) * 3, (0.5,) * 3, "bilinear", 0.875)
 
 
 # ---------------------------------------------------------------------------------- 1. classic CNNs
@@ -231,6 +234,159 @@ def _siglip(num_classes: int, pretrained: bool, name: str = "vit_base_patch16_si
     captioning, self-distillation and masked-prediction objectives and multilingual data, improving dense and
     localisation features. Pools with an attention head ("MAP") rather than a CLS token; mean/std = 0.5.
     """
+    return _timm(name, num_classes, pretrained, **kw)
+
+
+# ---------------------------------------------------------------------------------- 5. 2025 backbones (probe sweep, 2026-11-04)
+@_register("dinov3_vithp16", "DINOv3 (self-supervised ViT)", "vit_huge_plus_patch16_dinov3.lvd1689m",
+           name="vit_huge_plus_patch16_dinov3.lvd1689m")
+@_register("dinov3_vitl16", "DINOv3 (self-supervised ViT)", "vit_large_patch16_dinov3.lvd1689m",
+           name="vit_large_patch16_dinov3.lvd1689m")
+def _dinov3(num_classes: int, pretrained: bool, name: str = "vit_large_patch16_dinov3.lvd1689m", **kw):
+    """DINOv3 (Simeoni et al., 2025): self-supervised ViT on 1.7B curated images with Gram anchoring.
+
+    Successor of DINOv2 with register tokens and RoPE; distilled ViT-L/16 (300M) and ViT-H+/16 (840M)
+    students of the 7B teacher. Native 256 px, ImageNet normalisation, crop 1.0. Weights are gated on the
+    Hugging Face Hub (accept the DINOv3 licence once, then ``hf auth login``).
+    """
+    return _timm(name, num_classes, pretrained, **kw)
+
+
+@_register("pe_core_g14_448", "Perception Encoder (contrastive image-text)", "vit_pe_core_gigantic_patch14_448.fb",
+           zeroshot=("PE-Core-bigG-14-448", "meta"), name="vit_pe_core_gigantic_patch14_448.fb")
+@_register("pe_core_l14_336", "Perception Encoder (contrastive image-text)", "vit_pe_core_large_patch14_336.fb",
+           zeroshot=("PE-Core-L-14-336", "meta"), name="vit_pe_core_large_patch14_336.fb")
+def _pe_core(num_classes: int, pretrained: bool, name: str = "vit_pe_core_large_patch14_336.fb", **kw):
+    """Perception Encoder Core (Bolya et al., 2025): CLIP-style image-text training with a robust recipe.
+
+    Meta's PE-Core L/14 at 336 px (300M) and G/14 at 448 px (1.9B); attention-pooled embedding, mean/std 0.5,
+    crop 1.0. Among the strongest zero-shot and linear-probe image encoders of 2025.
+    """
+    return _timm(name, num_classes, pretrained, **kw)
+
+
+@_register("aimv2_h14_336", "AIMv2 (autoregressive image-text)", "aimv2_huge_patch14_336.apple_pt",
+           name="aimv2_huge_patch14_336.apple_pt")
+@_register("aimv2_l14_336", "AIMv2 (autoregressive image-text)", "aimv2_large_patch14_336.apple_pt",
+           name="aimv2_large_patch14_336.apple_pt")
+def _aimv2(num_classes: int, pretrained: bool, name: str = "aimv2_large_patch14_336.apple_pt", **kw):
+    """AIMv2 (Fini et al., 2024): ViT pre-trained to autoregressively reconstruct image patches and caption text.
+
+    Apple's large (300M) and huge (600M) encoders at 336 px; CLIP normalisation, crop 1.0. Strong frozen
+    features for recognition without a contrastive objective.
+    """
+    return _timm(name, num_classes, pretrained, **kw)
+
+
+@_register("eva02_l14_clip_336", "EVA-02 CLIP (contrastive image-text)", "eva02_large_patch14_clip_336.merged2b",
+           name="eva02_large_patch14_clip_336.merged2b")
+def _eva02_clip(num_classes: int, pretrained: bool, name: str = "eva02_large_patch14_clip_336.merged2b", **kw):
+    """EVA-02 CLIP (Sun et al., 2023): a masked-image-modelling-initialised ViT-L trained CLIP-style on 2B pairs.
+
+    336 px, CLIP normalisation, crop 1.0. Pooled image embedding from the CLIP projection.
+    """
+    return _timm(name, num_classes, pretrained, **kw)
+
+
+@_register("siglip2_so400m_512", "SigLIP (sigmoid image-text)", "vit_so400m_patch16_siglip_512.v2_webli",
+           zeroshot=("ViT-SO400M-16-SigLIP2-512", "webli"), name="vit_so400m_patch16_siglip_512.v2_webli")
+def _siglip2_512(num_classes: int, pretrained: bool, name: str = "vit_so400m_patch16_siglip_512.v2_webli", **kw):
+    """SigLIP 2 So400m/16 at 512 px: the same encoder family as model C at a higher native resolution.
+
+    Mean/std 0.5, crop 0.9, MAP pooling. Tests whether resolution, rather than the backbone, limits the probe.
+    """
+    return _timm(name, num_classes, pretrained, **kw)
+
+
+@_register("metaclip2_g14_378", "MetaCLIP 2 (contrastive image-text)", "vit_gigantic_patch14_clip_378.metaclip2_worldwide",
+           name="vit_gigantic_patch14_clip_378.metaclip2_worldwide")
+@_register("dfn5b_h14_224", "DFN CLIP (contrastive image-text)", "vit_huge_patch14_clip_224.dfn5b",
+           name="vit_huge_patch14_clip_224.dfn5b")
+def _big_clip(num_classes: int, pretrained: bool, name: str = "vit_huge_patch14_clip_224.dfn5b", **kw):
+    """Large CLIP-style encoders: DFN-5B ViT-H/14 (Fang et al., 2023, 630M) and MetaCLIP 2 ViT-bigG/14 at
+    378 px (Chuang et al., 2025, 1.8B). CLIP normalisation, crop 1.0.
+    """
+    return _timm(name, num_classes, pretrained, **kw)
+
+
+# ---------------------------------------------------------------------------------- 6. small image-text backbones (efficiency study, 2026-11-05)
+# All registered with crop_pct 1.0 (short side resized to the input size, nothing cut off): the 2026-11-05 view control
+# showed the deployed 0.9 crop costs SigLIP about 1.5 pt here, so the efficiency study compares every backbone at
+# the same, better view. SigLIP So400m's crop-1.0 reference lives in results/cache/features/*-crop100.npy.
+@_register("pe_core_b16_336", "Perception Encoder (contrastive image-text)", "vit_pe_core_base_patch16_224.fb",
+           zeroshot=("PE-Core-B-16", "meta"), name="vit_pe_core_base_patch16_224.fb", input_size=336, crop_pct=1.0)
+@_register("pe_core_b16_224", "Perception Encoder (contrastive image-text)", "vit_pe_core_base_patch16_224.fb",
+           zeroshot=("PE-Core-B-16", "meta"), name="vit_pe_core_base_patch16_224.fb", crop_pct=1.0)
+@_register("pe_core_s16_384", "Perception Encoder (contrastive image-text)", "vit_pe_core_small_patch16_384.fb",
+           zeroshot=("PE-Core-S-16-384", "meta"), name="vit_pe_core_small_patch16_384.fb", crop_pct=1.0)
+@_register("pe_core_t16_384", "Perception Encoder (contrastive image-text)", "vit_pe_core_tiny_patch16_384.fb",
+           zeroshot=("PE-Core-T-16-384", "meta"), name="vit_pe_core_tiny_patch16_384.fb", crop_pct=1.0)
+def _pe_core_small(num_classes: int, pretrained: bool, name: str = "vit_pe_core_base_patch16_224.fb", **kw):
+    """PE-Core B/16 (93M, native 224 px; RoPE lets it run at 336), S/16 (24M) and T/16 (6M) at 384 px.
+
+    The small members of Meta's Perception Encoder family (same MetaCLIP-style training as PE-Core L/G), the
+    efficiency study's cheap end; timm features are pre-projection, see tools/views/heads.py.
+    """
+    return _timm(name, num_classes, pretrained, **kw)
+
+
+@_register("siglip2_b16_384", "SigLIP (sigmoid image-text)", "vit_base_patch16_siglip_384.v2_webli",
+           zeroshot=("ViT-B-16-SigLIP2-384", "webli"), name="vit_base_patch16_siglip_384.v2_webli", crop_pct=1.0)
+def _siglip2_b16_384(num_classes: int, pretrained: bool, name: str = "vit_base_patch16_siglip_384.v2_webli", **kw):
+    """SigLIP 2 B/16 at 384 px (93M): October's best base-size probe (0.76 at 224 px), at full resolution.
+
+    Same sigmoid image-text pre-training family as the deployed So400m tower, one size class down; the efficiency
+    study's like-for-like small SigLIP.
+    """
+    return _timm(name, num_classes, pretrained, **kw)
+
+
+@_register("mobileclip2_s3", "MobileCLIP 2 (contrastive image-text, mobile)", "fastvit_mci3.apple_mclip2_dfndr2b",
+           zeroshot=("MobileCLIP2-S3", "dfndr2b"), name="fastvit_mci3.apple_mclip2_dfndr2b", crop_pct=1.0)
+@_register("mobileclip2_s2", "MobileCLIP 2 (contrastive image-text, mobile)", "fastvit_mci2.apple_mclip2_dfndr2b",
+           zeroshot=("MobileCLIP2-S2", "dfndr2b"), name="fastvit_mci2.apple_mclip2_dfndr2b", crop_pct=1.0)
+@_register("mobileclip2_b", "MobileCLIP 2 (contrastive image-text, mobile)", "vit_base_mci_224.apple_mclip2_dfndr2b",
+           zeroshot=("MobileCLIP2-B", "dfndr2b"), name="vit_base_mci_224.apple_mclip2_dfndr2b", crop_pct=1.0)
+def _mobileclip2(num_classes: int, pretrained: bool, name: str = "fastvit_mci2.apple_mclip2_dfndr2b",
+                 trainable_stages: int | None = None, **kw):
+    """MobileCLIP 2 (Apple, 2025): image-text encoders built for on-device latency, trained on DFNDR-2B.
+
+    S2 (35M) and S3 (123M) are FastViT hybrids at 256 px; B (86M) is a ViT-B/16 at 224 px. Mean/std 0, 1.
+
+    ``trainable_stages: N`` (FastViT only) is the partial fine-tune analogue of ``train.trainable_blocks``: the stem
+    and all but the last N of the five stages stay frozen (``frozen_param_ids``, read by compclass.train); the
+    last N stages, ``final_conv`` and the head are trained. S3's stage 4 alone is 59M of its 123M parameters.
+    """
+    model, spec = _timm(name, num_classes, pretrained, **kw)
+    if trainable_stages is not None:
+        if not hasattr(model, "stages"):
+            raise ValueError(f"{name} has no stages; use train.trainable_blocks for the ViT-B variant")
+        n = len(model.stages)
+        frozen = [model.stem, *list(model.stages)[: max(0, n - trainable_stages)]]
+        model.frozen_param_ids = {id(p) for mod in frozen for p in mod.parameters()}
+    return model, spec
+
+
+@_register("eva02_b16_clip_224", "EVA-02 CLIP (contrastive image-text)", "eva02_base_patch16_clip_224.merged2b",
+           zeroshot=("EVA02-B-16", "merged2b_s8b_b131k"), name="eva02_base_patch16_clip_224.merged2b", crop_pct=1.0)
+@_register("metaclip_b16_224", "MetaCLIP (contrastive image-text)", "vit_base_patch16_clip_quickgelu_224.metaclip_2pt5b",
+           zeroshot=("ViT-B-16-quickgelu", "metaclip_fullcc"), name="vit_base_patch16_clip_quickgelu_224.metaclip_2pt5b", crop_pct=1.0)
+@_register("dfn2b_b16_224", "DFN CLIP (contrastive image-text)", "vit_base_patch16_clip_224.dfn2b",
+           zeroshot=("ViT-B-16-quickgelu", "dfn2b"), name="vit_base_patch16_clip_224.dfn2b", crop_pct=1.0)
+def _base_clip(num_classes: int, pretrained: bool, name: str = "vit_base_patch16_clip_224.dfn2b", **kw):
+    """Base-size (86M) CLIP-style encoders at 224 px: DFN-2B, MetaCLIP 2.5B and EVA-02 B/16 (merged-2B).
+
+    Three ViT-B/16 image towers that differ only in their contrastive pre-training data and recipe; in the
+    efficiency study they bracket what a base-size CLIP tower gives on the 20 classes.
+    """
+    return _timm(name, num_classes, pretrained, **kw)
+
+
+@_register("convnext_base_clip_320", "ConvNeXt CLIP (contrastive image-text, convolutional)", "convnext_base.clip_laiona_augreg_320",
+           zeroshot=("convnext_base_w_320", "laion_aesthetic_s13b_b82k_augreg"), name="convnext_base.clip_laiona_augreg_320", crop_pct=1.0)
+def _convnext_clip(num_classes: int, pretrained: bool, name: str = "convnext_base.clip_laiona_augreg_320", **kw):
+    """ConvNeXt-Base trained CLIP-style on LAION-Aesthetic at 320 px (88M): the convolutional candidate, the
+    friendliest shape for TensorRT INT8."""
     return _timm(name, num_classes, pretrained, **kw)
 
 

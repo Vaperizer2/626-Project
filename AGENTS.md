@@ -34,7 +34,7 @@ training notebook.
 ## Where to look
 
 - Research claims: `docs/report/REPORT.md`, `EXPERIMENT_LOG.md`, `results/benchmark.csv`, `results/final/`.
-- Course deliverables: `docs/itri626_report/`, `notebooks/ITRI626_three_models.ipynb`,
+- Course deliverables: `docs/itri626_report/`, `notebooks/ITRI626_four_models.ipynb`,
   `notebooks/ITRI626_training.ipynb`, `results/itri626/`.
 - Inference contract: `docs/DEMO.md`, `exports/itri626/README.md`, `apps/gpui-demo/README.md`.
 - GitHub: https://github.com/Vaperizer2/626-Project (private; colleagues require collaborator access).

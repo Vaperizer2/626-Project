@@ -143,6 +143,13 @@ def run(cfg: Config, fold: int, test: bool = False) -> dict[str, Any]:
     model, spec = build_model(mc["key"], len(m.classes), mc.get("pretrained", True), **mc.get("kwargs", {}))
     if t.get("grad_checkpointing") and hasattr(model, "set_grad_checkpointing"):
         model.set_grad_checkpointing(True)  # recompute activations in backward: less VRAM, ~30% slower
+    if t.get("head_init"):  # LP-FT (Kumar et al. 2022): start from a fitted linear probe instead of a random head;
+        hi = np.load(str(t["head_init"]).format(fold=fold))  # {weight [C, D], bias [C]}, e.g. tools/views/probe_heads.py
+        head = model.get_classifier()
+        with torch.no_grad():
+            head.weight.copy_(torch.as_tensor(hi["weight"], dtype=head.weight.dtype))
+            head.bias.copy_(torch.as_tensor(hi["bias"], dtype=head.bias.dtype))
+        print(f"[{cfg['name']} f{fold}] head initialised from {str(t['head_init']).format(fold=fold)}", flush=True)
     model.to(device)
     n_params = sum(p.numel() for p in model.parameters())
 
@@ -152,6 +159,9 @@ def run(cfg: Config, fold: int, test: bool = False) -> dict[str, Any]:
                           batch_size=t["batch_size"], shuffle=True, drop_last=True, **common)
     val_dl = DataLoader(ImageDataset(val_rows, m.root, m.class_to_idx, build_transforms(spec, a, False)),
                         batch_size=t.get("eval_batch_size", 2 * t["batch_size"]), **common)
+
+    if hasattr(model, "init_from_data"):  # data-dependent initialisation (e.g. whitened stem), before any step
+        model.init_from_data(train_dl, device)
 
     mixup = build_mixup(a, len(m.classes), t.get("label_smoothing", 0.0))
     if mixup is not None:
@@ -164,13 +174,19 @@ def run(cfg: Config, fold: int, test: bool = False) -> dict[str, Any]:
     accum = t.get("accum_steps", 1)
     steps_per_epoch = min(len(train_dl), t.get("max_steps_per_epoch") or len(train_dl))
     opt_steps = math.ceil(steps_per_epoch / accum)
-    frozen = permanently_frozen(model, t.get("trainable_blocks"))
+    frozen = permanently_frozen(model, t.get("trainable_blocks")) | set(getattr(model, "frozen_param_ids", ()))
     set_backbone_trainable(model, True, frozen)  # timm's optimizer skips requires_grad=False params
     n_trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
     opt = make_optimizer(model, t)
     sched = warmup_cosine(opt, int(t.get("warmup_epochs", 0) * opt_steps), t["epochs"] * opt_steps,
                           frozen=int(t.get("freeze_epochs", 0) * opt_steps))
     scaler = torch.amp.GradScaler(device.type, enabled=amp_dtype == torch.float16)
+    ema = None
+    if t.get("ema"):  # exponential moving average of the weights; evaluated and saved instead of the raw model
+        from timm.utils import ModelEmaV3
+
+        ema = ModelEmaV3(model, decay=float(t["ema"]), use_warmup=True, device=device)
+    eval_model = ema.module if ema is not None else model
 
     if device.type == "cuda":
         torch.cuda.reset_peak_memory_stats()
@@ -180,7 +196,9 @@ def run(cfg: Config, fold: int, test: bool = False) -> dict[str, Any]:
         backbone_on = epoch >= t.get("freeze_epochs", 0)
         set_backbone_trainable(model, backbone_on, frozen)
         model.train()
-        if not backbone_on:  # a frozen CNN backbone should not keep updating its BatchNorm running statistics
+        # A frozen CNN backbone should not keep updating its BatchNorm running statistics; ``train.freeze_bn`` keeps
+        # them frozen for the whole run (small-batch fine-tuning of a BN network; the affine parameters still train).
+        if not backbone_on or t.get("freeze_bn"):
             for mod in model.modules():
                 if isinstance(mod, nn.modules.batchnorm._BatchNorm):
                     mod.eval()
@@ -205,6 +223,8 @@ def run(cfg: Config, fold: int, test: bool = False) -> dict[str, Any]:
                 scaler.update()
                 opt.zero_grad(set_to_none=True)
                 sched.step()
+                if ema is not None:
+                    ema.update(model, step=epoch * opt_steps + (step + 1) // accum)
             loss_sum += loss.item() * accum
             with torch.no_grad():  # monitoring only: no effect on the update
                 lf = logits.detach().float()
@@ -217,7 +237,7 @@ def run(cfg: Config, fold: int, test: bool = False) -> dict[str, Any]:
             torch.cuda.synchronize()
         train_time += time.perf_counter() - t0
 
-        probs, y_val = predict(model, val_dl, device, amp_dtype)
+        probs, y_val = predict(eval_model, val_dl, device, amp_dtype)
         vm = compute_metrics(y_val, probs.argmax(1), m.classes)
         f1 = vm["macro_f1"]
         val_loss = float(-np.log(np.clip(probs[np.arange(len(y_val)), y_val], 1e-12, None)).mean())
@@ -230,7 +250,7 @@ def run(cfg: Config, fold: int, test: bool = False) -> dict[str, Any]:
               f"val macro-F1 {f1:.4f}", flush=True)
         if f1 > best_f1:
             best_f1, best_epoch, bad = f1, epoch, 0
-            torch.save({"model": model.state_dict(), "config": cfg, "config_hash": h, "fold": fold,
+            torch.save({"model": eval_model.state_dict(), "config": cfg, "config_hash": h, "fold": fold,
                         "classes": m.classes, "preprocess": spec.to_dict(), "manifest_fingerprint": m.fingerprint,
                         "epoch": epoch, "val_macro_f1": f1}, run_dir / "best.pt")
         else:

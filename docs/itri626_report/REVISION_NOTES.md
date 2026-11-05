@@ -133,3 +133,29 @@ which option was chosen where they conflicted.
 working unchanged. Optional notebook updates: pass `vmax=` to `fig_confusion` for a shared scale, and add
 `H.save(H.fig_confusion_grid({n: metrics["models"][n]["test"]["confusion"] for n in H.MAIN}, classes), "fig06_confusion_grid")`
 so the notebook also writes the grid that the report uses.
+
+
+# Revision 2026-11-04: model A trained to convergence; improvement study added
+
+- `results/itri626/`: model A's run replaced by the 200-epoch recipe (`train.epochs=200 train.patience=40`, config
+  hash `b0afa2aa4d60`), imported from the improvement study's fold-0 run with `tools/itri626_import_run.py` (no
+  retraining; the sealed test was scored once for that recipe, see `EXPERIMENT_LOG.md` 2026-11-04). Test accuracy /
+  macro-F1 0.354 / 0.336 -> 0.400 / 0.392. B, C and the reference rows are unchanged. `scripts/itri626_experiments.py`
+  now carries the same `--set` overrides for A. `step collect` and `make_tables.py` re-run; 93 number macros changed.
+- `main.tex`: hyperparameters, fairness, software/hardware (A's final run was on a second machine), learning-curve
+  bullet A, "why the models differ", conclusion, reproduction appendix and the environment-table caption updated; new
+  subsection "Can the scratch CNN be improved?" (`sec:improveA`) with `generated/tab_improveA.tex`.
+- `notebooks/ITRI626_four_models.ipynb`: numbers in sections 7 that quoted A updated; new section 8 built from the
+  saved files; notebook re-executed on the laptop (figures regenerated from the saved outputs).
+- `README.md`: model A row of the submission table.
+
+
+# Revision 2026-11-05: PR review corrections
+
+- Regenerated `results/itri626/figures/fig06_confusion_grid.{pdf,png}` from the saved A/B/C confusion matrices.
+  The report grid had retained the 120-epoch A run (148 correct predictions); it now matches the 200-epoch
+  run (167 correct, including 13 battery holders). Rebuilt `main.pdf`; no model was loaded or scored.
+- The documented CPU reproduction command keeps R3 metadata when refreshing R1/R2. The training notebook
+  builds the four original app manifests and copies metadata for Small and crop 1.0 without requiring their graphs.
+- Dataset rebuilds without the original split file preserve recorded legacy split-leakage flags and matching
+  historical audit counts. Missing audit evidence is marked unavailable rather than counted as zero.

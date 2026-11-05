@@ -1,0 +1,121 @@
+{
+ "oof_accuracy": 0.8419585987261147,
+ "oof_macro_f1": 0.8409676981714693,
+ "oof_inscope_accuracy": 0.8727876106194691,
+ "oof_probe_only_accuracy": 0.8347929936305732,
+ "temperature": 0.887931149319517,
+ "ece_before": 0.05465640930257213,
+ "ece_after": 0.04165416117757556,
+ "abstain_threshold": 0.45,
+ "abstain_table": [
+  {
+   "threshold": 0.0,
+   "coverage": 1.0,
+   "accepted_acc": 0.8419585987261147
+  },
+  {
+   "threshold": 0.05,
+   "coverage": 1.0,
+   "accepted_acc": 0.8419585987261147
+  },
+  {
+   "threshold": 0.1,
+   "coverage": 1.0,
+   "accepted_acc": 0.8419585987261147
+  },
+  {
+   "threshold": 0.15,
+   "coverage": 0.9952229299363057,
+   "accepted_acc": 0.8456
+  },
+  {
+   "threshold": 0.2,
+   "coverage": 0.9844745222929936,
+   "accepted_acc": 0.8540234532955924
+  },
+  {
+   "threshold": 0.25,
+   "coverage": 0.9653662420382165,
+   "accepted_acc": 0.8655670103092783
+  },
+  {
+   "threshold": 0.3,
+   "coverage": 0.9402866242038217,
+   "accepted_acc": 0.8776460626587638
+  },
+  {
+   "threshold": 0.35,
+   "coverage": 0.9160031847133758,
+   "accepted_acc": 0.8900478053020426
+  },
+  {
+   "threshold": 0.4,
+   "coverage": 0.8968949044585988,
+   "accepted_acc": 0.8996893031513538
+  },
+  {
+   "threshold": 0.45,
+   "coverage": 0.8734076433121019,
+   "accepted_acc": 0.9092980856882407
+  },
+  {
+   "threshold": 0.5,
+   "coverage": 0.8531050955414012,
+   "accepted_acc": 0.9155389640690621
+  },
+  {
+   "threshold": 0.55,
+   "coverage": 0.82921974522293,
+   "accepted_acc": 0.9231877100336053
+  },
+  {
+   "threshold": 0.6,
+   "coverage": 0.8093152866242038,
+   "accepted_acc": 0.9276930644367929
+  },
+  {
+   "threshold": 0.65,
+   "coverage": 0.785031847133758,
+   "accepted_acc": 0.9335699797160243
+  },
+  {
+   "threshold": 0.7,
+   "coverage": 0.7579617834394905,
+   "accepted_acc": 0.9375
+  },
+  {
+   "threshold": 0.75,
+   "coverage": 0.7281050955414012,
+   "accepted_acc": 0.9425915800984145
+  },
+  {
+   "threshold": 0.8,
+   "coverage": 0.6906847133757962,
+   "accepted_acc": 0.9487031700288184
+  },
+  {
+   "threshold": 0.85,
+   "coverage": 0.6528662420382165,
+   "accepted_acc": 0.9560975609756097
+  },
+  {
+   "threshold": 0.9,
+   "coverage": 0.5979299363057324,
+   "accepted_acc": 0.9607190412782957
+  },
+  {
+   "threshold": 0.95,
+   "coverage": 0.49880573248407645,
+   "accepted_acc": 0.9752593774940144
+  }
+ ],
+ "final_C": 0.003,
+ "t_zs": 50.0,
+ "w_zs": 0.25,
+ "manifest": "431315e87d2612cb",
+ "n_dev": 2512,
+ "view": "crop_pct 1.0 (resize short side to 384, no crop)",
+ "features": "results\\cache\\features\\siglip_so400m_384-431315e87d2612cb-1fdfce4c916e-crop100.npy",
+ "text_embeddings": "exports/final/head.npz",
+ "baseline": "exports/final/fit_report.json (crop_pct 0.9)"
+}

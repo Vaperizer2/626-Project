@@ -1,0 +1,30 @@
+{
+ "input_size": 256,
+ "mean": [
+  0.48145466,
+  0.4578275,
+  0.40821073
+ ],
+ "std": [
+  0.26862954,
+  0.26130258,
+  0.27577711
+ ],
+ "interpolation": "bicubic",
+ "crop_pct": 1.0,
+ "resize_short_side": 256,
+ "color_order": "RGB",
+ "layout": "NCHW",
+ "scale": 0.00392156862745098,
+ "outputs": [
+  "logits",
+  "probs"
+ ],
+ "abstain_threshold": 0.550000011920929,
+ "temperature": 1.099745273590088,
+ "model": "mobileclip2_s3",
+ "t_zs": 50.0,
+ "w_zs": 0.25,
+ "manifest_fingerprint": "431315e87d2612cb",
+ "note": "pre-projection timm features; the checkpoint's projection into the text space is in the graph (head.npz proj_w/proj_b)"
+}

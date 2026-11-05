@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Linear probe diagram</title>
+<style>
+  :root { --bg: #ffffff; --fg: #1f2328; --muted: #6b7280; --frozen: #2563eb; --frozen-bg: #dbeafe; --train: #ea580c; --train-bg: #ffedd5; --box: #f3f4f6; --line: #9ca3af; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0f1419; --fg: #e6e6e6; --muted: #9ca3af; --frozen: #60a5fa; --frozen-bg: #1e3a5f; --train: #fb923c; --train-bg: #5a2e0e; --box: #1f2937; --line: #6b7280; } }
+  :root[data-theme="dark"] { --bg: #0f1419; --fg: #e6e6e6; --muted: #9ca3af; --frozen: #60a5fa; --frozen-bg: #1e3a5f; --train: #fb923c; --train-bg: #5a2e0e; --box: #1f2937; --line: #6b7280; }
+  body { margin: 0; padding: 24px 16px 48px; background: var(--bg); color: var(--fg); font: 15px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  main { max-width: 980px; margin: 0 auto; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  p.lead { color: var(--muted); margin: 0 0 24px; }
+  figure { margin: 0 0 36px; }
+  figcaption { color: var(--muted); font-size: 0.92rem; margin-top: 8px; }
+  svg { max-width: 100%; height: auto; display: block; }
+  .frozen { fill: var(--frozen-bg); stroke: var(--frozen); }
+  .train { fill: var(--train-bg); stroke: var(--train); }
+  .plain { fill: var(--box); stroke: var(--line); }
+  text { fill: var(--fg); font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+  .small { font-size: 11px; fill: var(--muted); }
+  .label { font-size: 12.5px; }
+  .title { font-size: 13px; font-weight: 600; }
+  .arrow { stroke: var(--fg); stroke-width: 1.3; fill: none; marker-end: url(#arrow); }
+  .dash { stroke: var(--line); stroke-dasharray: 4 3; fill: none; }
+  .removed { fill: none; stroke: var(--muted); stroke-dasharray: 5 4; }
+  .cut { stroke: #dc2626; stroke-width: 1.4; opacity: 0.45; }
+  .tag { font-size: 10px; font-weight: 600; fill: #dc2626; }
+  table { border-collapse: collapse; font-size: 0.92rem; }
+  td, th { padding: 4px 10px; border-bottom: 1px solid var(--line); text-align: left; }
+  th { color: var(--muted); font-weight: 600; }
+</style>
+</head>
+<body>
+<main>
+<h1>How a linear probe is fitted on a pretrained model</h1>
+<p class="lead">Model C of the ITRI626 comparison, and every backbone in the probe sweep, is built exactly this way. Blue is frozen, orange is the only part that learns from our photos.</p>
+
+<figure>
+<svg viewBox="0 0 960 430" role="img" aria-label="Left: SigLIP as trained, an image tower and a text tower whose embeddings are compared by a sigmoid match score. The text tower and the match score are cut away; the image tower is kept up to its pooled 1152-number embedding and frozen. Right: the same image tower with a new 20-class probe attached in place of the removed parts.">
+  <defs>
+    <marker id="arrow0" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <text x="235" y="24" text-anchor="middle" class="title">as Google trained it: SigLIP, an image–text matcher</text>
+  <rect x="20" y="44" width="430" height="130" rx="8" class="frozen" stroke-width="2"/>
+  <text x="30" y="62" class="small">image tower</text>
+  <rect x="30" y="76" width="62" height="56" rx="4" class="frozen"/>
+  <text x="61" y="100" text-anchor="middle" class="small">patch</text>
+  <text x="61" y="114" text-anchor="middle" class="small">embedding</text>
+  <path d="M 92 104 L 108 104" style="stroke: var(--fg); stroke-width: 1.3; fill: none; marker-end: url(#arrow0)"/>
+  <rect x="108" y="76" width="18" height="56" rx="3" class="frozen"/>
+  <rect x="130" y="76" width="18" height="56" rx="3" class="frozen"/>
+  <rect x="152" y="76" width="18" height="56" rx="3" class="frozen"/>
+  <text x="182" y="108" text-anchor="middle" class="small">…</text>
+  <rect x="194" y="76" width="18" height="56" rx="3" class="frozen"/>
+  <text x="160" y="150" text-anchor="middle" class="small">27 transformer blocks</text>
+  <path d="M 212 104 L 228 104" style="stroke: var(--fg); stroke-width: 1.3; fill: none; marker-end: url(#arrow0)"/>
+  <rect x="228" y="76" width="44" height="56" rx="4" class="frozen"/>
+  <text x="250" y="100" text-anchor="middle" class="small">pool</text>
+  <text x="250" y="114" text-anchor="middle" class="small">(MAP)</text>
+  <path d="M 272 104 L 296 104" style="stroke: var(--fg); stroke-width: 1.3; fill: none; marker-end: url(#arrow0)"/>
+  <rect x="296" y="60" width="26" height="88" rx="4" class="plain"/>
+  <text x="309" y="164" text-anchor="middle" class="small">image embedding, 1,152</text>
+  <path d="M 322 104 L 350 104" style="stroke: var(--fg); stroke-width: 1.3; fill: none; marker-end: url(#arrow0)"/>
+  <rect x="350" y="80" width="90" height="48" rx="6" class="removed"/>
+  <text x="395" y="100" text-anchor="middle" class="small">sigmoid</text>
+  <text x="395" y="114" text-anchor="middle" class="small">match score</text>
+  <line x1="352" y1="82" x2="438" y2="126" class="cut"/>
+  <line x1="438" y1="82" x2="352" y2="126" class="cut"/>
+  <text x="440" y="76" text-anchor="end" class="tag">removed</text>
+  <rect x="20" y="196" width="430" height="120" rx="8" class="removed"/>
+  <text x="30" y="214" class="small">text tower</text>
+  <text x="90" y="246" text-anchor="middle" class="small">"a photo of</text>
+  <text x="90" y="260" text-anchor="middle" class="small">a resistor"</text>
+  <path d="M 128 252 L 146 252" style="stroke: var(--line); stroke-width: 1.3; fill: none; marker-end: url(#arrow0)"/>
+  <rect x="146" y="226" width="62" height="52" rx="4" class="removed"/>
+  <text x="177" y="256" text-anchor="middle" class="small">tokeniser</text>
+  <path d="M 208 252 L 226 252" style="stroke: var(--line); stroke-width: 1.3; fill: none; marker-end: url(#arrow0)"/>
+  <rect x="226" y="226" width="64" height="52" rx="4" class="removed"/>
+  <text x="258" y="248" text-anchor="middle" class="small">12 text</text>
+  <text x="258" y="262" text-anchor="middle" class="small">blocks</text>
+  <path d="M 290 252 L 308 252" style="stroke: var(--line); stroke-width: 1.3; fill: none; marker-end: url(#arrow0)"/>
+  <rect x="308" y="212" width="26" height="80" rx="4" class="removed"/>
+  <text x="321" y="306" text-anchor="middle" class="small">text embedding, 1,152</text>
+  <path d="M 334 252 L 395 252 L 395 128" style="stroke: var(--line); stroke-width: 1.3; fill: none; stroke-dasharray: 4 3; marker-end: url(#arrow0)"/>
+  <line x1="22" y1="198" x2="448" y2="314" class="cut"/>
+  <line x1="448" y1="198" x2="22" y2="314" class="cut"/>
+  <text x="440" y="214" text-anchor="end" class="tag">removed</text>
+  <text x="235" y="340" text-anchor="middle" class="small">trained on web image–caption pairs: the score says whether a caption describes an image.</text>
+  <text x="235" y="355" text-anchor="middle" class="small">There is no "resistor" output anywhere; classes were never part of this network.</text>
+  <text x="235" y="378" text-anchor="middle" class="small" style="fill:#dc2626">red cross = removed for the probe: the text tower and the match score</text>
+  <text x="235" y="393" text-anchor="middle" class="small">kept and frozen: the image tower, up to and including its pooled embedding</text>
+
+  <path d="M 462 180 L 498 180" style="stroke: var(--fg); stroke-width: 1.6; fill: none; marker-end: url(#arrow0)"/>
+
+  <text x="725" y="24" text-anchor="middle" class="title">as used here: the image tower with a probe where the removed parts were</text>
+  <rect x="510" y="44" width="300" height="130" rx="8" class="frozen" stroke-width="2"/>
+  <text x="520" y="62" class="small">image tower, frozen</text>
+  <rect x="520" y="76" width="62" height="56" rx="4" class="frozen"/>
+  <text x="551" y="100" text-anchor="middle" class="small">patch</text>
+  <text x="551" y="114" text-anchor="middle" class="small">embedding</text>
+  <path d="M 582 104 L 598 104" style="stroke: var(--fg); stroke-width: 1.3; fill: none; marker-end: url(#arrow0)"/>
+  <rect x="598" y="76" width="18" height="56" rx="3" class="frozen"/>
+  <rect x="620" y="76" width="18" height="56" rx="3" class="frozen"/>
+  <rect x="642" y="76" width="18" height="56" rx="3" class="frozen"/>
+  <text x="672" y="108" text-anchor="middle" class="small">…</text>
+  <rect x="684" y="76" width="18" height="56" rx="3" class="frozen"/>
+  <text x="650" y="150" text-anchor="middle" class="small">27 transformer blocks</text>
+  <path d="M 702 104 L 718 104" style="stroke: var(--fg); stroke-width: 1.3; fill: none; marker-end: url(#arrow0)"/>
+  <rect x="718" y="76" width="44" height="56" rx="4" class="frozen"/>
+  <text x="740" y="100" text-anchor="middle" class="small">pool</text>
+  <text x="740" y="114" text-anchor="middle" class="small">(MAP)</text>
+  <path d="M 762 104 L 786 104" style="stroke: var(--fg); stroke-width: 1.3; fill: none; marker-end: url(#arrow0)"/>
+  <rect x="786" y="60" width="18" height="88" rx="4" class="plain"/>
+  <text x="795" y="164" text-anchor="middle" class="small">1,152</text>
+  <path d="M 804 104 L 832 104" style="stroke: var(--fg); stroke-width: 1.3; fill: none; marker-end: url(#arrow0)"/>
+  <rect x="832" y="56" width="112" height="96" rx="6" class="train" stroke-width="2"/>
+  <text x="888" y="78" text-anchor="middle" class="small">probe, trained</text>
+  <text x="888" y="96" text-anchor="middle" class="small">standardise</text>
+  <text x="888" y="112" text-anchor="middle" class="small">+ linear 1,152→20</text>
+  <text x="888" y="130" text-anchor="middle" class="small">23,060 parameters</text>
+  <text x="888" y="146" text-anchor="middle" class="small">→ 20 class scores</text>
+  <text x="510" y="214" class="label">What was done to the trained model</text>
+  <text x="510" y="238" class="small">1. Cut away the text tower and the match score. Model C uses nothing of them.</text>
+  <text x="510" y="256" class="small">2. Keep the image tower exactly as downloaded, up to its pooled 1,152-number</text>
+  <text x="510" y="271" class="small">    embedding, and freeze it: no weight in it is ever updated.</text>
+  <text x="510" y="289" class="small">3. Bolt the probe on where the match score used to read the embedding: a</text>
+  <text x="510" y="304" class="small">    standardiser and one 1,152 × 20 layer, the only parameters our photos train.</text>
+  <text x="510" y="328" class="small">The removed text tower is not wasted: the deployed app model brings it back as a</text>
+  <text x="510" y="343" class="small">zero-shot head ("a photo of a resistor" …) and averages it with the probe.</text>
+  <text x="510" y="367" class="small">For an ImageNet classifier (ConvNeXt-T, ResNet-50) the removed part is its</text>
+  <text x="510" y="382" class="small">1,000-class output layer; everything up to the pooled features stays.</text>
+  <text x="510" y="406" class="small">In code: timm.create_model(name, num_classes=0) returns the tower without a head.</text>
+</svg>
+<figcaption>Figure 1. Before and after. SigLIP was trained to say whether a caption matches a picture, so it has an image tower, a text tower and a match score, and no class outputs at all. For the probe the text tower and the match score are removed, the image tower is kept and frozen, and the probe takes the place where the match score used to read the image embedding.</figcaption>
+</figure>
+
+<figure>
+<svg viewBox="0 0 960 330" role="img" aria-label="An image passes through preprocessing and a frozen pretrained backbone that produces a 1152-number feature vector; only a standardiser and a 1152 by 20 logistic-regression layer are fitted on our data, giving 20 class probabilities.">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+
+  <!-- input image -->
+  <rect x="20" y="110" width="90" height="90" rx="6" class="plain"/>
+  <text x="65" y="150" text-anchor="middle" class="label">photo</text>
+  <text x="65" y="168" text-anchor="middle" class="small">any size</text>
+  <path d="M 110 155 L 140 155" class="arrow"/>
+
+  <!-- preprocessing -->
+  <rect x="140" y="95" width="120" height="120" rx="6" class="plain"/>
+  <text x="200" y="128" text-anchor="middle" class="title">preprocess</text>
+  <text x="200" y="150" text-anchor="middle" class="small">resize short side</text>
+  <text x="200" y="165" text-anchor="middle" class="small">centre crop 384 px</text>
+  <text x="200" y="180" text-anchor="middle" class="small">normalise mean, std</text>
+  <text x="200" y="200" text-anchor="middle" class="small">fixed by the weights</text>
+  <path d="M 260 155 L 290 155" class="arrow"/>
+
+  <!-- frozen backbone -->
+  <rect x="290" y="40" width="300" height="230" rx="8" class="frozen" stroke-width="2"/>
+  <text x="440" y="66" text-anchor="middle" class="title">pretrained backbone, FROZEN</text>
+  <text x="440" y="82" text-anchor="middle" class="small" style="font-size:10px">SigLIP So400m, 428 M parameters, web image–text pretraining</text>
+  <rect x="310" y="100" width="70" height="60" rx="4" class="frozen"/>
+  <text x="345" y="126" text-anchor="middle" class="small">patch</text>
+  <text x="345" y="140" text-anchor="middle" class="small">embedding</text>
+  <path d="M 380 130 L 398 130" class="arrow"/>
+  <rect x="398" y="100" width="22" height="60" rx="3" class="frozen"/>
+  <rect x="424" y="100" width="22" height="60" rx="3" class="frozen"/>
+  <rect x="450" y="100" width="22" height="60" rx="3" class="frozen"/>
+  <text x="486" y="134" text-anchor="middle" class="small">…</text>
+  <rect x="500" y="100" width="22" height="60" rx="3" class="frozen"/>
+  <text x="460" y="178" text-anchor="middle" class="small">27 transformer blocks</text>
+  <path d="M 522 130 L 540 130" class="arrow"/>
+  <rect x="540" y="100" width="40" height="60" rx="4" class="frozen"/>
+  <text x="560" y="126" text-anchor="middle" class="small">pool</text>
+  <text x="560" y="140" text-anchor="middle" class="small">(MAP)</text>
+  <text x="440" y="215" text-anchor="middle" class="small">no gradient reaches anything in this box</text>
+  <text x="440" y="232" text-anchor="middle" class="small">run once per photo, output cached to disk</text>
+  <text x="440" y="252" text-anchor="middle" class="small">original 1000-class or text head: removed</text>
+  <path d="M 590 155 L 620 155" class="arrow"/>
+
+  <!-- feature vector -->
+  <rect x="620" y="60" width="26" height="190" rx="4" class="plain"/>
+  <line x1="620" y1="85" x2="646" y2="85" class="dash"/>
+  <line x1="620" y1="110" x2="646" y2="110" class="dash"/>
+  <line x1="620" y1="135" x2="646" y2="135" class="dash"/>
+  <line x1="620" y1="160" x2="646" y2="160" class="dash"/>
+  <line x1="620" y1="185" x2="646" y2="185" class="dash"/>
+  <line x1="620" y1="210" x2="646" y2="210" class="dash"/>
+  <text x="633" y="270" text-anchor="middle" class="small">features</text>
+  <text x="633" y="284" text-anchor="middle" class="small">1,152 numbers</text>
+  <path d="M 646 155 L 676 155" class="arrow"/>
+
+  <!-- trained head -->
+  <rect x="676" y="40" width="190" height="230" rx="8" class="train" stroke-width="2"/>
+  <text x="771" y="66" text-anchor="middle" class="title">the probe, TRAINED</text>
+  <rect x="692" y="84" width="158" height="52" rx="4" class="train"/>
+  <text x="771" y="104" text-anchor="middle" class="small">standardise each feature</text>
+  <text x="771" y="120" text-anchor="middle" class="small">mean, std of the training rows</text>
+  <path d="M 771 136 L 771 152" class="arrow"/>
+  <rect x="692" y="152" width="158" height="62" rx="4" class="train"/>
+  <text x="771" y="174" text-anchor="middle" class="small">logistic regression</text>
+  <text x="771" y="189" text-anchor="middle" class="small">1,152 × 20 weights + 20 biases</text>
+  <text x="771" y="204" text-anchor="middle" class="small">= 23,060 parameters</text>
+  <text x="771" y="236" text-anchor="middle" class="small">L2 strength C chosen by an inner</text>
+  <text x="771" y="251" text-anchor="middle" class="small">grouped 3-fold CV on training rows</text>
+  <path d="M 866 155 L 896 155" class="arrow"/>
+
+  <!-- output -->
+  <rect x="896" y="60" width="50" height="190" rx="4" class="plain"/>
+  <rect x="900" y="140" width="42" height="10" class="train" stroke="none"/>
+  <rect x="900" y="92" width="18" height="10" class="plain" stroke="none"/>
+  <rect x="900" y="112" width="10" height="10" class="plain" stroke="none"/>
+  <rect x="900" y="170" width="14" height="10" class="plain" stroke="none"/>
+  <rect x="900" y="196" width="8" height="10" class="plain" stroke="none"/>
+  <text x="921" y="270" text-anchor="middle" class="small">20 class</text>
+  <text x="921" y="284" text-anchor="middle" class="small">probabilities</text>
+
+  <!-- legend -->
+  <rect x="290" y="300" width="14" height="14" class="frozen"/>
+  <text x="310" y="312" class="small">frozen: weights never change (learned elsewhere, on hundreds of millions of images)</text>
+  <rect x="760" y="300" width="14" height="14" class="train"/>
+  <text x="780" y="312" class="small">trained on our 2,010 photos</text>
+</svg>
+<figcaption>Figure 2. The forward path of one photo. The backbone is run once per image and its 1,152-number output is cached; everything that learns from our labels sits to the right of the feature vector and has 23,060 parameters, against 428 million frozen ones.</figcaption>
+</figure>
+
+<figure>
+<svg viewBox="0 0 960 300" role="img" aria-label="Features for all 2,512 development photos are extracted once. For each of five folds, a probe is fitted on the other four folds' features and scored on the held-out fold. The five scores are averaged and compared, fold by fold, with SigLIP's.">
+  <defs>
+    <marker id="arrow2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="currentColor"/>
+    </marker>
+  </defs>
+  <!-- feature matrix -->
+  <rect x="20" y="40" width="150" height="200" rx="6" class="plain"/>
+  <text x="95" y="30" text-anchor="middle" class="title">features, extracted once</text>
+  <text x="95" y="66" text-anchor="middle" class="small">2,512 development photos</text>
+  <text x="95" y="80" text-anchor="middle" class="small">× 1,152 numbers each</text>
+  <!-- five fold stripes -->
+  <rect x="35" y="95" width="120" height="24" class="frozen"/>
+  <text x="95" y="111" text-anchor="middle" class="small">fold 0: 502 photos</text>
+  <rect x="35" y="122" width="120" height="24" class="plain"/>
+  <text x="95" y="138" text-anchor="middle" class="small">fold 1</text>
+  <rect x="35" y="149" width="120" height="24" class="plain"/>
+  <text x="95" y="165" text-anchor="middle" class="small">fold 2</text>
+  <rect x="35" y="176" width="120" height="24" class="plain"/>
+  <text x="95" y="192" text-anchor="middle" class="small">fold 3</text>
+  <rect x="35" y="203" width="120" height="24" class="plain"/>
+  <text x="95" y="219" text-anchor="middle" class="small">fold 4</text>
+  <text x="95" y="258" text-anchor="middle" class="small">near-duplicate photos share a fold,</text>
+  <text x="95" y="272" text-anchor="middle" class="small">so no copy crosses a split</text>
+
+  <!-- one fold round -->
+  <path d="M 170 140 L 215 140" style="stroke: var(--fg); stroke-width: 1.3; fill: none; marker-end: url(#arrow2)"/>
+  <rect x="215" y="40" width="300" height="230" rx="8" class="plain"/>
+  <text x="365" y="64" text-anchor="middle" class="title">one round, repeated for k = 0 … 4</text>
+  <rect x="235" y="84" width="120" height="70" rx="4" class="train"/>
+  <text x="295" y="108" text-anchor="middle" class="small">fit the probe on</text>
+  <text x="295" y="123" text-anchor="middle" class="small">the other 4 folds</text>
+  <text x="295" y="138" text-anchor="middle" class="small">(≈2,010 photos)</text>
+  <path d="M 355 119 L 393 119" style="stroke: var(--fg); stroke-width: 1.3; fill: none; marker-end: url(#arrow2)"/>
+  <rect x="393" y="84" width="105" height="70" rx="4" class="frozen"/>
+  <text x="445" y="108" text-anchor="middle" class="small">score fold k</text>
+  <text x="445" y="123" text-anchor="middle" class="small">accuracy,</text>
+  <text x="445" y="138" text-anchor="middle" class="small">macro-F1</text>
+  <text x="365" y="185" text-anchor="middle" class="small">the probe never sees the photos it is scored on</text>
+  <text x="365" y="203" text-anchor="middle" class="small">inside the fit: C ∈ {0.001 … 1} picked by grouped 3-fold CV</text>
+  <text x="365" y="221" text-anchor="middle" class="small">on the training rows only</text>
+  <text x="365" y="250" text-anchor="middle" class="small">seconds per round; the GPU is not used</text>
+
+  <!-- results -->
+  <path d="M 515 140 L 560 140" style="stroke: var(--fg); stroke-width: 1.3; fill: none; marker-end: url(#arrow2)"/>
+  <rect x="556" y="40" width="392" height="242" rx="8" class="plain"/>
+  <text x="750" y="64" text-anchor="middle" class="title">five scores per backbone</text>
+  <text x="580" y="92" class="small">fold:</text>
+  <text x="700" y="92" text-anchor="middle" class="small">0</text><text x="748" y="92" text-anchor="middle" class="small">1</text><text x="796" y="92" text-anchor="middle" class="small">2</text><text x="844" y="92" text-anchor="middle" class="small">3</text><text x="892" y="92" text-anchor="middle" class="small">4</text><text x="924" y="92" text-anchor="middle" class="small">mean</text>
+  <text x="580" y="116" class="small">SigLIP, model C</text>
+  <text x="700" y="116" text-anchor="middle" class="small">.804</text><text x="748" y="116" text-anchor="middle" class="small">.833</text><text x="796" y="116" text-anchor="middle" class="small">.824</text><text x="844" y="116" text-anchor="middle" class="small">.831</text><text x="892" y="116" text-anchor="middle" class="small">.828</text><text x="928" y="116" text-anchor="middle" class="title">.824</text>
+  <text x="580" y="140" class="small">PE-Core L/14</text>
+  <text x="700" y="140" text-anchor="middle" class="small">.811</text><text x="748" y="140" text-anchor="middle" class="small">.843</text><text x="796" y="140" text-anchor="middle" class="small">.837</text><text x="844" y="140" text-anchor="middle" class="small">.822</text><text x="892" y="140" text-anchor="middle" class="small">.837</text><text x="928" y="140" text-anchor="middle" class="title">.830</text>
+  <line x1="580" y1="152" x2="930" y2="152" class="dash"/>
+  <text x="580" y="174" class="small">difference</text>
+  <text x="700" y="174" text-anchor="middle" class="small">+.007</text><text x="748" y="174" text-anchor="middle" class="small">+.010</text><text x="796" y="174" text-anchor="middle" class="small">+.013</text><text x="844" y="174" text-anchor="middle" class="small">−.009</text><text x="892" y="174" text-anchor="middle" class="small">+.008</text><text x="928" y="174" text-anchor="middle" class="title">+.006</text>
+  <text x="580" y="204" class="small">paired comparison: mean difference ± standard error over the</text>
+  <text x="580" y="219" class="small">five folds, and the number of folds that improved.</text>
+  <text x="580" y="234" class="small">Here +0.6 ± 0.4 points, 4 of 5: inside the noise band.</text>
+  <text x="580" y="256" class="small">A backbone counts as better only when the margin clears</text>
+  <text x="580" y="271" class="small" style="font-size:11px">about 1 point and holds on all five folds.</text>
+</svg>
+<figcaption>Figure 3. How the probe is fitted and scored in the sweep. The frozen features are computed once; the five probe fits take seconds. Comparing backbones fold by fold against SigLIP removes the fold-difficulty noise that a plain average would keep. PE-Core numbers are the ones measured today, rounded to three decimals.</figcaption>
+</figure>
+
+<h2 style="font-size:1.1rem; margin: 0 0 8px;">Where the probe sits among the ways to use a pretrained network</h2>
+<table>
+<tr><th>Recipe</th><th>Frozen</th><th>Trained on our photos</th><th>In this project</th></tr>
+<tr><td>Linear probe</td><td>whole backbone</td><td>one linear layer, ~23 k parameters</td><td>model C, 0.824; the sweep</td></tr>
+<tr><td>Partial fine-tune</td><td>early and middle blocks</td><td>last blocks + new head, ~76 M</td><td>SigLIP partial, 0.812</td></tr>
+<tr><td>Full fine-tune</td><td>nothing</td><td>every weight, ~28 M for ConvNeXt-T</td><td>model B, 0.641</td></tr>
+<tr><td>From scratch</td><td>nothing, no pretrained weights</td><td>every weight, 1.2 M</td><td>model A, 0.390</td></tr>
+</table>
+<p class="small" style="margin-top:8px">Numbers are five-fold development macro-F1 from <code>results/benchmark.csv</code> and today's sweep. Unfreezing more of the best backbone made it worse, because 2,010 noisy photos cannot improve 400 million parameters without damaging what they already know.</p>
+</main>
+</body>
+</html>

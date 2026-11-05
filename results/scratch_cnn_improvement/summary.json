@@ -1,0 +1,11 @@
+{
+ "split": "test",
+ "n": 418,
+ "val_fold": 0,
+ "seed": 42,
+ "manifest": "431315e87d2612cb",
+ "plain_200ep_b0afa2aa4d60": {
+  "accuracy": 0.39952153110047844,
+  "macro_f1": 0.39239026628792234
+ }
+}

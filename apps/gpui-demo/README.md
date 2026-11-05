@@ -317,11 +317,13 @@ How the bundle stays portable:
   Without one, or with `COMPCLASS_GPU=0`, the bundled CPU library is used. `scripts/test_gpu_env.sh` (run by
   `cargo test`) checks that order against fake venvs, and the variable names against a second `app.env`.
 * **Models and data**: what `packaging/bundle.txt` lists, one path from the repo root per line, with its place in
-  the bundle when that differs. Here that is `exports/models.json` and per model folder `model.json`, the files it
+  the bundle when that differs. `packaging/models.json` becomes the bundle's `exports/models.json`; it lists only
+  the shipped models, while the source index also lists the optional crop-1.0 model. Each model ships `model.json`, the files it
   names and `preprocess.json`: `exports/final/{model_multi.onnx, model.onnx.data, labels.json, ...}` (the 1.7 GB
   `model.onnx.data` is shared), `exports/fast/{model.onnx, model.onnx.data, runtime.json, ...}` and
   `exports/itri626/{A_scratch_cnn, B_convnext_tiny}/{model.onnx, preprocess.json, labels.json}`, plus `demo_stack/`
-  and the dataset note in `LICENSES/`. A new model in `exports/models.json` needs its lines there too.
+  and the dataset note in `LICENSES/`. Small ships `exports/mobileclip2_s3/{model.onnx, model.json, preprocess.json,
+  labels.json}`. Add a model to both `packaging/models.json` and `packaging/bundle.txt` when including it in the bundle.
 * **Licences** (`LICENSES/`): onnxruntime (MIT + ThirdPartyNotices), Noto Sans (OFL), libjpeg-turbo (IJG/BSD),
   Lucide icons (ISC), Apache-2.0 / MIT texts, a dataset and photo-credit note, and `THIRD-PARTY-CRATES.txt`
   (616 crates with SPDX licence, generated from `cargo metadata` by `packaging/crate_licenses.py`).

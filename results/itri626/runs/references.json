@@ -8,5 +8,11 @@
   "accuracy": 0.8373205741626795,
   "temperature": 0.8976628184318542,
   "C": 0.01
+ },
+ "R3_small_fused": {
+  "matches_results_final_test_mobileclip2_s3_json": true,
+  "accuracy": 0.80622009569378,
+  "temperature": 1.099745273590088,
+  "C": 0.01
  }
 }

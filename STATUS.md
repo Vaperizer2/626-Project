@@ -16,7 +16,7 @@ and [EXPERIMENT_LOG.md](EXPERIMENT_LOG.md) for dated research decisions. Older c
 - ONNX export plus Python demo using onnxruntime (OpenCV handles I/O, not this graph's inference).
   Reports record numerical parity; `model.onnx.data` is 1,714,593,792 bytes.
 - ITRI626 report, executed notebook and A/B/C comparison: `docs/itri626_report/main.pdf`,
-  `notebooks/ITRI626_three_models.ipynb`, `results/itri626/metrics.json`. The training notebook
+  `notebooks/ITRI626_four_models.ipynb`, `results/itri626/metrics.json`. The training notebook
   `notebooks/ITRI626_training.ipynb` has one section per model: A, B and C, plus Deployed and Fast beyond the brief.
 - IEEE paper, learning notes and offline explorer: `docs/paper/`, `docs/LEARNING_PATH.md`, `docs/explorer/`.
 - GPUI Kit 0.7.3 desktop demo: Classify/Demo/Benchmark, A/B/C/Deployed/Fast picker, Bench themes, headless CLI;
@@ -56,3 +56,10 @@ and [EXPERIMENT_LOG.md](EXPERIMENT_LOG.md) for dated research decisions. Older c
   such as Rust release builds and test suites, runs on Boat.dev CPU sandboxes (`boat` CLI).
 - The GPU runtime (onnxruntime-gpu with CUDA and TensorRT, several GB) is not bundled. `run.sh` uses it from
   `~/.local/share/onnxruntime-gpu/1.31` when present, else the bundled CPU library.
+
+## 2026-11-04 — scratch CNN improvement study folded into the course deliverables
+
+Model A of the ITRI626 report and notebook is now the 200-epoch recipe (test accuracy 0.400, macro-F1 0.392; was
+0.354 / 0.336), imported from the improvement study's fold-0 run without a second test look. The study and the
+one-look Wikimedia holdout result are documented in `docs/SCRATCH_CNN_IMPROVEMENT_REPORT.md`, report subsection
+"Can the scratch CNN be improved?" and notebook section 8. Both holdouts are spent for model A. The PDF must be rebuilt (`latexmk -pdf main.tex`) after this change.

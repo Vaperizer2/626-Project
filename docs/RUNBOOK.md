@@ -95,6 +95,47 @@ used by both apps.
 The bundle contains matching labels/preprocessing metadata. Keep it with the weights. Model C has a slightly
 different ONNX test count from the report (343 vs 344/418), documented in `exports/itri626/README.md`.
 
+## Small and Deployed-at-crop-1.0 models (efficiency study, 2026-11-05)
+
+Two further models are listed in `exports/models.json`. Neither is in the default list, and the app shows a model as
+unavailable (greyed out) until its graph file exists; it never fails on a missing one.
+
+| App entry | Folder | What it is |
+|---|---|---|
+| Small | `exports/mobileclip2_s3/` | frozen MobileCLIP2-S3 tower (123 M parameters, 256 px) with the Deployed recipe: probe + zero-shot head, calibrated, abstains below 0.55. Test accuracy 0.806; 9 ms per image under onnxruntime CUDA fp16 against 32 ms for Deployed (`docs/EFFICIENCY_STUDY.md`). Apple research-only weights licence. |
+| Deployed at crop 1.0 | `exports/final_crop100/` | the Deployed SigLIP model refitted with no border cut (resize the short side to 384, crop nothing). Out-of-fold accuracy 0.842 against 0.826; not scored on the sealed test. `exports/final/` is unchanged. |
+
+The manifests, labels, preprocessing and reports are in Git; the graphs are not.
+
+**Small: download** (the checksums in the committed manifest match these files):
+
+```bash
+mkdir -p dist
+gh release download meiring-small-2026-11-05 --repo Vaperizer2/626-Project --dir dist
+(cd dist && sha256sum -c SHA256SUMS-meiring-small.txt)
+tar -xf dist/small-mobileclip2_s3.tar      # exports/mobileclip2_s3/{model.onnx, model_fp16.onnx}
+```
+
+| Asset | Bytes | Contents |
+|---|---:|---|
+| `small-mobileclip2_s3.tar` | 754,626,560 | `model.onnx` (fp32, 502,446,518 bytes, the graph the manifest names) and `model_fp16.onnx` |
+
+**Or build** it, and **build Deployed at crop 1.0**, which is not in a release because it would be a second 1.7 GB
+copy of the SigLIP weights. One command each, on a machine with a GPU and `data/v2/images/`. Each command first
+builds what a fresh checkout lacks (the cached features, a GPU pass of about a minute, and for Small the text
+matrices, which download the MobileCLIP 2 weights from Hugging Face) and ends by refreshing the model's manifest,
+because a graph built on another machine is not byte-identical to the one built for this branch:
+
+```bash
+uv run python tools/views/package_candidate.py --model mobileclip2_s3 --out exports/mobileclip2_s3
+uv run python tools/views/deployed_crop100.py
+```
+
+Check either way with `uv run python tools/gen_manifests.py --check --only mobileclip2_s3 --only deployed_crop100`
+(sizes, checksums and graph inputs/outputs against the manifests), then `gpui-demo models --check`.
+`apps/gpui-demo/packaging/bundle.txt` lists Small's four files, so packaging a bundle needs them present; the crop-1.0
+model is not in the bundle list.
+
 ## Python inference and development
 
 For inference only, avoid installing the full training stack. With `uv` installed and models extracted:

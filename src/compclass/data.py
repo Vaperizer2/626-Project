@@ -152,15 +152,21 @@ def build_transforms(spec, aug: dict[str, Any] | None, train: bool) -> T.Compose
     pretrained weights were evaluated with, and the one the ONNX/OpenCV demo reproduces.
     Train: RandomResizedCrop (scale/ratio from ``aug``), flips, optional RandAugment / colour jitter,
     optional RandomErasing after normalisation. Mixup/CutMix act on batches: see ``build_mixup``.
+    ``aug.squash``: the whole picture is first resized to ``input_size`` square, ignoring its aspect ratio,
+    at evaluation and before the random crop at training -- no border is cut from non-square photos.
     """
     aug = aug or {}
     size, interp = spec.input_size, _INTERP[spec.interpolation]
     norm = [T.ToTensor(), T.Normalize(spec.mean, spec.std)]
+    squash = bool(aug.get("squash", False))
     if not train:
+        if squash:
+            return T.Compose([T.Resize((size, size), interpolation=interp), *norm])
         return T.Compose([T.Resize(int(round(size / spec.crop_pct)), interpolation=interp),
                           T.CenterCrop(size), *norm])
-    ops: list = [T.RandomResizedCrop(size, scale=tuple(aug.get("rrc_scale", (0.5, 1.0))),
-                                     ratio=tuple(aug.get("rrc_ratio", (3 / 4, 4 / 3))), interpolation=interp)]
+    ops: list = [T.Resize((size, size), interpolation=interp)] if squash else []
+    ops.append(T.RandomResizedCrop(size, scale=tuple(aug.get("rrc_scale", (0.5, 1.0))),
+                                   ratio=tuple(aug.get("rrc_ratio", (3 / 4, 4 / 3))), interpolation=interp))
     if aug.get("hflip", 0.5):
         ops.append(T.RandomHorizontalFlip(aug.get("hflip", 0.5)))
     if aug.get("vflip", 0.0):

@@ -114,7 +114,7 @@ S Klopper & 45757895\\
 \end{tabular}\par}
 \vspace{0.8cm}
 {\small Lecturer: Prof.\ Absalom Ezugwu \quad\textperiodcentered\quad Facilitator: Mr.\ Bernard Swanepoel
- \quad\textperiodcentered\quad 20 October 2026\par}
+ \quad\textperiodcentered\quad 20 October 2026, revised 4 November 2026\par}
 \vfill
 \begin{minipage}{0.9\textwidth}
 \small
@@ -407,9 +407,11 @@ features of the evaluation crop and therefore no augmentation.}
 \Cref{tab:hparams} lists every training setting. Settings differ where the architectures require it. A randomly
 initialised CNN needs a high learning rate, many epochs and strong augmentation. A pretrained network needs a small
 learning rate and few epochs. A linear head on frozen, standardised features needs neither augmentation nor a
-learning-rate schedule. The recipes of A and B were fixed earlier in the project's grouped 5-fold cross-validation
-benchmark on the 2,512 development images only (\file{results/benchmark.csv}); the \nTest test images were never
-used. The only choice made here is the weight decay of \mC's head, selected on the validation set from
+learning-rate schedule. The recipe of B was fixed earlier in the project's grouped 5-fold cross-validation
+benchmark on the 2,512 development images only (\file{results/benchmark.csv}), and so was A's apart from its
+schedule: the benchmark's 120-epoch budget stopped A before it had converged, and the improvement study of
+\cref{sec:improveA}, again on the development folds only, lengthened it to \maxEpochsA epochs (patience 40). The
+\nTest test images were never used for any of this. The only choice made here is the weight decay of \mC's head, selected on the validation set from
 $\{10^{-4},10^{-3},10^{-2},10^{-1}\}$ (\cref{tab:wdgrid}, \cref{app:extra}). The \nTies smallest values
 ($10^{-4}$ to $10^{-2}$) reached the identical best validation macro-F1, because AdamW's decoupled decay \citep{loshchilov2019adamw} is negligible over a
 few dozen epochs at this learning rate; the tie was broken by the rule, fixed before the grid was run, that the
@@ -428,19 +430,21 @@ Epochs are counted from 1.}
 \subsection{Software, hardware and reproducibility}\label{sec:software}
 The models are implemented in PyTorch \citep{paszke2019pytorch} with \texttt{timm} \citep{wightman2019timm};
 scikit-learn \citep{pedregosa2011sklearn} provides the split and the reference probe, and uv \citep{astral2024uv}
-pins the environment. Training ran on one \gpuName with \gpuMem\,GiB of memory (all versions and the hardware are in \cref{tab:env},
-\cref{app:extra}); peak GPU memory was
+pins the environment. B was trained on one \gpuName with \gpuMem\,GiB of memory (all versions and the hardware are in
+\cref{tab:env}, \cref{app:extra}). The final run of A was trained after the improvement study (\cref{sec:improveA})
+on a second machine, one \gpuNameA with \gpuMemA\,GiB (Windows 11; the same code, lock file and seed; its software
+versions are recorded in \file{results/itri626/runs/A\_scratch\_cnn.json}). Peak GPU memory was
 \vramA\,MB for A and \vramB\,MB for B, and head C was trained on the CPU from cached features. The training seed is 0
 and the split seed \splitSeed. GPU training of A is not bit-for-bit reproducible (non-deterministic cuDNN kernels), so
-a re-run can differ slightly. All result files, the executed notebook \file{notebooks/ITRI626_three_models.ipynb} and
+a re-run can differ slightly. All result files, the executed notebook \file{notebooks/ITRI626_four_models.ipynb} and
 the commands in \cref{app:repro} are in the repository.
 
 \textbf{Fairness.}\label{sec:fairness} All three models use the same \nTrain training, \nVal validation and \nTest
 test images, the same selection rule (best validation macro-F1) and a single test evaluation each, with no test-time
 augmentation. Tuning effort is comparable: the recipes of A and B come from the earlier development-set benchmark,
 and C's only tuned setting is a four-value weight-decay grid on the validation set (\cref{tab:wdgrid}). Budgets
-differ only where the architecture requires it (\cref{tab:hparams}): A receives \maxEpochsA epochs and is still
-improving, whereas B begins to overfit within \maxEpochsB. B and C also differ in pretraining data, which we treat as
+differ only where the architecture requires it (\cref{tab:hparams}): A receives \maxEpochsA epochs and converges within
+them (best epoch \bestA), whereas B begins to overfit within \maxEpochsB. B and C also differ in pretraining data, which we treat as
 part of each method (\cref{sec:limits}). No test number led to a change of any setting.
 
 
@@ -483,9 +487,12 @@ best main model. CI: 95\% percentile bootstrap (2,000 resamples).}
 \Cref{fig:curves} shows training and validation loss and validation accuracy and macro-F1 per epoch;
 \cref{tab:curves} (\cref{app:extra}) gives the values at the selected epoch. Losses are plain cross-entropy.
 \begin{itemize}[leftmargin=*]
-\item \textbf{A} is still improving slowly when its \maxEpochsA-epoch budget ends. At the selected epoch (\bestA) its
-training accuracy is \trainAccA but its validation accuracy only \valAccA; the validation loss flattens at about
-\minValCEA (chance level $\ln 20=\lnTwenty$) while the training loss keeps falling.
+\item \textbf{A} improves slowly for most of its \maxEpochsA-epoch budget and is selected at epoch \bestA. There its
+training accuracy is \trainAccA but its validation accuracy only \valAccA. The validation loss is lowest at epoch
+\minValCEepA (\minValCEA; chance level $\ln 20=\lnTwenty$) and then rises to \valCEA while validation accuracy and
+macro-F1 still improve: the network grows more confident without changing many decisions, and in its second
+hundred epochs it also fits the training set (training cross-entropy \trainCEA). The 120-epoch schedule of the
+earlier benchmark stopped it before this point (\cref{sec:improveA}).
 \item \textbf{B} profits from its pretrained features at once: validation accuracy passes 0.5 in epoch \epHalfB and
 plateaus near \valAccB, while training accuracy rises to \finalTrainAccB and validation loss stays at about \valCEB,
 i.e.\ a 28-million-parameter network overfits a small, noisy training set. The cosine schedule and early stopping
@@ -602,9 +609,10 @@ CPU, about \cpuRatioCB times as long as B (\cpuMsB\,ms); its frozen backbone wei
 \subsection{Why the models differ}\label{sec:why}
 The ranking follows \emph{how much relevant visual knowledge each model brings} to a 2,010-image problem, rather than
 depth or parameter count. \textbf{A} starts from random weights and must learn edges, textures, shapes and classes at
-once from about 100 images per class; its learning curves show it is data-limited, and its per-class F1 follows the
-number of training images most closely (Spearman $\rho$ over the 20 classes \rhoA, against \rhoB for B and \rhoC for
-C). \textbf{B} re-uses ImageNet-22k features that already encode objects, materials and shapes, so it learns fast;
+once from about 100 images per class; its learning curves show it is data-limited, as does the improvement study of
+\cref{sec:improveA} (more epochs helped; more capacity, residual blocks, stronger augmentation and better
+initialisation did not), and its per-class F1 correlates with the number of training images (Spearman $\rho$ over
+the 20 classes \rhoA, against \rhoB for B and \rhoC for C). \textbf{B} re-uses ImageNet-22k features that already encode objects, materials and shapes, so it learns fast;
 but ImageNet contains few electronic parts, so the features are generic, and fine-tuning all 28 million parameters on
 2,010 noisy images overfits (training accuracy \finalTrainAccB against \valAccB on validation). \textbf{C} uses a
 428-million-parameter encoder pretrained on web image--text pairs. Its embedding already separates the classes:
@@ -650,9 +658,35 @@ predictions (B: \confOkB and \confBadB), so a reject option can catch many error
 geifman2017selective}. The deployed model uses one: at a confidence threshold of \ftThr it answers \ftCov\% of the
 test images and is right on \ftAccepted of those.
 
+\subsection{Can the scratch CNN be improved?}\label{sec:improveA}
+Model A's score invites the question whether a better recipe, rather than pretraining, would close the gap. A
+19-experiment study answered it on the development folds only (\file{docs/SCRATCH\_CNN\_IMPROVEMENT\_REPORT.md}; log
+in \file{docs/SCRATCH\_CNN\_IMPROVEMENT\_LOG.md}; each change screened on folds 0--2 and confirmed on all five, with
+single-run noise of $\pm$2--3 points). Input resolution (224 and 256\,px), MixUp, width (2.2$\times$ and 4$\times$
+the parameters), depth and residual blocks, label smoothing 0.2, flip test-time augmentation, whitening and
+identity initialisation, stronger augmentation, dropout 0.5, weight averaging and whole-picture resizing all
+changed nothing or made it worse. One thing helped (\cref{tab:improveA}): training to convergence (200 instead
+of 120 epochs) added \imprSchedGain points of five-fold macro-F1 on every fold and \imprTestGain points on the test
+split; that schedule is the model A reported in this paper. It needs ten times the epochs of the fine-tuned network
+(\maxEpochsA against \maxEpochsB) and still overfits: \trainAccA training accuracy against \valAccA on validation
+at the selected epoch. On the \whN out-of-source Wikimedia photographs the scratch network falls to \imprHoldA
+macro-F1 against \whFone for the deployed SigLIP model. The lesson is the main comparison's:
+features learned from 2,010 photographs of one web scrape describe that scrape, and the limit is the data, not the
+training budget.
+
+\begin{table}[!tbp]
+\centering\footnotesize
+\caption{Scratch-CNN improvement study. Development: grouped 5-fold macro-F1 (mean $\pm$ SD over folds). Test
+and holdout: one training run on the fixed split, scored once (\file{results/scratch\_cnn\_improvement/}). The
+120-epoch row is the model A of the previous build of this report; R2 is the deployed model of \cref{tab:test}.}
+\label{tab:improveA}
+\input{generated/tab_improveA.tex}
+\end{table}
+
 \subsection{Supporting evidence from the wider study}\label{sec:further}
 The project's broader study (details in \cref{app:benchmark}) supports the comparison.
-Grouped 5-fold cross-validation over eleven families reproduces the ordering (macro-F1: scratch CNN \bmScratch,
+Grouped 5-fold cross-validation over eleven families reproduces the ordering (macro-F1: scratch CNN \bmScratch
+with the benchmark's 120-epoch schedule, \imprFiveA with the 200-epoch schedule of \cref{sec:improveA};
 ConvNeXt-T fine-tuned \bmConvnext, frozen SigLIP So400m probe \bmProbeSiglip), and every ImageNet-pretrained fine-tune
 (\bmImagenetLo--\bmImagenetHi) stays below SigLIP zero-shot classification without any training (\bmZeroSiglip).
 The dataset's original file-level split leaks duplicates and inflates linear-probe accuracy by \inflSiglip to
@@ -674,7 +708,8 @@ SigLIP encoder, so the flagged/unflagged comparison in \cref{sec:errors} may fav
 copies, so some train--test similarity may remain.
 \item \textbf{Unequal pretraining and budgets.} C's backbone was trained on far more data than B's, so the comparison
 measures model and pretraining together. The budgets of A and B were fixed by earlier cross-validation, not tuned
-exhaustively; longer training would help A, but not enough to close a gap of \diffCA points.
+exhaustively. A was then trained to convergence, and the study of \cref{sec:improveA} found no further recipe gain,
+so the gap of \diffCA points to C is not a budget artefact.
 \item \textbf{Cost.} C has \paramsMC million parameters and needs about \cpuMsC\,ms per image on a CPU, which rules it
 out for microcontrollers or real-time video without a GPU.
 \end{enumerate}
@@ -687,7 +722,9 @@ families rank: a frozen SigLIP So400m ViT with a linear head (accuracy \accC, ma
 ConvNeXt-T (\accB, \foneB) and a VGG-style CNN trained from scratch (\accA, \foneA). The differences are
 statistically clear and confirmed by the 5-fold benchmark. Transfer learning is the decisive factor: ImageNet
 fine-tuning adds \diffBA percentage points over training from scratch, and large-scale image--text pretraining
-another \diffCB.
+another \diffCB. Trying to improve the scratch network directly (\cref{sec:improveA}) did not change this picture:
+training it to convergence gained \imprSchedGain points, and nothing in architecture, regularisation or
+initialisation gained anything.
 
 \textbf{Recommended model: C, the frozen SigLIP So400m ViT with a linear softmax head.} It is the most accurate by a
 wide margin, the most robust to off-topic web images, confident enough on correct answers for a reject option, and the
@@ -743,7 +780,8 @@ the zero-shot text head, temperature \tempR).}
 \Cref{tab:env} lists the software and hardware of the training run.
 \begin{table}[!tbp]
 \centering\footnotesize
-\caption{Software and hardware of the training run (\file{results/itri626/environment.json}).}
+\caption{Software and hardware of the training run of B and C (\file{results/itri626/environment.json}); the final
+run of A used a second machine (\cref{sec:software}).}
 \label{tab:env}
 \setlength{\tabcolsep}{4pt}
 \input{generated/tab_env.tex}
@@ -840,7 +878,7 @@ uv run --no-config tools/build_dataset_v2.py   # only if data/v2/images/ is miss
 uv run python tools/export_splits.py --check    # verify data/v2/splits/*.csv
 uv run python scripts/itri626_experiments.py    # train A, B, C; score test (GPU)
 uv run jupyter nbconvert --to notebook --execute --inplace \
-    notebooks/ITRI626_three_models.ipynb        # RETRAIN = False by default
+    notebooks/ITRI626_four_models.ipynb        # RETRAIN = False by default
 uv run --no-project --with numpy --with scipy \
     python docs/itri626_report/make_tables.py   # report tables and numbers
 cd docs/itri626_report && latexmk -pdf main.tex # this report
@@ -848,7 +886,10 @@ cd docs/itri626_report && latexmk -pdf main.tex # this report
 \end{small}
 Setting \texttt{RETRAIN = True} in the first code cell of the notebook re-runs the experiment script before loading
 its outputs. \file{scripts/itri626_experiments.py}~\texttt{-{}-steps head reference collect} re-runs only the CPU parts (head C
-from cached features, the reference rows and the result collection).
+from cached features, the reference rows and the result collection). The model-A run reported here was not
+produced by \texttt{train\_A} but imported from the improvement study's fold-0 run with
+\file{tools/itri626\_import\_run.py}, so that the test split was scored only once for that recipe; re-running
+\texttt{train\_A} trains a new network and spends a second look.
 
 \textbf{Provenance of further numbers in the text.} Cleaning ablation (\cref{sec:cleaning}, item~4):
 \file{results/phase1/cleaning_ablation_siglip_so400m.csv}; label audit (item~5):
@@ -933,7 +974,7 @@ Sources, pretrained models, software acknowledged (brief \S9) & \cref{sec:source
 \multicolumn{2}{@{}l}{\textit{Submission items (brief \S11)}}\\
 Report as PDF & \file{docs/itri626_report/main.pdf} \\
 Presentation slides & to be prepared by the group (not part of this repository) \\
-Notebook with visible outputs, figures, metric tables & \file{notebooks/ITRI626_three_models.ipynb} \\
+Notebook with visible outputs, figures, metric tables & \file{notebooks/ITRI626_four_models.ipynb} \\
 Python scripts for data preparation and evaluation & \file{tools/build_dataset_v2.py}, \file{tools/export_splits.py}, \file{scripts/itri626_experiments.py}, \file{src/compclass/} \\
 README with dataset source, setup, reproduction steps & \file{README.md}, section ``ITRI626 submission'' \\
 Split files or a script that recreates them & \file{data/v2/splits/}, \file{tools/export_splits.py} \\

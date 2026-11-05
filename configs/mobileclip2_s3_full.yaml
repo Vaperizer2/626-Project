@@ -1,0 +1,14 @@
+# Efficiency study, step 3: full fine-tune of MobileCLIP2-S3 (FastViT-MCi3, 123M, 256 px) on the development folds.
+# Question: does updating the backbone beat its frozen linear probe (0.792 CV macro-F1 at crop 1.0)? October's
+# answer was yes for CLIP-B / ConvNeXt-T, no for SigLIP. CLIP-style recipe: low LR, layer-wise decay, head warm-up.
+base: base.yaml
+name: mobileclip2_s3_full
+model: {key: mobileclip2_s3, kwargs: {drop_path_rate: 0.1}}
+# 16 x 2 accumulation + gradient checkpointing: batch 32 without it peaks at 7.8 GB on the 8 GB card and pages to
+# system memory (17 s per step); 16 x 2 with checkpointing peaks at 2.9 GB at ~38 img/s.
+# LP-FT: the head starts as the fold's fitted linear probe (tools/views/probe_heads.py) and BatchNorm statistics stay
+# frozen. A random head at this LR reached only 0.40 macro-F1 in 30 epochs on fold 0 (train acc 0.60, validation
+# swinging 0.15-0.40 between epochs from the drifting BN statistics; record a2f89f7ff4fe in results/runs_win.jsonl).
+train: {batch_size: 16, accum_steps: 2, grad_checkpointing: true, lr: 5.0e-5, layer_decay: 0.75, freeze_epochs: 0,
+        weight_decay: 0.1, epochs: 30, patience: 8, freeze_bn: true,
+        head_init: "results/cache/heads/mobileclip2_s3_fold{fold}.npz"}

@@ -1,4 +1,4 @@
-"""Helpers for notebooks/ITRI626_three_models.ipynb: loading saved results, tables and report figures.
+"""Helpers for notebooks/ITRI626_four_models.ipynb: loading saved results, tables and report figures.
 
 Kept out of the notebook so its cells stay short. Nothing here trains a model; training lives in
 scripts/itri626_experiments.py (the notebook calls it when RETRAIN=True).
@@ -28,18 +28,28 @@ def find_root(start: Path | None = None) -> Path:
 
 ROOT = find_root()
 RES = ROOT / "results" / "itri626"
-FIG = RES / "figures"
+FIG_REPORT = RES / "figures"            # the course report's figures (models A, B, C); docs/itri626_report reads these
+FIG_FOUR = RES / "figures_four_models"  # the same figures with model D included; the report does not read these
+FIG = FIG_FOUR                          # where save() writes; set by configure()
 SPLITS = ROOT / "data" / "v2" / "splits"
 V2 = ROOT / "data" / "v2"
 
-MAIN = ["A_scratch_cnn", "B_convnext_tiny", "C_siglip_so400m_linear"]
-REFS = ["R1_sklearn_probe", "R2_deployed_fused"]
+# Four main models. D (frozen MobileCLIP2-S3 hybrid + linear head) was added on 2026-11-05; CORE is the original
+# A/B/C trio, kept for the three-way analyses (agreement patterns, the disagreement panel).
+ALL4 = ["A_scratch_cnn", "B_convnext_tiny", "C_siglip_so400m_linear", "D_mobileclip2_s3_linear"]
+MAIN = list(ALL4)
+CORE = ALL4[:3]
+FROZEN = ("C_siglip_so400m_linear", "D_mobileclip2_s3_linear")  # frozen tower + linear head: no smoothing, no augmentation
+REFS = ["R1_sklearn_probe", "R2_deployed_fused", "R3_small_fused"]
 SHORT = {"A_scratch_cnn": "A: scratch CNN", "B_convnext_tiny": "B: ConvNeXt-T (fine-tuned)",
-         "C_siglip_so400m_linear": "C: SigLIP ViT (frozen + linear)", "R1_sklearn_probe": "R1: SigLIP + sklearn probe",
-         "R2_deployed_fused": "R2: deployed fused model"}
-# Okabe-Ito colours for the three main models (orange, blue, bluish green); neutral greys for the reference rows
+         "C_siglip_so400m_linear": "C: SigLIP ViT (frozen + linear)",
+         "D_mobileclip2_s3_linear": "D: MobileCLIP2-S3 hybrid (frozen + linear)",
+         "R1_sklearn_probe": "R1: SigLIP + sklearn probe", "R2_deployed_fused": "R2: deployed fused model",
+         "R3_small_fused": "R3: Small fused model"}
+# Okabe-Ito colours for the main models (orange, blue, bluish green) plus wine for D (Tol), checked for colour-vision deficiency; neutral greys for the reference rows
 COLOR = {"A_scratch_cnn": "#E69F00", "B_convnext_tiny": "#0072B2", "C_siglip_so400m_linear": "#009E73",
-         "R1_sklearn_probe": "#999999", "R2_deployed_fused": "#555555"}
+         "D_mobileclip2_s3_linear": "#882255",
+         "R1_sklearn_probe": "#999999", "R2_deployed_fused": "#555555", "R3_small_fused": "#777777"}
 WRONG = "#B2182B"   # dark red: error marking, kept distinct from model A's orange
 OK = "#1A7F37"      # dark green tick for correct predictions in the disagreement panel
 TEXTW = 6.30        # inches = \\textwidth of the report (16 cm); report figures are drawn at their printed width
@@ -66,8 +76,20 @@ def apply_figure_style(sizes=(8.5, 7.5, 7)) -> None:
         "lines.linewidth": 1.2, "patch.linewidth": 0.6, "pdf.fonttype": 42, "ps.fonttype": 42})
 
 
+def configure(with_d: bool = True) -> None:
+    """Choose the model set of the notebook.
+
+    with_d=True (default): A, B, C and D; figures go to results/itri626/figures_four_models/.
+    with_d=False: A, B and C exactly as the course report uses them; figures go to results/itri626/figures/, the
+    folder the report's LaTeX reads. This is the only setting that touches the report's figures.
+    """
+    global MAIN, FIG
+    MAIN = list(ALL4) if with_d else list(CORE)
+    FIG = FIG_FOUR if with_d else FIG_REPORT
+
+
 def save(fig, name: str) -> list[Path]:
-    """Save a report figure as PDF + PNG under results/itri626/figures/."""
+    """Save a figure as PDF + PNG under FIG (see configure): the report's folder only when the model set is A-C."""
     FIG.mkdir(parents=True, exist_ok=True)
     out = [FIG / f"{name}.pdf", FIG / f"{name}.png"]
     for p in out:
@@ -210,7 +232,8 @@ def fig_examples(train: pd.DataFrame, classes: list[str], per_class: int = 4, se
 
 
 ROWLABEL = {"A_scratch_cnn": "A: scratch CNN", "B_convnext_tiny": "B: ConvNeXt-T\n(fine-tuned)",
-            "C_siglip_so400m_linear": "C: SigLIP ViT\n(frozen + linear)"}
+            "C_siglip_so400m_linear": "C: SigLIP ViT\n(frozen + linear)",
+            "D_mobileclip2_s3_linear": "D: MobileCLIP2-S3\n(frozen + linear)"}
 
 
 def fig_augmentation(path: Path, specs: dict, augs: dict, n: int = 5, seed: int = 0):
@@ -256,7 +279,7 @@ def fig_augmentation(path: Path, specs: dict, augs: dict, n: int = 5, seed: int 
 
 
 def fig_learning_curves(histories: dict, best: dict):
-    """2 x 3 grid: losses (top) and accuracy / macro-F1 (bottom); one column per model; one shared legend."""
+    """2 x n grid: losses (top) and accuracy / macro-F1 (bottom); one column per main model; one shared legend."""
     from matplotlib.lines import Line2D
     from matplotlib.ticker import MaxNLocator
 
@@ -268,10 +291,13 @@ def fig_learning_curves(histories: dict, best: dict):
         c = COLOR[name]
         ax = axes[0, c_]
         ax.plot(e, h["train_ce"], color=c, lw=1.2)
-        if name != "C_siglip_so400m_linear":
+        if name not in FROZEN:
             ax.plot(e, h["train_loss"], color=c, lw=1.0, ls=":")
         ax.plot(e, h["val_loss"], color="black", lw=1.1, ls="--")
-        ax.set_title(SHORT[name], loc="left", fontsize=8)
+        if len(MAIN) <= 3:  # the report's three-column layout, unchanged
+            ax.set_title(SHORT[name], loc="left", fontsize=8)
+        else:  # four columns: the short name fits
+            ax.set_title(SHORT[name].split(" (")[0].replace(" hybrid", ""), loc="left", fontsize=7.5)
         ax = axes[1, c_]
         ax.plot(e, h["train_acc"], color=c, lw=1.2)
         ax.plot(e, h["val_acc"], color="black", lw=1.1, ls="--")
@@ -304,11 +330,11 @@ def fig_test_metrics(table: pd.DataFrame):
         off = (i - (len(table) - 1) / 2) * w
         ax.bar(x + off, row.values, w * 0.92, color=COLOR[name], label=SHORT[name])
         for xi, v in zip(x, row.values):
-            ax.text(xi + off, v + 0.01, f"{v:.2f}", ha="center", fontsize=6.5)
+            ax.text(xi + off, v + 0.01, f"{v:.2f}", ha="center", fontsize=6.5 if len(table) <= 3 else 5.4)
     ax.set_xticks(x, [m.replace("_", " ") for m in metrics])
     ax.set_ylim(0, 1.0)
     ax.set_ylabel("test score (n = 418)")
-    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=3)
+    ax.legend(loc="lower center", bbox_to_anchor=(0.5, 1.0), ncol=3 if len(table) <= 3 else 2)
     return fig
 
 
@@ -349,11 +375,27 @@ def fig_confusion(cm: np.ndarray, classes: list[str], name: str, vmax: float | N
 
 
 def fig_confusion_grid(cms: dict, classes: list[str]):
-    """Report figure: (a)-(c) counts of A, B, C on one shared colour scale, (d) C row-normalised."""
+    """Report figure. Four models: (a)-(d) their counts on one shared colour scale. Three models (the original
+    layout): (a)-(c) counts on one shared colour scale, (d) the third model row-normalised."""
     names = list(cms)
     mats = {n: np.asarray(cms[n]) for n in names}
     vmax = max(m.max() for m in mats.values())
     fig, axes = plt.subplots(2, 2, figsize=(TEXTW, 5.55), layout="constrained")
+    if len(names) == 4:
+        for k, (ax, n) in enumerate(zip(axes.flat, names)):
+            im = _draw_cm(ax, mats[n], classes, vmax, True, cell_fs=6.0)
+            ax.set_title(f"({'abcd'[k]}) {SHORT[n].split(' (')[0]}: counts", fontsize=7.5, loc="left")
+            ax.set_xticks(range(len(classes)), classes if k >= 2 else [], rotation=90, fontsize=6.5)
+            ax.set_yticks(range(len(classes)), classes if k % 2 == 0 else [], fontsize=6.5)
+            ax.tick_params(length=2)
+            if k >= 2:
+                ax.set_xlabel("predicted class", fontsize=7.5)
+            if k % 2 == 0:
+                ax.set_ylabel("true class", fontsize=7.5)
+        cb = fig.colorbar(im, ax=axes.ravel().tolist(), shrink=0.6, pad=0.01, aspect=40)
+        cb.ax.tick_params(labelsize=6.5)
+        cb.set_label("test images, all panels", fontsize=7)
+        return fig
     panels = [(names[0], "counts", True), (names[1], "counts", True), (names[2], "counts", True),
               (names[2], "row-normalised, %", False)]
     ims = []
@@ -380,7 +422,7 @@ def fig_confusion_grid(cms: dict, classes: list[str]):
 
 def fig_per_class_f1(pc: pd.DataFrame, train_counts: pd.Series):
     piv = pc.pivot(index="class", columns="model", values="f1")[MAIN]
-    piv = piv.sort_values(MAIN[-1])
+    piv = piv.sort_values(CORE[-1])  # sorted by model C, the most accurate
     fig, ax = plt.subplots(figsize=(5.0, 2.8), layout="constrained")
     y = np.arange(len(piv))
     for i, (_, row) in enumerate(piv.iterrows()):
@@ -395,8 +437,8 @@ def fig_per_class_f1(pc: pd.DataFrame, train_counts: pd.Series):
     ax.xaxis.grid(True, color="#E5E5E5", lw=0.5)
     ax.set_axisbelow(True)
     ax.set_xlabel("test F1-score (higher = better)")
-    ax.legend(loc="lower center", bbox_to_anchor=(0.4, 1.0), ncol=3, frameon=False, handletextpad=0.3,
-              columnspacing=1.0, borderaxespad=0.2)
+    ax.legend(loc="lower center", bbox_to_anchor=(0.4, 1.0), ncol=3 if len(MAIN) <= 3 else 2, frameon=False,
+              handletextpad=0.3, columnspacing=1.0, borderaxespad=0.2)
     return fig
 
 
@@ -445,7 +487,7 @@ def fig_disagreement(df: pd.DataFrame, title: str = "", ncol: int = 4, size: int
         step = 8.0  # points per title line
         ax.annotate(short_cls(r["true"]), (0.5, 1), xycoords="axes fraction", xytext=(0, 2 + 3 * step),
                     textcoords="offset points", ha="center", va="bottom", fontsize=6.5, fontweight="bold")
-        for i, k in enumerate(MAIN):
+        for i, k in enumerate(CORE):  # the three-way panel of A, B and C
             ok = r[k] == r["true"]
             txt = f"{k[0]}: \u2713" if ok else f"{k[0]}: {short_cls(r[k])} \u2717"
             ax.annotate(txt, (0.5, 1), xycoords="axes fraction", xytext=(0, 2 + step * (2 - i)),
@@ -464,7 +506,7 @@ AGREE_LABEL = {"111": "all three", "011": "B and C", "001": "C only", "101": "A 
 
 def fig_agreement(correct: pd.DataFrame):
     """Horizontal bars: test images by the set of models (A, B, C) that classify them correctly."""
-    pat = correct[MAIN].astype(int).astype(str).agg("".join, axis=1)
+    pat = correct[CORE].astype(int).astype(str).agg("".join, axis=1)
     order = ["111", "011", "001", "101", "110", "010", "100", "000"]
     counts = pat.value_counts().reindex(order, fill_value=0)
     fig, ax = plt.subplots(figsize=(2.25, 2.2), layout="constrained")
@@ -487,8 +529,12 @@ def fig_efficiency(eff: pd.DataFrame, acc: pd.Series):
     for ax, (col, xl) in zip(axes, cols):
         for name, r in eff.iterrows():
             ax.scatter(r[col], acc[name], s=30, color=COLOR[name], zorder=3)
-            ax.annotate(SHORT[name].split(": ")[1], (r[col], acc[name]), textcoords="offset points",
-                        xytext=(5, -3), fontsize=6.5)
+            left = name == "D_mobileclip2_s3_linear"  # D sits just left of C: its label goes to the left
+            label = SHORT[name].split(": ")[1]
+            if len(MAIN) > 3:
+                label = label.split(" (")[0]
+            ax.annotate(label, (r[col], acc[name]), textcoords="offset points",
+                        xytext=(-5, -3) if left else (5, -3), ha="right" if left else "left", fontsize=6.5)
         ax.set_xscale("log")
         ax.set_ylabel("test accuracy")
         ax.set_xlabel(xl)
