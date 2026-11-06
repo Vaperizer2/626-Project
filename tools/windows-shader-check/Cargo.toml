@@ -1,0 +1,16 @@
+[package]
+name = "windows-shader-check"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+# Always exercise the runtime compiler, including optimized harness builds.
+[profile.release]
+debug-assertions = true
+
+[dependencies]
+anyhow = "1"
+log = "0.4"
+windows = { version = "=0.62.2", features = ["Win32_Graphics_Direct3D_Fxc"] }

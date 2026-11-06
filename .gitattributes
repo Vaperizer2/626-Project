@@ -1,0 +1,2 @@
+# Model manifests hash these files byte-for-byte, including on Windows.
+exports/**/*.json text eol=lf

@@ -1,0 +1,47 @@
+Component Classifier: Windows fix1 (application-only update)
+
+You need the ALREADY EXTRACTED original component-classifier-windows-x86_64
+folder, with its exports, demo_stack, DLLs and LICENSES still present.
+Do not download the 2.6 GB model package again if it is already extracted.
+
+1. Close the app. Optionally back up gpui-demo.exe and run.bat for rollback.
+2. Extract ALL contents of component-classifier-windows-fix1.zip directly INTO
+   that existing app folder. Accept replacement of gpui-demo.exe and run.bat.
+   These files must sit beside onnxruntime.dll, not in a new nested subfolder.
+3. Open Command Prompt in that folder and run:
+       run.bat --tab demo
+   Or, from elsewhere, use the full quoted path, for example:
+       "C:\Users\Meiring\Downloads\Component Classifier\run.bat" --tab demo
+   No fake C:\home\user directory or Boat source tree is needed.
+4. If Windows reports missing MSVCP/VCRUNTIME DLLs, install the original
+   bundle's VC_redist.x64.exe, then retry.
+
+This update contains no models, ONNX graphs, photos or runtime DLLs. Keep the
+original bundle's exports, demo_stack, DLLs and licences unchanged. The CPU
+launcher is intentional; use your existing external GPU launcher separately.
+
+The patched GPUI runtime compiler reads HLSL embedded in the executable instead
+of an absolute source path on the build machine. This targets the reported GUI
+startup crash; native Windows GUI validation is still pending. Extraction and
+all six models' inference already worked in the original reviewer test.
+
+Please try Classify, Demo and Benchmark, then report the Windows version, GPU,
+failing action and terminal output if the GUI still fails. Headless checks:
+    run.bat models --check
+    run.bat classify --model all demo_stack\01_battery_holder.jpg
+
+run.bat forwards arguments, uses the bundled CPU ONNX Runtime and returns the
+application's exit code. It pauses after a no-argument/double-click launch and
+on GUI failure so errors stay readable; CLI commands never pause. For scripted
+GUI runs, first set COMPCLASS_NO_PAUSE=1. From another batch file, use CALL when
+invoking run.bat so control returns to your script.
+
+BUILD_INFO_FIX1.txt records the declared source commit and executable hash.
+SHA256SUMS-WINDOWS-FIX1.txt covers this update only. For example, in PowerShell:
+    Get-FileHash .\gpui-demo.exe -Algorithm SHA256
+Compare the hash with the gpui-demo.exe entry in SHA256SUMS-WINDOWS-FIX1.txt.
+The downloadable .zip.sha256 covers the whole ZIP (check before extraction).
+The original SHA256SUMS describes the OLD bundle: its gpui-demo.exe and run.bat
+entries are expected to differ after this update. Its other entries still apply.
+Rollback: close the app and restore your two backups, or re-extract the original
+archive into a separate folder. This update does not alter model metadata.

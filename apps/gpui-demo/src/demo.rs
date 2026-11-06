@@ -227,7 +227,7 @@ mod tests {
         let models = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../exports");
         let r = Registry::open(&Settings { models: Some(models), ..Default::default() }).unwrap();
         assert!(r.problems().is_empty(), "{:?}", r.problems());
-        assert_eq!(r.ids().len(), 5, "A, B, C, Deployed and Fast");
+        assert_eq!(r.ids().len(), 7, "A, B, C, Deployed, Fast, Small and Deployed at crop 1.0");
         if std::env::var_os("REQUIRE_EXPORTS").is_some_and(|v| v == "1") {
             for h in r.heads() {
                 h.available().unwrap_or_else(|e| panic!("{}: {e}", h.id()));
