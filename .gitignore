@@ -4,11 +4,14 @@ __pycache__/
 build/
 dist/
 wheels/
+Test_App/
 *.egg-info
 
 # Virtual environments / caches
 .venv
 .uv-cache
+Screenshot 2026-11-05 185854.png
+AssetQuestion.png
 
 # Data & experiment outputs (large / regenerable)
 data/raw/
