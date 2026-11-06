@@ -47,6 +47,7 @@ for view in views:
             if i % 20 == 0:
                 print(f"  batch {i}/{len(dl)} {time.perf_counter()-t0:.0f}s", flush=True)
     out = torch.cat(feats).numpy()
+    cache.parent.mkdir(parents=True, exist_ok=True)
     np.save(cache, out)
     print(f"saved {cache} {out.shape} in {time.perf_counter()-t0:.0f}s", flush=True)
     del model; torch.cuda.empty_cache()

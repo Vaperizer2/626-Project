@@ -209,11 +209,35 @@ def step_reference() -> None:
     ref = jload(ROOT / "results" / "final" / "final_test_v2.json")
     acc = float((pr.argmax(1) == yte).mean())
     assert SMOKE or abs(acc - ref["accuracy"]) < 1e-9, (acc, ref["accuracy"])  # same rows, same head -> same answer
-    jdump({"R1_sklearn_probe": {"best_C": s.best_params_["logisticregression__C"],
+    path = OUT / "runs" / "references.json"
+    refs = jload(path) if path.exists() else {}
+    refs.update({"R1_sklearn_probe": {"best_C": s.best_params_["logisticregression__C"],
                                 "fit_time_s": round(time.perf_counter() - t0, 1)},
            "R2_deployed_fused": {"matches_results_final_final_test_v2_json": True, "accuracy": acc,
-                                 "temperature": float(head["temperature"]), "C": float(head["C"])}},
-          OUT / "runs" / "references.json")
+                                 "temperature": float(head["temperature"]), "C": float(head["C"])}})
+    jdump(refs, path)
+
+
+def step_reference_D() -> None:
+    """R3: the packaged Small model (exports/mobileclip2_s3, tools/views/package_candidate.py) on the same test rows.
+    Its one sealed-test look is results/final_test_mobileclip2_s3.json; this recomputes the same predictions from the
+    cached features and asserts they match that record, as step_reference does for R2."""
+    from compclass.final import log_softmax
+
+    m, _, _, (te, Xte, yte) = siglip_features(SMALL)
+    head = dict(np.load("exports/mobileclip2_s3/head.npz"))
+    lp = log_softmax(((Xte - head["mu"]) / head["sd"]) @ head["coef"].T + head["intercept"])
+    e = Xte @ head["proj_w"].T + head["proj_b"]
+    e = e / np.linalg.norm(e, axis=1, keepdims=True)
+    pr = np.exp(log_softmax((lp + head["w_zs"] * log_softmax(head["t_zs"] * e @ head["W"].T)) / head["temperature"]))
+    save_preds("R3_small_fused", "test", [r["id"] for r in te], yte, pr, m.classes)
+    ref = jload(ROOT / "results" / "final_test_mobileclip2_s3.json")
+    acc = float((pr.argmax(1) == yte).mean())
+    assert SMOKE or abs(acc - ref["accuracy"]) < 1e-9, (acc, ref["accuracy"])
+    refs = jload(OUT / "runs" / "references.json")
+    refs["R3_small_fused"] = {"matches_results_final_test_mobileclip2_s3_json": True, "accuracy": acc,
+                              "temperature": float(head["temperature"]), "C": float(head["C"])}
+    jdump(refs, OUT / "runs" / "references.json")
 
 
 def step_reference_D() -> None:

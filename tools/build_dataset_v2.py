@@ -350,6 +350,29 @@ def fingerprint(rows: list[dict]) -> str:
     return hashlib.sha256("\n".join(lines).encode("utf-8")).hexdigest()[:16]
 
 
+def legacy_row_metadata(unit: dict, legacy_of_rel: dict, previous_rows: dict) -> tuple[str | None, bool]:
+    splits = sorted({legacy_of_rel[p] for p in unit["src_paths"] if p in legacy_of_rel},
+                    key=["train", "val", "test"].index)
+    previous = previous_rows.get(unit["id"])
+    if previous is not None:
+        return previous.get("legacy_split"), "legacy_multi_split" in previous.get("flags", [])
+    return (splits[0] if splits else None), len(splits) > 1
+
+
+def legacy_audit(rows: list[dict], matched: int, unmatched: int, leakage: dict | None,
+                 previous_report: dict) -> dict:
+    counts = {str(k): v for k, v in collections.Counter(r["legacy_split"] for r in rows).items()}
+    if leakage is not None:
+        return {"matched_entries": matched, "unmatched_entries": unmatched,
+                "rows_with_legacy_split": counts, "val_test_vs_train": leakage}
+    previous = previous_report.get("legacy_split")
+    if (previous is not None and previous.get("val_test_vs_train") is not None
+            and previous_report.get("fingerprint") == fingerprint(rows)):
+        return {**previous, "rows_with_legacy_split": counts, "evidence_source": "preserved_previous_report"}
+    return {"matched_entries": None, "unmatched_entries": None, "rows_with_legacy_split": counts,
+            "val_test_vs_train": None, "evidence_source": "unavailable_without_legacy_split"}
+
+
 def sha256_file(p: Path) -> str:
     h = hashlib.sha256()
     with open(p, "rb") as f:
@@ -528,9 +551,11 @@ def main() -> int:
     # is absent (source clone + fresh Kaggle download) fall back to the per-row legacy_split already recorded in
     # the existing manifest, keyed by image id, so a rebuild still reproduces the committed rows.
     legacy_of_rel, legacy_unmatched = {}, 0
-    legacy_of_id: dict[str, str | None] = {}
+    legacy_of_id: dict[str, dict] = {}
+    previous_report = {}
+    has_legacy_split = LEGACY_SPLIT.exists()
     rel_set = set(rels)
-    if LEGACY_SPLIT.exists():
+    if has_legacy_split:
         legacy = json.loads(LEGACY_SPLIT.read_text())
         for sp in ("train", "val", "test"):
             for e in legacy.get(sp, []):
@@ -542,27 +567,27 @@ def main() -> int:
                     legacy_unmatched += 1
     elif (OUT / "manifest.json").exists():
         prev = json.loads((OUT / "manifest.json").read_text())
-        legacy_of_id = {r["id"]: r.get("legacy_split") for r in prev.get("rows", [])}
+        legacy_of_id = {r["id"]: r for r in prev.get("rows", [])}
+        if (OUT / "leakage_report.json").exists():
+            previous_report = json.loads((OUT / "leakage_report.json").read_text())
         log(f"WARNING {LEGACY_SPLIT.relative_to(REPO)} missing; carrying legacy_split forward from the existing "
-            f"manifest for {len(legacy_of_id)} ids (legacy leakage statistics will be empty)")
+            f"manifest for {len(legacy_of_id)} ids, including legacy_multi_split flags; matching historical "
+            "leakage statistics will be preserved, otherwise marked unavailable")
     else:
         log(f"WARNING {LEGACY_SPLIT.relative_to(REPO)} missing and no existing manifest; legacy_split will be null")
 
     rows = []
     for i in keep:
         u = units[i]
-        sps = sorted({legacy_of_rel[p] for p in u["src_paths"] if p in legacy_of_rel},
-                     key=["train", "val", "test"].index)
-        if not legacy_of_rel and legacy_of_id.get(u["id"]):
-            sps = [legacy_of_id[u["id"]]]
-        if len(sps) > 1:
+        legacy_split, legacy_multi_split = legacy_row_metadata(u, legacy_of_rel, legacy_of_id)
+        if legacy_multi_split:
             u["flags"].append("legacy_multi_split")
         split, fold = split_of[i]
         rows.append({"id": u["id"], "path": f"images/{u['label']}/{u['id']}.jpg", "label": u["label"],
                      "cluster": u["cluster"], "split": split, "fold": fold, "sha256": u["sha256"],
                      "src_paths": u["src_paths"], "orig_format": u["orig_format"],
                      "orig_width": u["orig_width"], "orig_height": u["orig_height"],
-                     "legacy_split": sps[0] if sps else None, "flags": sorted(set(u["flags"]))})
+                     "legacy_split": legacy_split, "flags": sorted(set(u["flags"]))})
     rows.sort(key=lambda r: (r["label"], r["id"]))
     excluded.sort(key=lambda e: (e["reason"], e["sha256"]))
     fp = fingerprint(rows)
@@ -770,10 +795,8 @@ def main() -> int:
         "split": {"test_outer_fold": best, "outer_tvd": [round(float(t), 5) for t in tvd],
                   "sklearn": sklearn.__version__, "low_test_classes_lt15": low_test},
         "per_class_split_counts": per_split,
-        "legacy_split": {"matched_entries": len(legacy_of_rel), "unmatched_entries": legacy_unmatched,
-                         "rows_with_legacy_split": {str(k): v for k, v in
-                                                    collections.Counter(r["legacy_split"] for r in rows).items()},
-                         "val_test_vs_train": legacy_leak},
+        "legacy_split": legacy_audit(rows, len(legacy_of_rel), legacy_unmatched,
+                                     legacy_leak if has_legacy_split else None, previous_report),
         "fingerprint_definition": "sha256 over sorted 'id\\tlabel\\tsplit\\tfold' lines (fold '' for test) "
                                   "joined by '\\n', first 16 hex",
         "stale_images_moved": stale,

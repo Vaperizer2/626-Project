@@ -1,3 +1,9 @@
+> **Historical proposal (5 November 2026).** The integrated, polished course report is now
+> [`../itri626_report/main.tex`](../itri626_report/main.tex), with its compiled PDF beside it.
+> This file preserves the earlier proposal/redline. In particular, its R3 description is superseded:
+> committed `metrics.json` identifies R3 as Small, refitted on train + validation and fused with zero-shot scores,
+> not a same-training-split alternative head. Its page counts and table numbers are historical.
+
 # Recognising electronic components in web photographs
 
 *{{SUBTITLE}}*

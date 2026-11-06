@@ -1,8 +1,9 @@
 # A smaller model for the 20 component classes: an efficiency study
 
 Meiring van Niekerk, ITRI626, 2026-11-05. Branch `Meiring`. All model selection on the five cluster-grouped
-development folds of data v2 (fingerprint `431315e87d2612cb`, 2,512 rows); the sealed test split and the Wikimedia
-holdout were not scored. Dated detail, per-fold numbers and the exact commands are in `EXPERIMENT_LOG.md`
+development folds of data v2 (fingerprint `431315e87d2612cb`, 2,512 rows); selection did not use the sealed test split or Wikimedia
+holdout. Subsequent one-time test evaluations of Small and course model D are reported separately below;
+no Wikimedia score for Small or D is claimed here. Dated detail, per-fold numbers and the exact commands are in `EXPERIMENT_LOG.md`
 (2026-11-05 entries) and `results/efficiency/`.
 
 ## Question
@@ -111,7 +112,7 @@ Three observations the table forces:
    attention-pooling graph does not fuse as well, so its half-point deficit buys less than the GFLOPs promised. With
    Fast already occupying the middle of the frontier at no accuracy cost on the sealed test, PE-Core L has no
    deployment case; it stays in the results as that finding.
-3. **Fast's accuracy cost is the resolution, not the INT8.** SigLIP at 308 px in fp16 loses 1.8 points on every
+3. **Lower resolution alone reduces development accuracy; the INT8 effect is not isolated here.** SigLIP at 308 px in fp16 loses 1.8 points on every
    fold (0.822), which is the team lead's recorded Fast fit (0.826 OOF accuracy with the INT8 trunk). Against that
    reference MobileCLIP2-S3 is 2.1 points lower and 2.3× faster at equal precision; Fast's INT8 engine will be faster
    than 20 ms by an amount only measurable with TensorRT and its release files.
@@ -149,8 +150,8 @@ the folds predicted is real and of the predicted size. The test split is spent f
 **As a course model (D).** For the ITRI626 comparison the same tower was also given a head trained only on the fixed
 split's 2,010 training rows, with model C's code, grid and selection rule: test accuracy 0.773, macro-F1 0.770,
 5.0 points below C (paired p = 0.0075) and 13.6 above the fine-tuned ConvNeXt-T. That is a different head from the
-packaged one above (fitted on all development rows, fused, 0.806), and each was scored on the test split once. The
-proposed report text is in `docs/model_d_inserts/INSERTS.md`.
+packaged one above (fitted on all development rows, fused, 0.806), and each was scored on the test split once. The integrated
+course report is `docs/itri626_report/main.tex`; `docs/model_d_inserts/` preserves the earlier proposal.
 
 ## The deployed model at crop 1.0
 
